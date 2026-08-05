@@ -46,8 +46,8 @@ Windows 端轻量化安科阅读器：**Python 侧做数据（解析/存储/服�
 
 - 内置默认字体为 [霞鹜文楷 LXGW WenKai](https://github.com/lxgw/LxgwWenKai)
   （SIL Open Font License 1.1，许可证全文见 `web/fonts/OFL.txt`）。
-- 本项目代码以 [MIT 协议](LICENSE) 开源；UI 设计参考了
-  [Readest](https://github.com/readest/readest)（AGPL-3.0）的设计思路，代码为独立实现。
+- 本项目代码以 [GNU AGPL-3.0](LICENSE) 开源；UI 设计参考了
+  [Readest](https://github.com/readest/readest)（同为 AGPL-3.0）的设计思路，代码为独立实现。
 - 内置 NGA 转换内核 `ngapost2md-python/` 为独立 Python 重写版，
   对应 Go 原版 [ludoux/ngapost2md](https://github.com/ludoux/ngapost2md) 为 MIT 协议。
 
