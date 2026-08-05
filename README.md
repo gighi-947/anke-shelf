@@ -42,6 +42,15 @@ Windows 端轻量化安科阅读器：**Python 侧做数据（解析/存储/服�
 - ⌨️ 键盘翻页/翻章（← / →，可在设置页自定义）、滚轮翻页、边缘热区、触屏滑动
 - 🛡 安全：本地 HTTP 仅回环监听、随机启动令牌校验、zip 路径穿越防护、章节 CSP + base 注入
 
+## 字体与开源许可
+
+- 内置默认字体为 [霞鹜文楷 LXGW WenKai](https://github.com/lxgw/LxgwWenKai)
+  （SIL Open Font License 1.1，许可证全文见 `web/fonts/OFL.txt`）。
+- 本项目代码以 [MIT 协议](LICENSE) 开源；UI 设计参考了
+  [Readest](https://github.com/readest/readest)（AGPL-3.0）的设计思路，代码为独立实现。
+- 内置 NGA 转换内核 `ngapost2md-python/` 为独立 Python 重写版，
+  对应 Go 原版 [ludoux/ngapost2md](https://github.com/ludoux/ngapost2md) 为 MIT 协议。
+
 ## 运行要求
 
 - Windows 10/11（需系统 Edge WebView2 Runtime，Win11 自带）
