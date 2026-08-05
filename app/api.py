@@ -23,6 +23,8 @@ from .settings import Settings
 from .shelf import BookRecord, ProgressStore, Shelf
 from .stats import StatsStore
 
+from . import __version__
+
 
 def _progress_pct(progress: Optional[dict], chapter_count: int, chapter_len: Optional[int] = None) -> float:
     """进度 → 百分比：(章节索引 + 章内比例) / 总章节数。
@@ -85,6 +87,10 @@ class Api:
     def log_frontend(self, message: str) -> None:
         """前端把启动阶段的关键节点写进启动日志，便于定位卡死/慢启动。"""
         logging.getLogger("app.frontend").info("JS: %s", message)
+
+    def get_version(self) -> str:
+        """当前应用版本号（设置页展示用）。"""
+        return __version__
 
     # ---------- 书架 ----------
 
@@ -479,4 +485,3 @@ def _file_size(path: str) -> int:
         return Path(path).stat().st_size
     except OSError:
         return 0
-

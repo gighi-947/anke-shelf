@@ -82,6 +82,10 @@ class ApiServiceTest(unittest.TestCase):
         data = api.open_book("0" * 32)
         self.assertIn("error", data)
 
+    def test_get_version(self):
+        api = self._make_api(BookManager())
+        self.assertEqual(api.get_version(), "1.0.0")
+
     def test_nga_clear_config_removes_credentials(self):
         with patch("app.nga_config.data_dir", return_value=self.root), \
                 patch("app.nga_config.nga_config_path",

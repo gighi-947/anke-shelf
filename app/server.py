@@ -27,6 +27,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Optional
 
+from . import __version__
 from .book_manager import BookManager
 from .epub import decode_text
 from .fonts import resolve_font_file
@@ -136,7 +137,7 @@ def _safe_zip_path(zip_path: str) -> Optional[str]:
 
 
 class EpubHandler(http.server.BaseHTTPRequestHandler):
-    server_version = "AnkeShelf/1.0"
+    server_version = f"AnkeShelf/{__version__}"
 
     # 由 start_server 注入
     web_dir: Path = None

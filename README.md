@@ -3,6 +3,8 @@
 参考开源项目 [Readest](https://github.com/readest/readest) 的架构思想（数据与表现分离）实现的
 Windows 端轻量化安科阅读器：**Python 侧做数据（解析/存储/服务/搜索/下载），Web 侧做表现（渲染/交互）**。
 
+> 当前版本：**v1.0.0**
+
 ## ✨ NGA 安科一站式阅读
 
 集成 [ngapost2md-python](ngapost2md-python/)（NGA 帖子下载 + EPUB 导出）：

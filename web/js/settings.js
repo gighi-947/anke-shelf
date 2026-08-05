@@ -57,6 +57,11 @@
     body.appendChild(section('导出 NGA 帖子', ngaExportRow()));
     body.appendChild(section('阅读统计', statsRow()));
     body.appendChild(section('数据', dataRow()));
+    const foot = document.createElement('p');
+    foot.className = 'muted settings-hint';
+    foot.id = 'sp-version';
+    foot.textContent = '安科书架';
+    body.appendChild(foot);
     el.appendChild(body);
 
     document.body.appendChild(el);
@@ -317,6 +322,10 @@
       const el = ensureBuilt();
       sync();
       el.classList.remove('hidden');
+      Bridge.call('get_version').then((v) => {
+        const f = document.getElementById('sp-version');
+        if (f) f.textContent = '安科书架 v' + v;
+      }).catch(() => {});
     },
     close() {
       const el = document.getElementById('settings-view');
