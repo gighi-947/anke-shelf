@@ -1,0 +1,16 @@
+# 统一文本换行；Windows 脚本保留 CRLF
+* text=auto
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制资源不参与换行转换
+*.ttf binary
+*.otf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.epub binary
+*.woff binary
+*.woff2 binary

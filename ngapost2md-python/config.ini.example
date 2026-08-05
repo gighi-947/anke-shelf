@@ -1,0 +1,30 @@
+; ngapost2md (Python) 配置文件示例
+; 复制本文件为 config.ini，并填写以下 3 项必需配置。
+
+[config]
+version=0.1.0
+
+[network]
+; 软件访问的 NGA 域名。默认值为 https://bbs.nga.cn
+base_url=https://bbs.nga.cn
+; 浏览器 User-Agent，填写你常用浏览器的 UA 即可。修改时请确保值被反引号包裹。
+ua=`Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36`
+; NGA 网站个人 Cookie 项目（登录 NGA 后按 F12 在 Cookies 中查看）。
+ngaPassportUid=`<;MODIFY_ME;>`
+ngaPassportCid=`<;MODIFY_ME;>`
+; 网络并发数，仅支持 1、2、3。默认值为 2。
+thread=2
+; 每次下载限制新下载的大约页数。-1 则不限制。默认值为 100。
+page_download_limit=100
+
+[post]
+; 文件夹名是否使用帖子标题。默认 False。
+use_title_as_folder_name=False
+; Markdown 文件名是否使用帖子标题。默认 False。
+use_title_as_md_file_name=False
+; 媒体文件是否只引用在线链接而不下载到本地。默认 False。
+use_network_media_url=False
+; 帖子媒体资源存储路径。
+assets_path=./assets/
+; 帖子输出目录。
+output_path=./

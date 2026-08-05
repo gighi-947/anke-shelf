@@ -1,0 +1,26 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# ---- 构建与发行（本地产物，不入库） ----
+build/
+dist/
+*.manifest
+
+# ---- 本地开发/个人材料 ----
+.local/
+memory/
+reference/
+cherry-studio-export/
+
+# ---- NGA 凭据与本地配置 ----
+ngapost2md-python/config.ini
+*.ini.bak
+
+# ---- 运行日志 / 临时文件 ----
+*.log
+instance.lock
