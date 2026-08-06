@@ -103,9 +103,10 @@ def main() -> int:
         L('init:1');
         // NGA 下载面板
         document.getElementById('nga-download-btn').click();
-        await new Promise(r => setTimeout(r, 150));
+        await new Promise(r => setTimeout(r, 800));
         const dpanel = document.getElementById('download-view');
         L('nga_panel:' + (!dpanel.classList.contains('hidden') && document.getElementById('nga-tid') ? 1 : 0));
+        L('nga_reopen_no_jump:' + (App.state.view === 'shelf' ? 1 : 0));
         const ngaCfg = await Bridge.call('nga_get_config');
         L('nga_bridge:' + (ngaCfg && typeof ngaCfg === 'object' ? 1 : 0));
         NgaDownload.close();
@@ -260,6 +261,9 @@ def main() -> int:
         time.sleep(3)
         st = None
         try:
+            # simulate a leftover completed download (regression: reopening the panel must not jump to reader)
+            nga_svc._set(running=False, stage="done", detail="done",
+                         book_id=book.id, action="download")
             window.evaluate_js(JS.replace('__BID__', book.id))
             for _ in range(250):
                 try:
@@ -306,6 +310,7 @@ def main() -> int:
             results['sort_control'] = bool(int(get('sort_control') or 0))
             results['init'] = bool(int(get('init') or 0))
             results['nga_panel'] = bool(int(get('nga_panel') or 0))
+            results['nga_reopen_no_jump'] = bool(int(get('nga_reopen_no_jump') or 0))
             results['nga_bridge'] = bool(int(get('nga_bridge') or 0))
             results['nga_flag'] = bool(int(get('nga_flag') or 0))
             results['nga_style'] = bool(int(get('nga_style') or 0))
@@ -325,7 +330,7 @@ def main() -> int:
                  'dual_pages', 'dual_next', 'chrome_toggle', 'chrome_show',
                  'help_modal', 'ctrl_f', 'lightbox', 'recent', 'list_view',
                  'sort_control', 'dual_auto', 'dual_off', 'table_wrap', 'frame_fit',
-                 'nga_panel', 'nga_bridge', 'nga_flag', 'nga_style']:
+                 'nga_panel', 'nga_reopen_no_jump', 'nga_bridge', 'nga_flag', 'nga_style']:
         ok = results.get(name, False)
         all_ok = all_ok and ok
         print(f"  {name:14s} {'PASS' if ok else 'FAIL'}")

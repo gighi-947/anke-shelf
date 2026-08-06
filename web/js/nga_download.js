@@ -371,7 +371,17 @@
     if (cancel) cancel.disabled = true;
   }
 
-  function pollDownload() {
+  function pollDownload(fireOnDone = true) {
+    if (!fireOnDone) {
+      // 打开面板时只“接续”正在运行的任务；任务已结束（done/error/cancelled/idle）
+      // 仅展示当前状态，避免把上一次的终态再次当作完成事件处理（例如重复跳转阅读器）。
+      Bridge.call('nga_download_status').then((s) => {
+        setDownloadRunning(s.running);
+        renderDownloadStatus(s);
+        if (s.running) pollDownload();
+      }).catch(() => {});
+      return;
+    }
     downloadPoller.start(
       () => Bridge.call('nga_download_status'),
       (s) => {
@@ -644,7 +654,7 @@
     refreshConfig();
     const openBtn = document.getElementById('dl-export-open');
     if (openBtn) openBtn.disabled = true;
-    pollDownload();
+    pollDownload(false);
     pollExport();
     el.classList.remove('hidden');
   }
