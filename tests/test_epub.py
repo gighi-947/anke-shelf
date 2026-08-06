@@ -5,7 +5,7 @@ import zipfile
 from pathlib import Path
 
 from app.epub import EpubBook, EpubError, is_zip_file
-from app.make_test_epub import build_all
+from make_test_epub import build_all
 
 SAMPLE_DIR = Path(__file__).parent / "sample"
 

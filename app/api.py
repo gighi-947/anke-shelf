@@ -10,7 +10,6 @@ import threading
 from pathlib import Path
 from typing import Callable, Optional
 
-from .annotations import AnnotationStore
 from .book_manager import BookManager
 from . import dialogs
 from .epub import EpubError
@@ -21,7 +20,6 @@ from .paths import file_mtime
 from .search import SearchService
 from .settings import Settings
 from .shelf import BookRecord, ProgressStore, Shelf
-from .stats import StatsStore
 
 from . import __version__
 
@@ -61,6 +59,7 @@ class Api:
         export_service: Optional[ExportService] = None,
         frontend_ready: Optional[threading.Event] = None,
         file_dialog: Optional[Callable[[str], list[str]]] = None,
+        window_toggle: Optional[Callable[[], None]] = None,
     ):
         self._books = books
         self._shelf = shelf
@@ -73,6 +72,7 @@ class Api:
         self._export = export_service
         self._frontend_ready = frontend_ready
         self._file_dialog = file_dialog
+        self._window_toggle = window_toggle
 
     def _pick_paths(self, kind: str) -> list[str]:
         if self._file_dialog is not None:
@@ -83,6 +83,17 @@ class Api:
         """前端初始化完成后由 JS 调用；主程序据此显示隐藏中的窗口。"""
         if self._frontend_ready is not None:
             self._frontend_ready.set()
+
+    def toggle_fullscreen(self) -> dict:
+        """沉浸式阅读：切换宿主窗口全屏。"""
+        if self._window_toggle is None:
+            return {"ok": False, "error": "全屏控制不可用"}
+        try:
+            self._window_toggle()
+            self._fullscreen = not getattr(self, "_fullscreen", False)
+            return {"ok": True}
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
 
     def log_frontend(self, message: str) -> None:
         """前端把启动阶段的关键节点写进启动日志，便于定位卡死/慢启动。"""
@@ -210,7 +221,19 @@ class Api:
             return {"book": {}, "global": {}}
         if book_id:
             return {"book": self._stats.get_book(book_id), "global": self._stats.get_global()}
-        return {"book": {}, "global": self._stats.get_global()}
+        books = []
+        if self._shelf is not None:
+            for rec in self._shelf.list_books():
+                st = self._stats.get_book(rec.id)
+                if not st.get("total_seconds") and not st.get("sessions"):
+                    continue
+                books.append({
+                    "id": rec.id,
+                    "title": rec.title,
+                    "author": rec.author,
+                    "stats": st,
+                })
+        return {"books": books, "global": self._stats.get_global()}
 
     # ---------- 阅读 ----------
 
@@ -287,6 +310,12 @@ class Api:
         if self._nga is None:
             return {"ok": False, "error": "NGA 下载服务不可用"}
         return self._nga.update_book(book_id, params or {})
+
+    def nga_update_defaults(self, book_id: str) -> dict:
+        """返回热更新表单的默认参数（最近一次下载/更新设置）。"""
+        if self._nga is None:
+            return {"ok": False, "error": "NGA 下载服务不可用"}
+        return self._nga.update_defaults(book_id)
 
     def export_start(self, book_id: str, fmt: str = "both") -> dict:
         """把 NGA 下载的帖子导出为用户自选格式（epub/md/both）+ 自选文件夹。"""

@@ -107,6 +107,29 @@ class NativeBookTest(unittest.TestCase):
         self.assertTrue(epub_path.is_file())
         self.assertEqual(epub_path.name, "post.epub")
 
+    def test_write_container_toc_split(self):
+        tiezi = self._tiezi(30)
+        toc_chapters = [
+            {"title": "第一卷", "lead": [("起点", 1002)], "days": []},
+            {"title": "第二卷", "lead": [("起点", 1015)], "days": []},
+        ]
+        native_dir = write_container(
+            "123", tiezi, tiezi.floors, 20, "online", "light", "bookid123",
+            toc_chapters=toc_chapters, toc_mode="split",
+        )
+        meta = load_meta(native_dir)
+        titles = [c["title"] for c in meta["chapters"]]
+        self.assertEqual(titles[0], "序章 · 主楼")
+        self.assertEqual(titles[1], "第一卷")
+        self.assertEqual(titles[2], "第二卷")
+        self.assertEqual(meta["chapters"][1]["first_lou"], 2)
+        self.assertEqual(meta["chapters"][1]["last_lou"], 14)
+        self.assertEqual(meta["chapters"][2]["first_lou"], 15)
+        self.assertEqual(meta["chapters"][2]["last_lou"], 30)
+        self.assertEqual(meta["toc_mode"], "split")
+        self.assertEqual(meta["toc"][0]["title"], "第一卷")
+        self.assertEqual(meta["toc"][0]["entries"][0][1], 1002)
+
 
 if __name__ == "__main__":
     unittest.main()

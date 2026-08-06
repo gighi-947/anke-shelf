@@ -11,7 +11,6 @@ import json
 import threading
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Optional
 
 from .storage import atomic_write_json, now_iso
 

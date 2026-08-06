@@ -167,6 +167,7 @@ def main() -> int:
         nga_service=nga_svc,
         export_service=export_svc,
         frontend_ready=frontend_ready,
+        window_toggle=lambda: window.toggle_fullscreen(),
     )
     token = secrets.token_urlsafe(16)
     port = start_server(web_dir(), books, covers_dir(), api=api, token=token)
@@ -191,9 +192,11 @@ def main() -> int:
     def on_closing() -> None:
         # 记忆窗口尺寸（下次启动恢复）
         try:
-            size = window.size
-            if size and size[0] >= 640 and size[1] >= 480:
-                settings.update({"window_size": list(size)})
+            # 沉浸式全屏中不把全屏分辨率记成窗口尺寸
+            if not getattr(api, "_fullscreen", False):
+                size = window.size
+                if size and size[0] >= 640 and size[1] >= 480:
+                    settings.update({"window_size": list(size)})
         except Exception:
             pass
 

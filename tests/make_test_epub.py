@@ -1,6 +1,6 @@
 """生成测试用最小合法 EPUB 样本（纯标准库，无外部图片依赖）。
 
-用法：python -m app.make_test_epub [输出目录]
+用法：python -m tests.make_test_epub [输出目录]
 四种模式：
 - nav3    标准 EPUB3（nav + NCX 双目录、中文+英文、图片、外链 CSS、封面）
 - ncx2    仅 NCX 的 EPUB2（测目录兜底）

@@ -70,7 +70,8 @@ def main() -> int:
 
     nga_svc = NgaService(_register_nga_book)
     api = Api(books=books, shelf=shelf, progress=progress, settings=settings,
-              search=search, annotations=ann, stats=stats, nga_service=nga_svc)
+              search=search, annotations=ann, stats=stats, nga_service=nga_svc,
+              window_toggle=lambda: None)
     token = "ui-test-token"
     port = start_server(PROJECT / "web", books, covers, api=api, token=token)
     book = books.register(str(SAMPLE))
@@ -101,12 +102,24 @@ def main() -> int:
       try {
         await App.init();
         L('init:1');
+        L('default_scroll:' + (!App.state.settings.pagination ? 1 : 0));
         // NGA 下载面板
         document.getElementById('nga-download-btn').click();
         await new Promise(r => setTimeout(r, 800));
         const dpanel = document.getElementById('download-view');
         L('nga_panel:' + (!dpanel.classList.contains('hidden') && document.getElementById('nga-tid') ? 1 : 0));
         L('nga_reopen_no_jump:' + (App.state.view === 'shelf' ? 1 : 0));
+        const uSel = document.getElementById('dl-update-book');
+        L('update_panel:' + (uSel && uSel.options.length > 1 ? 1 : 0));
+        uSel.value = '__BID__';
+        uSel.dispatchEvent(new Event('change'));
+        await new Promise(r => setTimeout(r, 200));
+        L('update_defaults:' + (
+          document.getElementById('dl-update-authorid').value === '0' &&
+          document.getElementById('dl-update-theme').value === 'light' ? 1 : 0
+        ));
+        L('update_btn:' + (!!document.getElementById('dl-update-start') ? 1 : 0));
+        L('toc_mode_ui:' + (!!document.getElementById('nga-toc-mode') ? 1 : 0));
         const ngaCfg = await Bridge.call('nga_get_config');
         L('nga_bridge:' + (ngaCfg && typeof ngaCfg === 'object' ? 1 : 0));
         NgaDownload.close();
@@ -129,7 +142,10 @@ def main() -> int:
         const ov = document.getElementById('chapter-frame').contentDocument.getElementById('__reader_overrides__');
         L('nga_flag:' + (App.state.book && App.state.book.nga ? 1 : 0));
         L('nga_style:' + (ov && ov.textContent.indexOf('color: var(--reader-fg)') === -1 ? 1 : 0));
-        // 分页
+        // 分页（显式开启分页后测试分页逻辑；默认滚动由 default_scroll 断言覆盖）
+        await Bridge.call('save_settings', { pagination: true, auto_dual: false });
+        App.state.settings.pagination = true;
+        App.state.settings.auto_dual = false;
         await Reader.loadChapter(2, 0);
         await new Promise(r => setTimeout(r, 1000));
         const m = Paged.measure();
@@ -156,6 +172,22 @@ def main() -> int:
         await Bridge.call('record_reading', '__BID__', 60, 3);
         const st = await Bridge.call('get_stats', '__BID__');
         L('stats:' + (st.book.total_seconds === 60 ? 1 : 0));
+        await Stats.showDetails();
+        await new Promise(r => setTimeout(r, 150));
+        const spSel = document.getElementById('stats-book-select');
+        L('stats_modal:' + (spSel ? 1 : 0));
+        L('stats_default_all:' + (spSel && spSel.value === '' ? 1 : 0));
+        L('stats_book_cards:' + (
+          document.querySelectorAll('#stats-book-list-wrap .stats-book-card').length > 0 ? 1 : 0
+        ));
+        const statsOverlay = document.querySelector('#modal-root .modal-overlay');
+        if (statsOverlay) statsOverlay.click();
+        await new Promise(r => setTimeout(r, 100));
+        Sidebar.switchTab('stats');
+        await new Promise(r => setTimeout(r, 250));
+        L('stats_side_tab:' + (document.getElementById('tab-stats').classList.contains('active') ? 1 : 0));
+        L('stats_side_total:' + (document.querySelectorAll('#tab-stats .side-stats-total').length > 0 ? 1 : 0));
+        Sidebar.switchTab('toc');
         // 横屏双页模式
         await Bridge.call('save_settings', { pagination: true, dual_page: true });
         App.state.settings.pagination = true;
@@ -163,6 +195,61 @@ def main() -> int:
         await Reader.loadChapter(2, 0);
         await new Promise(r => setTimeout(r, 1200));
         L('dual_active:' + (Paged.isDual && Paged.isDual() ? 1 : 0));
+        // 分页模式：底部章导航不占空间，正文占满舞台；点击翻页热区已移除
+        const cwrap = document.querySelector('.chapter-wrap');
+        const navRow = cwrap ? cwrap.querySelector('.chapter-nav-row') : null;
+        const wrapCs = cwrap ? getComputedStyle(cwrap) : null;
+        L('paged_no_bottom_nav:' + (navRow && navRow.offsetParent === null ? 1 : 0));
+        L('paged_full_stage:' + (
+          wrapCs && parseFloat(wrapCs.paddingTop) === 0 && parseFloat(wrapCs.paddingBottom) === 0 ? 1 : 0
+        ));
+        L('no_hot_zones:' + (
+          !document.getElementById('hot-left') && !document.getElementById('hot-right') ? 1 : 0
+        ));
+        const navBtn = document.querySelector('.page-nav-btn');
+        const navCs = navBtn ? getComputedStyle(navBtn) : null;
+        L('nav_strip_shape:' + (
+          navCs && parseFloat(navCs.width) < 40 && parseFloat(navCs.height) > 60 &&
+          navCs.borderRadius !== '50%' ? 1 : 0
+        ));
+        // 分页模式 iframe 铺满舞台：文档内边缘 mousemove 也能唤出顶/底栏
+        const idoc = document.getElementById('chapter-frame').contentDocument;
+        idoc.dispatchEvent(new MouseEvent('mousemove', { clientX: 240, clientY: 4, bubbles: true }));
+        await new Promise(r => setTimeout(r, 60));
+        L('paged_edge_show:' + (document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0));
+        App.hideBarsForAction();
+        L('action_hide_bars:' + (!document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0));
+        // 顶栏收起时二级菜单卡片自动收起
+        App.setBarsVisible(true);
+        document.getElementById('view-menu-btn').click();
+        await new Promise(r => setTimeout(r, 120));
+        const vmEl2 = document.getElementById('view-menu');
+        App.hideBarsForAction();
+        L('menu_close_on_hide:' + (vmEl2 && vmEl2.classList.contains('hidden') ? 1 : 0));
+        // 固定顶/底栏：固定后中部移动与翻页操作都不应收起
+        App.setBarsVisible(true);
+        document.getElementById('bars-pin-btn').click();
+        await new Promise(r => setTimeout(r, 100));
+        L('pin_active:' + (
+          document.getElementById('reader-view').classList.contains('bars-pinned') &&
+          document.getElementById('bars-pin-btn').classList.contains('active') ? 1 : 0
+        ));
+        idoc.dispatchEvent(new MouseEvent('mousemove', { clientX: 240, clientY: 300, bubbles: true }));
+        App.hideBarsForAction();
+        await new Promise(r => setTimeout(r, 750));
+        L('pin_keeps_bars:' + (document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0));
+        document.getElementById('bars-pin-btn').click();
+        await new Promise(r => setTimeout(r, 100));
+        L('pin_unpin:' + (!document.getElementById('reader-view').classList.contains('bars-pinned') ? 1 : 0));
+        // 固定后点击正文不应解除固定
+        document.getElementById('bars-pin-btn').click();
+        await new Promise(r => setTimeout(r, 100));
+        idoc.dispatchEvent(new MouseEvent('click', { clientX: 300, clientY: 300, bubbles: true }));
+        await new Promise(r => setTimeout(r, 50));
+        L('pin_survives_click:' + (
+          document.getElementById('reader-view').classList.contains('bars-pinned') ? 1 : 0
+        ));
+        document.getElementById('bars-pin-btn').click();
         // 分页 iframe 尺寸不得超出可视区域（曾因 chapter-wrap 内边距导致错位/裁切）
         const fr = document.getElementById('chapter-frame').getBoundingClientRect();
         const wrapR = document.querySelector('.chapter-wrap').getBoundingClientRect();
@@ -177,6 +264,28 @@ def main() -> int:
         await new Promise(r => setTimeout(r, 250));
         const dm2 = Paged.measure();
         L('dual_next:' + (dm2.current > dm.current ? 1 : 0));
+        // 双页末屏可达且非空白（此前偶数列不足导致最后一跨无法滚动到达/拼接错乱）
+        const dm3 = Paged.measure();
+        Paged.gotoPage(dm3.total - 1);
+        await new Promise(r => setTimeout(r, 200));
+        const dmEnd = Paged.measure();
+        L('dual_last_reachable:' + (
+          dmEnd.current === dm3.total - 1 && !Paged.isPageBlank(dmEnd.current) ? 1 : 0
+        ));
+        const fdoc = document.getElementById('chapter-frame').contentDocument;
+        const fEl = document.getElementById('chapter-frame');
+        L('dual_no_overflow:' + (fdoc.documentElement.scrollWidth <= fEl.clientWidth + 1 ? 1 : 0));
+        const fcs = getComputedStyle(fdoc.body);
+        const fM = parseFloat(fcs.paddingLeft) || 0;
+        const fcol = parseFloat(fcs.columnWidth) || 0;
+        const fgap = parseFloat(fcs.columnGap) || 0;
+        L('dual_debug:' + JSON.stringify({
+          cols: Math.max(1, Math.round((fdoc.body.scrollWidth - 2 * fM + fgap) / (fcol + fgap))),
+          scrollW: fdoc.body.scrollWidth,
+          clientW: fdoc.body.clientWidth,
+          total: dm3.total,
+          step: dm3.step,
+        }));
         // flow 式自动双页：横屏宽窗 + auto_dual（默认）→ 自动双页
         await Bridge.call('save_settings', { pagination: true, dual_page: false, auto_dual: true });
         App.state.settings.pagination = true;
@@ -215,6 +324,7 @@ def main() -> int:
         }));
         // ---- Readest 借鉴第一批 ----
         // 点击页面中央切换顶/底栏
+        App.setBarsVisible(true);  // 显式前置状态，避免悬停隐藏定时器造成时序抖动
         Reader._lastChromeToggle = 0;
         Reader.toggleChrome();
         L('chrome_toggle:' + (!document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0));
@@ -249,6 +359,59 @@ def main() -> int:
         await Shelf.render();
         L('sort_control:' + (document.getElementById('shelf-sort').value === 'title' ? 1 : 0));
         App.state.settings.shelf_sort = 'recent';
+        // 滚动阅读语义：不分页，底栏不显示上/下一页按钮，整章滚动到底切换章节
+        App.state.settings.pagination = false;
+        await Bridge.call('save_settings', { pagination: false });
+        await App.showReader('__BID__');
+        await new Promise(r => setTimeout(r, 800));
+        const ppBtn = document.getElementById('page-prev');
+        L('scroll_no_page_btn:' + (
+          !Paged.isActive() && ppBtn && getComputedStyle(ppBtn).display === 'none' ? 1 : 0
+        ));
+        // 滚动模式固定顶/底栏同样生效
+        App.setBarsVisible(true);
+        document.getElementById('bars-pin-btn').click();
+        await new Promise(r => setTimeout(r, 100));
+        L('pin_scroll_active:' + (
+          document.getElementById('reader-view').classList.contains('bars-pinned') ? 1 : 0
+        ));
+        document.getElementById('chapter-scroll').dispatchEvent(
+          new MouseEvent('mousemove', { clientX: 240, clientY: 300, bubbles: true })
+        );
+        App.hideBarsForAction();
+        await new Promise(r => setTimeout(r, 750));
+        L('pin_scroll_keeps:' + (
+          document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0
+        ));
+        document.getElementById('bars-pin-btn').click();
+        // 个性化颜色：自定义主题色叠加生效；主题按钮切换主题时保留自定义色
+        App.setBarsVisible(true);
+        App.state.settings.custom_primary = '#ff0000';
+        Theme.applyTheme(App.state.settings.theme, App.state.settings);
+        L('custom_primary_applied:' + (
+          getComputedStyle(document.documentElement).getPropertyValue('--primary').trim().toLowerCase() === '#ff0000' ? 1 : 0
+        ));
+        const thBefore = App.state.settings.theme;
+        document.getElementById('theme-btn2').click();
+        L('theme_btn_cycles:' + (App.state.settings.theme !== thBefore ? 1 : 0));
+        L('theme_keeps_custom:' + (
+          getComputedStyle(document.documentElement).getPropertyValue('--primary').trim().toLowerCase() === '#ff0000' ? 1 : 0
+        ));
+        App.state.settings.custom_primary = '';
+        Theme.applyTheme(App.state.settings.theme, App.state.settings);
+        SettingsPage.open();
+        await new Promise(r => setTimeout(r, 120));
+        L('custom_colors_ui:' + (
+          !!document.getElementById('sp-custom-bg') && !!document.getElementById('sp-custom-text') ? 1 : 0
+        ));
+        SettingsPage.close();
+        // 沉浸式阅读（全屏）：按钮存在，切换 immersive 状态
+        const fsBtn = document.getElementById('fullscreen-btn');
+        L('fullscreen_btn:' + (!!fsBtn ? 1 : 0));
+        await App.toggleImmersive();
+        L('immersive_on:' + (document.getElementById('reader-view').classList.contains('immersive') ? 1 : 0));
+        await App.toggleImmersive();
+        L('immersive_off:' + (!document.getElementById('reader-view').classList.contains('immersive') ? 1 : 0));
       } catch (e) { L('ERROR:' + (e && e.message)); }
       window.__test.done = true;
     })()
@@ -292,10 +455,37 @@ def main() -> int:
             results['bookmark'] = bool(int(get('bm') or 0))
             results['code_highlight'] = bool(int(get('codehl') or 0))
             results['stats'] = bool(int(get('stats') or 0))
+            results['stats_modal'] = bool(int(get('stats_modal') or 0))
+            results['stats_default_all'] = bool(int(get('stats_default_all') or 0))
+            results['stats_book_cards'] = bool(int(get('stats_book_cards') or 0))
+            results['stats_side_tab'] = bool(int(get('stats_side_tab') or 0))
+            results['stats_side_total'] = bool(int(get('stats_side_total') or 0))
             results['dual_active'] = bool(int(get('dual_active') or 0))
+            results['paged_no_bottom_nav'] = bool(int(get('paged_no_bottom_nav') or 0))
+            results['paged_full_stage'] = bool(int(get('paged_full_stage') or 0))
+            results['no_hot_zones'] = bool(int(get('no_hot_zones') or 0))
+            results['nav_strip_shape'] = bool(int(get('nav_strip_shape') or 0))
+            results['paged_edge_show'] = bool(int(get('paged_edge_show') or 0))
+            results['action_hide_bars'] = bool(int(get('action_hide_bars') or 0))
+            results['menu_close_on_hide'] = bool(int(get('menu_close_on_hide') or 0))
+            results['pin_active'] = bool(int(get('pin_active') or 0))
+            results['pin_keeps_bars'] = bool(int(get('pin_keeps_bars') or 0))
+            results['pin_unpin'] = bool(int(get('pin_unpin') or 0))
+            results['pin_survives_click'] = bool(int(get('pin_survives_click') or 0))
+            results['pin_scroll_active'] = bool(int(get('pin_scroll_active') or 0))
+            results['pin_scroll_keeps'] = bool(int(get('pin_scroll_keeps') or 0))
+            results['custom_primary_applied'] = bool(int(get('custom_primary_applied') or 0))
+            results['theme_btn_cycles'] = bool(int(get('theme_btn_cycles') or 0))
+            results['theme_keeps_custom'] = bool(int(get('theme_keeps_custom') or 0))
+            results['custom_colors_ui'] = bool(int(get('custom_colors_ui') or 0))
+            results['fullscreen_btn'] = bool(int(get('fullscreen_btn') or 0))
+            results['immersive_on'] = bool(int(get('immersive_on') or 0))
+            results['immersive_off'] = bool(int(get('immersive_off') or 0))
             results['dual_spread'] = bool(int(get('dual_spread') or 0))
             results['dual_pages'] = bool(int(get('dual_pages') or 0))
             results['dual_next'] = bool(int(get('dual_next') or 0))
+            results['dual_last_reachable'] = bool(int(get('dual_last_reachable') or 0))
+            results['dual_no_overflow'] = bool(int(get('dual_no_overflow') or 0))
             results['dual_auto'] = bool(int(get('dual_auto') or 0))
             results['dual_off'] = bool(int(get('dual_off') or 0))
             results['table_wrap'] = bool(int(get('table_wrap') or 0))
@@ -309,8 +499,14 @@ def main() -> int:
             results['list_view'] = bool(int(get('list_view') or 0))
             results['sort_control'] = bool(int(get('sort_control') or 0))
             results['init'] = bool(int(get('init') or 0))
+            results['default_scroll'] = bool(int(get('default_scroll') or 0))
             results['nga_panel'] = bool(int(get('nga_panel') or 0))
             results['nga_reopen_no_jump'] = bool(int(get('nga_reopen_no_jump') or 0))
+            results['update_panel'] = bool(int(get('update_panel') or 0))
+            results['update_defaults'] = bool(int(get('update_defaults') or 0))
+            results['update_btn'] = bool(int(get('update_btn') or 0))
+            results['toc_mode_ui'] = bool(int(get('toc_mode_ui') or 0))
+            results['scroll_no_page_btn'] = bool(int(get('scroll_no_page_btn') or 0))
             results['nga_bridge'] = bool(int(get('nga_bridge') or 0))
             results['nga_flag'] = bool(int(get('nga_flag') or 0))
             results['nga_style'] = bool(int(get('nga_style') or 0))
@@ -325,12 +521,25 @@ def main() -> int:
 
     print("=== UI 自动化验证 ===")
     all_ok = True
-    for name in ['init', 'diff_js_py', 'pages', 'page_next', 'marks', 'bookmark',
-                 'code_highlight', 'stats', 'dual_active', 'dual_spread',
-                 'dual_pages', 'dual_next', 'chrome_toggle', 'chrome_show',
+    for name in ['init', 'default_scroll', 'diff_js_py', 'pages', 'page_next', 'marks', 'bookmark',
+                 'code_highlight', 'stats', 'stats_modal', 'stats_default_all',
+                 'stats_book_cards', 'stats_side_tab', 'stats_side_total',
+                 'dual_active', 'paged_no_bottom_nav', 'paged_full_stage',
+                 'no_hot_zones', 'nav_strip_shape', 'paged_edge_show',
+                 'action_hide_bars', 'menu_close_on_hide', 'pin_active',
+                 'pin_keeps_bars', 'pin_unpin', 'pin_survives_click',
+                 'pin_scroll_active', 'pin_scroll_keeps',
+                 'custom_primary_applied', 'theme_btn_cycles', 'theme_keeps_custom',
+                 'custom_colors_ui',
+                 'fullscreen_btn', 'immersive_on', 'immersive_off',
+                 'dual_spread',
+                 'dual_pages', 'dual_next', 'dual_last_reachable', 'dual_no_overflow',
+                 'chrome_toggle', 'chrome_show',
                  'help_modal', 'ctrl_f', 'lightbox', 'recent', 'list_view',
                  'sort_control', 'dual_auto', 'dual_off', 'table_wrap', 'frame_fit',
-                 'nga_panel', 'nga_reopen_no_jump', 'nga_bridge', 'nga_flag', 'nga_style']:
+                 'nga_panel', 'nga_reopen_no_jump', 'update_panel', 'update_defaults',
+                 'update_btn', 'toc_mode_ui', 'scroll_no_page_btn',
+                 'nga_bridge', 'nga_flag', 'nga_style']:
         ok = results.get(name, False)
         all_ok = all_ok and ok
         print(f"  {name:14s} {'PASS' if ok else 'FAIL'}")

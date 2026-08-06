@@ -360,6 +360,7 @@ def download(tiezi: Tiezi, progress=None, cancel=None, no_images: bool = False) 
                     log.info("已从 pid %d 解析帖子目录：%d 个章节", cfg.epub_toc_pid, len(toc_chapters))
             except Exception as e:  # noqa: BLE001
                 log.warning("解析目录楼失败: %s", e)
+        tiezi.toc_chapters = toc_chapters or []
         try:
             report("epub", total=0)
             epub_mod.build_epub(tiezi, cfg,

@@ -68,6 +68,7 @@
     const body = document.createElement('div');
     body.className = 'download-body';
     body.appendChild(buildDownloadSection());
+    body.appendChild(buildUpdateSection());
     body.appendChild(buildConfigSection());
     body.appendChild(buildExportSection());
     el.appendChild(body);
@@ -122,6 +123,10 @@
     row3.className = 'nga-form-row';
     row3.append(
       field('目录楼 pid', numInput('nga-toc-pid', '0', '安科目录楼 pid，0=无')),
+      field('目录用途', select('nga-toc-mode', [
+        ['index', '仅作索引'],
+        ['split', '兼作分章'],
+      ])),
       field('完成后打开', checkbox('nga-open-after', true)),
     );
     wrap.appendChild(row3);
@@ -130,6 +135,11 @@
     row4.className = 'nga-form-row';
     row4.append(field('全量重下', checkbox('nga-full', false, '清除本地缓存后重新下载')));
     wrap.appendChild(row4);
+
+    const tocHint = document.createElement('p');
+    tocHint.className = 'muted settings-hint';
+    tocHint.textContent = '目录用途：仅作索引=仍按每章楼层数分章（目录只用于导出/侧栏索引）；兼作分章=按目录章节切分章节（未提供目录楼时仍按楼层数分章）。';
+    wrap.appendChild(tocHint);
 
     const actions = document.createElement('div');
     actions.className = 'nga-actions';
@@ -168,6 +178,62 @@
     wrap.appendChild(status);
 
     return section('帖子下载', wrap);
+  }
+
+  function buildUpdateSection() {
+    const wrap = document.createElement('div');
+    wrap.className = 'settings-controls';
+
+    const bookSel = select('dl-update-book', []);
+    wrap.appendChild(field('帖子', bookSel));
+    bookSel.addEventListener('change', () => loadUpdateDefaults(val('dl-update-book')));
+
+    const row1 = document.createElement('div');
+    row1.className = 'nga-form-row';
+    row1.append(
+      field('只看楼主 uid', numInput('dl-update-authorid', '0', '0=全部楼层')),
+    );
+    wrap.appendChild(row1);
+
+    const row2 = document.createElement('div');
+    row2.className = 'nga-form-row';
+    row2.append(
+      field('主题', select('dl-update-theme', [
+        ['light', '浅色'],
+        ['dark', '深色'],
+      ])),
+      field('图片', select('dl-update-image-mode', [
+        ['online', '在线图片'],
+        ['embedded', '嵌入图片'],
+        ['none', '不含图片'],
+      ])),
+    );
+    wrap.appendChild(row2);
+
+    const row3 = document.createElement('div');
+    row3.className = 'nga-form-row';
+    row3.append(
+      field('每章楼层数', numInput('dl-update-per-chapter', '20', '')),
+      field('目录楼 pid', numInput('dl-update-toc-pid', '0', '0=无')),
+    );
+    wrap.appendChild(row3);
+
+    const actions = document.createElement('div');
+    actions.className = 'nga-actions';
+    const startBtn = document.createElement('button');
+    startBtn.className = 'btn btn-primary';
+    startBtn.id = 'dl-update-start';
+    startBtn.textContent = '开始更新';
+    startBtn.addEventListener('click', startUpdate);
+    actions.appendChild(startBtn);
+    wrap.appendChild(actions);
+
+    const hint = document.createElement('p');
+    hint.className = 'muted settings-hint';
+    hint.textContent = '更新设置仅对本次新增楼层生效，不影响已有楼层；进度显示在下方“帖子下载”区域。';
+    wrap.appendChild(hint);
+
+    return section('更新帖子', wrap);
   }
 
   function buildConfigSection() {
@@ -222,11 +288,6 @@
 
     const actions = document.createElement('div');
     actions.className = 'nga-actions';
-    const update = document.createElement('button');
-    update.className = 'btn';
-    update.id = 'dl-export-update';
-    update.textContent = '检查更新';
-    update.addEventListener('click', startUpdate);
     const start = document.createElement('button');
     start.className = 'btn btn-primary';
     start.id = 'dl-export-start';
@@ -238,7 +299,7 @@
     openDest.textContent = '打开文件夹';
     openDest.disabled = true;
     openDest.addEventListener('click', openExportDest);
-    actions.append(update, start, openDest);
+    actions.append(start, openDest);
     wrap.appendChild(actions);
 
     const status = document.createElement('div');
@@ -344,6 +405,7 @@
       image_mode: val('nga-image-mode'),
       theme: val('nga-theme'),
       toc_pid: intVal('nga-toc-pid'),
+      toc_mode: val('nga-toc-mode') || 'index',
       open_after: check('nga-open-after'),
       full_redownload: check('nga-full'),
     };
@@ -402,8 +464,10 @@
   function setDownloadRunning(running) {
     const start = document.getElementById('nga-start');
     const cancel = document.getElementById('nga-cancel');
+    const update = document.getElementById('dl-update-start');
     if (start) start.disabled = running;
     if (cancel) cancel.disabled = !running;
+    if (update) update.disabled = running;
   }
 
   function renderDownloadStatus(s) {
@@ -501,25 +565,17 @@
 
   // ---------- 导出 ----------
 
-  async function refreshBooks(preselectId) {
-    const sel = document.getElementById('dl-export-book');
-    const empty = document.getElementById('dl-export-empty');
+  function fillBookSelect(sel, books, placeholder) {
     if (!sel) return;
     sel.innerHTML = '';
-    let books = [];
-    try {
-      books = (await Bridge.call('get_shelf')).filter((b) => b.nga_tid);
-    } catch (e) { /* 保持空 */ }
     if (!books.length) {
-      if (empty) empty.classList.remove('hidden');
       sel.disabled = true;
       return;
     }
-    if (empty) empty.classList.add('hidden');
     sel.disabled = false;
     const ph = document.createElement('option');
     ph.value = '';
-    ph.textContent = '选择要导出的帖子…';
+    ph.textContent = placeholder;
     sel.appendChild(ph);
     for (const b of books) {
       const o = document.createElement('option');
@@ -527,7 +583,41 @@
       o.textContent = (b.title || '未命名') + '（tid ' + b.nga_tid + '）';
       sel.appendChild(o);
     }
-    if (preselectId) sel.value = preselectId;
+  }
+
+  async function refreshBooks(preselectId) {
+    const sel = document.getElementById('dl-export-book');
+    const empty = document.getElementById('dl-export-empty');
+    let books = [];
+    try {
+      books = (await Bridge.call('get_shelf')).filter((b) => b.nga_tid);
+    } catch (e) { /* 保持空 */ }
+    fillBookSelect(sel, books, '选择要导出的帖子…');
+    const uSel = document.getElementById('dl-update-book');
+    fillBookSelect(uSel, books, '选择要更新的帖子…');
+    if (!books.length) {
+      if (empty) empty.classList.remove('hidden');
+      return;
+    }
+    if (empty) empty.classList.add('hidden');
+    if (preselectId) {
+      if (sel) sel.value = preselectId;
+      if (uSel) uSel.value = preselectId;
+    }
+    if (uSel && uSel.value) loadUpdateDefaults(uSel.value);
+  }
+
+  async function loadUpdateDefaults(bookId) {
+    if (!bookId) return;
+    try {
+      const d = await Bridge.call('nga_update_defaults', bookId);
+      if (!d || d.error) return;
+      setVal('dl-update-authorid', d.author_id || '0');
+      setVal('dl-update-theme', d.theme === 'dark' ? 'dark' : 'light');
+      setVal('dl-update-image-mode', d.image_mode || 'online');
+      setVal('dl-update-per-chapter', d.per_chapter || '20');
+      setVal('dl-update-toc-pid', d.toc_pid || '0');
+    } catch (e) { /* 保持当前表单值 */ }
   }
 
   async function startExport() {
@@ -551,13 +641,20 @@
   }
 
   async function startUpdate() {
-    const bookId = val('dl-export-book');
+    const bookId = val('dl-update-book');
     if (!bookId) {
       Toast.show('请先选择要更新的帖子', true);
       return;
     }
+    const params = {
+      authorid: intVal('dl-update-authorid'),
+      theme: val('dl-update-theme'),
+      image_mode: val('dl-update-image-mode'),
+      per_chapter: intVal('dl-update-per-chapter') || 20,
+      toc_pid: intVal('dl-update-toc-pid'),
+    };
     try {
-      const r = await Bridge.call('nga_update_book', bookId, {});
+      const r = await Bridge.call('nga_update_book', bookId, params);
       if (!r.ok) {
         Toast.show(r.error || '更新启动失败', true);
         if (r.error && r.error.indexOf('已有') !== -1) pollDownload();
@@ -657,6 +754,13 @@
     pollDownload(false);
     pollExport();
     el.classList.remove('hidden');
+    if (opts && opts.focusUpdate) {
+      const upd = document.getElementById('dl-update-book');
+      if (upd) {
+        upd.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        upd.focus();
+      }
+    }
   }
 
   function close() {

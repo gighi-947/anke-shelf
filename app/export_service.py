@@ -1,5 +1,6 @@
 """NGA 帖子导出服务：单飞后台任务，状态可轮询（配合下载/导出整合页）。"""
 import logging
+import re
 import shutil
 import threading
 from pathlib import Path
@@ -10,6 +11,13 @@ from .native_book import is_native_dir, rebuild_epub_for_native
 from .shelf import Shelf
 
 log = logging.getLogger("export_service")
+
+
+def _safe_filename(name: str) -> str:
+    """把安科标题清洗为 Windows 可用文件名；空结果返回空串。"""
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "", str(name or "").strip())
+    name = re.sub(r"\s+", " ", name).strip(" .")
+    return name[:80]
 
 
 class ExportService:
@@ -100,11 +108,18 @@ class ExportService:
             out_dir.mkdir(parents=True, exist_ok=True)
             copied = []
             total = len(sources)
+            base = _safe_filename(rec.title)
+            if not base:
+                base = _safe_filename(f"安科-tid{rec.nga_tid}") or "未命名安科"
             for i, src in enumerate(sources, 1):
-                shutil.copy2(str(src), str(out_dir / src.name))
-                copied.append(src.name)
+                out_name = base + (src.suffix or "")
+                out_path = out_dir / out_name
+                if out_path.exists():
+                    out_path = out_dir / f"{base}-{i}{src.suffix or ''}"
+                shutil.copy2(str(src), str(out_path))
+                copied.append(out_path.name)
                 self._set(stage="copy", current=i, total=total,
-                          detail=f"正在导出 {i}/{total}：{src.name}")
+                          detail=f"正在导出 {i}/{total}：{out_path.name}")
             self._set(running=False, stage="done", detail="导出完成",
                       files=copied, dest=str(out_dir))
         except Exception as e:  # noqa: BLE001

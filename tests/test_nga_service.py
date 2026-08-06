@@ -1,14 +1,20 @@
 """NGA 集成层单元测试（不依赖 httpx/ebooklib，用临时数据目录）。"""
+import hashlib
+import json
+import sys
 import tempfile
 import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+PROJECT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT / "ngapost2md-python"))
+
 from app.nga_config import DEFAULT_UA, ensure_nga_config, load_nga_config, save_nga_config
 from app.nga_service import NgaService, _parse_tid
 from app.server import _CSP
-from app.shelf import BookRecord, _record_from_dict
+from app.shelf import BookRecord, Shelf, _record_from_dict
 
 
 class TestParseTid(unittest.TestCase):
@@ -226,8 +232,185 @@ class TestNgaService(unittest.TestCase):
         self.assertTrue(target.exists())
         self.assertEqual((target / "post.epub").read_bytes(), b"partial-overwrite")
 
+    def test_download_registers_native_container(self):
+        folder_name = "123(0)"
+        target = self.root / "nga_library" / folder_name
+        target.mkdir(parents=True)
+        (target / "post.epub").write_bytes(b"epub")
+
+        class FakeFloor:
+            lou = 1
+            pid = 0
+            timestamp = 0
+            username = "u"
+            user_id = 1
+            like_num = 0
+            raw_content = "<p>main</p>"
+            comments = []
+
+        class FakeTiezi:
+            def __init__(self, tid, author_id):
+                self.tid = tid
+                self.author_id = author_id
+                self.folder_name = folder_name
+                self.max_lou = -1
+                self.floors = [FakeFloor()]
+                self.title = "标题"
+                self.username = "作者"
+                self.toc_chapters = [{"title": "第一卷", "lead": [("起点", 1)], "days": []}]
+
+        fake_nga = types.SimpleNamespace(
+            set_cancel_cb=lambda cb: None,
+            find_folder_name_by_tid=lambda tid, aid: "",
+            init_from_web=lambda t: None,
+            init_nga=lambda client, cfg: None,
+            download=lambda tiezi, **kw: None,
+        )
+        fake_cfg = types.SimpleNamespace(
+            thread=2, page_download_limit=0, max_floors=0, no_images=False,
+            no_media=True, epub_enabled=True, epub_image_mode="embedded",
+            epub_per_chapter=20, epub_image_quality=85, epub_image_max_size=1280,
+            epub_theme="light", epub_toc_pid=0, output_path=str(self.root / "nga_library"),
+        )
+        fake_import = (
+            types.SimpleNamespace(NgaClient=lambda cfg: types.SimpleNamespace(close=lambda: None)),
+            types.SimpleNamespace(load_config=lambda p: fake_cfg),
+            fake_nga,
+            FakeTiezi,
+        )
+        registered = []
+        svc = NgaService(book_register=lambda path: registered.append(path) or "bookid")
+        with patch("app.paths.data_dir", return_value=self.root), \
+                patch("app.nga_config.data_dir", return_value=self.root), \
+                patch("app.nga_config._candidate_source", return_value=Path()):
+            ensure_nga_config()
+            save_nga_config({"uid": "1", "cid": "2", "ua": "UA"})
+            with patch("app.nga_service._import_nga", return_value=fake_import):
+                bid = svc._download(123, {
+                    "authorid": 0, "theme": "dark", "image_mode": "none",
+                    "per_chapter": 30, "toc_mode": "split",
+                })
+        self.assertEqual(bid, "bookid")
+        self.assertEqual(len(registered), 1)
+        native = self.root / "nga_library" / folder_name / "book"
+        self.assertEqual(Path(registered[0]), native)
+        self.assertTrue((native / "meta.json").is_file())
+        meta = json.loads((native / "meta.json").read_text(encoding="utf-8"))
+        self.assertEqual(meta["theme"], "dark")
+        self.assertEqual(meta["image_mode"], "none")
+        self.assertEqual(meta["per_chapter"], 30)
+        self.assertEqual(meta["toc_mode"], "split")
+        self.assertEqual(meta["toc"][0]["title"], "第一卷")
+        self.assertEqual(meta["book_id"], hashlib.md5(str(native).encode("utf-8")).hexdigest())
+        self.assertTrue((native / "floors.json").is_file())
+        settings = json.loads((target / "download_settings.json").read_text(encoding="utf-8"))
+        self.assertEqual(settings["theme"], "dark")
+        self.assertEqual(settings["image_mode"], "none")
+        self.assertEqual(settings["per_chapter"], 30)
+        self.assertEqual(settings["toc_mode"], "split")
+
     def test_status_jsonable(self):
         self.assertIsInstance(self.svc.status(), dict)
+
+    def _shelf_with(self, rec: BookRecord) -> Shelf:
+        (self.root / "covers").mkdir(exist_ok=True)
+        shelf = Shelf(self.root / "shelf.json", self.root / "covers")
+        shelf.load()
+        shelf.upsert(rec)
+        shelf.save()
+        return shelf
+
+    def test_update_defaults_from_manifest(self):
+        folder = self.root / "nga_library" / "41989465(62906407)"
+        folder.mkdir(parents=True)
+        (folder / "download_settings.json").write_text(json.dumps({
+            "tid": 41989465, "author_id": 62906407, "theme": "dark",
+            "image_mode": "none", "per_chapter": 30, "toc_pid": 123,
+        }), encoding="utf-8")
+        rec = BookRecord(
+            id="a" * 32, path=str(folder / "post.epub"),
+            title="t", nga_tid=41989465,
+        )
+        svc = NgaService(book_register=lambda p: "bid", shelf=self._shelf_with(rec))
+        with patch("app.paths.data_dir", return_value=self.root):
+            d = svc.update_defaults("a" * 32)
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["author_id"], 62906407)
+        self.assertEqual(d["theme"], "dark")
+        self.assertEqual(d["image_mode"], "none")
+        self.assertEqual(d["per_chapter"], 30)
+        self.assertEqual(d["toc_pid"], 123)
+
+    def test_update_defaults_fallback_native_meta(self):
+        folder = self.root / "nga_library" / "41989465(123)"
+        native = folder / "book"
+        native.mkdir(parents=True)
+        (native / "meta.json").write_text(json.dumps({
+            "tid": 41989465, "author_id": 123, "theme": "dark",
+            "image_mode": "embedded", "per_chapter": 50,
+        }), encoding="utf-8")
+        rec = BookRecord(
+            id="b" * 32, path=str(native), title="t", nga_tid=41989465,
+        )
+        svc = NgaService(book_register=lambda p: "bid", shelf=self._shelf_with(rec))
+        with patch("app.paths.data_dir", return_value=self.root):
+            d = svc.update_defaults("b" * 32)
+        self.assertEqual(d["author_id"], 123)
+        self.assertEqual(d["theme"], "dark")
+        self.assertEqual(d["image_mode"], "embedded")
+        self.assertEqual(d["per_chapter"], 50)
+
+    def test_update_defaults_sniffs_epub_theme(self):
+        import zipfile
+
+        folder = self.root / "nga_library" / "41989465"
+        folder.mkdir(parents=True)
+        epub = folder / "post.epub"
+        with zipfile.ZipFile(epub, "w") as z:
+            z.writestr("style.css", "body { background:#1e1e1e; color:#d0d0d0; }")
+        rec = BookRecord(
+            id="c" * 32, path=str(epub), title="t", nga_tid=41989465,
+        )
+        svc = NgaService(book_register=lambda p: "bid", shelf=self._shelf_with(rec))
+        with patch("app.paths.data_dir", return_value=self.root):
+            d = svc.update_defaults("c" * 32)
+        self.assertEqual(d["theme"], "dark")
+        self.assertEqual(d["author_id"], 0)
+
+    def test_update_defaults_rejects_non_nga_book(self):
+        rec = BookRecord(id="d" * 32, path=str(self.root / "x.epub"), title="t")
+        svc = NgaService(book_register=lambda p: "bid", shelf=self._shelf_with(rec))
+        d = svc.update_defaults("d" * 32)
+        self.assertFalse(d["ok"])
+
+    def test_update_book_fills_stored_defaults(self):
+        folder = self.root / "nga_library" / "41989465(62906407)"
+        folder.mkdir(parents=True)
+        (folder / "download_settings.json").write_text(json.dumps({
+            "tid": 41989465, "author_id": 62906407, "theme": "dark",
+            "image_mode": "none", "per_chapter": 30, "toc_pid": 123,
+        }), encoding="utf-8")
+        rec = BookRecord(
+            id="e" * 32, path=str(folder / "post.epub"),
+            title="t", nga_tid=41989465,
+        )
+        svc = NgaService(book_register=lambda p: "bid", shelf=self._shelf_with(rec))
+        captured = {}
+
+        def fake_thread(*args, **kwargs):
+            captured["args"] = kwargs.get("args", ())
+            return types.SimpleNamespace(start=lambda: None)
+
+        with patch("app.nga_service.threading.Thread", fake_thread), \
+                patch("app.paths.data_dir", return_value=self.root):
+            r = svc.update_book("e" * 32, {})
+        self.assertTrue(r["ok"])
+        effective = captured["args"][4]
+        self.assertEqual(effective["theme"], "dark")
+        self.assertEqual(effective["authorid"], 62906407)
+        self.assertEqual(effective["image_mode"], "none")
+        self.assertEqual(effective["per_chapter"], 30)
+        self.assertEqual(effective["toc_pid"], 123)
 
 
 class TestRecordNgaTid(unittest.TestCase):

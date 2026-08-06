@@ -51,6 +51,9 @@
       document.querySelectorAll('.sidebar-body .tab-panel').forEach((p) => {
         p.classList.toggle('active', p.id === 'tab-' + name);
       });
+      if (name === 'stats' && window.Stats && Stats.renderSidebar) {
+        Stats.renderSidebar();
+      }
     },
 
     openSearch() {

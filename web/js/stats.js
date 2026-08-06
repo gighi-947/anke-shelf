@@ -4,23 +4,6 @@
 (function () {
   'use strict';
 
-  function fmtDuration(secs) {
-    secs = Math.max(0, Math.round(secs || 0));
-    if (secs < 60) return secs + ' 秒';
-    const mins = Math.floor(secs / 60);
-    if (mins < 60) return mins + ' 分钟';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return m ? h + ' 小时 ' + m + ' 分' : h + ' 小时';
-  }
-
-  function fmtDate(iso) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-  }
-
   function statCard(value, label) {
     const card = document.createElement('div');
     card.className = 'stat-card';
@@ -56,7 +39,7 @@
       const bar = document.createElement('div');
       bar.className = 'stats-day-bar';
       bar.style.height = Math.max(2, Math.round((r.secs / max) * 100)) + '%';
-      bar.title = r.key + '：' + fmtDuration(r.secs);
+      bar.title = r.key + '：' + Util.fmtDuration(r.secs);
       barWrap.appendChild(bar);
       const label = document.createElement('div');
       label.className = 'stats-day-label';
@@ -77,19 +60,58 @@
   function statGrid(stats) {
     const grid = document.createElement('div');
     grid.className = 'stats-grid';
-    grid.appendChild(statCard(fmtDuration(stats.total_seconds), '累计阅读'));
-    grid.appendChild(statCard(fmtDuration(stats.today_seconds), '今日阅读'));
-    grid.appendChild(statCard(fmtDuration(stats.week_seconds), '最近 7 天'));
+    grid.appendChild(statCard(Util.fmtDuration(stats.total_seconds), '累计阅读'));
+    grid.appendChild(statCard(Util.fmtDuration(stats.today_seconds), '今日阅读'));
+    grid.appendChild(statCard(Util.fmtDuration(stats.week_seconds), '最近 7 天'));
     grid.appendChild(statCard(String(stats.sessions), '阅读会话'));
-    grid.appendChild(statCard(fmtDuration(stats.avg_session_seconds), '平均每次'));
+    grid.appendChild(statCard(Util.fmtDuration(stats.avg_session_seconds), '平均每次'));
     grid.appendChild(statCard(String(stats.pages_flipped), '翻页次数'));
     grid.appendChild(statCard(String(stats.streak_days) + ' 天', '连续阅读'));
-    grid.appendChild(statCard(fmtDate(stats.last_read_at), '最近阅读'));
+    grid.appendChild(statCard(Util.fmtDate(stats.last_read_at), '最近阅读'));
     return grid;
   }
 
   function closeModal(root) {
     root.innerHTML = '';
+  }
+
+  function statsBookList(books, selectedId, onPick) {
+    const wrap = document.createElement('div');
+    wrap.className = 'stats-book-list';
+    wrap.appendChild(section('最近阅读书目'));
+    if (!books.length) {
+      const p = document.createElement('p');
+      p.className = 'muted';
+      p.textContent = '暂无阅读记录';
+      wrap.appendChild(p);
+      return wrap;
+    }
+    const grid = document.createElement('div');
+    grid.className = 'stats-book-cards';
+    for (const b of books) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'stats-book-card' + (b.id === selectedId ? ' active' : '');
+      card.dataset.id = b.id;
+      const total = document.createElement('div');
+      total.className = 'stats-book-total';
+      total.textContent = Util.fmtDuration(b.stats.total_seconds);
+      const title = document.createElement('div');
+      title.className = 'stats-book-title';
+      title.textContent = b.title || '未命名';
+      const meta = document.createElement('div');
+      meta.className = 'stats-book-meta';
+      const parts = [];
+      if (b.author) parts.push(b.author);
+      if (b.stats.sessions) parts.push(b.stats.sessions + ' 次会话');
+      if (b.stats.last_read_at) parts.push('最近 ' + Util.fmtDate(b.stats.last_read_at));
+      meta.textContent = parts.join(' · ');
+      card.append(total, title, meta);
+      card.addEventListener('click', () => onPick(b.id));
+      grid.appendChild(card);
+    }
+    wrap.appendChild(grid);
+    return wrap;
   }
 
   window.Stats = {
@@ -143,32 +165,80 @@
       title.textContent = '阅读统计';
       box.appendChild(title);
 
-      let book = null;
+      let books = [];
       let global = null;
       try {
-        if (App.state.bookId) {
-          const r = await Bridge.call('get_stats', App.state.bookId);
-          book = r.book;
-        }
         const g = await Bridge.call('get_stats');
-        global = g.global;
+        books = g.books || [];
+        global = g.global || null;
       } catch (e) { /* keep empty */ }
 
-      if (book) {
-        box.appendChild(section('本书'));
-        box.appendChild(statGrid(book));
-        box.appendChild(section('最近 7 天'));
-        box.appendChild(daysChart(book.days));
+      const scope = document.createElement('div');
+      scope.className = 'stats-scope';
+      scope.textContent = '全部书籍';
+
+      const select = document.createElement('select');
+      select.className = 'stats-book-select';
+      select.id = 'stats-book-select';
+      const allOpt = document.createElement('option');
+      allOpt.value = '';
+      allOpt.textContent = '全部书籍';
+      select.appendChild(allOpt);
+      for (const b of books) {
+        const o = document.createElement('option');
+        o.value = b.id;
+        o.textContent = b.title || '未命名';
+        select.appendChild(o);
       }
-      if (global) {
-        box.appendChild(section('全部书籍'));
-        box.appendChild(statGrid(global));
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'stats-toolbar';
+      toolbar.append(scope, select);
+      box.appendChild(toolbar);
+
+      const detail = document.createElement('div');
+      detail.className = 'stats-detail';
+      box.appendChild(detail);
+
+      const listWrap = document.createElement('div');
+      listWrap.id = 'stats-book-list-wrap';
+      box.appendChild(listWrap);
+
+      function render() {
+        const id = select.value;
+        let st = global;
+        let label = '全部书籍';
+        if (id) {
+          const b = books.find((x) => x.id === id);
+          if (b) {
+            st = b.stats;
+            label = b.title || '未命名';
+          }
+        }
+        scope.textContent = label;
+        detail.innerHTML = '';
+        if (st) {
+          detail.appendChild(statGrid(st));
+          detail.appendChild(section('最近 7 天'));
+          detail.appendChild(daysChart(st.days));
+        }
+        listWrap.querySelectorAll('.stats-book-card').forEach((c) => {
+          c.classList.toggle('active', c.dataset.id === id);
+        });
       }
-      if (!book && !global) {
+
+      select.addEventListener('change', render);
+      listWrap.appendChild(statsBookList(books, select.value, (id) => {
+        select.value = id;
+        render();
+      }));
+      render();
+
+      if (!books.length && !global) {
         const empty = document.createElement('p');
         empty.className = 'muted';
         empty.textContent = '暂无统计数据';
-        box.appendChild(empty);
+        detail.appendChild(empty);
       }
 
       const actions = document.createElement('div');
@@ -184,6 +254,55 @@
         if (e.target === overlay) closeModal(root);
       });
       root.appendChild(overlay);
+    },
+
+    async renderSidebar() {
+      const panel = document.getElementById('tab-stats');
+      if (!panel) return;
+      let book = null;
+      let global = null;
+      try {
+        if (App.state.bookId) {
+          const r = await Bridge.call('get_stats', App.state.bookId);
+          book = r.book || null;
+        }
+        const g = await Bridge.call('get_stats');
+        global = g.global || null;
+      } catch (e) { /* keep empty */ }
+      panel.innerHTML = '';
+      const box = document.createElement('div');
+      box.className = 'side-stats';
+      if (book) {
+        const total = document.createElement('div');
+        total.className = 'side-stats-total';
+        total.textContent = Util.fmtDuration(book.total_seconds);
+        const sub = document.createElement('div');
+        sub.className = 'side-stats-sub';
+        sub.textContent = '本书 · 今日 ' + Util.fmtDuration(book.today_seconds) +
+          ' · 最近 7 天 ' + Util.fmtDuration(book.week_seconds);
+        box.append(total, sub);
+      }
+      if (global) {
+        const g = document.createElement('div');
+        g.className = 'side-stats-global';
+        g.textContent = '全部书籍累计 ' + Util.fmtDuration(global.total_seconds);
+        box.appendChild(g);
+      }
+      if (!book && !global) {
+        const p = document.createElement('p');
+        p.className = 'muted';
+        p.textContent = '暂无统计数据';
+        box.appendChild(p);
+      }
+      const btn = document.createElement('button');
+      btn.className = 'vm-btn side-stats-btn';
+      btn.textContent = '查看详细统计';
+      btn.addEventListener('click', () => {
+        Sidebar.close();
+        Stats.showDetails();
+      });
+      box.appendChild(btn);
+      panel.appendChild(box);
     },
   };
 })();

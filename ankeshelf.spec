@@ -25,7 +25,7 @@ a = Analysis(
     hiddenimports=(
         collect_submodules("webview.platforms")
         + collect_submodules("ngapost2md")
-        + ["webview.platforms.edgechromium", "bottle"]
+        + ["webview.platforms.edgechromium"]
     ),
     hookspath=[],
     hooksconfig={},

@@ -40,6 +40,7 @@
     nga: '<path d="M4 5h3v10.5a3 3 0 0 0 6 0V5h3v10.5a6 6 0 0 1-12 0z"/>',
     stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
     link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+    expand: '<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>',
   };
 
   function inject() {

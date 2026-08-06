@@ -37,7 +37,7 @@ class ApiServiceTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def _make_api(self, books: BookManager) -> Api:
+    def _make_api(self, books: BookManager, window_toggle=None) -> Api:
         return Api(
             books=books,
             shelf=self.shelf,
@@ -46,6 +46,7 @@ class ApiServiceTest(unittest.TestCase):
             search=self.search,
             annotations=self.ann,
             stats=self.stats,
+            window_toggle=window_toggle,
         )
 
     def _add_shelf_record(self, books: BookManager, book_id: str, path: str):
@@ -82,9 +83,38 @@ class ApiServiceTest(unittest.TestCase):
         data = api.open_book("0" * 32)
         self.assertIn("error", data)
 
+    def test_get_stats_lists_books_with_titles(self):
+        books = BookManager()
+        book_id = self._add_shelf_record(books, "", str(SAMPLE))
+        self.stats.record_reading(book_id, 300, 2)
+        api = self._make_api(books)
+
+        data = api.get_stats()
+        self.assertIn("books", data)
+        self.assertIn("global", data)
+        self.assertEqual(len(data["books"]), 1)
+        rec = self.shelf.get(book_id)
+        self.assertEqual(data["books"][0]["id"], book_id)
+        self.assertEqual(data["books"][0]["title"], rec.title)
+        self.assertEqual(data["books"][0]["stats"]["total_seconds"], 300)
+        self.assertEqual(data["global"]["total_seconds"], 300)
+
+        single = api.get_stats(book_id)
+        self.assertEqual(single["book"]["total_seconds"], 300)
+        self.assertEqual(single["global"]["total_seconds"], 300)
+
     def test_get_version(self):
         api = self._make_api(BookManager())
-        self.assertEqual(api.get_version(), "1.0.0")
+        self.assertEqual(api.get_version(), "1.1.0")
+
+    def test_toggle_fullscreen(self):
+        calls = []
+        api = self._make_api(BookManager(), window_toggle=lambda: calls.append(1))
+        self.assertTrue(api.toggle_fullscreen()["ok"])
+        self.assertEqual(calls, [1])
+
+        api2 = self._make_api(BookManager())
+        self.assertFalse(api2.toggle_fullscreen()["ok"])
 
     def test_nga_clear_config_removes_credentials(self):
         with patch("app.nga_config.data_dir", return_value=self.root), \

@@ -43,8 +43,6 @@
   transform: none;
   pointer-events: auto;
 }
-#reader-view.bars-pinned .bar-trigger { pointer-events: none; }
-
 .top-btn {
   background: transparent;
   border: none;
@@ -92,17 +90,6 @@
 .top-actions { display: flex; gap: 2px; margin-left: auto; }
 .header-tools-start { display: flex; gap: 4px; }
 
-/* 悬停触发带 */
-.bar-trigger {
-  position: absolute;
-  left: 0;
-  right: 24px; /* 避开右侧滚动条区域，拖滚动条时不误唤出顶/底栏 */
-  z-index: 25;
-  pointer-events: auto;
-}
-.bar-trigger.top { top: 0; height: 44px; }
-.bar-trigger.bottom { bottom: 0; height: 44px; }
-
 /* ---- 侧边栏 ---- */
 .sidebar {
   position: absolute;
@@ -126,8 +113,7 @@
 
 #reader-view.sidebar-pinned .sidebar { position: absolute; }
 #reader-view.sidebar-pinned #reader-root,
-#reader-view.sidebar-pinned #status-bar,
-#reader-view.sidebar-pinned .bar-trigger.bottom {
+#reader-view.sidebar-pinned #status-bar {
   margin-left: 300px;
 }
 #reader-view.sidebar-pinned #reader-root {
@@ -356,11 +342,12 @@
   min-height: 200px;
 }
 
-.chapter-nav-row { display: flex; justify-content: space-between; gap: 12px; margin: 24px auto 0; }
+.chapter-nav-row { display: flex; justify-content: space-between; gap: 12px; margin: 16px auto 0; }
 .chapter-nav-row .btn {
   border-color: var(--border);
   color: var(--muted);
   font-size: 12px;
+  padding: 6px 12px;
 }
 .chapter-nav-row .btn:hover { color: var(--primary); border-color: var(--primary); }
 
@@ -370,12 +357,12 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 44px;
+  height: 38px;
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px;
+  gap: 6px;
+  padding: 0 12px;
   background: var(--base-100);
   border-top: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
@@ -389,11 +376,15 @@
   transform: translateY(0);
   pointer-events: auto;
 }
+/* 滚动阅读不分页：隐藏上/下一页按钮与分隔线，底栏只保留进度 */
+#reader-view:not(.paged) #page-prev,
+#reader-view:not(.paged) #page-next,
+#reader-view:not(.paged) .status-divider { display: none; }
 
 .progress-slider {
   flex: 1;
   min-width: 60px;
-  height: 20px;
+  height: 18px;
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
@@ -447,21 +438,9 @@
   flex-shrink: 0;
 }
 
-/* ---- 翻页热区 ---- */
-.hot-zone {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 12%;
-  z-index: 20;
-  cursor: pointer;
-  pointer-events: none;
-}
-#reader-view.paged .hot-zone { pointer-events: auto; }
-.hot-left { left: 0; }
-.hot-right { right: 0; }
-.hot-zone:hover { background: color-mix(in srgb, var(--primary) 4%, transparent); }
-.hot-zone.pulse { background: color-mix(in srgb, var(--primary) 10%, transparent); }
+/* ---- 分页模式：正文占满舞台，章末导航不占底部阅读空间 ---- */
+#reader-view.paged .chapter-wrap { padding: 0 !important; }
+#reader-view.paged .chapter-nav-row { display: none; }
 
 /* ---- 浮动翻页按钮（分页模式） ---- */
 .page-nav {
@@ -480,10 +459,10 @@
 .page-nav-left { left: 14px; }
 .page-nav-right { right: 14px; }
 .page-nav-btn {
-  width: 44px;
-  height: 44px;
+  width: 30px;
+  height: 88px;
   border: none;
-  border-radius: 50%;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--base-100) 88%, transparent);
   color: var(--base-content);
   box-shadow: var(--shadow-md);
@@ -714,6 +693,15 @@
 .settings-shortcut-row .sp-key-btn { min-width: 88px; }
 .vm-btn.recording { border-color: var(--warning); color: var(--warning); }
 .settings-hint { font-size: 12px; line-height: 1.6; }
+.sp-color-input {
+  width: 40px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--base-100);
+  cursor: pointer;
+}
 
 /* ---- 下载 / 导出整合页 ---- */
 .download-view {
@@ -839,7 +827,12 @@ mark.hl-mark.hl-flash { animation: hl-flash 1.2s ease-out; }
 .syntax .tok-punc { color: #9cdcfe; }
 
 /* ---- 阅读统计详情 ---- */
-.stats-panel { width: 460px; max-width: 94vw; }
+.stats-panel {
+  width: min(560px, 94vw);
+  max-width: 94vw;
+  max-height: 86vh;
+  overflow-y: auto;
+}
 .stats-section-title {
   font-size: 12px;
   font-weight: 600;
@@ -847,12 +840,40 @@ mark.hl-mark.hl-flash { animation: hl-flash 1.2s ease-out; }
   margin: 14px 0 8px;
   letter-spacing: 0.02em;
 }
+.stats-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.stats-scope {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.stats-book-select {
+  max-width: 58%;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--base-100);
+  color: var(--base-content);
+  font-size: 12px;
+  font-family: inherit;
+}
+.stats-detail { min-width: 0; }
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   gap: 8px;
 }
 .stat-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
   background: var(--base-100);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -902,7 +923,67 @@ mark.hl-mark.hl-flash { animation: hl-flash 1.2s ease-out; }
   color: var(--muted);
   white-space: nowrap;
 }
+.stats-book-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px;
+}
+.stats-book-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  text-align: left;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--base-100);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.stats-book-card:hover { border-color: var(--primary); }
+.stats-book-card.active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, var(--base-100));
+}
+.stats-book-total {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stats-book-title {
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.stats-book-meta {
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 .stats-close-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+/* ---- 侧栏阅读统计 ---- */
+.side-stats {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.side-stats-total {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.side-stats-sub,
+.side-stats-global {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.side-stats-btn { align-self: flex-start; }
 
 /* ---- 快捷键帮助 ---- */
 .help-modal {

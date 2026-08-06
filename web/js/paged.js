@@ -69,14 +69,31 @@
     const M = App.state.settings.margin_px || 40;
     const G = App.state.settings.gap_px || 28;
     const colW = isDual()
-      ? Math.max(100, Math.round((fw - 2 * M - G) / 2))
-      : Math.max(100, Math.round(fw - 2 * M));
+      ? Math.max(100, Math.floor((fw - 2 * M - G) / 2))
+      : Math.max(100, Math.floor(fw - 2 * M));
 
     // CSS 变量不跨 document → 直接写 iframe html 元素样式
     const html = doc.documentElement;
     html.style.setProperty('--margin-px', M + 'px');
     html.style.setProperty('--gap-px', G + 'px');
     html.style.setProperty('--col-px', colW + 'px');
+    // 双页模式补一个占位空列（epub.js forceEvenPages 思路）：内容列数为奇数时，
+    // 末列与占位列组成最后一跨，保证最后一跨可滚动到达，不会出现拼接错乱/漏页。
+    let spacer = doc.getElementById('__dual_spacer__');
+    if (isDual()) {
+      if (!spacer) {
+        spacer = doc.createElement('div');
+        spacer.id = '__dual_spacer__';
+        spacer.setAttribute('aria-hidden', 'true');
+        spacer.textContent = '\u200b';
+        doc.body.appendChild(spacer);
+      }
+      spacer.style.cssText =
+        'height:1px; overflow:hidden; break-before:column; ' +
+        'column-break-before:always; visibility:hidden;';
+    } else if (spacer) {
+      spacer.remove();
+    }
 
     // iframe 固定为内容盒尺寸（与滚动模式下的正文宽度/顶底留白一致）
     frame.style.width = fw + 'px';
@@ -91,7 +108,10 @@
    *  会把页面纵向撑出界、后续内容错位。把超高表格包进限高滚动容器（保留表格布局）。 */
   function normalizeTallTables(doc) {
     if (!doc || !doc.body) return;
-    const pageH = doc.body.clientHeight;
+    const cs = getComputedStyle(doc.body);
+    const pt = parseFloat(cs.paddingTop) || 0;
+    const pb = parseFloat(cs.paddingBottom) || 0;
+    const pageH = Math.max(1, doc.body.clientHeight - pt - pb);
     if (pageH <= 0) return;
     const maxH = Math.max(120, pageH - 8);
     doc.querySelectorAll('table').forEach((t) => {
@@ -119,18 +139,18 @@
     const doc = frameEl().contentDocument;
     if (!doc || !doc.body) return { advance: 0, total: 1, current: 0, step: 1 };
     const cs = getComputedStyle(doc.body);
+    const M = parseFloat(cs.paddingLeft) || 0;
     const colW = parseFloat(cs.columnWidth) || 0;
     const gap = parseFloat(cs.columnGap) || 0;
     const advance = colW + gap;
     if (advance <= 0) return { advance: 0, total: 1, current: 0, step: 1 };
-    const scrollW = doc.body.scrollWidth;
-    // 双页模式下首屏已容纳 2 列，列数 = 溢出列数 + 屏内列数（step），
-    // 否则奇数总列数时会少算最后一屏（flow/epub.js 按 spread 计数）。
-    const cols = Math.max(1, Math.floor((scrollW - doc.body.clientWidth) / advance) + step());
+    // border-box + 左右 padding：总宽 = 2M + n*colW + (n-1)*gap
+    // （与 epub.js Layout.calculate 的列几何一致，不再用 clientWidth 近似）
+    const hasSpacer = !!doc.getElementById('__dual_spacer__');
+    let cols = Math.max(1, Math.round((doc.body.scrollWidth - 2 * M + gap) / advance));
+    if (hasSpacer) cols = Math.max(1, cols - 1);  // 扣除补偶占位列
     const st = step();
     let total = Math.max(1, Math.ceil(cols / st));
-    // 校验末列完整性（避免取整截断）
-    if (doc.body.scrollWidth - ((total * st - 1) * advance + doc.body.clientWidth) > 1) total++;
     let current = Math.round(doc.body.scrollLeft / (st * advance));
     current = Math.max(0, Math.min(total - 1, current));
     return { advance, total, current, step: st };
@@ -275,7 +295,7 @@
     });
   }
 
-  /** 绑定 iframe 文档内交互（滚轮翻页、热区、滑动）。 */
+  /** 绑定 iframe 文档内交互（滚轮翻页、滑动）。 */
   function setupInteraction(doc) {
     if (!doc) return;
     // 表格滚动容器内交还原生滚动，不拦截为翻页
@@ -316,20 +336,6 @@
     }, { passive: true });
   }
 
-  // 宿主热区
-  function bindHotZones() {
-    const left = document.getElementById('hot-left');
-    const right = document.getElementById('hot-right');
-    const flash = (el) => {
-      el.classList.add('pulse');
-      setTimeout(() => el.classList.remove('pulse'), 150);
-    };
-    left.addEventListener('click', () => { if (isActive()) { flash(left); prevPage(true); } });
-    right.addEventListener('click', () => { if (isActive()) { flash(right); nextPage(true); } });
-  }
-
-  document.addEventListener('DOMContentLoaded', () => bindHotZones());
-
   window.Paged = {
     isActive,
     isDual,
@@ -339,6 +345,7 @@
     nextPage,
     prevPage,
     firstContentPage,
+    isPageBlank,
     gotoOffset,
     currentOffset,
     onResize,

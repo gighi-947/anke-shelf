@@ -15,6 +15,7 @@
     toggle_bars: 'b',
     bookmark: 'm',
     help: '?',
+    toggle_fullscreen: 'F11',
   };
 
   const SHORTCUT_ACTIONS = [
@@ -27,6 +28,7 @@
     ['toggle_bars', '固定顶底栏'],
     ['bookmark', '书签'],
     ['help', '快捷键帮助'],
+    ['toggle_fullscreen', '沉浸式阅读'],
   ];
 
   function ensureBuilt() {
@@ -93,6 +95,11 @@
     wrap.className = 'settings-controls';
     wrap.appendChild(row('主题', themeRow()));
     wrap.appendChild(row('亮度', brightnessRow()));
+    wrap.appendChild(row('背景色', colorRow('sp-custom-bg', 'custom_bg', '跟随主题')));
+    wrap.appendChild(row('主题色', colorRow('sp-custom-primary', 'custom_primary', '跟随主题')));
+    wrap.appendChild(row('强调色', colorRow('sp-custom-accent', 'custom_accent', '跟随主题')));
+    wrap.appendChild(row('文字颜色', colorRow('sp-custom-text', 'custom_text',
+      '跟随主题 · 仅作用于默认黑/白文字，彩色字体保留原色')));
     return wrap;
   }
 
@@ -104,7 +111,7 @@
       const b = btn(t === 'dark' ? '深色' : t === 'sepia' ? '羊皮纸' : '浅色', () => {
         const s = App.state.settings;
         s.theme = t;
-        Theme.applyTheme(t);
+        Theme.applyTheme(t, s);
         if (window.Reader) Reader.updateOverrides();
         Bridge.call('save_settings', { theme: t });
         SettingsPage.sync();
@@ -113,6 +120,41 @@
       b.classList.add('sp-theme-btn');
       wrap.appendChild(b);
     });
+    return wrap;
+  }
+
+  function colorRow(id, key, hint) {
+    const wrap = document.createElement('div');
+    wrap.className = 'settings-control-inline';
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.id = id;
+    input.className = 'sp-color-input';
+    input.value = App.state.settings[key] || '#000000';
+    input.title = hint;
+    const apply = () => {
+      const s = App.state.settings;
+      Theme.applyTheme(s.theme, s);
+      if (window.Reader) Reader.updateOverrides();
+      if (window.Assist) Assist.setBrightness(s.brightness || 0);
+    };
+    input.addEventListener('input', () => {
+      const s = App.state.settings;
+      s[key] = input.value;
+      apply();
+      Bridge.call('save_settings', { [key]: input.value });
+    });
+    const reset = btn('默认', () => {
+      const s = App.state.settings;
+      s[key] = '';
+      input.value = '#000000';
+      apply();
+      Bridge.call('save_settings', { [key]: '' });
+    });
+    const hintEl = document.createElement('span');
+    hintEl.className = 'muted settings-hint';
+    hintEl.textContent = hint;
+    wrap.append(input, reset, hintEl);
     return wrap;
   }
 
@@ -177,7 +219,7 @@
       const k = document.createElement('button');
       k.className = 'vm-btn sp-key-btn';
       k.dataset.action = action;
-      k.textContent = displayKey(s.shortcuts[action]);
+      k.textContent = Util.displayKey(s.shortcuts[action]);
       k.addEventListener('click', () => captureKey(k, action));
       r.append(l, k);
       grid.appendChild(r);
@@ -190,22 +232,13 @@
       sc.shortcuts = Object.assign({}, DEFAULT_SHORTCUTS);
       Bridge.call('save_settings', { shortcuts: sc.shortcuts });
       document.querySelectorAll('.sp-key-btn').forEach((b) => {
-        b.textContent = displayKey(sc.shortcuts[b.dataset.action]);
+        b.textContent = Util.displayKey(sc.shortcuts[b.dataset.action]);
       });
       Toast.show('快捷键已恢复默认');
     });
     grid.appendChild(reset);
     wrap.appendChild(grid);
     return wrap;
-  }
-
-  function displayKey(key) {
-    if (!key) return '未设置';
-    const map = {
-      ' ': '空格', Space: '空格', ArrowRight: '→', ArrowLeft: '←', ArrowUp: '↑', ArrowDown: '↓',
-      PageUp: 'PageUp', PageDown: 'PageDown', Home: 'Home', End: 'End',
-    };
-    return map[key] || key;
   }
 
   function captureKey(btn, action) {
@@ -218,11 +251,11 @@
       btn.classList.remove('recording');
       const key = ev.key === ' ' ? 'Space' : ev.key;
       if (!key || key === 'Escape') {
-        btn.textContent = displayKey(App.state.settings.shortcuts[action]);
+        btn.textContent = Util.displayKey(App.state.settings.shortcuts[action]);
         return;
       }
       App.state.settings.shortcuts[action] = key;
-      btn.textContent = displayKey(key);
+      btn.textContent = Util.displayKey(key);
       Bridge.call('save_settings', { shortcuts: App.state.settings.shortcuts });
       Toast.show('快捷键已更新');
     };
@@ -303,18 +336,15 @@
     if (s.shortcuts) {
       menu.querySelectorAll('.sp-key-btn').forEach((b) => {
         const action = b.dataset.action;
-        if (action) b.textContent = displayKey(s.shortcuts[action]);
+        if (action) b.textContent = Util.displayKey(s.shortcuts[action]);
       });
     }
-    if (App.state.bookId) {
-      Bridge.call('get_stats', App.state.bookId).then((st) => {
-        const span = document.getElementById('sp-stats-summary');
-        if (!span) return;
-        const secs = (st.book && st.book.total_seconds) || 0;
-        const mins = Math.floor(secs / 60);
-        span.textContent = mins > 0 ? `已读 ${mins} 分钟` : '不足 1 分钟';
-      }).catch(() => {});
-    }
+    Bridge.call('get_stats').then((st) => {
+      const span = document.getElementById('sp-stats-summary');
+      if (!span) return;
+      const secs = (st.global && st.global.total_seconds) || 0;
+      span.textContent = '全部书籍 · 已读 ' + Util.fmtDuration(secs);
+    }).catch(() => {});
   }
 
   window.SettingsPage = {

@@ -258,21 +258,11 @@
       if (book.nga_tid) {
         const upd = document.createElement('button');
         upd.className = 'export-btn update-btn';
-        upd.title = '检查更新（拉取最新楼层）';
+        upd.title = '更新帖子（可调整只看楼主/主题等设置）';
         upd.appendChild(Icons.icon('refresh', 14));
-        upd.addEventListener('click', async (ev) => {
+        upd.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          try {
-            const r = await Bridge.call('nga_update_book', book.id, {});
-            if (!r.ok) {
-              Toast.show(r.error || '更新启动失败', true);
-            } else {
-              Toast.show('正在检查更新…');
-              if (window.NgaDownload) NgaDownload.open({ bookId: book.id });
-            }
-          } catch (e) {
-            Toast.show('更新启动失败：' + (e.message || e), true);
-          }
+          if (window.NgaDownload) NgaDownload.open({ bookId: book.id, focusUpdate: true });
         });
         actions.appendChild(upd);
         const exp = document.createElement('button');

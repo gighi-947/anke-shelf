@@ -5,7 +5,6 @@ ZipFile 持有文件句柄，Windows 下必须保证：
 - 用户原地替换 .epub 时旧句柄继续读旧内容，不崩溃（可接受）
 """
 import threading
-from typing import Optional
 
 from .epub import EpubBook
 from .native_book import NativeBook, is_native_dir

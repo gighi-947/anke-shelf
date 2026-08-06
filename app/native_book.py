@@ -10,7 +10,6 @@
 import hashlib
 import json
 import posixpath
-import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -266,6 +265,60 @@ def _group_floors(valid: list, per_chapter: int) -> list[list]:
     return [g for g in groups if g]
 
 
+def _group_floors_by_toc(valid: list, toc_chapters: list) -> list[tuple[str, list]]:
+    """按目录楼分章：每个目录章节从该章首个可定位条目所在楼层开始，
+    到下一章首个条目所在楼层之前结束。主楼独占首章。"""
+    pid_to_floor = {int(f.pid): f for f in valid}
+    marks: list[tuple[int, str]] = []
+    for ch in toc_chapters or []:
+        entries = list(ch.get("lead") or [])
+        for d in ch.get("days") or []:
+            entries.extend(d.get("entries") or [])
+        for _title, pid in entries:
+            f = pid_to_floor.get(int(pid))
+            if f is not None:
+                marks.append((f.lou, ch.get("title") or ""))
+                break
+    marks.sort(key=lambda x: x[0])
+
+    groups: list[tuple[str, list]] = []
+    main = valid[0] if valid and valid[0].pid == 0 else None
+    rest = valid[1:] if main else valid
+    if main:
+        groups.append(("序章 · 主楼", [main]))
+    if not rest:
+        return groups
+
+    idx = 0
+    current: list = []
+    cur_title = ""
+    for f in rest:
+        while idx < len(marks) and f.lou >= marks[idx][0]:
+            if current:
+                groups.append((cur_title, current))
+                current = []
+            cur_title = marks[idx][1]
+            idx += 1
+        current.append(f)
+    if current:
+        groups.append((cur_title, current))
+    return groups
+
+
+def _serialize_toc(toc_chapters: list) -> list:
+    """目录压缩为轻量结构：{title, entries:[[标题, pid], ...]}，供 meta 与导出复用。"""
+    out = []
+    for ch in toc_chapters or []:
+        entries = list(ch.get("lead") or [])
+        for d in ch.get("days") or []:
+            entries.extend(d.get("entries") or [])
+        out.append({
+            "title": ch.get("title", ""),
+            "entries": [[title, int(pid)] for title, pid in entries],
+        })
+    return out
+
+
 def _group_title(group: list) -> str:
     if group[0].pid == 0:
         return "序章 · 主楼"
@@ -287,6 +340,8 @@ def write_container(
     image_mode: str,
     theme: str,
     book_id: str,
+    toc_chapters: Optional[list] = None,
+    toc_mode: str = "index",
 ) -> Path:
     """首次构建原生书容器（全量）。返回 native 目录。"""
     native_dir = native_dir_for(folder_name)
@@ -296,10 +351,16 @@ def write_container(
     theme_colors = dark_theme if theme == "dark" else light_theme
     img_src = _img_src(image_mode)
 
-    groups = _group_floors(valid_floors, per_chapter)
+    if toc_mode == "split" and toc_chapters:
+        grouped = _group_floors_by_toc(valid_floors, toc_chapters)
+        groups = [g for _, g in grouped]
+        titles = [t for t, _ in grouped]
+    else:
+        groups = _group_floors(valid_floors, per_chapter)
+        titles = []
     chapters = []
     for gi, group in enumerate(groups):
-        title = _group_title(group)
+        title = titles[gi] if gi < len(titles) else _group_title(group)
         body = "".join(_render_floor_html(f, theme_colors, img_src) for f in group)
         if group[0].pid == 0:
             body = f'<h1>{tiezi.title or ""}</h1>' + body
@@ -327,6 +388,8 @@ def write_container(
         "per_chapter": max(1, int(per_chapter)),
         "image_mode": image_mode,
         "theme": theme,
+        "toc_mode": toc_mode,
+        "toc": _serialize_toc(toc_chapters) if toc_chapters else [],
         "chapters": chapters,
         "last_lou": valid_floors[-1].lou if valid_floors else 0,
         "created_time": getattr(tiezi, "created_time", ""),
@@ -401,6 +464,9 @@ def append_container(
     floors.extend(serialize_floor(f) for f in fresh)
     meta["last_lou"] = max(int(meta.get("last_lou", 0)), fresh[-1].lou)
     meta["updated_time"] = datetime.now().astimezone().isoformat(timespec="seconds")
+    meta["theme"] = theme
+    meta["image_mode"] = image_mode
+    meta["per_chapter"] = max(1, int(per_chapter))
     save_floors(native_dir, floors)
     save_meta(native_dir, meta)
     return len(fresh)
@@ -441,7 +507,19 @@ def rebuild_epub_for_native(folder_name: str, image_mode_override: str = "") -> 
     cfg.epub_toc_pid = 0
     cfg.no_media = True
     cfg.no_images = image_mode == "none"
+    toc_chapters = None
+    raw_toc = meta.get("toc") or []
+    if raw_toc:
+        toc_chapters = [
+            {
+                "title": c.get("title", ""),
+                "lead": [tuple(e) for e in c.get("entries", [])],
+                "days": [],
+            }
+            for c in raw_toc
+        ]
     return Path(epub_mod.build_epub(
         tiezi, cfg, per_chapter=cfg.epub_per_chapter,
-        image_mode=cfg.epub_image_mode, no_images=cfg.no_images,
+        image_mode=cfg.epub_image_mode, toc_chapters=toc_chapters,
+        no_images=cfg.no_images,
     ))

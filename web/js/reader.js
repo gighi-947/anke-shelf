@@ -45,9 +45,15 @@
   `;
 
   const PAGINATION_OVERRIDE = `
-    html, body { height: 100% !important; overflow: hidden !important; }
+    html, body {
+      height: 100% !important;
+      width: 100% !important;
+      margin: 0 !important;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
+    }
     body {
-      padding: 0 var(--margin-px, 40px) !important;
+      padding: 20px var(--margin-px, 40px) !important;
       column-width: var(--col-px, 600px) !important;
       column-gap: var(--gap-px, 28px) !important;
       column-fill: auto !important;
@@ -106,10 +112,11 @@
     toggle_bars: 'b',
     bookmark: 'm',
     help: '?',
+    toggle_fullscreen: 'F11',
   };
   const HELP_ACTIONS = [
-    ['next_page', '下一页'],
-    ['prev_page', '上一页'],
+    ['next_page', '下一页 / 下一章'],
+    ['prev_page', '上一页 / 上一章'],
     ['next_chapter', '下一章'],
     ['prev_chapter', '上一章'],
     ['toggle_theme', '切换主题'],
@@ -117,16 +124,8 @@
     ['toggle_bars', '固定顶底栏'],
     ['bookmark', '书签'],
     ['help', '快捷键帮助'],
+    ['toggle_fullscreen', '沉浸式阅读（全屏）'],
   ];
-
-  function displayKey(key) {
-    if (!key) return '未设置';
-    const map = {
-      ' ': '空格', Space: '空格', ArrowRight: '→', ArrowLeft: '←', ArrowUp: '↑', ArrowDown: '↓',
-      PageUp: 'PageUp', PageDown: 'PageDown', Home: 'Home', End: 'End',
-    };
-    return map[key] || key;
-  }
 
   function activeFontKey() {
     const s = App.state.settings || {};
@@ -563,6 +562,10 @@
         [s.toggle_bars || 'b', () => App.toggleBarsPinned()],
         [s.bookmark || 'm', () => Reader.toggleBookmarkAtCurrent()],
         [s.help || '?', () => Reader.showShortcuts()],
+        [s.toggle_fullscreen || 'F11', () => {
+          ev.preventDefault();
+          App.toggleImmersive();
+        }],
       ];
       for (const [key, fn] of actions) {
         if (key && ev.key === key) { fn(); return; }
@@ -657,8 +660,8 @@
       this._lastChromeToggle = now;
       const pinned = document.getElementById('reader-view').classList.contains('bars-pinned');
       if (pinned) {
-        App.toggleBarsPinned();
-        App.setBarsVisible(false);
+        // 固定模式下点击正文不解除固定（阅读时误触点击不会“破防”），
+        // 取消固定请用顶栏固定按钮或快捷键 b。
         return;
       }
       const topBar = document.getElementById('top-bar');
@@ -687,7 +690,7 @@
         list.id = 'shortcut-help-list';
         const hint = document.createElement('p');
         hint.className = 'help-hint';
-        hint.textContent = 'Ctrl+F 打开全文搜索；点击页面中央可切换顶栏/底栏；Esc 关闭弹窗或侧栏。';
+        hint.textContent = 'Ctrl+F 打开全文搜索；滚动阅读模式下左右方向键直接切换章节；点击页面中央可切换顶栏/底栏；Esc 关闭弹窗或侧栏。';
         box.append(title, list, hint);
         ov.appendChild(box);
         ov.addEventListener('click', (e) => {
@@ -705,7 +708,7 @@
         l.textContent = label;
         const k = document.createElement('kbd');
         k.className = 'help-key';
-        k.textContent = displayKey(sc[action]);
+        k.textContent = Util.displayKey(sc[action]);
         row.append(l, k);
         list.appendChild(row);
       }
@@ -783,12 +786,22 @@
   });
 
   document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('prev-chapter').addEventListener('click', () => Reader.prevChapter());
-    document.getElementById('next-chapter').addEventListener('click', () => Reader.nextChapter());
-    document.getElementById('chapter-prev-btn').addEventListener('click', () => Reader.prevChapter());
-    document.getElementById('chapter-next-btn').addEventListener('click', () => Reader.nextChapter());
-    document.getElementById('page-prev').addEventListener('click', () => Reader.pageOrChapter(-1));
-    document.getElementById('page-next').addEventListener('click', () => Reader.pageOrChapter(1));
+    document.getElementById('prev-chapter').addEventListener('click', () => {
+      Reader.prevChapter();
+      App.hideBarsForAction();
+    });
+    document.getElementById('next-chapter').addEventListener('click', () => {
+      Reader.nextChapter();
+      App.hideBarsForAction();
+    });
+    document.getElementById('page-prev').addEventListener('click', () => {
+      Reader.pageOrChapter(-1);
+      App.hideBarsForAction();
+    });
+    document.getElementById('page-next').addEventListener('click', () => {
+      Reader.pageOrChapter(1);
+      App.hideBarsForAction();
+    });
     const helpBtn = document.getElementById('help-btn');
     if (helpBtn) helpBtn.addEventListener('click', () => Reader.showShortcuts());
     document.querySelectorAll('.page-nav .page-nav-btn').forEach((b) => {
@@ -798,6 +811,7 @@
         else if (a === 'next-section') Reader.nextChapter();
         else if (a === 'prev') Reader.pageOrChapter(-1);
         else if (a === 'next') Reader.pageOrChapter(1);
+        App.hideBarsForAction();
       });
     });
 
@@ -806,7 +820,7 @@
       if (App.state.view !== 'reader') return;
       const t = ev.target;
       if (t && t.closest && t.closest(
-        '#chapter-frame, .page-nav, .hot-zone, .chapter-nav-row, .view-menu, #top-bar, #status-bar, button, a, input, textarea, select'
+        '#chapter-frame, .page-nav, .chapter-nav-row, .view-menu, #top-bar, #status-bar, button, a, input, textarea, select'
       )) return;
       if (window.getSelection && window.getSelection().toString()) return;
       const root = document.getElementById('reader-root');

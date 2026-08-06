@@ -11,6 +11,7 @@ from app.export_service import ExportService
 class _FakeRec:
     id = "a" * 32
     nga_tid = 41989465
+    title = "我的安科"
 
     def __init__(self, path):
         self.path = path
@@ -55,17 +56,33 @@ class ExportServiceTest(unittest.TestCase):
         self.assertTrue(r["ok"])
         st = self._wait_done(svc)
         self.assertEqual(st["stage"], "done")
-        self.assertEqual(set(st["files"]), {"post.epub", "post.md"})
-        self.assertTrue((self.dest / "post.epub").exists())
-        self.assertTrue((self.dest / "post.md").exists())
+        self.assertEqual(set(st["files"]), {"我的安科.epub", "我的安科.md"})
+        self.assertTrue((self.dest / "我的安科.epub").exists())
+        self.assertTrue((self.dest / "我的安科.md").exists())
 
     def test_export_md_only(self):
         svc = ExportService(self.shelf, folder_picker=lambda: str(self.dest))
         svc.start(self.rec.id, "md")
         st = self._wait_done(svc)
         self.assertEqual(st["stage"], "done")
-        self.assertEqual(st["files"], ["post.md"])
-        self.assertFalse((self.dest / "post.epub").exists())
+        self.assertEqual(st["files"], ["我的安科.md"])
+        self.assertFalse((self.dest / "我的安科.epub").exists())
+
+    def test_export_filename_sanitized(self):
+        self.rec.title = '安科《测试》: 第1章/第二篇?'
+        svc = ExportService(self.shelf, folder_picker=lambda: str(self.dest))
+        svc.start(self.rec.id, "epub")
+        st = self._wait_done(svc)
+        self.assertEqual(st["stage"], "done")
+        self.assertEqual(st["files"], ["安科《测试》 第1章第二篇.epub"])
+
+    def test_export_empty_title_fallback(self):
+        self.rec.title = ""
+        svc = ExportService(self.shelf, folder_picker=lambda: str(self.dest))
+        svc.start(self.rec.id, "epub")
+        st = self._wait_done(svc)
+        self.assertEqual(st["stage"], "done")
+        self.assertEqual(st["files"], ["安科-tid41989465.epub"])
 
     def test_export_single_flight(self):
         svc = ExportService(self.shelf, folder_picker=lambda: str(self.dest))

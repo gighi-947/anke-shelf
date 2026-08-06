@@ -8,16 +8,20 @@ from typing import Any
 from .storage import atomic_write_json
 
 DEFAULTS: dict[str, Any] = {
-    "settings_version": 2,
+    "settings_version": 3,
     "theme": "dark",  # 对齐 Readest：深色为主
     "font_size": 18,
     "line_height": 1.8,
     "font_family": "reader",
     "custom_font": "sys:weidqczfkyxk.ttf",  # 内置默认字体
     "book_fonts": {},
+    "custom_bg": "",        # 自定义背景色（空=跟随主题）
+    "custom_primary": "",   # 自定义主题色（空=跟随主题）
+    "custom_accent": "",    # 自定义强调色（空=跟随主题/主题色）
+    "custom_text": "",      # 自定义文字色（空=跟随主题；仅作用于默认黑/白文字）
     "page_width": 1.0,
     "bars_pinned": False,
-    "pagination": True,  # 分页渲染模式（False=整章滚动）
+    "pagination": False,  # 翻页方式（False=整章滚动，默认滚动阅读）
     "dual_page": False,   # 横屏双页：分页模式下左右两页并排，按整页跨翻页
     "auto_dual": True,    # 自动双页：分页模式下横屏宽窗自动双页（flow/epub.js Auto spread）
     "shelf_view": "grid",  # 书架视图：grid | list
@@ -40,16 +44,17 @@ DEFAULTS: dict[str, Any] = {
         "toggle_bars": "b",
         "bookmark": "m",
         "help": "?",
+        "toggle_fullscreen": "F11",
     },
     "window_size": [1024, 720],
     "last_open_book": None,
 }
 
-# 老版本设置一次性迁移：缺失 settings_version 时启用新默认值
+# 老版本设置一次性迁移：settings_version < 3 时切到新默认值
 _LEGACY_DEFAULTS = {
     "custom_font": "sys:weidqczfkyxk.ttf",
-    "pagination": True,
-    "settings_version": 2,
+    "pagination": False,  # 旧版默认误为分页，迁移到滚动阅读
+    "settings_version": 3,
 }
 
 
@@ -68,8 +73,8 @@ class Settings:
             for k in DEFAULTS:
                 if k in data and isinstance(data[k], type(DEFAULTS[k])):
                     self._data[k] = data[k]
-            if "settings_version" not in data:
-                # 旧版设置文件：一次性切到新默认值（分页翻页 + 内置默认字体）
+            if data.get("settings_version", 0) < 3:
+                # 旧版设置文件：一次性切到新默认值（滚动阅读 + 内置默认字体）
                 self._data.update(_LEGACY_DEFAULTS)
                 self.save()
         except (OSError, json.JSONDecodeError, AttributeError):

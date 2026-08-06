@@ -3,14 +3,15 @@
 参考开源项目 [Readest](https://github.com/readest/readest) 的架构思想（数据与表现分离）实现的
 Windows 端轻量化安科阅读器：**Python 侧做数据（解析/存储/服务/搜索/下载），Web 侧做表现（渲染/交互）**。
 
-> 当前版本：**v1.0.0**
+> 当前版本：**v1.1.0**
 
 ## ✨ NGA 安科一站式阅读
 
 集成 [ngapost2md-python](ngapost2md-python/)（NGA 帖子下载 + EPUB 导出）：
 
 - **面板下载**：顶栏「NGA 下载」→ 粘贴帖子 tid/链接，配置只看楼主（authorid）、
-  前 N 楼、图片模式（嵌入/在线/不含）、明暗主题、目录楼 pid、每章楼层数
+  前 N 楼、图片模式（嵌入/在线/不含）、明暗主题、目录楼 pid、目录用途
+  （仅作索引 / 兼作分章）、每章楼层数
 - **实时进度**：页下载/格式化/图片处理分阶段进度条，可随时取消
 - **原版视觉**：生成的 EPUB 带完整 NGA 内联样式（楼层卡片、引用块、骰子、
   28 种标准色、`[color]` 标签），阅读器对 NGA 书只接管排版、不强改颜色
@@ -23,12 +24,15 @@ Windows 端轻量化安科阅读器：**Python 侧做数据（解析/存储/服�
 
 - 📖 阅读 EPUB（自实现解析：container → OPF → spine → 目录，纯标准库）
 - 📑 **分页渲染**（foliate 式 CSS multi-column 横向翻页）+ 整章滚动；
-  翻页方式支持滚动、**自动双页**（横屏宽窗自动左右双页，flow/epub.js 同款
-  Auto spread）、单页分页、强制横屏双页，按整页跨翻页
+  默认滚动阅读（一章到底，不分页）；翻页方式支持滚动、**自动双页**
+  （横屏宽窗自动左右双页，flow/epub.js 同款 Auto spread）、单页分页、
+  强制横屏双页，按整页跨翻页；双页模式自动补偶数列，末屏完整可达
 - 🧱 **NGA 特殊排版适配**：分页模式下楼层允许跨页拆分；超过一页高度的
   长表格（含 rowspan/colspan）自动收纳为页内滚动容器，不再把内容
   撑出页面边界导致错位
 - 🎨 **标注系统**：选中高亮（6 色）、笔记、书签、侧栏列表跳转、导出 Markdown/JSON
+- 🎛️ **个性化配色**：设置 → 外观可自定义背景色、主题色、强调色与文字颜色
+  （空值=跟随主题；文字颜色只作用于默认黑/白文字，NGA 彩色字体保留原色）
 - 🔍 全文搜索（中文无需分词，子串匹配），text_offset 精确定位跳转
 - 🧭 **阅读辅助**：阅读标尺、逐段阅读、速读 RSVP、自动滚动、亮度调节、阅读时长统计、代码高亮
 - 📚 本地书架：导入、封面、**最近阅读横条**、**网格/列表双视图**、
@@ -41,7 +45,8 @@ Windows 端轻量化安科阅读器：**Python 侧做数据（解析/存储/服�
 - 💾 精确记忆阅读位置（章节 + 纯文本字符偏移，字号/窗口/模式变化不丢失）
 - ♻️ NGA 连载热更新：只增量拉取新楼层并追加到原生书容器，
   不重复下载旧内容，进度与标注保持稳定
-- ⌨️ 键盘翻页/翻章（← / →，可在设置页自定义）、滚轮翻页、边缘热区、触屏滑动
+- ⌨️ 键盘翻页/翻章（← / →，可在设置页自定义）、滚轮翻页、触屏滑动
+- 🖥️ **沉浸式阅读**：顶栏全屏按钮或 F11 一键切换软件全屏，退出时恢复窗口尺寸
 - 🛡 安全：本地 HTTP 仅回环监听、随机启动令牌校验、zip 路径穿越防护、章节 CSP + base 注入
 
 ## 字体与开源许可
@@ -68,7 +73,7 @@ python -m app.main
 ## 测试
 
 ```bat
-python -m app.make_test_epub   :: 生成测试样本到 tests\sample\
+python -m tests.make_test_epub :: 生成测试样本到 tests\sample\
 python -m unittest discover tests
 python -m tests.ui.runner       :: UI 自动化验证（需桌面会话，含 JS/Python 差分）
 ```
@@ -82,6 +87,10 @@ build.bat                      :: 输出 dist\AnkeShelf\AnkeShelf.exe（目录�
 
 ## 架构
 
+前后端分离：Python 只提供本地 HTTP 服务与数据存储，界面由内置浏览器渲染；
+章节通过 iframe 加载，阅读器注入排版而不改动书源。详细说明见
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+
 ## 目录结构
 
 ```
@@ -89,10 +98,12 @@ app/                  Python 服务层（EPUB 解析/书架/搜索/标注/NGA �
 web/                  前端单页应用（书架 + 阅读器，iframe 渲染章节并注入主题/排版）
 ngapost2md-python/    NGA 帖子下载与转换内核（EPUB/Markdown 生成，config.ini 不入库）
 tests/                单元测试与 UI 自动化验证
+docs/                 架构说明与历史规划
 run_app.py            程序入口（PyInstaller 发行入口）
 ankeshelf.spec        PyInstaller 打包配置
 build.bat             一键打包脚本（输出 dist\AnkeShelf\AnkeShelf.exe）
 requirements.txt      依赖清单
+使用说明.txt           发行版内附的使用说明（打包时复制进发行包）
 ```
 
 ```

@@ -20,7 +20,8 @@
     get_settings: async () => ({
       theme: 'light', font_size: 18, line_height: 1.8, font_family: 'reader',
       custom_font: '', book_fonts: {}, page_width: 1.0, bars_pinned: false,
-      pagination: true, dual_page: false, auto_dual: true,
+      custom_bg: '', custom_primary: '', custom_accent: '', custom_text: '',
+      pagination: false, dual_page: false, auto_dual: true,
       shelf_view: 'grid', shelf_sort: 'recent',
     }),
     save_settings: async () => undefined,
@@ -33,6 +34,7 @@
     nga_download_status: async () => ({ running: false, stage: 'idle', detail: '' }),
     nga_cancel: async () => undefined,
     nga_update_book: async () => ({ ok: false, error: '浏览器调试模式：无法更新' }),
+    nga_update_defaults: async () => ({ ok: true, tid: 0, author_id: 0, theme: 'light', image_mode: 'online', per_chapter: 20, toc_pid: 0 }),
     export_start: async () => ({ ok: false, error: '浏览器调试模式：无法导出' }),
     export_status: async () => ({ running: false, stage: 'idle', detail: '', files: [], dest: '', error: '' }),
     export_open_dest: async () => ({ ok: false, error: '浏览器调试模式' }),
@@ -47,7 +49,8 @@
     get_stats: async () => ({ book: {}, global: {} }),
     open_data_dir: async () => ({ ok: false, error: '浏览器调试模式' }),
     uninstall_and_quit: async () => ({ ok: false }),
-    get_version: async () => '1.0.0',
+    get_version: async () => '1.1.0',
+    toggle_fullscreen: async () => ({ ok: false, error: '浏览器调试模式' }),
     on_frontend_ready: async () => undefined,
     log_frontend: async () => undefined,
   };

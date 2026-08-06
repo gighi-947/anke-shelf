@@ -2,6 +2,8 @@
 import logging
 import re
 import threading
+import json
+import hashlib
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -16,6 +18,69 @@ from .native_book import (
 from .paths import dir_mtime, nga_library_dir
 
 log = logging.getLogger("nga_service")
+
+SETTINGS_NAME = "download_settings.json"
+
+
+def _load_download_settings(folder: str) -> dict:
+    """读取该帖最近一次下载/更新时的参数（供热更新默认表单）。"""
+    p = Path(nga_library_dir()) / folder / SETTINGS_NAME
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_download_settings(folder: str, settings: dict) -> None:
+    p = Path(nga_library_dir()) / folder / SETTINGS_NAME
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(settings, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError as e:
+        log.warning("保存下载设置失败 %s: %s", p, e)
+
+
+def _sniff_epub_theme(path: str) -> str:
+    """旧版 EPUB 书没有设置记录时，从样式表推断深浅色主题。"""
+    try:
+        import zipfile
+
+        with zipfile.ZipFile(path) as z:
+            for name in z.namelist():
+                if not name.lower().endswith((".css", ".xhtml", ".html")):
+                    continue
+                data = z.read(name).decode("utf-8", "ignore")
+                if "background:#1e1e1e" in data or "background-color:#1e1e1e" in data:
+                    return "dark"
+                if "background:#ffffff" in data or "background-color:#ffffff" in data:
+                    return "light"
+    except (OSError, zipfile.BadZipFile):
+        pass
+    return ""
+
+
+def _int_setting(params: dict, key: str, default: int) -> int:
+    raw = params.get(key, default)
+    if raw is None or raw == "":
+        return default
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        return default
+
+
+def _local_max_floor(folder: str) -> int:
+    """读取 ngapost2md 本地状态里的最大已下载楼号（无记录返回 -1）。"""
+    p = Path(nga_library_dir()) / folder / "process.ini"
+    try:
+        import configparser
+
+        ini = configparser.ConfigParser()
+        ini.optionxform = str
+        ini.read(p, encoding="utf-8")
+        return int(ini.get("local", "max_floor", fallback="-1"))
+    except Exception:  # noqa: BLE001
+        return -1
 
 
 def _nga_root() -> Path:
@@ -130,18 +195,94 @@ class NgaService:
         m = re.match(r"^\d+\((\d+)\)", folder)
         if m:
             author_id = int(m.group(1))
+        defaults = self.update_defaults(book_id)
+        if not defaults.get("ok"):
+            return defaults
+        field_map = {
+            "authorid": "author_id",
+            "theme": "theme",
+            "image_mode": "image_mode",
+            "per_chapter": "per_chapter",
+            "toc_pid": "toc_pid",
+        }
+        effective = dict(params or {})
+        for param_key, default_key in field_map.items():
+            if param_key not in effective or effective[param_key] is None:
+                effective[param_key] = defaults.get(default_key)
         self._cancel.clear()
         if not self._begin(stage="update", detail="正在检查更新…",
                            book_id=book_id, action="update"):
             return {"ok": False, "error": "已有下载/更新任务在运行"}
         t = threading.Thread(
             target=self._run_update,
-            args=(rec, folder, int(rec.nga_tid), author_id, dict(params or {})),
+            args=(rec, folder, int(rec.nga_tid), author_id, effective),
             daemon=True,
             name="nga-update",
         )
         t.start()
         return {"ok": True}
+
+    def update_defaults(self, book_id: str) -> dict:
+        """返回热更新表单的默认参数。
+
+        优先级：最近一次下载/更新记录 > 原生书元数据 > 目录名/EPUB 样式推断。
+        author_id 始终是“最近一次使用的抓取过滤”，可能与目录名中的原始作者不同。
+        """
+        rec = None
+        if self._shelf is not None:
+            rec = self._shelf.get(book_id)
+        if rec is None or not rec.nga_tid:
+            return {"ok": False, "error": "仅支持更新 NGA 下载的帖子"}
+        folder = Path(rec.path).parent.name
+        author_id = 0
+        m = re.match(r"^\d+\((\d+)\)", folder)
+        if m:
+            author_id = int(m.group(1))
+        defaults = {
+            "ok": True,
+            "tid": int(rec.nga_tid),
+            "author_id": author_id,
+            "theme": "light",
+            "image_mode": "online",
+            "per_chapter": 20,
+            "toc_pid": 0,
+            "toc_mode": "index",
+        }
+        meta = {}
+        if is_native_dir(Path(rec.path)):
+            try:
+                meta = load_meta(native_dir_for(folder))
+            except Exception:  # noqa: BLE001
+                meta = {}
+        if meta:
+            defaults.update(
+                author_id=int(meta.get("author_id", author_id) or 0),
+                theme=str(meta.get("theme", "light")),
+                image_mode=str(meta.get("image_mode", "online")),
+                per_chapter=max(1, int(meta.get("per_chapter", 20) or 20)),
+                toc_mode=str(meta.get("toc_mode", "index")),
+            )
+        stored = _load_download_settings(folder)
+        if stored:
+            defaults.update(
+                author_id=_int_setting(stored, "author_id", defaults["author_id"]),
+                theme=str(stored.get("theme", defaults["theme"])),
+                image_mode=str(stored.get("image_mode", defaults["image_mode"])),
+                per_chapter=_int_setting(stored, "per_chapter", defaults["per_chapter"]),
+                toc_pid=_int_setting(stored, "toc_pid", defaults["toc_pid"]),
+                toc_mode=str(stored.get("toc_mode", defaults["toc_mode"])),
+            )
+        elif not meta:
+            sniffed = _sniff_epub_theme(rec.path)
+            if sniffed:
+                defaults["theme"] = sniffed
+        if defaults["image_mode"] not in ("online", "embedded", "none"):
+            defaults["image_mode"] = "online"
+        if defaults["theme"] not in ("light", "dark"):
+            defaults["theme"] = "light"
+        if defaults["toc_mode"] not in ("index", "split"):
+            defaults["toc_mode"] = "index"
+        return defaults
 
     # ---------- 后台执行 ----------
 
@@ -221,8 +362,39 @@ class NgaService:
             epub_path = Path(nga_library_dir()) / folder_name / "post.epub"
             if not epub_path.exists():
                 raise RuntimeError("下载完成但未生成 EPUB（请查看详细日志）")
+            # 首次下载直接构建原生书容器并注册原生目录：
+            # 之后“检查更新”无需整帖重下，只拉新页、只追加新楼层。
+            valid = [
+                f for f in tiezi.floors
+                if f.lou != -1 and (tiezi.max_lou < 0 or f.lou <= tiezi.max_lou)
+            ]
+            per_chapter = max(1, int(params.get("per_chapter", 20) or 20))
+            image_mode = str(params.get("image_mode", "online"))
+            if image_mode not in ("online", "embedded", "none"):
+                image_mode = "online"
+            theme = "dark" if str(params.get("theme", "light")) == "dark" else "light"
+            toc_mode = str(params.get("toc_mode", "index"))
+            if toc_mode not in ("index", "split"):
+                toc_mode = "index"
+            toc_chapters = getattr(tiezi, "toc_chapters", None)
+            native_dir = native_dir_for(folder_name)
+            book_id = hashlib.md5(str(native_dir).encode("utf-8")).hexdigest()
+            if valid:
+                write_container(folder_name, tiezi, valid, per_chapter,
+                                image_mode, theme, book_id,
+                                toc_chapters=toc_chapters, toc_mode=toc_mode)
+            _save_download_settings(folder_name, {
+                "tid": tid,
+                "author_id": author_id,
+                "theme": theme,
+                "image_mode": image_mode,
+                "per_chapter": per_chapter,
+                "toc_pid": max(0, int(params.get("toc_pid", 0) or 0)),
+                "toc_mode": toc_mode,
+                "max_floors": max(0, int(params.get("max_floors", 0) or 0)),
+            })
             # 注册到书架（BookManager + Shelf 由调用方回调完成）
-            return self._book_register(str(epub_path))
+            return self._book_register(str(native_dir) if valid else str(epub_path))
         finally:
             nga_mod.set_cancel_cb(None)
 
@@ -237,6 +409,7 @@ class NgaService:
             detail = f"已更新 {new_count} 楼" if new_count else "已是最新"
             self._set(running=False, stage="done", detail=detail,
                       book_id=rec.id, action="update")
+            _save_download_settings(folder, self._current_settings(folder, tid, params))
         except Exception as e:  # noqa: BLE001
             if self._cancel.is_set():
                 self._truncate_md(md_path, md_size)
@@ -247,6 +420,20 @@ class NgaService:
                 self._set(running=False, stage="error", detail="",
                           error=str(e), book_id=rec.id, action="update")
 
+    def _current_settings(self, folder: str, tid: int, params: dict) -> dict:
+        """把本次更新使用的参数落盘为“最近一次设置”。"""
+        old = _load_download_settings(folder)
+        return {
+            "tid": int(tid),
+            "author_id": _int_setting(params, "authorid", int(old.get("author_id", 0) or 0)),
+            "theme": str(params.get("theme", old.get("theme", "light"))),
+            "image_mode": str(params.get("image_mode", old.get("image_mode", "online"))),
+            "per_chapter": _int_setting(params, "per_chapter", int(old.get("per_chapter", 20) or 20)),
+            "toc_pid": _int_setting(params, "toc_pid", int(old.get("toc_pid", 0) or 0)),
+            "toc_mode": str(params.get("toc_mode", old.get("toc_mode", "index"))),
+            "max_floors": int(old.get("max_floors", 0) or 0),
+        }
+
     def _update_core(self, rec, folder, tid, author_id, params, native) -> int:
         client_mod, config_mod, nga_mod, Tiezi = _import_nga()
         nga_mod.set_cancel_cb(self._cancel.is_set)
@@ -254,11 +441,14 @@ class NgaService:
         nga_client = client_mod.NgaClient(cfg)
         try:
             nga_mod.init_nga(nga_client, cfg)
+            fetch_author_id = _int_setting(params, "authorid", author_id)
             tiezi = Tiezi(tid=tid, author_id=author_id)
             if native:
                 nga_mod.init_from_local(tiezi)
             else:
                 nga_mod.init_from_web(tiezi)
+            # 文件夹按原始 author_id 定位；抓取过滤可单独切换（仅影响新楼层）
+            tiezi.author_id = fetch_author_id
             nga_mod.download(tiezi, progress=self._progress_cb,
                              cancel=self._cancel.is_set, no_images=False)
         finally:
@@ -278,9 +468,12 @@ class NgaService:
         per_chapter = max(1, int(params.get("per_chapter", 20) or 20))
 
         if not native:
+            old_max_floor = _local_max_floor(folder)
             write_container(folder, tiezi, valid, per_chapter,
-                            image_mode, theme, rec.id)
-            new_count = len(valid)
+                            image_mode, theme, rec.id,
+                            toc_chapters=getattr(tiezi, "toc_chapters", None),
+                            toc_mode=str(params.get("toc_mode", "index")))
+            new_count = len([f for f in valid if f.lou > old_max_floor])
         else:
             meta = load_meta(native_dir_for(folder))
             last_lou = int(meta.get("last_lou", 0))
