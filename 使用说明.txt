@@ -20,8 +20,23 @@ Python 运行时、pywebview、EPUB 解析、NGA 帖子下载器
    请查看启动日志。
 
 NGA 下载：
-- 首次使用请在“NGA 下载”面板中填写浏览器 Cookie
+- 首次使用请在“NGA 下载”面板的“配置”页填写 Cookie
   （ngaPassportUid / ngaPassportCid / User-Agent）并保存。
+  获取方法（以 Edge/Chrome 为例）：
+    1. 打开浏览器，访问 https://bbs.nga.cn 并登录你的账号；
+    2. 按 F12 打开开发者工具；
+    3. 切换到“应用程序”标签页（Firefox 为“存储”）；
+    4. 左侧展开“Cookie”，点击 https://bbs.nga.cn；
+    5. 在右侧列表中找到 ngaPassportUid（值是一串数字，即你的 NGA 用户 ID），
+       双击“值”列复制；
+    6. 再找到 ngaPassportCid（值是一串较长的字母数字，即登录会话凭证），
+       双击复制；
+    7. User-Agent 可点“默认填入”，或从开发者工具“网络”面板中任意一个
+       NGA 请求的请求头里复制；
+    8. 回到本软件“配置”页，把 uid、cid、UA 粘贴到对应输入框并保存。
+  Cookie 过期后下载会提示需要登录或图片加载失败，重新复制一次即可。
+  凭据只保存在本机 %APPDATA%\AnkeShelf\nga_config.ini，不会上传到任何服务器，
+  不使用时可在“配置”页点击“清除已保存配置”，也请不要把 uid/cid 公开分享。
 - 下载完成的帖子会自动转为 EPUB 并加入书架。
 - 书架左上角“NGA 下载”按钮打开下载 / 导出整合页：
   可发起下载并实时查看进度，也可选择已下载帖子按 EPUB / Markdown

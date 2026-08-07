@@ -26,6 +26,32 @@ Web 侧做表现（渲染/交互）**，界面由本机浏览器引擎渲染。
   仓库只提交 `config.ini.example` 占位模板，不包含任何真实凭据。本地开发时
   可复制模板为 `ngapost2md-python\config.ini` 填写 Cookie，首次运行自动导入
 
+## 🔑 获取 NGA Cookie（ngaPassportUid / ngaPassportCid）
+
+下载需要登录权限的帖子（“只看楼主”、在线图片、隐藏内容等）时，需要把浏览器中
+已登录 NGA 的 Cookie 填进应用。获取步骤如下：
+
+1. 在电脑浏览器（推荐 Edge 或 Chrome）中打开 <https://bbs.nga.cn> 并登录你的账号。
+2. 按 `F12` 打开开发者工具。
+3. 切换到「应用程序」标签页（Edge/Chrome 中文版；Firefox 为「存储」）。
+4. 左侧展开「Cookie」，点击 `https://bbs.nga.cn`。
+5. 在右侧列表找到 `ngaPassportUid`：值是一串数字（你的 NGA 用户 ID），
+   双击「值」列复制。
+6. 找到 `ngaPassportCid`：值是一串较长的字母数字（登录会话凭证），双击复制。
+7. 回到安科书架 → 「NGA 下载」→「配置」标签页，把 uid、cid 粘贴到对应输入框；
+   User-Agent 可点「默认填入」，或从浏览器开发者工具 →「网络」→ 任意 NGA 请求
+   的请求头里复制。
+8. 点击「保存配置」即可开始下载。
+
+注意事项：
+
+- 两个 Cookie 会随登录状态过期；若下载时提示需要登录或图片无法加载，
+  按上述步骤重新复制一次即可。
+- uid/cid 只保存在本机 `%APPDATA%\AnkeShelf\nga_config.ini`，不会上传到任何
+  服务器；仓库与发行版均不含真实凭据。需要清理时，在「配置」页点击
+  「清除已保存配置」。
+- 不要把 uid/cid 发给他人或公开发布，避免账号被盗用。
+
 ## 特性
 
 - 📖 阅读 EPUB（自实现解析：container → OPF → spine → 目录，纯标准库）
@@ -65,6 +91,31 @@ Web 侧做表现（渲染/交互）**，界面由本机浏览器引擎渲染。
 - ⌨️ 键盘翻页/翻章（← / →，可在设置页自定义）、滚轮翻页、触屏滑动
 - 🖥️ **沉浸式阅读**：顶栏全屏按钮或 F11 切换软件全屏；Esc 或返回书架自动退出，退出时恢复窗口尺寸
 - 🛡 安全：本地 HTTP 仅回环监听、随机启动令牌校验、zip 路径穿越防护、章节 CSP + base 注入
+
+## 界面预览
+
+实机演示截图（v1.2.0）：
+
+![书架主页](docs/screenshots/bookshelf.png)
+书架：网格视图、最近阅读与 NGA 下载入口
+
+![阅读页：楼层卡片与骰子](docs/screenshots/reader-floor.png)
+阅读页：楼层卡片、引用块与骰子结果
+
+![全文检索](docs/screenshots/fulltext-search.png)
+全文检索：按章分组折叠、每章限量续取
+
+![阅读页：人物设定楼](docs/screenshots/reader-character.png)
+阅读页：人物设定楼与掷骰结果
+
+![NGA 下载面板](docs/screenshots/nga-download.png)
+NGA 下载：下载配置与任务控制
+
+![阅读统计](docs/screenshots/statistics.png)
+阅读统计：全部书目汇总与最近阅读时长
+
+![阅读页：楼层正文](docs/screenshots/reader-floor-2.png)
+阅读页：楼层正文展示
 
 ## 设计参考与开源致谢
 
