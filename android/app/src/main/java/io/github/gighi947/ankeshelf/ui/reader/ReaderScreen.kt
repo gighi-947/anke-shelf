@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -186,11 +187,21 @@ fun ReaderScreen(
 
     // 异形屏/安全区：
     // - 栏显示时：顶部避开状态栏（含挖孔安全区），底部避开导航栏；
-    // - 沉浸式（栏隐藏）时：只保留挖孔实际区域（安全区底部约 3/4），
-    //   不再保留整条状态栏高度，避免顶部留白过宽。
+    // - 沉浸式（栏隐藏）时：自动模式保留挖孔安全区约 3/8（模拟器约 51px，
+    //   为 3/4 的一半，顶部更紧凑）；设置页可手动覆盖（dp 滑块，-1 = 自动）。
     val density = LocalDensity.current
     val statusTop = WindowInsets.statusBars.getTop(density)
     val navBottom = WindowInsets.navigationBars.getBottom(density)
+    val context = LocalContext.current
+    val manualTopInsetDp = remember {
+        context.getSharedPreferences("reader", android.content.Context.MODE_PRIVATE)
+            .getInt("top_inset_dp", -1)
+    }
+    val manualTopInsetPx = if (manualTopInsetDp >= 0) {
+        with(density) { manualTopInsetDp.dp.toPx().roundToInt() }
+    } else {
+        -1
+    }
     val cutoutBottomRef = remember { mutableIntStateOf(0) }
     LaunchedEffect(activity) {
         val act = activity ?: return@LaunchedEffect
@@ -200,7 +211,11 @@ fun ReaderScreen(
             ?.maxOfOrNull { it.bottom }
             ?: 0
     }
-    val topInset = if (barsVisible) statusTop else (cutoutBottomRef.intValue * 3 / 4)
+    val topInset = if (barsVisible) {
+        maxOf(statusTop, if (manualTopInsetPx >= 0) manualTopInsetPx else 0)
+    } else {
+        if (manualTopInsetPx >= 0) manualTopInsetPx else (cutoutBottomRef.intValue * 3 / 8)
+    }
     val bottomInset = if (barsVisible) navBottom else 0
     LaunchedEffect(topInset, bottomInset) {
         insetRef.value = topInset to bottomInset
@@ -221,9 +236,10 @@ fun ReaderScreen(
         }
     }
 
-    // 自动隐藏：栏显示 3 秒后收起（目录打开时暂停计时）。
-    LaunchedEffect(barsVisible, showToc) {
-        if (barsVisible && !showToc) {
+    // 自动隐藏：页面加载完成后再计时，栏显示 3 秒后收起（目录打开时暂停计时），
+    // 避免字体/排版加载过程中栏和安全区突然变化。
+    LaunchedEffect(barsVisible, showToc, pageReady.value) {
+        if (barsVisible && !showToc && pageReady.value) {
             delay(3000)
             barsVisible = false
         }
