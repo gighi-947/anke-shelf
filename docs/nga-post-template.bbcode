@@ -1,0 +1,70 @@
+# 安科书架（AnkeShelf）NGA 更新帖模板
+#
+# 用法：
+#   1. 复制下方 BBCode 正文。
+#   2. 替换所有占位符：{VERSION}、{RELEASE_URL}、{ASSET_NAME}。
+#   3. 按实际内容增删 [b]小节[/b] 与列表项。
+#   4. 粘贴到 NGA 发帖（BBCode 模式）。
+#
+# 风格约定（与 v1.1.0 / v1.2.0 更新帖一致）：
+#   - 简洁严肃，分节 + 列表，不使用表情、不堆砌排版；
+#   - 每节 2~6 条，一条一行，先说结论再补细节；
+#   - 版本号、资产名、链接必须与 GitHub Release 完全一致。
+#
+# 正文从此行下面开始复制（不要复制以 # 开头的注释行）。
+
+[b]安科书架 {VERSION} 更新说明[/b]
+
+Windows 端安科阅读器：NGA 帖子下载、本地 EPUB 转换、完整 NGA 原版排版阅读、连载热更新、全文检索。
+
+[b]小节标题[/b]
+[list]
+[*]要点一：说明。
+[*]要点二：说明。
+[/list]
+
+[b]下载[/b]
+[url={RELEASE_URL}]GitHub Releases {VERSION}[/url]
+发行资产：{ASSET_NAME}（免安装目录版；解压后运行 AnkeShelf\AnkeShelf.exe，需系统 WebView2 Runtime）。
+
+--------------------------------------------------
+# 参考示例：v1.2.0（最近一次已发布版本，可直接按此结构改写）
+
+[b]安科书架 v1.2.0 更新说明[/b]
+
+Windows 端安科阅读器：NGA 帖子下载、本地 EPUB 转换、完整 NGA 原版排版阅读、连载热更新、全文检索。
+
+[b]全文检索[/b]
+[list]
+[*]独立全文检索页（顶栏按钮 / Ctrl+F）：中文子串匹配，text_offset 精确定位跳转。
+[*]结果按章节分组折叠，每章限量展示并支持续取更多；高频关键词不再挤掉靠后章节的命中。
+[*]支持大小写敏感、全词匹配；搜索历史按书保存（最多 10 条）。
+[*]阅读器侧栏旧搜索入口已移除，统一使用独立检索页。
+[/list]
+
+[b]主题与个性化[/b]
+[list]
+[*]新增 9 套预设色板：默认、羊皮纸、夜间、Solarized、Nord、护眼绿、墨蓝等。
+[*]支持自定义背景色、主题色、强调色与文字颜色；空值跟随主题，切换即时生效并带阅读页预览。
+[*]文字颜色只作用于默认黑/白文字，NGA 彩色字体保留原色。
+[*]主题模式支持浅色 / 羊皮纸 / 深色 / 跟随系统。
+[/list]
+
+[b]设置与下载[/b]
+[list]
+[*]设置页按外观 / 阅读 / 辅助 / 快捷键 / 统计 / 数据分栏，选项带说明，内容居中展示。
+[*]下载 / 导出整合页分为下载 / 更新 / 导出 / 配置四页，任务运行中标签带状态点。
+[*]导出支持 EPUB / Markdown，可自选文件夹，文件名默认使用安科标题。
+[*]阅读统计默认汇总全部书目，可进入详情查看各书数据。
+[/list]
+
+[b]工程与文档[/b]
+[list]
+[*]README 重写，补充开源项目借鉴致谢（Readest、flow、epub.js、Foliate、Koodo Reader、KOReader、daisyUI、ngapost2md、霞鹜文楷）。
+[*]发行版内置 README、LICENSE、OFL 与使用说明。
+[*]NGA 下载需在“配置”页填写浏览器 Cookie（ngaPassportUid / ngaPassportCid / UA），获取方法见 README。
+[/list]
+
+[b]下载[/b]
+[url=https://github.com/gighi-947/anke-shelf/releases/tag/v1.2.0]GitHub Releases v1.2.0[/url]
+发行资产：AnkeShelf-v1.2.0.zip（免安装目录版；解压后运行 AnkeShelf\AnkeShelf.exe，需系统 WebView2 Runtime）。
