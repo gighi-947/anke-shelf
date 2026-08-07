@@ -190,8 +190,6 @@ fun ReaderScreen(
     // - 沉浸式（栏隐藏）时：自动模式保留挖孔安全区约 3/8（模拟器约 51px，
     //   为 3/4 的一半，顶部更紧凑）；设置页可手动覆盖（dp 滑块，-1 = 自动）。
     val density = LocalDensity.current
-    val statusTop = WindowInsets.statusBars.getTop(density)
-    val navBottom = WindowInsets.navigationBars.getBottom(density)
     val context = LocalContext.current
     val manualTopInsetDp = remember {
         context.getSharedPreferences("reader", android.content.Context.MODE_PRIVATE)
@@ -211,12 +209,12 @@ fun ReaderScreen(
             ?.maxOfOrNull { it.bottom }
             ?: 0
     }
-    val topInset = if (barsVisible) {
-        maxOf(statusTop, if (manualTopInsetPx >= 0) manualTopInsetPx else 0)
+    val topInset = if (manualTopInsetPx >= 0) {
+        manualTopInsetPx
     } else {
-        if (manualTopInsetPx >= 0) manualTopInsetPx else (cutoutBottomRef.intValue * 3 / 8)
+        cutoutBottomRef.intValue * 3 / 8
     }
-    val bottomInset = if (barsVisible) navBottom else 0
+    val bottomInset = 0
     LaunchedEffect(topInset, bottomInset) {
         insetRef.value = topInset to bottomInset
         if (pageReady.value) {
@@ -225,16 +223,15 @@ fun ReaderScreen(
     }
 
     // 沉浸式：栏显示时恢复系统栏，栏隐藏时隐藏系统栏（滑动可临时唤出）。
-    LaunchedEffect(barsVisible, activity) {
+    LaunchedEffect(activity, pageReady.value) {
         val act = activity ?: return@LaunchedEffect
-        val controller = WindowCompat.getInsetsController(act.window, act.window.decorView)
-        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        if (barsVisible) {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-        } else {
+        if (pageReady.value) {
+            val controller = WindowCompat.getInsetsController(act.window, act.window.decorView)
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             controller.hide(WindowInsetsCompat.Type.systemBars())
         }
     }
+
 
     // 自动隐藏：页面加载完成后再计时，栏显示 3 秒后收起（目录打开时暂停计时），
     // 避免字体/排版加载过程中栏和安全区突然变化。

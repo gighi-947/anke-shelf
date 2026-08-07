@@ -420,7 +420,10 @@
     if (!ctx || !el) return 0;
     var er = el.getBoundingClientRect();
     var x = Math.max(2, Math.min(er.left + state.margin + 2, window.innerWidth - 2));
-    var y = Math.max(2, er.top + 16);
+    // 采样点必须落在正文文本区（避开顶部安全区 padding），
+    // 否则 caretRangeFromPoint 在空白处返回 null -> offset=0，
+    // 唤出系统栏触发重排时会把阅读位置误跳回第一页。
+    var y = Math.max(2, er.top + (state.topInset || 0) + 8);
     var off = TextPos.currentOffsetFromPoint(ctx, x, y);
     return off === null ? 0 : off;
   }
@@ -523,6 +526,8 @@
 
   function setMode(paged) {
     if (!document.body) return;
+    var el = scrollEl();
+    var wasScrolled = !!el && (state.paged ? el.scrollLeft > 1 : window.scrollY > 1);
     var offset = currentOffset();
     state.paged = !!paged && !state.huge;
     if (paged && state.huge) {
@@ -534,22 +539,82 @@
         prepare();
         normalizeTallTables();
         if (offset > 0) gotoOffset(offset);
+        else if (wasScrolled && el) {
+          var len = (state.textCtx && state.textCtx.text.length) || 0;
+          if (len > 0) {
+            var ratio = el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth);
+            gotoOffset(Math.round(ratio * len));
+          }
+        }
       } else {
-        restoreScroll(offset);
+        if (offset > 0) {
+          restoreScroll(offset);
+        } else if (wasScrolled) {
+          var ratio = window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
+          window.scrollTo(0, ratio * Math.max(1, document.body.scrollHeight - window.innerHeight));
+        }
       }
       report();
     });
   }
 
+  var resizeTimer = null;
+  var resizeOffset = 0;
+  var resizeScrolled = false;
+  var savedPosOffset = 0;
+  var positionMarked = false;
+
+  /** 系统栏显示/隐藏前由 Kotlin 调用：标记当前阅读位置。 */
+  function markPosition() {
+    savedPosOffset = currentOffset();
+    positionMarked = true;
+  }
+
+  /** 系统栏动画结束后由 Kotlin 调用：按标记位置恢复，绝不跳回第一页。 */
+  function restorePosition() {
+    if (savedPosOffset > 0) {
+      prepare();
+      normalizeTallTables();
+      gotoOffset(savedPosOffset);
+      report();
+    }
+    savedPosOffset = 0;
+    positionMarked = false;
+  }
+
   function onResize() {
     if (!state.paged) return;
+    var el = scrollEl();
+    var wasScrolled = !!el && el.scrollLeft > 1;
     var offset = currentOffset();
-    prepare();
-    requestAnimationFrame(function () {
+    // 系统栏动画中 scrollLeft 可能被浏览器临时重置，导致采样 offset=0；
+    // 只保留首个有效 offset（动画中后续采样会随 padding 变化失真），
+    // 动画结束后用它恢复，避免跳回第一页。
+    if (offset > 0 && resizeOffset === 0) resizeOffset = offset;
+    if (wasScrolled) resizeScrolled = true;
+    // 系统栏显示/隐藏动画期间会连续触发多次 resize/insets 变化，
+    // 合并到最后一次再统一 prepare + 恢复，避免逐帧布局变化把滚动位置重置。
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      prepare();
       normalizeTallTables();
-      if (offset > 0) gotoOffset(offset);
+      if (!positionMarked) {
+        // 系统栏动画期间位置恢复统一由 restorePosition 完成，这里只重排。
+        if (resizeOffset > 0) {
+          gotoOffset(resizeOffset);
+        } else if (resizeScrolled && el) {
+          // 采样失败兜底：按当前滚动比例粗恢复，绝不跳回第一页。
+          var len = (state.textCtx && state.textCtx.text.length) || 0;
+          if (len > 0) {
+            var ratio = el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth);
+            gotoOffset(Math.round(ratio * len));
+          }
+        }
+      }
+      resizeOffset = 0;
+      resizeScrolled = false;
       report();
-    });
+    }, 300);
   }
 
   /** 系统栏/挖孔安全区变化时更新正文上下留白（Kotlin 侧调用）。 */
@@ -601,6 +666,16 @@
     root.style.setProperty('--reader-top-inset', state.topInset + 'px');
     root.style.setProperty('--reader-bottom-inset', state.bottomInset + 'px');
     bindImages();
+    // 在 JS 层直接拦截链接点击，避免 WebView 产生导航尝试
+    // （shouldOverrideUrlLoading 虽拦截，但导航尝试可能重置阅读状态）。
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      var a = t && t.closest ? t.closest('a[href]') : null;
+      if (a) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
     // WebView 首帧尺寸可能尚未稳定（高度为 0/极小），尺寸变化后需重排保位。
     window.addEventListener('resize', function () {
       onResize();
@@ -639,6 +714,8 @@
     onResize: onResize,
     refresh: refresh,
     setInsets: setInsets,
+    markPosition: markPosition,
+    restorePosition: restorePosition,
     measure: measure,
     isPaged: function () { return state.paged; },
     isHuge: function () { return state.huge; },
