@@ -2,6 +2,7 @@ package io.github.gighi947.ankeshelf
 
 import android.app.Application
 import android.util.Log
+import io.github.gighi947.ankeshelf.service.AppContainer
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -13,10 +14,14 @@ import java.util.Locale
  */
 class AnkeShelfApp : Application() {
 
+    lateinit var container: AppContainer
+        private set
+
     override fun onCreate() {
         super.onCreate()
         // LeakCanary 2.x 在 debug 构建中通过 ContentProvider 自动安装，无需手动调用。
         installCrashHandler()
+        container = AppContainer(this)
     }
 
     private fun installCrashHandler() {

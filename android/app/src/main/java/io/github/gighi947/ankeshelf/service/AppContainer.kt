@@ -1,0 +1,192 @@
+package io.github.gighi947.ankeshelf.service
+
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import io.github.gighi947.ankeshelf.data.AppPaths
+import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.EpubBook
+import io.github.gighi947.ankeshelf.data.EpubError
+import io.github.gighi947.ankeshelf.data.NativeBook
+import io.github.gighi947.ankeshelf.data.ProgressEntry
+import io.github.gighi947.ankeshelf.data.ProgressStore
+import io.github.gighi947.ankeshelf.data.Shelf
+import io.github.gighi947.ankeshelf.data.SpineItem
+import io.github.gighi947.ankeshelf.data.TextExtractor
+import io.github.gighi947.ankeshelf.data.nowIso
+import java.io.Closeable
+import java.io.File
+import kotlin.math.roundToInt
+
+/** 手动 DI 容器：数据目录 + 书架/进度/设置 + 仓库。 */
+class AppContainer(context: Context) {
+    val appPaths: AppPaths = AppPaths(File(context.filesDir, AppPaths.APP_DIR_NAME)).also { it.ensure() }
+    val shelf = Shelf(appPaths.shelfFile, appPaths.coversDir)
+    val progress = ProgressStore(appPaths.progressFile)
+    val settings = io.github.gighi947.ankeshelf.data.Settings(appPaths.settingsFile)
+    val repository = BookRepository(appPaths, shelf, progress)
+
+    init {
+        shelf.load()
+        progress.load()
+        settings.load()
+    }
+}
+
+/** 阅读会话：统一 EPUB 与原生书的只读接口（不含文件句柄常驻）。 */
+class BookSession(
+    val id: String,
+    val title: String,
+    val author: String,
+    val chapters: List<SpineItem>,
+    private val textFn: (Int) -> String?,
+    private val titleFn: (Int) -> String,
+    private val closeFn: () -> Unit,
+) : Closeable {
+    fun chapterText(index: Int): String? = textFn(index)
+    fun chapterTitle(index: Int): String = titleFn(index)
+    override fun close() = closeFn()
+}
+
+/** 书架条目 + 阅读进度百分比（M2 近似：按章号占比）。 */
+data class BookUi(
+    val record: BookRecord,
+    val progressPct: Double,
+    val totalChapters: Int,
+)
+
+/** 书籍仓库：导入/登记/打开/进度（M2 阅读 MVP 核心）。 */
+class BookRepository(
+    private val appPaths: AppPaths,
+    private val shelf: Shelf,
+    private val progress: ProgressStore,
+) {
+
+    private val booksDir: File get() = File(appPaths.root, "books")
+
+    fun listBooks(): List<BookUi> = shelf.listBooks().map { rec ->
+        val p = progress.get(rec.id)
+        val pct = if (rec.chapter_count > 0 && p != null) {
+            (p.chapter_index.coerceIn(0, rec.chapter_count - 1).toDouble() / rec.chapter_count) * 100.0
+        } else {
+            0.0
+        }
+        BookUi(rec, pct, rec.chapter_count)
+    }
+
+    /** SAF 导入：复制到应用私有目录并登记书架；失败返回 null。 */
+    fun importEpub(context: Context, uri: Uri): BookRecord? {
+        val name = queryDisplayName(context.contentResolver, uri)
+            ?: "book-${System.currentTimeMillis()}.epub"
+        val safeName = name.replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_")
+            .ifBlank { "book.epub" }
+        val target = File(booksDir.apply { mkdirs() }, safeName)
+        val copied = try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                target.outputStream().use { out -> input.copyTo(out) }
+            } != null
+        } catch (_: Exception) {
+            false
+        }
+        if (!copied || !target.isFile) return null
+        return registerEpubFile(target)
+    }
+
+    /** 登记本地 EPUB 文件（也用于测试）。 */
+    fun registerEpubFile(file: File): BookRecord? {
+        val book = try {
+            EpubBook(file).open()
+        } catch (_: EpubError) {
+            return null
+        }
+        return try {
+            val coverRel = shelf.extractCover(book)
+            val rec = BookRecord(
+                id = book.id,
+                path = file.absolutePath,
+                title = book.title.ifBlank { file.nameWithoutExtension },
+                author = book.author,
+                language = book.language,
+                chapter_count = book.chapters.size,
+                cover_rel = coverRel,
+                file_size = file.length(),
+                file_mtime = file.lastModified().toString(),
+                added_at = nowIso(),
+            )
+            shelf.upsert(rec)
+            shelf.save()
+            rec
+        } finally {
+            book.close()
+        }
+    }
+
+    /** 打开书籍（原生书目录或 EPUB 文件）。 */
+    fun openSession(rec: BookRecord): BookSession? {
+        val f = File(rec.path)
+        return try {
+            if (f.isDirectory) {
+                val nb = NativeBook(f).open()
+                BookSession(
+                    id = nb.id,
+                    title = nb.title,
+                    author = nb.author,
+                    chapters = nb.chapters.toList(),
+                    textFn = { nb.chapterText(it) },
+                    titleFn = { nb.chapterTitle(it) },
+                    closeFn = { nb.close() },
+                )
+            } else {
+                val eb = EpubBook(f).open()
+                BookSession(
+                    id = eb.id,
+                    title = eb.title,
+                    author = eb.author,
+                    chapters = eb.chapters.toList(),
+                    textFn = { eb.chapterText(it) },
+                    titleFn = { eb.chapterTitle(it) },
+                    closeFn = { eb.close() },
+                )
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** 章纯文本长度（text_offset 坐标基准）。 */
+    fun chapterPlainLength(session: BookSession, index: Int): Int =
+        TextExtractor.extractDomText(session.chapterText(index) ?: "").length
+
+    fun saveProgress(bookId: String, chapterIndex: Int, textOffset: Int) {
+        progress.set(bookId, chapterIndex, textOffset)
+    }
+
+    fun progressOf(bookId: String): ProgressEntry? = progress.get(bookId)
+
+    fun removeBook(rec: BookRecord) {
+        shelf.remove(rec.id)
+        shelf.save()
+        progress.remove(rec.id)
+        try {
+            File(rec.path).delete()
+        } catch (_: Exception) {
+        }
+    }
+
+    companion object {
+        /** 滚动比例 → text_offset（与桌面旧 scroll_ratio 迁移语义一致）。 */
+        fun offsetForRatio(ratio: Double, plainLength: Int): Int {
+            if (plainLength <= 0) return 0
+            return (ratio.coerceIn(0.0, 1.0) * plainLength).roundToInt().coerceIn(0, plainLength)
+        }
+    }
+
+    private fun queryDisplayName(resolver: android.content.ContentResolver, uri: Uri): String? =
+        try {
+            resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        } catch (_: Exception) {
+            null
+        }
+}

@@ -4,7 +4,7 @@
 `app/src/main/assets/reader/` 下安卓专用精简 WebView 渲染页（不复用桌面
 `web/` 代码）。后端语义按 Windows v1.2.0 逐个移植。
 
-> 当前里程碑：M1（数据层：EPUB/原生书/存储/设置/text_offset + NGA 连通性 spike）。
+> 当前里程碑：M2（阅读 MVP：SAF 导入 EPUB、书架网格、WebView 阅读器、进度、主题/设置）。
 > 版本线独立：`android-vX.Y.Z`。
 
 ## 本地构建

@@ -32,12 +32,20 @@ class NgaClientTest {
     @Test
     fun realConnectivitySpike() {
         assumeTrue("1" == System.getenv("NGA_SPIKE"))
-        val page = NgaClient().fetchPage(tid = 41989465, page = 1)
+        val client = NgaClient(
+            cookieUid = System.getenv("NGA_UID").orEmpty(),
+            cookieCid = System.getenv("NGA_CID").orEmpty(),
+            userAgent = System.getenv("NGA_UA").ifBlank { NgaClient.DEFAULT_NGA_UA },
+        )
+        val page = client.fetchPage(tid = 41989465, page = 1)
         println(
             "NGA_SPIKE code=${page.code} msg=${page.msg} title=${page.title} author=${page.author} " +
                 "totalPage=${page.totalPage} vrows=${page.vrows} floors=${page.floors.size}",
         )
         // code=0 正常；code=46 为未带登录 Cookie 被 NGA 要求登录（桌面端同样需 uid/cid）。
-        assertTrue("NGA 返回异常 code=${page.code} msg=${page.msg}", page.code == 0 || page.code == 46)
+        assertTrue(
+            "NGA 返回异常 code=${page.code} msg=${page.msg}（uid/cid 是否有效？）",
+            page.code == 0 || page.code == 46,
+        )
     }
 }
