@@ -53,6 +53,8 @@ body {
     max-width: 46em;
     margin: 0 auto;
     padding: 18px 16px;
+    padding-top: calc(18px + var(--reader-top-inset, 0px));
+    padding-bottom: calc(18px + var(--reader-bottom-inset, 0px));
     overflow-wrap: break-word;
 }
 
@@ -102,6 +104,8 @@ body.paged #paged-scroll {
        恰好落在视口右边界，无泄漏也无逐屏偏移。 */
     padding-left: var(--reader-margin);
     padding-right: var(--reader-pr, 8px);
+    padding-top: var(--reader-top-inset, 0px);
+    padding-bottom: var(--reader-bottom-inset, 0px);
     margin: 0 auto;
     column-width: var(--reader-col);
     column-gap: var(--reader-gap);

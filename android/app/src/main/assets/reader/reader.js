@@ -24,6 +24,8 @@
     lineHeight: 1.8,
     dualPage: false,
     autoDual: true,
+    topInset: 0,
+    bottomInset: 0,
     textCtx: null,
   };
 
@@ -550,6 +552,18 @@
     });
   }
 
+  /** 系统栏/挖孔安全区变化时更新正文上下留白（Kotlin 侧调用）。 */
+  function setInsets(top, bottom) {
+    state.topInset = Math.max(0, top || 0);
+    state.bottomInset = Math.max(0, bottom || 0);
+    var root = document.documentElement;
+    root.style.setProperty('--reader-top-inset', state.topInset + 'px');
+    root.style.setProperty('--reader-bottom-inset', state.bottomInset + 'px');
+    if (state.paged) {
+      onResize();
+    }
+  }
+
   function refresh() {
     if (!state.paged) return;
     prepare();
@@ -568,18 +582,24 @@
     state.lineHeight = opts.lineHeight || 1.8;
     state.dualPage = !!opts.dualPage;
     state.autoDual = opts.autoDual !== false;
+    state.topInset = Math.max(0, opts.topInset || 0);
+    state.bottomInset = Math.max(0, opts.bottomInset || 0);
     if (!document.body) return;
     state.textCtx = TextPos.build(document);
     state.huge = state.textCtx.text.length > MAX_PAGED_TEXT;
     state.paged = !!opts.paged && !state.huge;
     log('init paged=' + state.paged + ' huge=' + state.huge +
-        ' len=' + state.textCtx.text.length + ' offset=' + (opts.offset || 0));
+        ' len=' + state.textCtx.text.length + ' offset=' + (opts.offset || 0) +
+        ' insets=' + state.topInset + '/' + state.bottomInset);
     if (opts.paged && state.huge) {
       log('超大章回退滚动模式（> ' + MAX_PAGED_TEXT + ' 字符）');
     }
     document.body.classList.toggle('paged', state.paged);
     if (opts.theme) applyTheme(opts.theme);
     applyTypography({ fontSize: state.fontSize, lineHeight: state.lineHeight });
+    var root = document.documentElement;
+    root.style.setProperty('--reader-top-inset', state.topInset + 'px');
+    root.style.setProperty('--reader-bottom-inset', state.bottomInset + 'px');
     bindImages();
     // WebView 首帧尺寸可能尚未稳定（高度为 0/极小），尺寸变化后需重排保位。
     window.addEventListener('resize', function () {
@@ -618,6 +638,7 @@
     currentOffset: currentOffset,
     onResize: onResize,
     refresh: refresh,
+    setInsets: setInsets,
     measure: measure,
     isPaged: function () { return state.paged; },
     isHuge: function () { return state.huge; },

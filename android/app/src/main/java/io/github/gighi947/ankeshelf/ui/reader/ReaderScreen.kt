@@ -1,6 +1,7 @@
 package io.github.gighi947.ankeshelf.ui.reader
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +12,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -19,12 +21,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -44,15 +49,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.ViewCompat
 import io.github.gighi947.ankeshelf.BuildConfig
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.BookSession
+import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -153,11 +164,13 @@ fun ReaderScreen(
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
     val loadedChapter = remember { mutableIntStateOf(-1) }
     val pageReady = remember { mutableStateOf(false) }
+    val insetRef = remember { mutableStateOf(0 to 0) }
 
     // 供 WebView factory（仅创建一次）读取最新值。
     val settingsRef = remember { mutableStateOf(readerSettings) }
     val themeRef = remember { mutableStateOf(theme) }
     val pagedRef = remember { mutableStateOf(readerSettings.pagination) }
+    val activity = LocalActivity.current
     LaunchedEffect(readerSettings) {
         settingsRef.value = readerSettings
     }
@@ -168,6 +181,51 @@ fun ReaderScreen(
                 "AnkeReader.applyTheme({bg:'${theme.background}',fg:'${theme.text}',primary:'${theme.accent}'});",
                 null,
             )
+        }
+    }
+
+    // 异形屏/安全区：
+    // - 栏显示时：顶部避开状态栏（含挖孔安全区），底部避开导航栏；
+    // - 沉浸式（栏隐藏）时：只保留挖孔实际区域（安全区底部约 3/4），
+    //   不再保留整条状态栏高度，避免顶部留白过宽。
+    val density = LocalDensity.current
+    val statusTop = WindowInsets.statusBars.getTop(density)
+    val navBottom = WindowInsets.navigationBars.getBottom(density)
+    val cutoutBottomRef = remember { mutableIntStateOf(0) }
+    LaunchedEffect(activity) {
+        val act = activity ?: return@LaunchedEffect
+        cutoutBottomRef.intValue = ViewCompat.getRootWindowInsets(act.window.decorView)
+            ?.displayCutout
+            ?.boundingRects
+            ?.maxOfOrNull { it.bottom }
+            ?: 0
+    }
+    val topInset = if (barsVisible) statusTop else (cutoutBottomRef.intValue * 3 / 4)
+    val bottomInset = if (barsVisible) navBottom else 0
+    LaunchedEffect(topInset, bottomInset) {
+        insetRef.value = topInset to bottomInset
+        if (pageReady.value) {
+            webViewRef.value?.evaluateJavascript("AnkeReader.setInsets($topInset,$bottomInset);", null)
+        }
+    }
+
+    // 沉浸式：栏显示时恢复系统栏，栏隐藏时隐藏系统栏（滑动可临时唤出）。
+    LaunchedEffect(barsVisible, activity) {
+        val act = activity ?: return@LaunchedEffect
+        val controller = WindowCompat.getInsetsController(act.window, act.window.decorView)
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        if (barsVisible) {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    // 自动隐藏：栏显示 3 秒后收起（目录打开时暂停计时）。
+    LaunchedEffect(barsVisible, showToc) {
+        if (barsVisible && !showToc) {
+            delay(3000)
+            barsVisible = false
         }
     }
 
@@ -294,6 +352,7 @@ fun ReaderScreen(
                                     "pageWidth:${s.page_width},fontSize:${s.font_size}," +
                                     "lineHeight:${s.line_height},dualPage:${s.dual_page}," +
                                     "autoDual:${s.auto_dual}," +
+                                    "topInset:${insetRef.value.first},bottomInset:${insetRef.value.second}," +
                                     "theme:{bg:'${t.background}',fg:'${t.text}',primary:'${t.accent}'}});",
                                 null,
                             )
@@ -329,14 +388,21 @@ fun ReaderScreen(
                                 val isSwipe = pagedRef.value && abs(dx) >= 60f && abs(dx) >= abs(dy) * 1.2f
                                 val isTap = dx * dx + dy * dy < 50f * 50f
                                 when {
-                                    isSwipe -> flipPage(if (dx < 0) 1 else -1)
+                                    isSwipe -> {
+                                        flipPage(if (dx < 0) 1 else -1)
+                                        barsVisible = false
+                                    }
                                     isTap -> {
                                         val w = width
                                         when {
-                                            ev.x < w / 3f ->
+                                            ev.x < w / 3f -> {
                                                 if (pagedRef.value) flipPage(-1) else changeChapter(-1)
-                                            ev.x > 2 * w / 3f ->
+                                                barsVisible = false
+                                            }
+                                            ev.x > 2 * w / 3f -> {
                                                 if (pagedRef.value) flipPage(1) else changeChapter(1)
+                                                barsVisible = false
+                                            }
                                             else -> barsVisible = !barsVisible
                                         }
                                     }
@@ -518,6 +584,12 @@ fun ReaderScreen(
             val web = webViewRef.value
             web?.removeJavascriptInterface("AnkeReaderBridge")
             saveNow(web)
+            // 退出阅读器时恢复系统栏，避免返回书架后仍处于沉浸式。
+            val act = activity
+            if (act != null) {
+                WindowCompat.getInsetsController(act.window, act.window.decorView)
+                    .show(WindowInsetsCompat.Type.systemBars())
+            }
         }
     }
 }
