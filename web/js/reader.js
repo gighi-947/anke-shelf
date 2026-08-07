@@ -302,6 +302,7 @@
   let scrollDebounceTimer = null;
   let sliderTimer = null;
   let loadToken = 0;
+  let loadResolve = null;
   let lightboxScale = 1;
 
   window.Reader = {
@@ -323,29 +324,37 @@
       const href = ch.href.split('#')[0].split('/').map(encodeURIComponent).join('/');
       const url = `/book/${App.state.bookId}/${href}`;
 
+      // ????????????/?????????????
+      // ???? about:blank???????????????????
+      let samePath = false;
       try {
-        const curPath = frame.contentWindow.location.pathname;
-        const targetPath = new URL(url, location.href).pathname;
-        if (curPath === targetPath) {
-          await new Promise((res) => { frame.onload = res; frame.src = 'about:blank'; });
-        }
+        samePath = frame.contentWindow.location.pathname ===
+          new URL(url, location.href).pathname;
       } catch (e) { /* ignore cross-origin / initial state */ }
+      const target = samePath ? url + '?_=' + Date.now() : url;
 
       await new Promise((resolve) => {
-        const timer = setTimeout(resolve, 15000);
+        const timer = setTimeout(() => {
+          if (loadResolve === resolve) loadResolve = null;
+          resolve();
+        }, 15000);
+        // ?????????????????????? Promise ??
+        if (loadResolve) loadResolve();
+        loadResolve = resolve;
         frame.onload = () => {
           clearTimeout(timer);
+          if (loadResolve === resolve) loadResolve = null;
           if (token !== loadToken) { resolve(); return; }
           const doc = frame.contentDocument;
           if (!doc) { resolve(); return; }
-          // 先构建文本坐标并判定章节大小，再决定分页/滚动与覆盖样式。
+          // ????????????????????/????????
           window.__readerHugeChapter__ = false;
           App.state.textCtx = TextPos.build(doc);
           window.__readerHugeChapter__ = App.state.textCtx.text.length > MAX_PAGED_TEXT;
           applyOverrides(doc);
           const paged = Paged.isActive();
           if (!paged && window.__readerHugeChapter__) {
-            try { Toast.show('本章内容较大，已自动切换为滚动阅读'); } catch (e) { /* ignore */ }
+            try { Toast.show('?????????????????'); } catch (e) { /* ignore */ }
           }
           try {
             if (window.CodeHighlight) CodeHighlight.highlightBlocks(doc);
@@ -353,14 +362,14 @@
           try {
             if (window.Annotations) Annotations.injectForChapter(doc);
           } catch (e) { /* ignore */ }
-          // 注入高亮/代码高亮 span 后重建坐标，保证 text_offset 与注入后的 DOM 对齐。
+          // ????/???? span ???????? text_offset ????? DOM ???
           App.state.textCtx = TextPos.build(doc);
           try {
             if (window.Annotations) Annotations.bindSelection(doc);
           } catch (e) { /* ignore */ }
           bindLinkHandler(doc);
           bindDocInteractions(doc);
-          // 焦点在 iframe 内时也能响应全局快捷键（热键在阅读正文中生效）。
+          // ??? iframe ????????????????????????
           doc.addEventListener('keydown', Reader.onKeyDown);
           if (App.state.book && App.state.book.nga) remapNgaDefaultColors(doc);
           if (paged) Paged.prepare(doc);
@@ -368,7 +377,7 @@
           doc.querySelectorAll('img').forEach((img) => {
             img.addEventListener('load', onImgChange);
           });
-          // 文档级委托：任何图片（含后加载的）加载失败都收起占位，避免大段空白
+          // ?????????????????????????????????
           doc.addEventListener('error', (e) => {
             const t = e.target;
             if (t && t.tagName === 'IMG') {
@@ -398,10 +407,11 @@
         };
         frame.onerror = () => {
           clearTimeout(timer);
+          if (loadResolve === resolve) loadResolve = null;
           if (token !== loadToken) return;
           resolve();
         };
-        frame.src = url;
+        frame.src = target;
       });
     },
 
@@ -517,6 +527,11 @@
       if (ev.key === 'Escape') {
         if (Reader.closeImage()) { ev.preventDefault(); return; }
         if (Reader.closeShortcuts()) { ev.preventDefault(); return; }
+        if (window.FullSearch && FullSearch.isOpen()) {
+          FullSearch.close();
+          ev.preventDefault();
+          return;
+        }
         const vm = document.getElementById('view-menu');
         if (vm && !vm.classList.contains('hidden')) { ViewMenu.close(); ev.preventDefault(); return; }
         const sp = document.getElementById('settings-view');
@@ -526,11 +541,16 @@
           return;
         }
         if (Sidebar.isOpen()) { Sidebar.close(); ev.preventDefault(); return; }
+        if (App.state.immersive) {
+          ev.preventDefault();
+          App.exitImmersive();
+          return;
+        }
         return;
       }
       if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'f' || ev.key === 'F')) {
         ev.preventDefault();
-        Sidebar.openSearch();
+        if (window.FullSearch) FullSearch.open();
         return;
       }
       const sp = document.getElementById('settings-view');

@@ -99,6 +99,7 @@ def main() -> int:
     window.__test = { done: false, log: [] };
     (async () => {
       const L = (s) => window.__test.log.push(s);
+      const activeDoc = () => (document.querySelector('.chapter-frame.active') || document.getElementById('chapter-frame')).contentDocument;
       try {
         await App.init();
         L('init:1');
@@ -109,6 +110,12 @@ def main() -> int:
         const dpanel = document.getElementById('download-view');
         L('nga_panel:' + (!dpanel.classList.contains('hidden') && document.getElementById('nga-tid') ? 1 : 0));
         L('nga_reopen_no_jump:' + (App.state.view === 'shelf' ? 1 : 0));
+        const dlTabs = document.querySelectorAll('#download-view .download-tab');
+        L('dl_tabs:' + (dlTabs.length === 4 ? 1 : 0));
+        document.querySelector('#download-view .download-tab[data-tab="dl-config"]').click();
+        await new Promise(r => setTimeout(r, 50));
+        L('dl_tab_config:' + (document.getElementById('dl-panel-dl-config').classList.contains('active') ? 1 : 0));
+        document.querySelector('#download-view .download-tab[data-tab="dl-download"]').click();
         const uSel = document.getElementById('dl-update-book');
         L('update_panel:' + (uSel && uSel.options.length > 1 ? 1 : 0));
         uSel.value = '__BID__';
@@ -139,9 +146,26 @@ def main() -> int:
         }
         L('lens:' + lens.join(','));
         // NGA 原版样式：覆盖层不应强制正文颜色
-        const ov = document.getElementById('chapter-frame').contentDocument.getElementById('__reader_overrides__');
+        const ov = activeDoc().getElementById('__reader_overrides__');
         L('nga_flag:' + (App.state.book && App.state.book.nga ? 1 : 0));
         L('nga_style:' + (ov && ov.textContent.indexOf('color: var(--reader-fg)') === -1 ? 1 : 0));
+        // 深色模式稳态：iframe 画布透明、透出深色阅读底（无白画布残留）
+        const darkDoc = activeDoc();
+        const darkHtmlBg = getComputedStyle(darkDoc.documentElement).backgroundColor;
+        const darkBodyBg = getComputedStyle(darkDoc.body).backgroundColor;
+        L('dark_bg_ok:' + (
+          (darkHtmlBg === 'rgba(0, 0, 0, 0)' || darkHtmlBg === 'transparent') &&
+          (darkBodyBg === 'rgba(0, 0, 0, 0)' || darkBodyBg === 'transparent') ? 1 : 0
+        ));
+        // 快速翻页：连续快速切换章节，最终状态正确且排版已加载
+        for (const ci of [0, 2, 4, 1]) { Reader.loadChapter(ci, 0); }
+        await new Promise(r => setTimeout(r, 1500));
+        const flipDoc = activeDoc();
+        L('rapid_flip_ok:' + (
+          App.state.chapterIndex === 1 &&
+          App.state.textCtx && App.state.textCtx.text.length > 0 &&
+          flipDoc.getElementById('__reader_overrides__') ? 1 : 0
+        ));
         // 分页（显式开启分页后测试分页逻辑；默认滚动由 default_scroll 断言覆盖）
         await Bridge.call('save_settings', { pagination: true, auto_dual: false });
         App.state.settings.pagination = true;
@@ -159,14 +183,14 @@ def main() -> int:
         await Annotations.refresh();
         await Reader.loadChapter(2, 0);
         await new Promise(r => setTimeout(r, 1000));
-        const marks = document.getElementById('chapter-frame').contentDocument.querySelectorAll('mark.hl-mark');
+        const marks = activeDoc().querySelectorAll('mark.hl-mark');
         L('marks:' + (marks.length === 1 ? 1 : 0));
         // 书签
         await Bridge.call('add_bookmark', '__BID__', 2, 700, '书签');
         const annData = await Bridge.call('get_annotations', '__BID__');
         L('bm:' + (annData.bookmarks.length === 1 ? 1 : 0));
         // 代码高亮
-        const preCode = document.getElementById('chapter-frame').contentDocument.querySelector('pre code.syntax');
+        const preCode = activeDoc().querySelector('pre code.syntax');
         L('codehl:' + (preCode ? 1 : 0));
         // 统计
         await Bridge.call('record_reading', '__BID__', 60, 3);
@@ -213,7 +237,7 @@ def main() -> int:
           navCs.borderRadius !== '50%' ? 1 : 0
         ));
         // 分页模式 iframe 铺满舞台：文档内边缘 mousemove 也能唤出顶/底栏
-        const idoc = document.getElementById('chapter-frame').contentDocument;
+        const idoc = activeDoc();
         idoc.dispatchEvent(new MouseEvent('mousemove', { clientX: 240, clientY: 4, bubbles: true }));
         await new Promise(r => setTimeout(r, 60));
         L('paged_edge_show:' + (document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0));
@@ -251,7 +275,8 @@ def main() -> int:
         ));
         document.getElementById('bars-pin-btn').click();
         // 分页 iframe 尺寸不得超出可视区域（曾因 chapter-wrap 内边距导致错位/裁切）
-        const fr = document.getElementById('chapter-frame').getBoundingClientRect();
+        const actFrame = document.querySelector('.chapter-frame.active') || document.getElementById('chapter-frame');
+        const fr = actFrame.getBoundingClientRect();
         const wrapR = document.querySelector('.chapter-wrap').getBoundingClientRect();
         const scR = document.getElementById('chapter-scroll').getBoundingClientRect();
         L('frame_fit:' + (
@@ -272,7 +297,7 @@ def main() -> int:
         L('dual_last_reachable:' + (
           dmEnd.current === dm3.total - 1 && !Paged.isPageBlank(dmEnd.current) ? 1 : 0
         ));
-        const fdoc = document.getElementById('chapter-frame').contentDocument;
+        const fdoc = activeDoc();
         const fEl = document.getElementById('chapter-frame');
         L('dual_no_overflow:' + (fdoc.documentElement.scrollWidth <= fEl.clientWidth + 1 ? 1 : 0));
         const fcs = getComputedStyle(fdoc.body);
@@ -301,7 +326,7 @@ def main() -> int:
         L('dual_off:' + (!Paged.isDual() ? 1 : 0));
         App.state.settings.auto_dual = true;
         // NGA 长表格 → 限高滚动容器，防止页面出界错位
-        const tdoc = document.getElementById('chapter-frame').contentDocument;
+        const tdoc = activeDoc();
         const tblEl = tdoc.createElement('table');
         let trs = '';
         for (let i = 0; i < 90; i++) trs += '<tr><td>测试行内容 ' + i + '</td></tr>';
@@ -335,11 +360,49 @@ def main() -> int:
         Reader.showShortcuts();
         L('help_modal:' + (!document.getElementById('shortcut-help').classList.contains('hidden') ? 1 : 0));
         Reader.closeShortcuts();
-        // Ctrl+F 打开侧栏搜索
+        // ---- 独立全文检索页 ----
+        // 顶栏按钮打开
+        document.getElementById('search-page-btn').click();
+        await new Promise(r => setTimeout(r, 80));
+        L('fs_btn:' + (window.FullSearch && FullSearch.isOpen() ? 1 : 0));
+        // 高频词 "e"：全部 5 章都出结果（修复“只显示靠前结果”），第三章 131 处触发每章限量
+        const fsInput = document.getElementById('fs-input');
+        fsInput.value = 'e';
+        await FullSearch.query(true);
+        for (let i = 0; i < 20 && document.querySelectorAll('#fs-results .fs-group').length === 0; i++) {
+          await new Promise(r => setTimeout(r, 150));
+        }
+        const fsGroups = document.querySelectorAll('#fs-results .fs-group');
+        const fsLast = fsGroups.length ? fsGroups[fsGroups.length - 1].dataset.chapter : '-1';
+        L('fs_groups_all:' + (fsGroups.length === 5 ? 1 : 0));
+        L('fs_last_chapter:' + (fsLast === '4' ? 1 : 0));
+        const fsSummary = document.getElementById('fs-summary');
+        L('fs_summary:' + (/共 \\d+ 处命中 · 5\\/5 章有结果/.test(fsSummary.textContent) ? 1 : 0));
+        L('fs_more:' + (document.querySelectorAll('#fs-results .fs-more').length > 0 ? 1 : 0));
+        L('fs_history:' + (document.querySelectorAll('#fs-history .fs-history-chip').length > 0 ? 1 : 0));
+        // 章节组折叠/展开
+        const g3 = document.querySelector('#fs-results .fs-group[data-chapter="2"]');
+        g3.querySelector('.fs-group-head').click();
+        await new Promise(r => setTimeout(r, 50));
+        L('fs_collapse:' + (!g3.classList.contains('open') ? 1 : 0));
+        g3.querySelector('.fs-group-head').click();
+        await new Promise(r => setTimeout(r, 50));
+        L('fs_expand:' + (g3.classList.contains('open') ? 1 : 0));
+        // 加载更多：第三章初始 50 条 → 续取后更多
+        const beforeMore = g3.querySelectorAll('.fs-hit').length;
+        g3.querySelector('.fs-more').click();
+        await new Promise(r => setTimeout(r, 700));
+        const afterMore = g3.querySelectorAll('.fs-hit').length;
+        L('fs_load_more:' + (afterMore > beforeMore ? 1 : 0));
+        // 点击结果跳转并自动关闭检索页
+        g3.querySelector('.fs-hit').click();
+        await new Promise(r => setTimeout(r, 900));
+        L('fs_jump:' + (!FullSearch.isOpen() && App.state.chapterIndex === 2 ? 1 : 0));
+        // Ctrl+F 打开独立检索页（替代旧侧栏搜索）
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true }));
         await new Promise(r => setTimeout(r, 100));
-        L('ctrl_f:' + (Sidebar.isOpen() && document.getElementById('tab-search').classList.contains('active') ? 1 : 0));
-        Sidebar.close();
+        L('ctrl_f:' + (FullSearch.isOpen() ? 1 : 0));
+        FullSearch.close();
         // 图片点击放大
         Reader.openImage('/cover/__BID__');
         await new Promise(r => setTimeout(r, 100));
@@ -384,6 +447,31 @@ def main() -> int:
           document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0
         ));
         document.getElementById('bars-pin-btn').click();
+        // 滚动模式：边缘触发区横向限为书籍实际显示区域
+        App.setBarsVisible(false);
+        const swrapRect = document.querySelector('.chapter-wrap').getBoundingClientRect();
+        document.getElementById('chapter-scroll').dispatchEvent(new MouseEvent('mousemove', {
+          clientX: Math.round(swrapRect.right + 40), clientY: 4, bubbles: true,
+        }));
+        await new Promise(r => setTimeout(r, 80));
+        L('scroll_edge_outside:' + (
+          !document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0
+        ));
+        document.getElementById('chapter-scroll').dispatchEvent(new MouseEvent('mousemove', {
+          clientX: Math.round(swrapRect.left + 40), clientY: 4, bubbles: true,
+        }));
+        await new Promise(r => setTimeout(r, 80));
+        L('scroll_edge_inside:' + (
+          document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0
+        ));
+        // 滚动模式：滚轮立即收栏（不等 600ms 延迟）
+        document.getElementById('chapter-scroll').dispatchEvent(new WheelEvent('wheel', {
+          deltaY: 120, bubbles: true, cancelable: true,
+        }));
+        await new Promise(r => setTimeout(r, 60));
+        L('wheel_hides_bars:' + (
+          !document.getElementById('top-bar').classList.contains('bar-visible') ? 1 : 0
+        ));
         // 个性化颜色：自定义主题色叠加生效；主题按钮切换主题时保留自定义色
         App.setBarsVisible(true);
         App.state.settings.custom_primary = '#ff0000';
@@ -404,14 +492,54 @@ def main() -> int:
         L('custom_colors_ui:' + (
           !!document.getElementById('sp-custom-bg') && !!document.getElementById('sp-custom-text') ? 1 : 0
         ));
+        L('settings_tabs:' + (document.querySelectorAll('#settings-view .settings-tab').length === 6 ? 1 : 0));
+        L('palette_btns:' + (document.querySelectorAll('#settings-view .sp-palette-btn').length > 0 ? 1 : 0));
+        document.querySelector('#settings-view .settings-tab[data-tab="reading"]').click();
+        await new Promise(r => setTimeout(r, 80));
+        L('settings_tab_switch:' + (document.getElementById('sp-panel-reading').classList.contains('active') ? 1 : 0));
+        document.querySelector('#settings-view .settings-tab[data-tab="appearance"]').click();
+        await new Promise(r => setTimeout(r, 50));
+        const nordBtn = document.querySelector('#settings-view .sp-palette-btn[data-palette="nord-dark"]');
+        nordBtn.click();
+        await new Promise(r => setTimeout(r, 100));
+        L('palette_applied:' + (
+          App.state.settings.custom_bg === '#2e3440' && App.state.settings.custom_text === '#eceff4' &&
+          getComputedStyle(document.documentElement).getPropertyValue('--reader-bg').trim().toLowerCase() === '#2e3440' ? 1 : 0
+        ));
+        document.getElementById('sp-palette-reset').click();
+        await new Promise(r => setTimeout(r, 80));
+        L('palette_reset:' + (App.state.settings.custom_bg === '' ? 1 : 0));
+        document.querySelector('#settings-view .sp-theme-mode-btn[data-mode="system"]').click();
+        await new Promise(r => setTimeout(r, 80));
+        L('theme_mode_system:' + (App.state.settings.theme_mode === 'system' ? 1 : 0));
+        document.querySelector('#settings-view .sp-theme-mode-btn[data-mode="dark"]').click();
+        await new Promise(r => setTimeout(r, 80));
+        L('theme_mode_dark:' + (App.state.settings.theme_mode === 'dark' ? 1 : 0));
         SettingsPage.close();
         // 沉浸式阅读（全屏）：按钮存在，切换 immersive 状态
         const fsBtn = document.getElementById('fullscreen-btn');
         L('fullscreen_btn:' + (!!fsBtn ? 1 : 0));
         await App.toggleImmersive();
         L('immersive_on:' + (document.getElementById('reader-view').classList.contains('immersive') ? 1 : 0));
+        L('immersive_toast:' + (
+          document.getElementById('toast-container').textContent.indexOf('Esc 或 F11') !== -1 ? 1 : 0
+        ));
         await App.toggleImmersive();
         L('immersive_off:' + (!document.getElementById('reader-view').classList.contains('immersive') ? 1 : 0));
+        // Esc 退出沉浸式
+        await App.toggleImmersive();
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        await new Promise(r => setTimeout(r, 80));
+        L('immersive_esc_exit:' + (
+          !App.state.immersive && !document.getElementById('reader-view').classList.contains('immersive') ? 1 : 0
+        ));
+        // 返回书架自动退出沉浸式
+        await App.toggleImmersive();
+        App.showShelf();
+        await new Promise(r => setTimeout(r, 120));
+        L('shelf_exits_immersive:' + (
+          !App.state.immersive && !document.getElementById('reader-view').classList.contains('immersive') ? 1 : 0
+        ));
       } catch (e) { L('ERROR:' + (e && e.message)); }
       window.__test.done = true;
     })()
@@ -474,13 +602,26 @@ def main() -> int:
             results['pin_survives_click'] = bool(int(get('pin_survives_click') or 0))
             results['pin_scroll_active'] = bool(int(get('pin_scroll_active') or 0))
             results['pin_scroll_keeps'] = bool(int(get('pin_scroll_keeps') or 0))
+            results['scroll_edge_outside'] = bool(int(get('scroll_edge_outside') or 0))
+            results['scroll_edge_inside'] = bool(int(get('scroll_edge_inside') or 0))
+            results['wheel_hides_bars'] = bool(int(get('wheel_hides_bars') or 0))
             results['custom_primary_applied'] = bool(int(get('custom_primary_applied') or 0))
             results['theme_btn_cycles'] = bool(int(get('theme_btn_cycles') or 0))
             results['theme_keeps_custom'] = bool(int(get('theme_keeps_custom') or 0))
             results['custom_colors_ui'] = bool(int(get('custom_colors_ui') or 0))
+            results['settings_tabs'] = bool(int(get('settings_tabs') or 0))
+            results['palette_btns'] = bool(int(get('palette_btns') or 0))
+            results['settings_tab_switch'] = bool(int(get('settings_tab_switch') or 0))
+            results['palette_applied'] = bool(int(get('palette_applied') or 0))
+            results['palette_reset'] = bool(int(get('palette_reset') or 0))
+            results['theme_mode_system'] = bool(int(get('theme_mode_system') or 0))
+            results['theme_mode_dark'] = bool(int(get('theme_mode_dark') or 0))
             results['fullscreen_btn'] = bool(int(get('fullscreen_btn') or 0))
             results['immersive_on'] = bool(int(get('immersive_on') or 0))
             results['immersive_off'] = bool(int(get('immersive_off') or 0))
+            results['immersive_toast'] = bool(int(get('immersive_toast') or 0))
+            results['immersive_esc_exit'] = bool(int(get('immersive_esc_exit') or 0))
+            results['shelf_exits_immersive'] = bool(int(get('shelf_exits_immersive') or 0))
             results['dual_spread'] = bool(int(get('dual_spread') or 0))
             results['dual_pages'] = bool(int(get('dual_pages') or 0))
             results['dual_next'] = bool(int(get('dual_next') or 0))
@@ -493,6 +634,16 @@ def main() -> int:
             results['chrome_toggle'] = bool(int(get('chrome_toggle') or 0))
             results['chrome_show'] = bool(int(get('chrome_show') or 0))
             results['help_modal'] = bool(int(get('help_modal') or 0))
+            results['fs_btn'] = bool(int(get('fs_btn') or 0))
+            results['fs_groups_all'] = bool(int(get('fs_groups_all') or 0))
+            results['fs_last_chapter'] = bool(int(get('fs_last_chapter') or 0))
+            results['fs_summary'] = bool(int(get('fs_summary') or 0))
+            results['fs_more'] = bool(int(get('fs_more') or 0))
+            results['fs_history'] = bool(int(get('fs_history') or 0))
+            results['fs_collapse'] = bool(int(get('fs_collapse') or 0))
+            results['fs_expand'] = bool(int(get('fs_expand') or 0))
+            results['fs_load_more'] = bool(int(get('fs_load_more') or 0))
+            results['fs_jump'] = bool(int(get('fs_jump') or 0))
             results['ctrl_f'] = bool(int(get('ctrl_f') or 0))
             results['lightbox'] = bool(int(get('lightbox') or 0))
             results['recent'] = bool(int(get('recent') or 0))
@@ -502,6 +653,8 @@ def main() -> int:
             results['default_scroll'] = bool(int(get('default_scroll') or 0))
             results['nga_panel'] = bool(int(get('nga_panel') or 0))
             results['nga_reopen_no_jump'] = bool(int(get('nga_reopen_no_jump') or 0))
+            results['dl_tabs'] = bool(int(get('dl_tabs') or 0))
+            results['dl_tab_config'] = bool(int(get('dl_tab_config') or 0))
             results['update_panel'] = bool(int(get('update_panel') or 0))
             results['update_defaults'] = bool(int(get('update_defaults') or 0))
             results['update_btn'] = bool(int(get('update_btn') or 0))
@@ -510,6 +663,8 @@ def main() -> int:
             results['nga_bridge'] = bool(int(get('nga_bridge') or 0))
             results['nga_flag'] = bool(int(get('nga_flag') or 0))
             results['nga_style'] = bool(int(get('nga_style') or 0))
+            results['dark_bg_ok'] = bool(int(get('dark_bg_ok') or 0))
+            results['rapid_flip_ok'] = bool(int(get('rapid_flip_ok') or 0))
         finally:
             try:
                 window.destroy()
@@ -521,7 +676,8 @@ def main() -> int:
 
     print("=== UI 自动化验证 ===")
     all_ok = True
-    for name in ['init', 'default_scroll', 'diff_js_py', 'pages', 'page_next', 'marks', 'bookmark',
+    for name in ['init', 'default_scroll', 'diff_js_py', 'pages', 'page_next',
+                 'marks', 'bookmark',
                  'code_highlight', 'stats', 'stats_modal', 'stats_default_all',
                  'stats_book_cards', 'stats_side_tab', 'stats_side_total',
                  'dual_active', 'paged_no_bottom_nav', 'paged_full_stage',
@@ -529,17 +685,25 @@ def main() -> int:
                  'action_hide_bars', 'menu_close_on_hide', 'pin_active',
                  'pin_keeps_bars', 'pin_unpin', 'pin_survives_click',
                  'pin_scroll_active', 'pin_scroll_keeps',
+                 'scroll_edge_outside', 'scroll_edge_inside', 'wheel_hides_bars',
                  'custom_primary_applied', 'theme_btn_cycles', 'theme_keeps_custom',
                  'custom_colors_ui',
+                 'settings_tabs', 'palette_btns', 'settings_tab_switch',
+                 'palette_applied', 'palette_reset', 'theme_mode_system', 'theme_mode_dark',
                  'fullscreen_btn', 'immersive_on', 'immersive_off',
+                 'immersive_toast', 'immersive_esc_exit', 'shelf_exits_immersive',
                  'dual_spread',
                  'dual_pages', 'dual_next', 'dual_last_reachable', 'dual_no_overflow',
                  'chrome_toggle', 'chrome_show',
-                 'help_modal', 'ctrl_f', 'lightbox', 'recent', 'list_view',
+                 'help_modal', 'fs_btn', 'fs_groups_all', 'fs_last_chapter',
+                 'fs_summary', 'fs_more', 'fs_history', 'fs_collapse',
+                 'fs_expand', 'fs_load_more', 'fs_jump', 'ctrl_f',
+                 'lightbox', 'recent', 'list_view',
                  'sort_control', 'dual_auto', 'dual_off', 'table_wrap', 'frame_fit',
                  'nga_panel', 'nga_reopen_no_jump', 'update_panel', 'update_defaults',
                  'update_btn', 'toc_mode_ui', 'scroll_no_page_btn',
-                 'nga_bridge', 'nga_flag', 'nga_style']:
+                 'dl_tabs', 'dl_tab_config',
+                 'nga_bridge', 'nga_flag', 'nga_style', 'dark_bg_ok', 'rapid_flip_ok']:
         ok = results.get(name, False)
         all_ok = all_ok and ok
         print(f"  {name:14s} {'PASS' if ok else 'FAIL'}")

@@ -105,7 +105,7 @@ class ApiServiceTest(unittest.TestCase):
 
     def test_get_version(self):
         api = self._make_api(BookManager())
-        self.assertEqual(api.get_version(), "1.1.0")
+        self.assertEqual(api.get_version(), "1.2.0")
 
     def test_toggle_fullscreen(self):
         calls = []

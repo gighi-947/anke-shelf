@@ -19,6 +19,7 @@ class SettingsMigrationTest(unittest.TestCase):
         s = Settings(self.path)
         s.load()
         self.assertEqual(s.get("pagination"), False)  # 默认滚动阅读
+        self.assertEqual(s.get("theme_mode"), "")  # 默认跟随 theme
         self.assertEqual(s.get("dual_page"), False)
         self.assertEqual(s.get("auto_dual"), True)
         self.assertEqual(s.get("custom_font"), "sys:weidqczfkyxk.ttf")

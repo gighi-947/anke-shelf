@@ -10,6 +10,7 @@ from .storage import atomic_write_json
 DEFAULTS: dict[str, Any] = {
     "settings_version": 3,
     "theme": "dark",  # 对齐 Readest：深色为主
+    "theme_mode": "",  # 主题模式：""=跟随 theme；system=跟随系统；light/sepia/dark=固定模式
     "font_size": 18,
     "line_height": 1.8,
     "font_family": "reader",

@@ -56,15 +56,6 @@
       }
     },
 
-    openSearch() {
-      const sb = document.getElementById('sidebar');
-      sb.classList.remove('hidden');
-      sb.classList.add('open');
-      this.switchTab('search');
-      const input = document.getElementById('search-input');
-      if (input) setTimeout(() => input.focus(), 50);
-    },
-
     renderBookCard(data) {
       if (!data) return;
       const cover = document.getElementById('sb-cover');

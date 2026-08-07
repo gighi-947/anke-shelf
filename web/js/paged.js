@@ -175,25 +175,46 @@
     const w = doc.body.clientWidth;
     const h = doc.body.clientHeight;
     if (w <= 0 || h <= 0) return false;
+    // elementFromPoint 在 overflow:hidden 的横向滚动多栏 body 上不随 scrollLeft
+    // 命中（会返回 BODY），改用布局命中的 caretRangeFromPoint 判定该点是否有文本。
+    const hitAt = (x, y) => {
+      try {
+        const r = doc.caretRangeFromPoint(x, y);
+        if (r && r.startContainer) {
+          const n = r.startContainer;
+          const data = n.nodeType === 3 ? n.data : (n.textContent || '');
+          if (data && data.trim()) return true;
+        }
+      } catch (e) { /* ignore */ }
+      const el = doc.elementFromPoint(x, y);
+      if (!el || el === doc.body || el === doc.documentElement) return false;
+      if (el.closest && el.closest('img,video,audio,svg,canvas,picture')) return true;
+      const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = walker.nextNode())) {
+        if (n.data && n.data.trim()) return true;
+      }
+      return false;
+    };
+    // 双页模式左右两页各采样两列，避免采样点落在中央书缝；
+    // 纵向上覆盖到顶部标题区，避免“只有楼层标题、正文被抽楼”的页面被误判为空白。
     let hits = 0;
     let samples = 0;
-    // 双页模式左右两页各采样一列，避免采样点落在中央书缝
-    const xs = m.step === 2 ? [w * 0.25, w * 0.75] : [Math.max(2, w / 2)];
-    for (const fy of [0.15, 0.35, 0.5, 0.65, 0.85]) {
+    let topHits = 0;
+    const xs = m.step === 2 ? [0.15, 0.35, 0.65, 0.85] : [0.25, 0.5, 0.75];
+    for (const fy of [0.06, 0.2, 0.4, 0.6, 0.8]) {
       for (const fx of xs) {
         samples++;
-        const el = doc.elementFromPoint(
-          Math.max(2, Math.min(w - 2, fx)), Math.round(h * fy)
-        );
-        if (!el || el === doc.body || el === doc.documentElement) continue;
-        if (el.closest && el.closest('img,video,audio,svg,canvas,picture')) { hits++; continue; }
-        const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-        let n;
-        while ((n = walker.nextNode())) { if (n.data && n.data.trim()) { hits++; break; } }
+        if (hitAt(Math.max(2, Math.min(w - 2, w * fx)), Math.round(h * fy))) {
+          hits++;
+          if (fy === 0.06) topHits++;
+        }
       }
     }
-    // 少于 40% 的采样点有内容 → 判定为大面积空白页
-    return hits / samples < 0.4;
+    // 顶部标题区有内容（如 NGA 抽楼页只剩楼层头）不算空白
+    if (topHits > 0) return false;
+    // 少于 25% 的采样点有内容 → 判定为大面积空白页
+    return hits / samples < 0.25;
   }
 
   /** 从 page 起沿 dir（1/-1）跳过连续空白页，最多跳 5 页。 */

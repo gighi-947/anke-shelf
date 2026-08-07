@@ -12,7 +12,7 @@ app/                  Python 后端
   shelf.py            书架/进度存储（原子 JSON）
   stats.py            阅读统计（全局 + 每书 + 按天）
   annotations.py      标注/书签
-  search.py           全文搜索索引（按需构建）
+  search.py           全文搜索索引（按需构建；按章限量 + 续取 search_more）
   epub.py             自实现 EPUB 解析（container → OPF → spine → 目录）
   native_book.py      原生增量书容器（meta.json + floors.json + chapters/）
   nga_service.py      NGA 下载/热更新服务（单飞任务 + 状态轮询）
@@ -27,7 +27,7 @@ web/                  前端（纯静态，前后端分离）
     paged.js          CSS multi-column 分页核心（单页/自动双页/强制双页）
     nga_download.js   下载/导出/更新整合页
     settings.js       独立设置页
-    stats.js / sidebar.js / toc.js / annotations.js / search.js
+    stats.js / sidebar.js / toc.js / annotations.js / fullsearch.js
     bookshelf.js      书架网格/列表
     theme.js          主题与自定义配色
     textpos.js        DOM 文本坐标 ↔ text_offset
@@ -51,6 +51,9 @@ docs/                 架构与规划文档
 - 设置项一律先加 `app/settings.py` 的 `DEFAULTS`；需要旧数据迁移时递增 `settings_version`。
 - API 方法签名即接口契约：`Api.<name>(*args)`，返回可 JSON 序列化的 dict。
 - NGA 配色：阅读器只接管默认黑/白文字（`--reader-fg`），带显式颜色的字体保持原样。
+- 主题体系：`theme_mode` 支持 `system / light / sepia / dark`（空串=跟随 `theme`），
+  预设色板是前端常量（`theme.js` 的 `PALETTES`），持久化仍只存
+  `custom_bg / custom_text / custom_primary / custom_accent` 四色。
 - 分页几何与 flow/epub.js 对齐：border-box、精确列宽、双页补偶数列。
 - 发行版打包：`python -m PyInstaller --noconfirm --clean ankeshelf.spec`，
   然后把 README/LICENSE/OFL/使用说明复制进 `dist\AnkeShelf`，再压成目录版 zip。

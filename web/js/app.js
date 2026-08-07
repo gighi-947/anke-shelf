@@ -28,10 +28,11 @@
         } catch (e) {
           Bridge.call('log_frontend', 'init:get_settings_failed: ' + (e.message || e)).catch(() => {});
         }
-        Theme.applyTheme(state.settings.theme, state.settings);
+        Theme.applySettings(state.settings);
         Theme.applyReaderPrefs(state.settings.font_size, state.settings.line_height);
         this.setBarsPinned(!!state.settings.bars_pinned);
         this.updateThemeIcons();
+        this.bindSystemTheme();
         this.bindGlobalEvents();
         this.bindReaderChrome();
         try {
@@ -50,7 +51,7 @@
 
     /** Theme button icons follow the current theme (sun for dark, moon otherwise). */
     updateThemeIcons() {
-      const isDark = state.settings.theme === 'dark';
+      const isDark = Theme.isDark(state.settings);
       const icon = isDark ? 'sun' : 'moon';
       const btn1 = document.getElementById('theme-btn');
       const btn2 = document.getElementById('theme-btn2');
@@ -62,6 +63,24 @@
         btn2.innerHTML = '';
         btn2.appendChild(Icons.icon(icon, 18));
       }
+    },
+
+    /** 跟随系统模式：系统深浅色变化时自动重新应用主题。 */
+    bindSystemTheme() {
+      if (!window.matchMedia) return;
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const onChange = () => {
+        if (state.settings.theme_mode !== 'system') return;
+        Theme.applySettings(state.settings);
+        if (state.view === 'reader' && window.Reader) Reader.updateOverrides();
+        this.updateThemeIcons();
+        if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
+        if (window.SettingsPage && SettingsPage.sync) SettingsPage.sync();
+      };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+      this._systemThemeMq = mq;
+      this._systemThemeOnChange = onChange;
     },
 
     setBarsVisible(on) {
@@ -98,17 +117,41 @@
 
     /** 沉浸式阅读：切换宿主窗口全屏；进入时收起顶/底栏。 */
     async toggleImmersive() {
+      const r = await this._toggleFullscreenBridge();
+      if (!r || r.ok === false) {
+        Toast.show((r && r.error) || '全屏切换失败', true);
+        return;
+      }
+      state.immersive = !state.immersive;
+      this._applyImmersiveState();
+      if (state.immersive) {
+        Toast.show('已进入沉浸式阅读，按 Esc 或 F11 退出');
+      }
+    },
+
+    /** 退出沉浸式阅读（返回书架 / Esc 时调用）。 */
+    async exitImmersive() {
+      if (!state.immersive) return;
+      const r = await this._toggleFullscreenBridge();
+      if (!r || r.ok === false) {
+        Toast.show((r && r.error) || '退出全屏失败', true);
+        return;
+      }
+      state.immersive = false;
+      this._applyImmersiveState();
+    },
+
+    async _toggleFullscreenBridge() {
       let r = null;
       try {
         r = await Bridge.call('toggle_fullscreen');
       } catch (e) {
         r = { ok: false, error: e.message || String(e) };
       }
-      if (!r || r.ok === false) {
-        Toast.show((r && r.error) || '全屏切换失败', true);
-        return;
-      }
-      state.immersive = !state.immersive;
+      return r;
+    },
+
+    _applyImmersiveState() {
       document.getElementById('reader-view').classList.toggle('immersive', state.immersive);
       this.setBarsVisible(!state.immersive);
       const btn = document.getElementById('fullscreen-btn');
@@ -119,12 +162,15 @@
     },
 
     showShelf() {
+      // 返回书架时自动退出沉浸式阅读（全屏只属于阅读界面）
+      this.exitImmersive();
       state.view = 'shelf';
       document.getElementById('reader-view').classList.add('hidden');
       document.getElementById('shelf-view').classList.remove('hidden');
       this.setBarsVisible(false);
       Sidebar.close();
       ViewMenu.close();
+      if (window.FullSearch) FullSearch.close();
       if (window.SettingsPage) SettingsPage.close();
       document.title = '安科书架';
     },
@@ -151,7 +197,6 @@
         if (window.Annotations) await Annotations.init();
         if (window.Stats) Stats.start();
         if (window.Assist) Assist.setBrightness(state.settings.brightness || 0);
-        Search.reset();
         const p = data.progress || { chapter_index: 0, text_offset: 0 };
         await Reader.loadChapter(p.chapter_index, p.text_offset || 0);
       } catch (e) {
@@ -168,16 +213,23 @@
       const settingsBtn = document.getElementById('settings-btn');
       if (settingsBtn) {
         settingsBtn.addEventListener('click', () => {
+          if (window.FullSearch) FullSearch.close();
           if (window.SettingsPage) SettingsPage.open();
         });
       }
 
       const applyThemeNext = () => {
-        state.settings.theme = Theme.nextTheme(state.settings.theme);
-        Theme.applyTheme(state.settings.theme, state.settings);
+        // 跟随系统时先解析当前实际主题，再从它继续循环；循环后固定为该主题
+        const current = Theme.resolveTheme(state.settings);
+        state.settings.theme = Theme.nextTheme(current);
+        state.settings.theme_mode = state.settings.theme;
+        Theme.applySettings(state.settings);
         if (state.view === 'reader' && window.Reader) Reader.updateOverrides();
         this.updateThemeIcons();
-        Bridge.call('save_settings', { theme: state.settings.theme });
+        Bridge.call('save_settings', {
+          theme: state.settings.theme,
+          theme_mode: state.settings.theme_mode,
+        });
         if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
         if (window.SettingsPage && SettingsPage.sync) SettingsPage.sync();
       };
@@ -187,7 +239,7 @@
       document.getElementById('sidebar-toggle').addEventListener('click', () => Sidebar.toggle());
       document.getElementById('sidebar-toggle2').addEventListener('click', () => Sidebar.close());
       document.getElementById('sidebar-search-btn').addEventListener('click', () => {
-        Sidebar.openSearch();
+        if (window.FullSearch) FullSearch.open();
       });
       document.getElementById('sidebar-pin-btn').addEventListener('click', () => {
         Sidebar.togglePin();
@@ -267,6 +319,22 @@
         hideTimer = setTimeout(() => App.setBarsVisible(false), 600);
       };
 
+      /** 滚动模式：边缘触发区横向限为书籍实际显示区域，避免侧边留白/滑动条误触发。 */
+      const inBookZone = (clientX) => {
+        if (Paged.isActive()) return true;
+        const fr = frame.getBoundingClientRect();
+        return clientX >= fr.left - 1 && clientX <= fr.right + 1;
+      };
+
+      /** 滚动模式：滚轮立即收起顶/底栏（不等待 600ms 延迟）。 */
+      const onWheelHide = () => {
+        if (App.state.view !== 'reader') return;
+        if (Paged.isActive()) return;
+        if (menuOpen() || pinned()) return;
+        cancelHide();
+        App.setBarsVisible(false);
+      };
+
       const refreshAt = (clientX, clientY, target) => {
         if (App.state.view !== 'reader') return;
         const rect = rv.getBoundingClientRect();
@@ -279,6 +347,12 @@
           return;
         }
         if (inEdgeZone(y, h) || overBars(target) || menuOpen() || pinned()) {
+          // 悬停在书宽之外（侧边留白）的边缘不唤出顶/底栏
+          if (inEdgeZone(y, h) && !overBars(target) && !menuOpen() && !pinned() &&
+              !inBookZone(clientX)) {
+            scheduleHide();
+            return;
+          }
           cancelHide();
           App.setBarsVisible(true);
         } else {
@@ -301,14 +375,17 @@
         if (lastDoc) {
           lastDoc.removeEventListener('mousemove', onDocMove);
           lastDoc.removeEventListener('mouseleave', onDocLeave);
+          lastDoc.removeEventListener('wheel', onWheelHide);
         }
         lastDoc = doc;
         doc.addEventListener('mousemove', onDocMove);
         doc.addEventListener('mouseleave', onDocLeave);
+        doc.addEventListener('wheel', onWheelHide, { passive: true });
       };
 
       rv.addEventListener('mousemove', (e) => refreshAt(e.clientX, e.clientY, e.target));
       rv.addEventListener('mouseleave', scheduleHide);
+      rv.addEventListener('wheel', onWheelHide, { passive: true });
       frame.addEventListener('load', bindFrameDoc);
       bindFrameDoc();
     },

@@ -18,7 +18,7 @@
     search: async () => ({ ready: true, results: [] }),
     is_index_ready: async () => true,
     get_settings: async () => ({
-      theme: 'light', font_size: 18, line_height: 1.8, font_family: 'reader',
+      theme: 'light', theme_mode: '', font_size: 18, line_height: 1.8, font_family: 'reader',
       custom_font: '', book_fonts: {}, page_width: 1.0, bars_pinned: false,
       custom_bg: '', custom_primary: '', custom_accent: '', custom_text: '',
       pagination: false, dual_page: false, auto_dual: true,
@@ -49,7 +49,7 @@
     get_stats: async () => ({ book: {}, global: {} }),
     open_data_dir: async () => ({ ok: false, error: '浏览器调试模式' }),
     uninstall_and_quit: async () => ({ ok: false }),
-    get_version: async () => '1.1.0',
+    get_version: async () => '1.2.0',
     toggle_fullscreen: async () => ({ ok: false, error: '浏览器调试模式' }),
     on_frontend_ready: async () => undefined,
     log_frontend: async () => undefined,

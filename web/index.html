@@ -93,6 +93,9 @@
         <span id="reader-chapter-label" class="reader-chapter-label"></span>
       </div>
       <div class="top-actions">
+        <button id="search-page-btn" class="top-btn" title="全文搜索 (Ctrl+F)">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-search"></use></svg>
+        </button>
         <button id="theme-btn2" class="top-btn" title="切换主题"></button>
         <button id="help-btn" class="top-btn" title="快捷键帮助 (?)">?</button>
         <button id="bars-pin-btn" class="top-btn" title="固定顶栏与底栏">
@@ -141,11 +144,6 @@
         <div id="tab-annotations" class="tab-panel">
           <div id="annotation-list" class="side-list"><p class="muted side-empty">暂无标注</p></div>
         </div>
-        <div id="tab-search" class="tab-panel">
-          <input id="search-input" type="text" placeholder="输入关键词…" autocomplete="off">
-          <div id="search-status" class="search-status hidden"></div>
-          <div id="search-results" class="search-results"></div>
-        </div>
         <div id="tab-stats" class="tab-panel"></div>
       </div>
 
@@ -161,10 +159,6 @@
         <button class="tab-btn" data-tab="annotations" title="标注">
           <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-note"></use></svg>
           <span class="tab-label">标注</span>
-        </button>
-        <button class="tab-btn" data-tab="search" title="搜索">
-          <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-search"></use></svg>
-          <span class="tab-label">搜索</span>
         </button>
         <button class="tab-btn" data-tab="stats" title="阅读统计">
           <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-stats"></use></svg>
@@ -246,7 +240,7 @@
   <script src="/js/stats.js"></script>
   <script src="/js/reader.js"></script>
   <script src="/js/annotations.js"></script>
-  <script src="/js/search.js"></script>
+  <script src="/js/fullsearch.js"></script>
   <script src="/js/nga_download.js"></script>
 </body>
 </html>

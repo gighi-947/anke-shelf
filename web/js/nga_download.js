@@ -1,11 +1,20 @@
 /**
- * 下载 / 导出整合页：帖子下载（含实时状态）、NGA 配置、帖子导出（含实时状态）。
+ * 下载 / 导出整合页（参考 Koodo Reader 的 Tab 导航与任务卡片化）：
+ * 下载 / 更新 / 导出 / 配置 四个标签页，任务状态实时轮询并带运行指示。
  * 后端：NgaService（下载）+ ExportService（导出），全部走 HTTP API。
  */
 (function () {
   'use strict';
 
   let selectedFmt = 'both';
+  let activeTab = 'dl-download';
+
+  const TABS = [
+    ['dl-download', '下载'],
+    ['dl-update', '更新'],
+    ['dl-export', '导出'],
+    ['dl-config', '配置'],
+  ];
 
   const view = () => document.getElementById('download-view');
 
@@ -61,19 +70,54 @@
     back.addEventListener('click', close);
     const title = document.createElement('div');
     title.className = 'settings-title';
-    title.textContent = '下载 / 导出';
+    title.textContent = 'NGA 下载 / 导出';
     head.append(back, title);
     el.appendChild(head);
 
-    const body = document.createElement('div');
-    body.className = 'download-body';
-    body.appendChild(buildDownloadSection());
-    body.appendChild(buildUpdateSection());
-    body.appendChild(buildConfigSection());
-    body.appendChild(buildExportSection());
-    el.appendChild(body);
+    const layout = document.createElement('div');
+    layout.className = 'settings-layout';
+    const tabs = document.createElement('nav');
+    tabs.className = 'settings-tabs download-tabs';
+    const panels = document.createElement('div');
+    panels.className = 'settings-panels download-panels';
+    const panelById = {};
+
+    for (const [id, label] of TABS) {
+      const t = document.createElement('button');
+      t.className = 'settings-tab download-tab' + (id === activeTab ? ' active' : '');
+      t.dataset.tab = id;
+      t.textContent = label;
+      t.addEventListener('click', () => switchTab(id));
+      tabs.appendChild(t);
+      const p = document.createElement('div');
+      p.className = 'settings-panel' + (id === activeTab ? ' active' : '');
+      p.dataset.panel = id;
+      p.id = 'dl-panel-' + id;
+      panels.appendChild(p);
+      panelById[id] = p;
+    }
+    layout.append(tabs, panels);
+    el.appendChild(layout);
+
+    panelById['dl-download'].appendChild(buildDownloadSection());
+    panelById['dl-update'].appendChild(buildUpdateSection());
+    panelById['dl-export'].appendChild(buildExportSection());
+    panelById['dl-config'].appendChild(buildConfigSection());
+
     document.body.appendChild(el);
     return el;
+  }
+
+  function switchTab(id) {
+    activeTab = id;
+    const el = view();
+    if (!el) return;
+    el.querySelectorAll('.download-tab').forEach((t) => {
+      t.classList.toggle('active', t.dataset.tab === id);
+    });
+    el.querySelectorAll('.settings-panel').forEach((p) => {
+      p.classList.toggle('active', p.dataset.panel === id);
+    });
   }
 
   function section(titleText, content) {
@@ -157,7 +201,7 @@
     actions.append(startBtn, cancelBtn);
     wrap.appendChild(actions);
 
-    // 下载状态
+    // 下载状态卡片（下载/更新共用，更新启动后自动切回本页查看）
     const status = document.createElement('div');
     status.className = 'nga-progress';
     status.id = 'nga-progress';
@@ -230,7 +274,7 @@
 
     const hint = document.createElement('p');
     hint.className = 'muted settings-hint';
-    hint.textContent = '更新设置仅对本次新增楼层生效，不影响已有楼层；进度显示在下方“帖子下载”区域。';
+    hint.textContent = '更新设置仅对本次新增楼层生效，不影响已有楼层；开始后将自动切换到「下载」页查看进度。';
     wrap.appendChild(hint);
 
     return section('更新帖子', wrap);
@@ -244,6 +288,10 @@
       field('ngaPassportCid', input('nga-cfg-cid', '浏览器 Cookie 中的 ngaPassportCid')),
       field('User-Agent', input('nga-cfg-ua', '浏览器 UA（已默认填入）')),
     );
+    const hint = document.createElement('p');
+    hint.className = 'muted settings-hint';
+    hint.textContent = 'Cookie 仅保存在本机数据目录，用于访问需要登录可见的帖子；发行版不包含任何个人登录配置。';
+    cfgBox.appendChild(hint);
     const btns = document.createElement('div');
     btns.className = 'nga-actions';
     const save = document.createElement('button');
@@ -396,9 +444,26 @@
 
   // ---------- 下载 ----------
 
+  function parseTid(raw) {
+    const s = String(raw || '').trim();
+    const m = s.match(/tid=(\d+)/i) || s.match(/^(\d+)$/);
+    if (!m) return null;
+    const tid = m[1];
+    return /^\d{1,12}$/.test(tid) ? tid : null;
+  }
+
   async function startDownload() {
+    const tid = parseTid(val('nga-tid'));
+    if (!tid) {
+      Toast.show('请输入有效的帖子 tid 或链接（如 41989465）', true);
+      return;
+    }
+    if (intVal('nga-per-chapter') < 1) {
+      Toast.show('每章楼层数必须大于 0', true);
+      return;
+    }
     const params = {
-      tid: val('nga-tid'),
+      tid,
       authorid: intVal('nga-authorid'),
       max_floors: intVal('nga-max-floors'),
       per_chapter: intVal('nga-per-chapter') || 20,
@@ -468,6 +533,11 @@
     if (start) start.disabled = running;
     if (cancel) cancel.disabled = !running;
     if (update) update.disabled = running;
+    const el = view();
+    if (el) {
+      const tab = el.querySelector('.download-tab[data-tab="dl-download"]');
+      if (tab) tab.classList.toggle('running', !!running);
+    }
   }
 
   function renderDownloadStatus(s) {
@@ -657,10 +727,14 @@
       const r = await Bridge.call('nga_update_book', bookId, params);
       if (!r.ok) {
         Toast.show(r.error || '更新启动失败', true);
-        if (r.error && r.error.indexOf('已有') !== -1) pollDownload();
+        if (r.error && r.error.indexOf('已有') !== -1) {
+          switchTab('dl-download');
+          pollDownload();
+        }
         return;
       }
       Toast.show('正在检查更新…');
+      switchTab('dl-download');
       pollDownload();
     } catch (e) {
       Toast.show('更新启动失败：' + (e.message || e), true);
@@ -693,6 +767,11 @@
       prepare: '准备导出', copy: '复制文件', done: '完成',
       error: '失败', cancelled: '已取消', idle: '暂无导出任务',
     };
+    const el = view();
+    if (el) {
+      const tab = el.querySelector('.download-tab[data-tab="dl-export"]');
+      if (tab) tab.classList.toggle('running', !!s.running);
+    }
     if (!s.running && s.stage === 'idle') {
       stage.textContent = '暂无导出任务';
       fill.style.width = '0%';
@@ -755,11 +834,13 @@
     pollExport();
     el.classList.remove('hidden');
     if (opts && opts.focusUpdate) {
+      switchTab('dl-update');
       const upd = document.getElementById('dl-update-book');
       if (upd) {
-        upd.scrollIntoView({ block: 'center', behavior: 'smooth' });
         upd.focus();
       }
+    } else if (opts && opts.tab) {
+      switchTab(opts.tab);
     }
   }
 

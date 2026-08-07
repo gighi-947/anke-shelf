@@ -372,19 +372,59 @@ class Api:
 
     # ---------- 搜索 ----------
 
-    def search(self, book_id: str, query: str) -> dict:
+    def search(
+        self,
+        book_id: str,
+        query: str,
+        case_sensitive: bool = False,
+        whole_word: bool = False,
+        per_chapter: int = 50,
+    ) -> dict:
+        """全文检索：按章限量返回命中，并附全书统计（总命中数/命中章节数）。"""
         if not self._search.is_ready(book_id):
             try:
                 book = self._books.open(book_id)
             except KeyError:
-                return {"ready": False, "results": []}
+                return {"ready": False, "results": [], "total_hits": 0, "hit_chapters": 0}
             # 全文索引按需构建：只有真正搜索时才建，避免打开书就吃掉大量内存。
             self._spawn_index(book)
-            return {"ready": False, "results": []}
-        results = self._search.search(book_id, query)
-        if results is None:
-            return {"ready": False, "results": []}
-        return {"ready": True, "results": results}
+            return {"ready": False, "results": [], "total_hits": 0, "hit_chapters": 0}
+        data = self._search.search(
+            book_id,
+            query,
+            case_sensitive=bool(case_sensitive),
+            whole_word=bool(whole_word),
+            per_chapter=max(1, int(per_chapter)),
+        )
+        if data is None:
+            return {"ready": False, "results": [], "total_hits": 0, "hit_chapters": 0}
+        return {"ready": True, **data}
+
+    def search_more(
+        self,
+        book_id: str,
+        query: str,
+        chapter_index: int,
+        after_offset: int,
+        case_sensitive: bool = False,
+        whole_word: bool = False,
+        per_chapter: int = 50,
+    ) -> dict:
+        """在指定章节续取更多命中（“加载更多”用）。"""
+        if not self._search.is_ready(book_id):
+            return {"hits": [], "more": False}
+        data = self._search.search_more(
+            book_id,
+            query,
+            int(chapter_index),
+            int(after_offset),
+            case_sensitive=bool(case_sensitive),
+            whole_word=bool(whole_word),
+            per_chapter=max(1, int(per_chapter)),
+        )
+        if data is None:
+            return {"hits": [], "more": False}
+        return data
 
     def is_index_ready(self, book_id: str) -> bool:
         return self._search.is_ready(book_id)
