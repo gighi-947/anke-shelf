@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.gighi947.ankeshelf.service.AppContainer
+import io.github.gighi947.ankeshelf.ui.download.DownloadScreen
 import io.github.gighi947.ankeshelf.ui.reader.ReaderScreen
 import io.github.gighi947.ankeshelf.ui.settings.SettingsScreen
 import io.github.gighi947.ankeshelf.ui.shelf.BookshelfScreen
@@ -117,6 +118,10 @@ fun AnkeShelfRoot(container: AppContainer) {
                                 routeName = "reader"
                             },
                             onSettings = { routeName = "settings" },
+                        )
+                        "download" -> DownloadScreen(
+                            container = container,
+                            onChanged = { refresh++ },
                         )
                         else -> PlaceholderScreen(tabs.first { it.first == routeName }.second)
                     }

@@ -16,6 +16,7 @@ class AppPaths(val root: File) {
     val statisticsFile: File get() = File(root, "statistics.json")
     val coversDir: File get() = File(root, "covers")
     val ngaLibraryDir: File get() = File(root, "nga_library")
+    val ngaConfigFile: File get() = File(root, "nga_config.ini")
 
     fun ensure() {
         root.mkdirs()

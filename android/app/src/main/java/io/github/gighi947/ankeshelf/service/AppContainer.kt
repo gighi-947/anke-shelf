@@ -24,12 +24,14 @@ class AppContainer(context: Context) {
     val shelf = Shelf(appPaths.shelfFile, appPaths.coversDir)
     val progress = ProgressStore(appPaths.progressFile)
     val settings = io.github.gighi947.ankeshelf.data.Settings(appPaths.settingsFile)
+    val ngaConfig = io.github.gighi947.ankeshelf.data.NgaConfig(appPaths.ngaConfigFile)
     val repository = BookRepository(appPaths, shelf, progress)
 
     init {
         shelf.load()
         progress.load()
         settings.load()
+        ngaConfig.ensure()
     }
 }
 
@@ -120,6 +122,33 @@ class BookRepository(
             book.close()
         }
     }
+
+    /** 注册原生书目录（meta.json + chapters/），返回书架记录。 */
+    fun registerNativeDir(dir: File, tid: Long): BookRecord? {
+        val book = try {
+            NativeBook(dir).open()
+        } catch (_: Exception) {
+            return null
+        }
+        val rec = BookRecord(
+            id = book.id,
+            path = dir.absolutePath,
+            title = book.title.ifBlank { dir.name },
+            author = book.author,
+            language = "zh",
+            chapter_count = book.chapters.size,
+            file_size = 0,
+            file_mtime = "",
+            added_at = nowIso(),
+            nga_tid = tid.toInt(),
+        )
+        shelf.upsert(rec)
+        shelf.save()
+        return rec
+    }
+
+    /** 按 id 查书架记录。 */
+    fun recordOf(bookId: String): BookRecord? = shelf.get(bookId)
 
     /** 打开书籍（原生书目录或 EPUB 文件）。 */
     fun openSession(rec: BookRecord): BookSession? {
