@@ -1,10 +1,26 @@
+/*
+ * AnkeShelf 安卓阅读器样式（安卓专用，不复用桌面 web/ 代码）。
+ * 滚动模式：正文居中、最大宽度 46em；分页模式：body 锁定视口，
+ * #paged-scroll 应用 CSS multi-column，scrollLeft 按 advance 翻页。
+ */
+
+@font-face {
+    font-family: "LXGW WenKai";
+    src: url("../fonts/LXGWWenKai-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-display: swap;
+}
+
 :root {
-    --reader-bg: #f7f3ec;
+    --reader-bg: #ffffff;
     --reader-fg: #201a15;
     --reader-primary: #8b5a2b;
-    --reader-font-family: "LXGW WenKai", "Noto Sans CJK SC", sans-serif;
+    --reader-font-family: "LXGW WenKai", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
     --reader-font-size: 18px;
     --reader-line-height: 1.8;
+    --reader-margin: 40px;
+    --reader-gap: 28px;
+    --reader-col: 600px;
 }
 
 * {
@@ -20,16 +36,70 @@ body {
     font-family: var(--reader-font-family);
     font-size: var(--reader-font-size);
     line-height: var(--reader-line-height);
-    overflow: hidden;
     -webkit-text-size-adjust: 100%;
 }
 
-.chapter {
-    padding: 16px 20px;
+html {
+    height: 100%;
 }
 
-/* 颜色铁律：只接管默认黑/白文字；带显式颜色设定的内容一律保留原色。 */
+body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 100%;
+}
+
+#paged-scroll {
+    max-width: 46em;
+    margin: 0 auto;
+    padding: 18px 16px;
+    overflow-wrap: break-word;
+}
+
+a {
+    color: var(--reader-primary);
+}
+
 img {
     max-width: 100%;
     height: auto;
+}
+
+.nga-floor {
+    max-width: 100%;
+}
+
+blockquote {
+    margin: 8px 0;
+    padding: 4px 12px;
+    border-left: 3px solid var(--reader-primary);
+}
+
+table {
+    max-width: 100%;
+    display: block;
+    overflow-x: auto;
+}
+
+.nga-table-scroll {
+    max-height: 80vh;
+    overflow: auto;
+    margin: 6px 0;
+}
+
+/* 分页模式：正文容器锁定视口高度，CSS multi-column 横向排布 */
+body.paged {
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+}
+
+body.paged #paged-scroll {
+    height: 100%;
+    padding: 0 var(--reader-margin);
+    margin: 0 auto;
+    column-width: var(--reader-col);
+    column-gap: var(--reader-gap);
+    column-fill: auto;
+    overflow: hidden;
 }

@@ -1,0 +1,71 @@
+package io.github.gighi947.ankeshelf.ui.reader
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PagedLayoutTest {
+
+    @Test
+    fun autoDualRespectsAspectRatio() {
+        // 横屏且宽高比合适 -> 双页
+        assertTrue(PagedLayout.shouldAutoDual(2400, 1080))
+        assertTrue(PagedLayout.shouldAutoDual(1280, 720))
+        assertTrue(PagedLayout.shouldAutoDual(1024, 768))
+        assertTrue(PagedLayout.shouldAutoDual(800, 600))
+        // 过方（接近正方形）不自动双页
+        assertFalse(PagedLayout.shouldAutoDual(800, 700))
+        assertFalse(PagedLayout.shouldAutoDual(900, 900))
+        // 超宽屏不自动双页
+        assertFalse(PagedLayout.shouldAutoDual(2400, 600))
+        assertFalse(PagedLayout.shouldAutoDual(3440, 900))
+        // 宽度不足或竖屏不自动双页
+        assertFalse(PagedLayout.shouldAutoDual(700, 600))
+        assertFalse(PagedLayout.shouldAutoDual(1080, 2400))
+    }
+
+    @Test
+    fun forcedDualOverridesAuto() {
+        assertTrue(PagedLayout.isDual(true, true, true, 1080, 2400))
+        assertTrue(PagedLayout.isDual(true, true, false, 360, 800))
+        assertFalse(PagedLayout.isDual(false, true, true, 1080, 2400))
+    }
+
+    @Test
+    fun geometryCapsContentWidthForReadability() {
+        // 宽屏手机横屏：内容宽上限 46em * 1.0 * 18px = 828px
+        val g = PagedLayout.geometry(
+            fw = 2400, fh = 1080, paged = true, dualPage = false, autoDual = true,
+            margin = 40, gap = 28, pageWidth = 1.0, fontSize = 18,
+        )
+        assertEquals(828, g.contentWidth)
+        assertTrue(g.dual)
+        assertEquals(360, g.colW) // (828 - 80 - 28) / 2
+        assertEquals(388, g.advance)
+    }
+
+    @Test
+    fun geometryFallsBackToSingleWhenDualColumnTooNarrow() {
+        val g = PagedLayout.geometry(
+            fw = 2400, fh = 1080, paged = true, dualPage = false, autoDual = true,
+            margin = 40, gap = 28, pageWidth = 0.5, fontSize = 18,
+        )
+        // 内容宽上限 414px，双页列宽 153px 过窄 -> 回退单页
+        assertEquals(414, g.contentWidth)
+        assertFalse(g.dual)
+        assertEquals(334, g.colW)
+    }
+
+    @Test
+    fun pagesAndCurrentMatchMultiColumnGeometry() {
+        val g = PagedLayout.Geometry(dual = true, colW = 360, advance = 388, margin = 40, gap = 28, contentWidth = 828)
+        // 3 列内容 + 1 占位列 = 4 列，双页 2 屏
+        val scrollWidth = 2 * 40 + 4 * 360 + 3 * 28
+        val (total, step) = PagedLayout.pages(scrollWidth = scrollWidth, g = g, hasSpacer = true)
+        assertEquals(2, total)
+        assertEquals(2, step)
+        assertEquals(0, PagedLayout.currentPage(scrollLeft = 0, g = g, total = total, step = step))
+        assertEquals(1, PagedLayout.currentPage(scrollLeft = 776, g = g, total = total, step = step))
+    }
+}

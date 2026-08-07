@@ -2,6 +2,8 @@ package io.github.gighi947.ankeshelf.ui.reader
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
 import android.webkit.ConsoleMessage
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -33,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +44,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.gighi947.ankeshelf.BuildConfig
@@ -47,6 +53,7 @@ import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.BookSession
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** 阅读器配色（与 Compose 色板同源；M4 将并入 PALETTES 全量移植）。 */
@@ -64,13 +71,48 @@ fun readerTheme(name: String): ReaderThemeColors = when (name.lowercase()) {
 
 private val THEME_CYCLE = listOf("dark", "light", "sepia")
 
-/** WebView JS 桥：章节滚动比例 → Kotlin 进度（text_offset 坐标）。 */
+/** 分页模式下 JS 上报的页码信息。 */
+data class PageInfo(
+    val page: Int = 0,
+    val total: Int = 0,
+    val offset: Int = 0,
+)
+
+/**
+ * WebView JS 桥：
+ * - saveProgress(chapterIndex, value, isOffset)：isOffset=true 为 text_offset，
+ *   false 为滚动比例 0..1；
+ * - pageChanged(page, total, offset)：分页模式页码指示；
+ * - requestChapter(delta)：分页翻到章首/章尾时请求切章；
+ * - log(message)：调试日志。
+ */
 class ReaderBridge(
-    private val onProgress: (chapterIndex: Int, ratio: Double) -> Unit,
+    private val onProgressValue: (Int, Double, Boolean) -> Unit,
+    private val onPageChanged: (Int, Int, Int) -> Unit,
+    private val onRequestChapter: (Int) -> Unit,
+    private val onLog: (String) -> Unit,
 ) {
+    // JS 桥方法运行在 WebView 的 JS 线程，Compose 状态必须在主线程更新。
+    private val main = Handler(Looper.getMainLooper())
+
     @JavascriptInterface
-    fun saveProgress(chapterIndex: Int, ratio: Double) {
-        onProgress(chapterIndex, ratio.coerceIn(0.0, 1.0))
+    fun saveProgress(chapterIndex: Int, value: Double, isOffset: Boolean) {
+        main.post { onProgressValue(chapterIndex, value, isOffset) }
+    }
+
+    @JavascriptInterface
+    fun pageChanged(page: Int, total: Int, offset: Int) {
+        main.post { onPageChanged(page, total, offset) }
+    }
+
+    @JavascriptInterface
+    fun requestChapter(delta: Int) {
+        main.post { onRequestChapter(delta) }
+    }
+
+    @JavascriptInterface
+    fun log(message: String) {
+        onLog(message)
     }
 }
 
@@ -90,6 +132,8 @@ fun ReaderScreen(
     }
     var barsVisible by remember { mutableStateOf(true) }
     var showToc by remember { mutableStateOf(false) }
+    var pageInfo by remember { mutableStateOf(PageInfo()) }
+    var scrollRatio by remember { mutableFloatStateOf(0f) }
 
     val theme = remember(readerSettings.theme) { readerTheme(readerSettings.theme) }
     val parts = remember(session, chapterIndex) {
@@ -98,31 +142,44 @@ fun ReaderScreen(
     val plainLength = remember(session, chapterIndex) {
         TextExtractor.extractDomText(parts.body).length
     }
-    val wrapperHtml = remember(parts, readerSettings, theme) {
+    // HTML 壳只在切章时重建；主题/字号/模式变化走 JS 实时应用，不重载页面。
+    val wrapperHtml = remember(parts) {
         buildReaderHtml(parts, theme, readerSettings)
-    }
-    val initialRatio = remember(initialChapter, savedOffset, plainLength) {
-        if (plainLength > 0) (savedOffset.toDouble() / plainLength).coerceIn(0.0, 1.0) else 0.0
     }
 
     val lenRef = remember { mutableIntStateOf(plainLength) }
     LaunchedEffect(plainLength) { lenRef.intValue = plainLength }
 
-    val bridge = remember {
-        ReaderBridge { idx, ratio ->
-            val offset = (ratio * lenRef.intValue).roundToInt().coerceIn(0, lenRef.intValue)
-            onProgress(idx, offset)
-        }
-    }
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
     val loadedChapter = remember { mutableIntStateOf(-1) }
+    val pageReady = remember { mutableStateOf(false) }
+
+    // 供 WebView factory（仅创建一次）读取最新值。
+    val settingsRef = remember { mutableStateOf(readerSettings) }
+    val themeRef = remember { mutableStateOf(theme) }
+    val pagedRef = remember { mutableStateOf(readerSettings.pagination) }
+    LaunchedEffect(readerSettings) {
+        settingsRef.value = readerSettings
+    }
+    LaunchedEffect(theme.background, theme.text, theme.accent) {
+        themeRef.value = theme
+        if (pageReady.value) {
+            webViewRef.value?.evaluateJavascript(
+                "AnkeReader.applyTheme({bg:'${theme.background}',fg:'${theme.text}',primary:'${theme.accent}'});",
+                null,
+            )
+        }
+    }
 
     fun saveNow(web: WebView?) {
-        web?.evaluateJavascript(
+        val js = if (pagedRef.value) {
+            "(function(){try{var o=AnkeReader.currentOffset();" +
+                "AnkeReaderBridge.saveProgress($chapterIndex,o,true);}catch(e){}})();"
+        } else {
             "(function(){var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);" +
-                "try{AnkeReaderBridge.saveProgress($chapterIndex,r);}catch(e){}})();",
-            null,
-        )
+                "try{AnkeReaderBridge.saveProgress($chapterIndex,r,false);}catch(e){}})();"
+        }
+        web?.evaluateJavascript(js, null)
     }
 
     fun changeChapter(delta: Int) {
@@ -134,6 +191,64 @@ fun ReaderScreen(
         }
     }
 
+    fun flipPage(dir: Int) {
+        webViewRef.value?.evaluateJavascript("AnkeReader.flipPage($dir);", null)
+    }
+
+    val bridge = remember {
+        ReaderBridge(
+            onProgressValue = { idx, value, isOffset ->
+                if (isOffset) {
+                    val offset = value.toInt().coerceIn(0, lenRef.intValue)
+                    onProgress(idx, offset)
+                } else {
+                    val ratio = value.coerceIn(0.0, 1.0)
+                    scrollRatio = ratio.toFloat()
+                    val offset = (ratio * lenRef.intValue).roundToInt().coerceIn(0, lenRef.intValue)
+                    onProgress(idx, offset)
+                }
+            },
+            onPageChanged = { page, total, offset ->
+                pageInfo = PageInfo(page = page, total = total, offset = offset)
+            },
+            onRequestChapter = { delta -> changeChapter(delta) },
+            onLog = { Log.d("AnkeShelf", it) },
+        )
+    }
+
+    LaunchedEffect(readerSettings.pagination) {
+        val paged = readerSettings.pagination
+        pagedRef.value = paged
+        if (pageReady.value) {
+            webViewRef.value?.evaluateJavascript("AnkeReader.setMode($paged);", null)
+        }
+    }
+
+    LaunchedEffect(readerSettings.font_size, readerSettings.line_height) {
+        if (pageReady.value) {
+            webViewRef.value?.evaluateJavascript(
+                "AnkeReader.applyTypography({fontSize:${readerSettings.font_size}," +
+                    "lineHeight:${readerSettings.line_height}});",
+                null,
+            )
+        }
+        if (pageReady.value && pagedRef.value) {
+            webViewRef.value?.evaluateJavascript("AnkeReader.onResize();", null)
+        }
+    }
+
+    val configuration = LocalConfiguration.current
+    LaunchedEffect(configuration.screenWidthDp, configuration.screenHeightDp, configuration.orientation) {
+        if (pageReady.value) {
+            webViewRef.value?.evaluateJavascript("AnkeReader.onResize();", null)
+        }
+    }
+
+    LaunchedEffect(chapterIndex) {
+        pageInfo = PageInfo()
+        scrollRatio = 0f
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
@@ -141,7 +256,7 @@ fun ReaderScreen(
                     if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
                     settings.javaScriptEnabled = true
                     settings.setAllowFileAccess(false)
-                    setBackgroundColor(Color.parseColor(theme.background))
+                    setBackgroundColor(Color.parseColor(themeRef.value.background))
                     addJavascriptInterface(bridge, "AnkeReaderBridge")
                     webChromeClient = object : WebChromeClient() {
                         override fun onConsoleMessage(msg: ConsoleMessage?): Boolean {
@@ -159,20 +274,30 @@ fun ReaderScreen(
                         }
 
                         override fun onPageFinished(view: WebView, url: String?) {
-                            val ratio = if (chapterIndex == initialChapter) initialRatio else 0.0
+                            pageReady.value = true
+                            val s = settingsRef.value
+                            val t = themeRef.value
+                            val restoreOffset = if (chapterIndex == initialChapter) savedOffset else 0
+                            view.evaluateJavascript(
+                                "AnkeReader.init({chapterIndex:$chapterIndex,paged:${pagedRef.value}," +
+                                    "offset:$restoreOffset,margin:${s.margin_px},gap:${s.gap_px}," +
+                                    "pageWidth:${s.page_width},fontSize:${s.font_size}," +
+                                    "lineHeight:${s.line_height},dualPage:${s.dual_page}," +
+                                    "autoDual:${s.auto_dual}," +
+                                    "theme:{bg:'${t.background}',fg:'${t.text}',primary:'${t.accent}'}});",
+                                null,
+                            )
                             view.evaluateJavascript(
                                 """(function(){
-                                   var h=document.body.scrollHeight-window.innerHeight;
-                                   window.scrollTo(0,h*$ratio);
                                    var last=0;
                                    window.addEventListener('scroll',function(){
                                      var now=Date.now(); if(now-last<1200) return; last=now;
                                      var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);
-                                     try{AnkeReaderBridge.saveProgress($chapterIndex,r);}catch(e){}
+                                     try{AnkeReaderBridge.saveProgress($chapterIndex,r,false);}catch(e){}
                                    });
                                    window.addEventListener('pagehide',function(){
                                      var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);
-                                     try{AnkeReaderBridge.saveProgress($chapterIndex,r);}catch(e){}
+                                     try{AnkeReaderBridge.saveProgress($chapterIndex,r,false);}catch(e){}
                                    });
                                  })();""",
                                 null,
@@ -187,15 +312,23 @@ fun ReaderScreen(
                                 downX = ev.x
                                 downY = ev.y
                             }
+
                             MotionEvent.ACTION_UP -> {
                                 val dx = ev.x - downX
                                 val dy = ev.y - downY
-                                if (dx * dx + dy * dy < 50f * 50f) {
-                                    val w = width
-                                    when {
-                                        ev.x < w / 3f -> changeChapter(-1)
-                                        ev.x > 2 * w / 3f -> changeChapter(1)
-                                        else -> barsVisible = !barsVisible
+                                val isSwipe = pagedRef.value && abs(dx) >= 60f && abs(dx) >= abs(dy) * 1.2f
+                                val isTap = dx * dx + dy * dy < 50f * 50f
+                                when {
+                                    isSwipe -> flipPage(if (dx < 0) 1 else -1)
+                                    isTap -> {
+                                        val w = width
+                                        when {
+                                            ev.x < w / 3f ->
+                                                if (pagedRef.value) flipPage(-1) else changeChapter(-1)
+                                            ev.x > 2 * w / 3f ->
+                                                if (pagedRef.value) flipPage(1) else changeChapter(1)
+                                            else -> barsVisible = !barsVisible
+                                        }
                                     }
                                 }
                             }
@@ -208,7 +341,14 @@ fun ReaderScreen(
             update = { view ->
                 if (loadedChapter.intValue != chapterIndex) {
                     loadedChapter.intValue = chapterIndex
-                    view.loadDataWithBaseURL(null, wrapperHtml, "text/html", "utf-8", null)
+                    pageReady.value = false
+                    view.loadDataWithBaseURL(
+                        "file:///android_asset/reader/",
+                        wrapperHtml,
+                        "text/html",
+                        "utf-8",
+                        null,
+                    )
                 }
             },
             modifier = Modifier.fillMaxSize(),
@@ -248,31 +388,79 @@ fun ReaderScreen(
             enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }),
             exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }),
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
                     .navigationBarsPadding()
                     .padding(horizontal = 4.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = { changeChapter(-1) }) { Text("↑上一章") }
-                TextButton(onClick = {
-                    onSettingsPatch(
-                        SettingsPatch(font_size = (readerSettings.font_size - 1).coerceAtLeast(14)),
+                val fraction = if (readerSettings.pagination && pageInfo.total > 0) {
+                    (pageInfo.page + 1f) / pageInfo.total
+                } else {
+                    scrollRatio.coerceIn(0f, 1f)
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                            .height(3.dp)
+                            .background(MaterialTheme.colorScheme.primary),
                     )
-                }) { Text("A-") }
-                TextButton(onClick = {
-                    val next = THEME_CYCLE[(THEME_CYCLE.indexOf(readerSettings.theme) + 1) % THEME_CYCLE.size]
-                    onSettingsPatch(SettingsPatch(theme = next))
-                }) { Text("主题") }
-                TextButton(onClick = {
-                    onSettingsPatch(
-                        SettingsPatch(font_size = (readerSettings.font_size + 1).coerceAtMost(28)),
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = { changeChapter(-1) }) { Text("上一章") }
+                    TextButton(onClick = {
+                        onSettingsPatch(
+                            SettingsPatch(font_size = (readerSettings.font_size - 1).coerceAtLeast(14)),
+                        )
+                    }) { Text("A-") }
+                    TextButton(onClick = {
+                        val next = THEME_CYCLE[(THEME_CYCLE.indexOf(readerSettings.theme) + 1) % THEME_CYCLE.size]
+                        onSettingsPatch(SettingsPatch(theme = next))
+                    }) { Text("主题") }
+                    TextButton(onClick = {
+                        onSettingsPatch(
+                            SettingsPatch(font_size = (readerSettings.font_size + 1).coerceAtMost(28)),
+                        )
+                    }) { Text("A+") }
+                    TextButton(onClick = { changeChapter(1) }) { Text("下一章") }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = {
+                        onSettingsPatch(SettingsPatch(pagination = !readerSettings.pagination))
+                    }) {
+                        Text(
+                            text = if (readerSettings.pagination) "滚动" else "分页",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                    Text(
+                        text = if (readerSettings.pagination && pageInfo.total > 0) {
+                            "第 ${pageInfo.page + 1} / ${pageInfo.total} 页"
+                        } else {
+                            "${(scrollRatio * 100).roundToInt()}%"
+                        },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.End,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp),
                     )
-                }) { Text("A+") }
-                TextButton(onClick = { changeChapter(1) }) { Text("下一章↓") }
+                }
             }
         }
 

@@ -2,7 +2,7 @@ package io.github.gighi947.ankeshelf.ui.reader
 
 import io.github.gighi947.ankeshelf.data.SettingsData
 
-/** 章节 HTML 的可用部分：<body> 内容 + <head> 里的样式块。 */
+/** 章节 HTML 的可渲染部分：<body> 内容 + <head> 里的样式块。 */
 data class ReaderHtmlParts(
     val body: String,
     val headStyles: String,
@@ -30,7 +30,14 @@ fun extractReaderParts(htmlText: String): ReaderHtmlParts {
     return ReaderHtmlParts(body = body, headStyles = styles)
 }
 
-/** 组装阅读器页面（自建 HTML 壳，主题/字号/行距全部内联）。 */
+/**
+ * 组装阅读器页面（自建 HTML 壳，引用 assets/reader/reader.css + reader.js）。
+ *
+ * 主题/字号/行距/边距先以内联 CSS 变量给出初始值（避免首帧白闪），
+ * 之后由 Kotlin 经 JS 桥 applyTheme / applyTypography 实时更新，不重载页面。
+ * 正文统一包在 #paged-scroll 中：滚动模式普通文档流，分页模式由
+ * body.paged + reader.css 切换为 CSS multi-column。
+ */
 fun buildReaderHtml(
     parts: ReaderHtmlParts,
     theme: ReaderThemeColors,
@@ -38,13 +45,13 @@ fun buildReaderHtml(
 ): String {
     val css = buildString {
         append(
-            "html,body{margin:0;padding:0}" +
-                "body{background:${theme.background};color:${theme.text};" +
-                "font-size:${settings.font_size}px;line-height:${settings.line_height};" +
-                "font-family:sans-serif;padding:16px 14px;overflow-wrap:break-word;}" +
-                "a{color:${theme.accent}}img{max-width:100%;height:auto}" +
-                ".nga-floor{max-width:100%}blockquote{margin:8px 0}" +
-                "table{max-width:100%;display:block;overflow-x:auto}",
+            ":root{" +
+                "--reader-bg:${theme.background};--reader-fg:${theme.text};" +
+                "--reader-primary:${theme.accent};" +
+                "--reader-font-size:${settings.font_size}px;" +
+                "--reader-line-height:${settings.line_height};" +
+                "--reader-margin:${settings.margin_px}px;--reader-gap:${settings.gap_px}px;" +
+                "}",
         )
         if (parts.headStyles.isNotBlank()) {
             append("\n").append(parts.headStyles)
@@ -52,5 +59,8 @@ fun buildReaderHtml(
     }
     return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/>" +
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>" +
-        "<style>$css</style></head><body>${parts.body}</body></html>"
+        "<link rel=\"stylesheet\" href=\"reader.css\"/>" +
+        "<style>$css</style></head><body>" +
+        "<div id=\"paged-scroll\">${parts.body}</div>" +
+        "<script src=\"reader.js\"></script></body></html>"
 }

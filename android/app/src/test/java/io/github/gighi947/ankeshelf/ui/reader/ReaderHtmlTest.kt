@@ -25,11 +25,15 @@ class ReaderHtmlTest {
     }
 
     @Test
-    fun buildWrapperContainsThemeAndBody() {
+    fun buildWrapperContainsAssetsAndThemeVars() {
         val parts = extractReaderParts("<body><p>你好</p></body>")
         val html = buildReaderHtml(parts, readerTheme("dark"), SettingsData(font_size = 20, line_height = 1.9))
-        assertTrue(html.contains("background:#171412"))
-        assertTrue(html.contains("font-size:20px"))
+        assertTrue(html.contains("--reader-bg:#171412"))
+        assertTrue(html.contains("--reader-font-size:20px"))
+        assertTrue(html.contains("--reader-line-height:1.9"))
+        assertTrue(html.contains("href=\"reader.css\""))
+        assertTrue(html.contains("src=\"reader.js\""))
+        assertTrue(html.contains("<div id=\"paged-scroll\">"))
         assertTrue(html.contains("<p>你好</p>"))
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -34,7 +35,7 @@ private val THEMES = listOf(
     "sepia" to "羊皮纸",
 )
 
-/** 设置页（M2 基础版：主题 / 字号 / 行距）。 */
+/** 设置页（M2 基础版：主题 / 字号 / 行距 / 翻页模式）。 */
 @Composable
 fun SettingsScreen(
     settings: Settings,
@@ -46,6 +47,7 @@ fun SettingsScreen(
     var theme by remember { mutableStateOf(data.theme) }
     var fontSize by remember { mutableIntStateOf(data.font_size) }
     var lineHeight by remember { mutableFloatStateOf(data.line_height.toFloat()) }
+    var pagination by remember { mutableStateOf(data.pagination) }
 
     fun commit() {
         settings.update(
@@ -53,6 +55,7 @@ fun SettingsScreen(
                 theme = theme,
                 font_size = fontSize,
                 line_height = lineHeight.toDouble(),
+                pagination = pagination,
             ),
         )
         onChanged()
@@ -104,6 +107,30 @@ fun SettingsScreen(
                 onValueChangeFinished = { commit() },
                 valueRange = 1.2f..2.6f,
                 steps = 13,
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("分页模式", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "CSS 多栏翻页；横屏且宽高比合适时自动双页",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = pagination,
+                onCheckedChange = {
+                    pagination = it
+                    commit()
+                },
             )
         }
 
