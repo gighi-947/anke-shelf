@@ -1,0 +1,39 @@
+{
+  "code": 0,
+  "msg": "",
+  "tsubject": "安科书架测试帖",
+  "tauthor": "测试作者",
+  "tauthorid": 42,
+  "totalPage": 3,
+  "vrows": 21,
+  "result": [
+    {
+      "lou": 1,
+      "pid": 0,
+      "postdatetimestamp": 1700000000,
+      "author": { "username": "楼主", "uid": 42 },
+      "content": "<p>这是主楼内容</p>",
+      "vote_good": 12,
+      "comments": []
+    },
+    {
+      "lou": 2,
+      "pid": 1002,
+      "postdatetimestamp": 1700000060,
+      "author": { "username": "路人甲", "uid": 7 },
+      "content": "<p>二楼回复</p>",
+      "vote_good": 3,
+      "comments": [
+        {
+          "lou": 1,
+          "pid": 3001,
+          "postdatetimestamp": 1700000100,
+          "author": { "username": "楼主", "uid": 42 },
+          "content": "<p>追评</p>",
+          "vote_good": 0,
+          "comments": []
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,8 @@
 `app/src/main/assets/reader/` 下安卓专用精简 WebView 渲染页（不复用桌面
 `web/` 代码）。后端语义按 Windows v1.2.0 逐个移植。
 
-> 当前里程碑：M0（工程骨架）。版本线独立：`android-vX.Y.Z`。
+> 当前里程碑：M1（数据层：EPUB/原生书/存储/设置/text_offset + NGA 连通性 spike）。
+> 版本线独立：`android-vX.Y.Z`。
 
 ## 本地构建
 
@@ -19,6 +20,21 @@
 ```
 
 产物：`app/build/outputs/apk/debug/app-debug.apk`。
+
+## Android Studio 本地环境（2026-08 配置）
+
+- IDE：Android Studio Quail 3 | 2026.1.3，免安装解压版，
+  路径 `D:\Android\AndroidStudio`（自带 JBR，无需单独装 JDK）。
+- SDK：复用仓库内 `.tools\android-sdk`（platform-tools / build-tools;36.0.0 /
+  platforms;android-36），由 `local.properties` 的 `sdk.dir` 指向。
+- Gradle 9.4.1：wrapper 分发走腾讯镜像 `mirrors.cloud.tencent.com/gradle`；
+  Maven 依赖走阿里云 `maven.aliyun.com`（见 `settings.gradle.kts`）。
+- 全局镜像：`%USERPROFILE%\.gradle\init.gradle` 已配置阿里云 Maven 优先，
+  对 Android Studio 新建的项目同样生效。
+- 说明：阿里云不提供 Android Studio IDE 与 Android SDK 组件镜像，
+  IDE 安装包取自 Google 官方 CDN；如需在 Studio 内安装模拟器/系统镜像，
+  在 SDK Manager → SDK Update Sites 添加
+  `https://mirrors.cloud.tencent.com/AndroidSDK/`。
 
 ## 测试
 

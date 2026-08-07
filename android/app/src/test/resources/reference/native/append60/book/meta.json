@@ -1,0 +1,51 @@
+{
+  "format": "ank-native/1",
+  "book_id": "bookid123",
+  "tid": 123,
+  "author_id": 0,
+  "title": "标题",
+  "author": "作者",
+  "folder_name": "append60",
+  "per_chapter": 20,
+  "image_mode": "online",
+  "theme": "light",
+  "toc_mode": "index",
+  "toc": [],
+  "chapters": [
+    {
+      "file": "chapters/0000.xhtml",
+      "title": "序章 · 主楼",
+      "floor_count": 1,
+      "first_lou": 1,
+      "last_lou": 1,
+      "main": true
+    },
+    {
+      "file": "chapters/0001.xhtml",
+      "title": "第 2~21 楼",
+      "floor_count": 20,
+      "first_lou": 2,
+      "last_lou": 21,
+      "main": false
+    },
+    {
+      "file": "chapters/0002.xhtml",
+      "title": "第 22~41 楼",
+      "floor_count": 20,
+      "first_lou": 22,
+      "last_lou": 41,
+      "main": false
+    },
+    {
+      "file": "chapters/0003.xhtml",
+      "title": "第 42~60 楼",
+      "floor_count": 19,
+      "first_lou": 42,
+      "last_lou": 60,
+      "main": false
+    }
+  ],
+  "last_lou": 60,
+  "created_time": "2026-01-01T00:00:00+08:00",
+  "updated_time": "2026-08-07T20:20:37+08:00"
+}

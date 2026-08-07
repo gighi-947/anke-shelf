@@ -14,7 +14,7 @@ dist/
 # ---- 本地开发/个人材料 ----
 .local/
 memory/
-reference/
+/reference/
 cherry-studio-export/
 
 # ---- NGA 凭据与本地配置 ----
@@ -30,6 +30,8 @@ instance.lock
 android/.gradle/
 android/.kotlin/
 android/**/build/
+android/.idea/
+android/gradle/gradle-daemon-jvm.properties
 android/local.properties
 android/keystore/
 android/keystore.properties
