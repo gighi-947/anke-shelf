@@ -464,10 +464,12 @@
       var t = tables[i];
       var parent = t.parentNode;
       if (parent && parent.classList && parent.classList.contains('nga-table-scroll')) continue;
-      if (t.scrollHeight <= pageH + 2) continue;
+      // 纵向超高或横向超宽的表格都包进滚动容器，避免内容溢出到相邻列
+      if (t.scrollHeight <= pageH + 2 && t.scrollWidth <= t.clientWidth + 2) continue;
       var wrap = document.createElement('div');
       wrap.className = 'nga-table-scroll';
       wrap.style.maxHeight = maxH + 'px';
+      wrap.style.maxWidth = '100%';
       wrap.style.overflow = 'auto';
       wrap.style.margin = '6px 0';
       t.parentNode.insertBefore(wrap, t);

@@ -107,4 +107,13 @@ body.paged #paged-scroll {
     column-gap: var(--reader-gap);
     column-fill: auto;
     overflow: hidden;
+    /* 长行/大字兜底：允许在任意字符处断行，避免单行内容横向溢出到相邻列 */
+    overflow-wrap: anywhere;
+}
+
+body.paged #paged-scroll pre,
+body.paged #paged-scroll code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-all;
 }
