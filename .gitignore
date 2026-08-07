@@ -24,3 +24,14 @@ ngapost2md-python/config.ini
 # ---- 运行日志 / 临时文件 ----
 *.log
 instance.lock
+
+# ---- 安卓端构建与本地工具链（本机不入库） ----
+.tools/
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/local.properties
+android/keystore/
+android/keystore.properties
+android/app/release/
+*.jks

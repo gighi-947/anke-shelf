@@ -1,0 +1,35 @@
+:root {
+    --reader-bg: #f7f3ec;
+    --reader-fg: #201a15;
+    --reader-primary: #8b5a2b;
+    --reader-font-family: "LXGW WenKai", "Noto Sans CJK SC", sans-serif;
+    --reader-font-size: 18px;
+    --reader-line-height: 1.8;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--reader-bg);
+    color: var(--reader-fg);
+    font-family: var(--reader-font-family);
+    font-size: var(--reader-font-size);
+    line-height: var(--reader-line-height);
+    overflow: hidden;
+    -webkit-text-size-adjust: 100%;
+}
+
+.chapter {
+    padding: 16px 20px;
+}
+
+/* 颜色铁律：只接管默认黑/白文字；带显式颜色设定的内容一律保留原色。 */
+img {
+    max-width: 100%;
+    height: auto;
+}

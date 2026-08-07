@@ -6,6 +6,10 @@ Web 侧做表现（渲染/交互）**，界面由本机浏览器引擎渲染。
 
 > 当前版本：**v1.2.0**
 
+> 安卓端：独立里程碑开发中，代码位于 [`android/`](android/README.md)，
+> 采用 Kotlin + Jetpack Compose 重写（阅读正文使用安卓专用 WebView 渲染页），
+> 版本线独立为 `android-vX.Y.Z`。详见 [docs/ANDROID_ARCHITECTURE.md](docs/ANDROID_ARCHITECTURE.md)。
+
 ## ✨ NGA 安科一站式阅读
 
 集成 [ngapost2md-python](ngapost2md-python/)（NGA 帖子下载 + EPUB 导出）：

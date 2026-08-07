@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">安科书架</string>
+    <string name="shelf_empty_title">书架为空</string>
+    <string name="shelf_empty_hint">导入 EPUB 功能将在 v0.1.0 提供</string>
+    <string name="nav_shelf">书架</string>
+    <string name="nav_download">下载</string>
+    <string name="nav_search">搜索</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_stats">统计</string>
+</resources>
