@@ -82,9 +82,11 @@ object PagedLayout {
         return Geometry(dual = dual, colW = colW, advance = colW + g, margin = m, gap = g, contentWidth = cw)
     }
 
-    /** 列数 -> 总页数（双页时一屏两列），返回 (total, step)。 */
+    /** 列数 -> 总页数（双页时一屏两列），返回 (total, step)。
+     *  容器仅左侧有 padding（padding-right:0）：
+     *  scrollWidth = margin + n*colW + (n-1)*gap，与 reader.js 的 PagedMath.pages 一致。 */
     fun pages(scrollWidth: Int, g: Geometry, hasSpacer: Boolean): Pair<Int, Int> {
-        var cols = max(1, ((scrollWidth - 2 * g.margin + g.gap).toDouble() / g.advance).roundToInt())
+        var cols = max(1, ((scrollWidth - g.margin + g.gap).toDouble() / g.advance).roundToInt())
         if (hasSpacer) cols = max(1, cols - 1)
         val step = if (g.dual) 2 else 1
         return max(1, ceil(cols.toDouble() / step).toInt()) to step

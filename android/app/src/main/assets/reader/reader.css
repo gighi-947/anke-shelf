@@ -96,7 +96,10 @@ body.paged {
 
 body.paged #paged-scroll {
     height: 100%;
-    padding: 0 var(--reader-margin);
+    /* 左留白由 padding-left 提供；右不留 padding，保证「列宽 + 间距」恰好
+       等于视口宽 - 左留白，下一列起点正好落在视口右边界，不会漏出下一页。 */
+    padding-left: var(--reader-margin);
+    padding-right: 0;
     margin: 0 auto;
     column-width: var(--reader-col);
     column-gap: var(--reader-gap);

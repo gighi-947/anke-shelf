@@ -86,7 +86,9 @@
   }
 
   function pages(scrollWidth, g, hasSpacer) {
-    var cols = Math.max(1, Math.round((scrollWidth - 2 * g.margin + g.gap) / g.advance));
+    // 容器仅左侧有 padding（padding-right:0）：
+    // scrollWidth = margin + n*colW + (n-1)*gap
+    var cols = Math.max(1, Math.round((scrollWidth - g.margin + g.gap) / g.advance));
     if (hasSpacer) cols = Math.max(1, cols - 1);
     var step = g.dual ? 2 : 1;
     return { cols: cols, total: Math.max(1, Math.ceil(cols / step)), step: step };
@@ -288,12 +290,24 @@
 
   function measure() {
     var el = scrollEl();
-    if (!el) return { total: 1, current: 0, advance: 0, step: 1 };
+    if (!el) return { total: 1, current: 0, advance: 0, step: 1, geometry: null };
     var g = currentGeometry();
+    // 与桌面 paged.js 一致：翻页步进必须用浏览器实际渲染的列宽/间距，
+    // 否则 column-width 被钳制到内容宽时会出现逐屏累积偏移。
+    var cs = getComputedStyle(el);
+    var colW = parseFloat(cs.columnWidth) || 0;
+    var gap = parseFloat(cs.columnGap) || 0;
+    var advance = colW + gap;
+    if (advance <= 0) return { total: 1, current: 0, advance: 0, step: 1, geometry: g };
+    var pl = parseFloat(cs.paddingLeft) || 0;
+    var pr = parseFloat(cs.paddingRight) || 0;
     var hasSpacer = !!document.getElementById('__dual_spacer__');
-    var p = pages(el.scrollWidth, g, hasSpacer);
-    var current = clamp(Math.round((el.scrollLeft || 0) / (p.step * g.advance)), 0, p.total - 1);
-    return { total: p.total, current: current, advance: g.advance, step: p.step, geometry: g };
+    var cols = Math.max(1, Math.round((el.scrollWidth - pl - pr + gap) / advance));
+    if (hasSpacer) cols = Math.max(1, cols - 1);
+    var step = g.dual ? 2 : 1;
+    var total = Math.max(1, Math.ceil(cols / step));
+    var current = clamp(Math.round((el.scrollLeft || 0) / (step * advance)), 0, total - 1);
+    return { total: total, current: current, advance: advance, step: step, geometry: g };
   }
 
   function gotoPage(n) {
@@ -422,9 +436,9 @@
     var el = scrollEl();
     if (!el) return 0;
     var er = el.getBoundingClientRect();
-    var g = currentGeometry();
-    var col = Math.max(0, Math.round((rect.left - er.left - g.margin) / g.advance));
-    var page = Math.floor(col / (g.dual ? 2 : 1));
+    var m = measure();
+    var col = Math.max(0, Math.round((rect.left - er.left - m.geometry.margin) / m.advance));
+    var page = Math.floor(col / m.step);
     return gotoPage(page);
   }
 
