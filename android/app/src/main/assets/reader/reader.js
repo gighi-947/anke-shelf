@@ -63,17 +63,18 @@
 
   function geometry(fw, fh, s) {
     var dual = isDual(s.paged, s.dualPage, s.autoDual, fw, fh);
-    // 分页容器占满视口宽；列宽按防漏公式：下一列起点恰好落在视口右边界。
+    // flow/epub.js 列几何：目标列宽 = 内容可用宽（左右 padding 分别为 M 与 G），
+    // 浏览器不会拉伸/钳制，下一列起点恰好落在视口右边界。
     var cw = fw;
     var M = clamp(s.margin || 40, 8, 160);
     var G = clamp(s.gap || 28, 8, 120);
     var colW = dual
-      ? Math.max(120, Math.floor((cw - M - G) / 2))
-      : Math.max(120, Math.floor(cw - M - G));
+      ? Math.max(120, (cw - M - 2 * G) / 2)
+      : Math.max(120, cw - M - G);
     // 双页后列宽过窄时回退单页（极端狭长屏幕保护）
     if (dual && colW < 300) {
       dual = false;
-      colW = Math.max(120, Math.floor(cw - M - G));
+      colW = Math.max(120, cw - M - G);
     }
     return {
       dual: dual,
@@ -86,9 +87,9 @@
   }
 
   function pages(scrollWidth, g, hasSpacer) {
-    // 容器仅左侧有 padding（padding-right:0）：
-    // scrollWidth = margin + n*colW + (n-1)*gap
-    var cols = Math.max(1, Math.round((scrollWidth - g.margin + g.gap) / g.advance));
+    // 容器左 padding = margin、右 padding = gap：
+    // scrollWidth = margin + n*(colW+gap) = margin + n*advance
+    var cols = Math.max(1, Math.round((scrollWidth - g.margin) / g.advance));
     if (hasSpacer) cols = Math.max(1, cols - 1);
     var step = g.dual ? 2 : 1;
     return { cols: cols, total: Math.max(1, Math.ceil(cols / step)), step: step };

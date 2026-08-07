@@ -79,7 +79,7 @@ class ReaderPagedCrossTest {
         )
         for ((fw, fh, s) in cases) {
             val json = evaluateJs(web, "PagedMath.geometry($fw,$fh,$s);")
-            val j = JSONObject(json)
+            val j = JSONObject(json ?: "{}")
             val input = parseInput(s)
             val expect = PagedLayout.geometry(
                 fw = fw, fh = fh, paged = input.paged, dualPage = input.dualPage,
@@ -87,9 +87,9 @@ class ReaderPagedCrossTest {
                 pageWidth = input.pageWidth, fontSize = input.fontSize,
             )
             assertEquals("dual mismatch at $fw x $fh", expect.dual, j.getBoolean("dual"))
-            assertEquals("colW mismatch at $fw x $fh", expect.colW, j.getInt("colW"))
-            assertEquals("advance mismatch at $fw x $fh", expect.advance, j.getInt("advance"))
-            assertEquals("contentWidth mismatch at $fw x $fh", expect.contentWidth, j.getInt("contentWidth"))
+            assertEquals("colW mismatch at $fw x $fh", expect.colW, j.getDouble("colW"), 0.001)
+            assertEquals("advance mismatch at $fw x $fh", expect.advance, j.getDouble("advance"), 0.001)
+            assertEquals("contentWidth mismatch at $fw x $fh", expect.contentWidth.toDouble(), j.getDouble("contentWidth"), 0.001)
             assertEquals("margin mismatch", expect.margin, j.getInt("margin"))
             assertEquals("gap mismatch", expect.gap, j.getInt("gap"))
         }

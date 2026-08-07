@@ -41,8 +41,8 @@ class PagedLayoutTest {
         )
         assertEquals(2400, g.contentWidth)
         assertTrue(g.dual)
-        assertEquals(1166, g.colW) // (2400 - 40 - 28) / 2
-        assertEquals(1194, g.advance)
+        assertEquals(1152.0, g.colW, 0.001) // (2400 - 40 - 56) / 2
+        assertEquals(1180.0, g.advance, 0.001)
     }
 
     @Test
@@ -54,15 +54,15 @@ class PagedLayoutTest {
         // 强制双页但列宽 (360-40-28)/2=146 过窄 -> 回退单页
         assertEquals(360, g.contentWidth)
         assertFalse(g.dual)
-        assertEquals(292, g.colW)
+        assertEquals(292.0, g.colW, 0.001)
     }
 
     @Test
     fun pagesAndCurrentMatchMultiColumnGeometry() {
-        val g = PagedLayout.Geometry(dual = true, colW = 360, advance = 388, margin = 40, gap = 28, contentWidth = 828)
+        val g = PagedLayout.Geometry(dual = true, colW = 360.0, advance = 388.0, margin = 40, gap = 28, contentWidth = 828)
         // 3 列内容 + 1 占位列 = 4 列，双页 2 屏
-        // 容器仅左 padding：scrollWidth = margin + n*colW + (n-1)*gap
-        val scrollWidth = 40 + 4 * 360 + 3 * 28
+        // scrollWidth = margin + n*(colW+gap) = margin + n*advance
+        val scrollWidth = 40 + 4 * 388
         val (total, step) = PagedLayout.pages(scrollWidth = scrollWidth, g = g, hasSpacer = true)
         assertEquals(2, total)
         assertEquals(2, step)
