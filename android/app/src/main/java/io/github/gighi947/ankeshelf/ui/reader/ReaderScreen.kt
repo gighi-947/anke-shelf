@@ -265,6 +265,16 @@ fun ReaderScreen(
                         }
                     }
                     webViewClient = object : WebViewClient() {
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView,
+                            request: android.webkit.WebResourceRequest?,
+                        ): Boolean {
+                            // 章节内链接/锚点在安卓阅读器里暂不支持跳转，一律拦截，
+                            // 避免 WebView 导航到不存在的 file:// 路径出现错误页。
+                            Log.d("AnkeShelf", "blocked nav: ${request?.url}")
+                            return true
+                        }
+
                         override fun onReceivedError(
                             view: WebView,
                             request: android.webkit.WebResourceRequest?,
@@ -443,7 +453,8 @@ fun ReaderScreen(
                         onSettingsPatch(SettingsPatch(pagination = !readerSettings.pagination))
                     }) {
                         Text(
-                            text = if (readerSettings.pagination) "滚动" else "分页",
+                            // 显示当前翻页模式；点击切换为另一种。
+                            text = if (readerSettings.pagination) "分页" else "滚动",
                             style = MaterialTheme.typography.labelMedium,
                         )
                     }

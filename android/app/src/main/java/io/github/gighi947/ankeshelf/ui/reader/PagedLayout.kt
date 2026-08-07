@@ -13,7 +13,9 @@ import kotlin.math.roundToInt
  * - 自动双页（auto_dual，默认）：仅横屏且宽度 >= 800px；
  *   宽高比 < 1.2（过方）或 > 2.6（超宽屏）不自动双页；
  *   双页后单列宽 < 300px 时回退单页（保护狭长屏幕）。
- * - 内容宽度受 page_width * 46em 上限约束，超宽屏/平板不会出现过长行。
+ * - 列宽按「一屏对齐」计算：单页 colW = fw - M - G，双页 colW = (fw - M - G) / 2，
+ *   保证下一列起点恰好落在视口右边界，最右侧不会漏出下一页内容。
+ *   （page_width * 46em 上限暂不参与列宽，避免居中容器在多栏下右缘泄漏。）
  */
 object PagedLayout {
 
@@ -31,7 +33,7 @@ object PagedLayout {
 
     fun clamp(v: Int, lo: Int, hi: Int): Int = v.coerceIn(lo, hi)
 
-    /** 有效内容宽度：min(视口宽, 46 * page_width * fontSize)。 */
+    /** 有效内容宽度：min(视口宽, 46 * page_width * fontSize)。暂用于未来 page_width 支持。 */
     fun contentWidth(fw: Int, pageWidth: Double, fontSize: Int): Int {
         val maxW = (46.0 * pageWidth * fontSize).roundToInt()
         return max(120, min(fw, maxW))
@@ -64,17 +66,18 @@ object PagedLayout {
         fontSize: Int,
     ): Geometry {
         var dual = isDual(paged, dualPage, autoDual, fw, fh)
-        val cw = contentWidth(fw, pageWidth, fontSize)
+        // 分页容器占满视口宽，列宽按防漏公式计算（见类注释）。
+        val cw = fw
         val m = clamp(margin, 8, 160)
         val g = clamp(gap, 8, 120)
         var colW = if (dual) {
-            max(120, (cw - 2 * m - g) / 2)
+            max(120, (cw - m - g) / 2)
         } else {
-            max(120, cw - 2 * m)
+            max(120, cw - m - g)
         }
         if (dual && colW < MIN_DUAL_COL) {
             dual = false
-            colW = max(120, cw - 2 * m)
+            colW = max(120, cw - m - g)
         }
         return Geometry(dual = dual, colW = colW, advance = colW + g, margin = m, gap = g, contentWidth = cw)
     }

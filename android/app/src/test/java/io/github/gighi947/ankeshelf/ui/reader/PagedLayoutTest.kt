@@ -33,28 +33,28 @@ class PagedLayoutTest {
     }
 
     @Test
-    fun geometryCapsContentWidthForReadability() {
-        // 宽屏手机横屏：内容宽上限 46em * 1.0 * 18px = 828px
+    fun geometryUsesFullViewportWidthWithNoRightLeak() {
+        // 宽屏横屏双页：内容宽 = 视口宽；下一列起点恰好落在视口右边界
         val g = PagedLayout.geometry(
             fw = 2400, fh = 1080, paged = true, dualPage = false, autoDual = true,
             margin = 40, gap = 28, pageWidth = 1.0, fontSize = 18,
         )
-        assertEquals(828, g.contentWidth)
+        assertEquals(2400, g.contentWidth)
         assertTrue(g.dual)
-        assertEquals(360, g.colW) // (828 - 80 - 28) / 2
-        assertEquals(388, g.advance)
+        assertEquals(1166, g.colW) // (2400 - 40 - 28) / 2
+        assertEquals(1194, g.advance)
     }
 
     @Test
     fun geometryFallsBackToSingleWhenDualColumnTooNarrow() {
         val g = PagedLayout.geometry(
-            fw = 2400, fh = 1080, paged = true, dualPage = false, autoDual = true,
-            margin = 40, gap = 28, pageWidth = 0.5, fontSize = 18,
+            fw = 360, fh = 800, paged = true, dualPage = true, autoDual = true,
+            margin = 40, gap = 28, pageWidth = 1.0, fontSize = 18,
         )
-        // 内容宽上限 414px，双页列宽 153px 过窄 -> 回退单页
-        assertEquals(414, g.contentWidth)
+        // 强制双页但列宽 (360-40-28)/2=146 过窄 -> 回退单页
+        assertEquals(360, g.contentWidth)
         assertFalse(g.dual)
-        assertEquals(334, g.colW)
+        assertEquals(292, g.colW)
     }
 
     @Test

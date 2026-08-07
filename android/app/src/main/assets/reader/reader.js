@@ -63,16 +63,17 @@
 
   function geometry(fw, fh, s) {
     var dual = isDual(s.paged, s.dualPage, s.autoDual, fw, fh);
-    var cw = contentWidth(fw, s.pageWidth, s.fontSize);
+    // 分页容器占满视口宽；列宽按防漏公式：下一列起点恰好落在视口右边界。
+    var cw = fw;
     var M = clamp(s.margin || 40, 8, 160);
     var G = clamp(s.gap || 28, 8, 120);
     var colW = dual
-      ? Math.max(120, Math.floor((cw - 2 * M - G) / 2))
-      : Math.max(120, Math.floor(cw - 2 * M));
+      ? Math.max(120, Math.floor((cw - M - G) / 2))
+      : Math.max(120, Math.floor(cw - M - G));
     // 双页后列宽过窄时回退单页（极端狭长屏幕保护）
     if (dual && colW < 300) {
       dual = false;
-      colW = Math.max(120, Math.floor(cw - 2 * M));
+      colW = Math.max(120, Math.floor(cw - M - G));
     }
     return {
       dual: dual,
