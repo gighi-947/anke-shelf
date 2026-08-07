@@ -13,10 +13,11 @@ import kotlin.math.roundToInt
  * - 自动双页（auto_dual，默认）：仅横屏且宽度 >= 800px；
  *   宽高比 < 1.2（过方）或 > 2.6（超宽屏）不自动双页；
  *   双页后单列宽 < 300px 时回退单页（保护狭长屏幕）。
- * - 列宽按 flow/epub.js 几何计算：左 padding = M、右 padding = G，
- *   单页 colW = fw - M - G，双页 colW = (fw - M - 2G) / 2（可为小数），
- *   内容可用宽恰好等于目标列宽，浏览器不会拉伸/钳制列宽，
- *   下一列起点恰好落在视口右边界，无泄漏也无逐屏累积偏移。
+ * - 列宽按 flow/epub.js 几何计算：左 padding = M、右 padding = PR（约 gap/3），
+ *   单页 colW = fw - M - PR，双页 colW = (fw - M - PR - G) / 2（可为小数），
+ *   内容可用宽恰好等于目标列宽，浏览器不会拉伸/钳制列宽；
+ *   下一列起点 = M + colW + G = fw + (G - PR)，比视口右缘多出约 19px 安全余量，
+ *   亚像素/物理像素舍入也不会漏出下一页内容。
  */
 object PagedLayout {
 
@@ -28,6 +29,7 @@ object PagedLayout {
         val colW: Double,
         val advance: Double,
         val margin: Int,
+        val paddingRight: Int,
         val gap: Int,
         val contentWidth: Int,
     )
@@ -71,23 +73,35 @@ object PagedLayout {
         val cw = fw
         val m = clamp(margin, 8, 160)
         val g = clamp(gap, 8, 120)
+        val pr = max(4, (g / 3.0).roundToInt())
         var colW = if (dual) {
-            max(120.0, (cw - m - 2.0 * g) / 2.0)
+            max(120.0, (cw - m - pr - g) / 2.0)
         } else {
-            max(120.0, (cw - m - g).toDouble())
+            max(120.0, (cw - m - pr).toDouble())
         }
         if (dual && colW < MIN_DUAL_COL) {
             dual = false
-            colW = max(120.0, (cw - m - g).toDouble())
+            colW = max(120.0, (cw - m - pr).toDouble())
         }
-        return Geometry(dual = dual, colW = colW, advance = colW + g, margin = m, gap = g, contentWidth = cw)
+        return Geometry(
+            dual = dual,
+            colW = colW,
+            advance = colW + g,
+            margin = m,
+            paddingRight = pr,
+            gap = g,
+            contentWidth = cw,
+        )
     }
 
     /** 列数 -> 总页数（双页时一屏两列），返回 (total, step)。
-     *  容器左 padding = margin、右 padding = gap：
-     *  scrollWidth = margin + n*(colW+gap) = margin + n*advance，与 reader.js 一致。 */
+     *  容器左 padding = margin、右 padding = paddingRight：
+     *  scrollWidth = margin + n*colW + (n-1)*gap + paddingRight，与 reader.js 一致。 */
     fun pages(scrollWidth: Int, g: Geometry, hasSpacer: Boolean): Pair<Int, Int> {
-        var cols = max(1, ((scrollWidth - g.margin).toDouble() / g.advance).roundToInt())
+        var cols = max(
+            1,
+            ((scrollWidth - g.margin - g.paddingRight + g.gap).toDouble() / g.advance).roundToInt(),
+        )
         if (hasSpacer) cols = max(1, cols - 1)
         val step = if (g.dual) 2 else 1
         return max(1, ceil(cols.toDouble() / step).toInt()) to step

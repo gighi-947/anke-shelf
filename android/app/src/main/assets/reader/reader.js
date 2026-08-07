@@ -63,33 +63,40 @@
 
   function geometry(fw, fh, s) {
     var dual = isDual(s.paged, s.dualPage, s.autoDual, fw, fh);
-    // flow/epub.js 列几何：目标列宽 = 内容可用宽（左右 padding 分别为 M 与 G），
-    // 浏览器不会拉伸/钳制，下一列起点恰好落在视口右边界。
+    // flow/epub.js 列几何 + 右缘安全余量：
+    // 右 padding 用较小值 PR（约 gap/3），列宽 = 内容可用宽（不拉伸），
+    // 下一列起点 = M + colW + G = fw + (G - PR)，比视口右缘多出约 19px，
+    // 亚像素/物理像素舍入也不会漏出下一页内容。
     var cw = fw;
     var M = clamp(s.margin || 40, 8, 160);
     var G = clamp(s.gap || 28, 8, 120);
+    var PR = Math.max(4, Math.round(G / 3));
     var colW = dual
-      ? Math.max(120, (cw - M - 2 * G) / 2)
-      : Math.max(120, cw - M - G);
+      ? Math.max(120, (cw - M - PR - G) / 2)
+      : Math.max(120, cw - M - PR);
     // 双页后列宽过窄时回退单页（极端狭长屏幕保护）
     if (dual && colW < 300) {
       dual = false;
-      colW = Math.max(120, cw - M - G);
+      colW = Math.max(120, cw - M - PR);
     }
     return {
       dual: dual,
       colW: colW,
       advance: colW + G,
       margin: M,
+      paddingRight: PR,
       gap: G,
       contentWidth: cw,
     };
   }
 
   function pages(scrollWidth, g, hasSpacer) {
-    // 容器左 padding = margin、右 padding = gap：
-    // scrollWidth = margin + n*(colW+gap) = margin + n*advance
-    var cols = Math.max(1, Math.round((scrollWidth - g.margin) / g.advance));
+    // 容器左 padding = margin、右 padding = paddingRight：
+    // scrollWidth = margin + n*colW + (n-1)*gap + paddingRight
+    var cols = Math.max(
+      1,
+      Math.round((scrollWidth - g.margin - (g.paddingRight || 0) + g.gap) / g.advance),
+    );
     if (hasSpacer) cols = Math.max(1, cols - 1);
     var step = g.dual ? 2 : 1;
     return { cols: cols, total: Math.max(1, Math.ceil(cols / step)), step: step };
@@ -270,6 +277,7 @@
     var root = document.documentElement;
     root.style.setProperty('--reader-margin', g.margin + 'px');
     root.style.setProperty('--reader-gap', g.gap + 'px');
+    root.style.setProperty('--reader-pr', (g.paddingRight || 8) + 'px');
     root.style.setProperty('--reader-col', g.colW + 'px');
     el.style.maxWidth = g.contentWidth + 'px';
     var spacer = document.getElementById('__dual_spacer__');

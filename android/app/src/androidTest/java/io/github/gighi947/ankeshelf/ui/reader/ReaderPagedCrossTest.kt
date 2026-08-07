@@ -91,6 +91,7 @@ class ReaderPagedCrossTest {
             assertEquals("advance mismatch at $fw x $fh", expect.advance, j.getDouble("advance"), 0.001)
             assertEquals("contentWidth mismatch at $fw x $fh", expect.contentWidth.toDouble(), j.getDouble("contentWidth"), 0.001)
             assertEquals("margin mismatch", expect.margin, j.getInt("margin"))
+            assertEquals("paddingRight mismatch", expect.paddingRight, j.getInt("paddingRight"))
             assertEquals("gap mismatch", expect.gap, j.getInt("gap"))
         }
     }

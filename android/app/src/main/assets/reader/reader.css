@@ -101,7 +101,7 @@ body.paged #paged-scroll {
        浏览器不会拉伸/钳制列宽（flow/epub.js 列几何），下一列起点
        恰好落在视口右边界，无泄漏也无逐屏偏移。 */
     padding-left: var(--reader-margin);
-    padding-right: var(--reader-gap);
+    padding-right: var(--reader-pr, 8px);
     margin: 0 auto;
     column-width: var(--reader-col);
     column-gap: var(--reader-gap);
