@@ -485,7 +485,11 @@ class EpubBook(val path: File) : Closeable {
             val factory = DocumentBuilderFactory.newInstance().apply {
                 isNamespaceAware = true
                 isExpandEntityReferences = false
-                setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+                try {
+                    // Android 内置解析器不支持该 feature，忽略（默认即不加载外部 DTD）
+                    setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+                } catch (_: Exception) {
+                }
             }
             val builder = factory.newDocumentBuilder()
             val doc = builder.parse(InputSource(StringReader(text)))

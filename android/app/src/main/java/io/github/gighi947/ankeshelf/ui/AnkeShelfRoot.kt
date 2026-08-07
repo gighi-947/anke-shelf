@@ -59,6 +59,10 @@ fun AnkeShelfRoot(container: AppContainer) {
                     onProgress = { idx, offset ->
                         container.repository.saveProgress(session.id, idx, offset)
                     },
+                    onSettingsPatch = { patch ->
+                        container.settings.update(patch)
+                        settingsTick++
+                    },
                     onBack = {
                         routeName = "shelf"
                         refresh++
