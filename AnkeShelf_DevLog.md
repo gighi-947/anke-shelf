@@ -1094,3 +1094,20 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 #### 说明
 
 - 按用户要求，诊断日志（JS `[save:flip/scroll/switch]`、`progress.set`）在正式发行版前保留，方便定位问题；发行前再统一移除。
+
+### 9.49 分页进度“卡在旧值”根因（图片页采样）+ 页码随进度保存与精确恢复（2026-08-09）
+
+用户反馈 9.48 未修复；真机深探针证实：**翻页本身正常（scrollLeft 4176→5220、页码 12→15），但连续多页的采样点 (x=42,y=116) 都命中 `IMG.nga-img`**——NGA 大图跨列时 `caretRangeFromPoint` 对图片返回“邻近文本”，每页都返回同一旧锚点 1546，保存自然永远不变。
+
+#### 修复
+
+- **采样跳过图片**：`offsetAtPoint` 改为整页向下扫描（分页）或采样点下方 120px（滚动），命中 `img/video/audio/svg/canvas/picture` 直接跳过，取第一个真正的文本行；翻页保存从此逐页前进（实测 page13/14/15 → offset 1574/1587/1599）。
+- **页码随进度持久化**：`ProgressEntry` 新增 `page_index/page_total`（默认 -1，旧数据兼容），翻页 `saveProgressNow` 携带页码，tracker 按章记录并落盘。
+- **恢复优先“页码一致直接翻页”**：同章同设置且布局稳定后 `total` 一致时 `gotoPage(savedPage)`，整页图片的页面也能精确恢复；`total` 不一致（布局/图片加载状态变了）再回退 `gotoOffset` 文本锚点。
+- **恢复期重排不再覆盖保存页**：`onResize`/`refresh` 在用户未交互前优先 `restoreToSavedPage()`，交互后（`userMoved`）才按锚点定位；`flipPage` 锚点只在采样有效时更新。
+
+#### 真机验证
+
+- 翻 3 页：progress.json 依次 page=13/14/15，offset 1574→1587→1599；退出重进最终稳定 gotoPage(15)。
+- 已知剩余边缘：个别场景恢复页与保存页相差 ±1 页（晚到重排/空白页跳过判定），幅度已从“落后很多”收敛到一页内，继续跟踪。
+- 单测 91 通过 / 1 跳过；`assembleDebug` 通过。诊断日志按用户要求保留。
