@@ -780,3 +780,14 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **与桌面策略对照**：`progress.json` v2 `{chapter_index, text_offset, updated_at}`、翻页/切章/滚动节流/退出时上报、打开按 chapter + text_offset 恢复——均已对齐（安卓侧写盘改为后台防抖是性能适配，字段与语义一致）。
 - 验证：单测全部通过；`assembleDebug` 成功。
 - 提交：`b9f2a67`。
+
+### 9.30 进度精细到段落/页 + 恢复“内嵌图片”选项（2026-08-08）
+
+- **进度精细恢复（对齐桌面）**：
+  - 滚动模式保存由“滚动比例”改为 DOM 锚点 `text_offset`（与桌面 `reader.currentOffset()` 一致：取视口顶部正文，分页/滚动分别采样），采样失败才退回比例；
+  - 恢复由“比例换算”改为桌面 `seekToOffset` 同款：`text_offset → plainToPoint → getBoundingClientRect → scrollTo` 锚点，段落级精度；
+  - 修复“只回到章开头”：首帧布局/字体未稳定时恢复可能落到第 0 页，新增 `restorePending`，`refresh`/`onResize` 用原始 offset 自动重试，直到当前 offset > 0。
+- **恢复“内嵌图片”选项**：下载参数改为 在线 / 内嵌 / 无图 三选；内嵌模式下载楼层 `[img]` 图片到 `filesDir/AnkeShelf/images/<bookId>/`（Referer/Cookie/UA），正文图片改写为 `file:///android_images/<bookId>/<name>`，阅读器拦截并映射本地文件，离线可看图；增量更新同样支持；在线模式仍走远程 + OkHttp 代理。
+- 使用说明同步更新图片选项说明。
+- 验证：`node --check reader.js`；单测全部通过；`assembleDebug` 成功。
+- 提交：`8b3dccc`。
