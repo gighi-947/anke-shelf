@@ -701,3 +701,14 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **目录弹层**：面板宽度 300dp → `min(280dp, 82% 屏宽)`，不再占满整屏；新增全屏半透明遮罩，点击面板外任意区域关闭；系统返回键顺序调整为：先关目录 → 再关图片查看器 → 最后退出阅读器。
 - 验证：`node --check reader.js` 通过；`testDebugUnitTest` + `assembleDebug` 通过（SAF 保存与查看器手势需真机/NGA 网络验证）。
 - 提交：`7ebaa87`。
+
+### 9.22 图片预览兜底修复 + 翻页→滚动模式换章按钮错位修复（2026-08-08）
+
+- **图片预览不显示（保存正常）**：
+  - 根因：WebView 在线图片代理原先只覆盖 `img.nga.cn`，真实 NGA 图床还包含 `img.nga.178.com` / `img4.nga.178.com` / `ngabbs.com`（表情与部分附件），这些请求未带 Referer/Cookie 被防盗链拦截；保存按钮走 OkHttp 同链路所以正常。
+  - 修复：`shouldInterceptRequest` 代理范围扩大到 `img.nga.cn`、`*.nga.178.com`、`ngabbs.com`（仅 http(s)）；`NgaFormatHtml` 对 `//` 协议相对 URL 补 `https:`，避免 file:// 壳下解析成 `file://img...` 加载失败；查看器增加桥接兜底——lightbox `onerror` 时调 `AnkeReaderBridge.loadImage(src)`，Kotlin 用与保存相同的 OkHttp 链路取图并以 base64 data URL 回填；保存按钮改用 `imageViewerState.src`（原 URL），data URL 回填后保存仍指向原图。
+- **翻页→滚动模式换章按钮错位**：
+  - 根因：分页布局 `prepare()` 在 `html/body/#paged-scroll` 上写内联高度（视口像素）与列宽，切滚动模式只移除 `body.paged` 类，内联样式残留 → 正文被固定在视口高度盒子里溢出，把底部 `.chapter-nav-row` 按钮压进正文中间；换章重建 DOM 后自然恢复。
+  - 修复：`setMode(false)` 增加 `clearPagedLayout()`，清空内联高度/minHeight/maxWidth 并移除双页 spacer，再恢复滚动位置。
+- 验证：`node --check reader.js`；新增 `NgaFormatHtmlTest`（协议相对 / `./` 前缀 / 缩略图后缀 / imgSrc 回调 4 条）；`testDebugUnitTest`（67 条）+ `assembleDebug` 通过。
+- 提交：`05cd9a9`。
