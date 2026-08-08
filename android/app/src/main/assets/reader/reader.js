@@ -459,7 +459,7 @@
     }
     var ratio = len > 0 ? clamp(offset / len, 0, 1) : 0;
     window.scrollTo(0, ratio * Math.max(1, document.body.scrollHeight - window.innerHeight));
-    state.restorePending = false;
+    if (ctx) state.restorePending = false;
   }
 
   function gotoOffset(offset) {
@@ -721,9 +721,24 @@
     state.restoreOffset = Math.max(0, opts.offset || 0);
     state.restorePending = state.restoreOffset > 0;
     if (!document.body) return;
-    state.textCtx = TextPos.build(document);
-    state.huge = state.textCtx.text.length > MAX_PAGED_TEXT;
+    // 超大章判断先用 textContent 粗估（比 TextPos.build 便宜得多）；
+    // 分页模式需要坐标上下文同步构建；滚动模式先渲染，坐标后台构建。
+    state.huge = (document.body.textContent || '').length > MAX_PAGED_TEXT;
     state.paged = !!opts.paged && !state.huge;
+    if (state.paged) {
+      state.textCtx = TextPos.build(document);
+    } else {
+      state.textCtx = null;
+      setTimeout(function () {
+        state.textCtx = TextPos.build(document);
+        if (state.restorePending && state.restoreOffset > 0) restoreScroll(state.restoreOffset);
+        if (window.__pendingAnnotations__) {
+          var list = window.__pendingAnnotations__;
+          window.__pendingAnnotations__ = null;
+          applyAnnotations(list);
+        }
+      }, 0);
+    }
     log('init paged=' + state.paged + ' huge=' + state.huge +
         ' len=' + state.textCtx.text.length + ' offset=' + (opts.offset || 0) +
         ' insets=' + state.topInset + '/' + state.bottomInset +
@@ -1004,11 +1019,13 @@
 
   function clearHighlights() {
     var marks = document.querySelectorAll('mark.hl-mark');
+    var n = marks.length;
     for (var i = marks.length - 1; i >= 0; i--) {
       var m = marks[i];
       var txt = document.createTextNode(m.textContent || '');
       m.parentNode.replaceChild(txt, m);
     }
+    return n > 0;
   }
 
   function wrapSingleTextNode(node, start, end, color, id) {
@@ -1057,17 +1074,26 @@
   }
 
   function applyAnnotations(list) {
-    clearHighlights();
+    // 滚动模式超大章：坐标上下文可能还在后台构建，先缓存待应用。
+    if (!state.textCtx) {
+      window.__pendingAnnotations__ = list || [];
+      return;
+    }
+    var removed = clearHighlights();
+    var applied = false;
     var ctx = state.textCtx;
     if (ctx && list && list.length) {
       for (var i = 0; i < list.length; i++) {
         var h = list[i];
         if (!h || typeof h.start !== 'number' || typeof h.end !== 'number') continue;
         wrapHighlight(ctx, h);
+        applied = true;
       }
     }
-    // 高亮包装会替换文本节点，重建坐标上下文，保证后续选区/进度映射仍准确。
-    state.textCtx = TextPos.build(document);
+    // 只有 DOM 真的被改动才重建坐标上下文（否则每章重复全量遍历）。
+    if (removed || applied) {
+      state.textCtx = TextPos.build(document);
+    }
   }
 
   function clearSelection() {

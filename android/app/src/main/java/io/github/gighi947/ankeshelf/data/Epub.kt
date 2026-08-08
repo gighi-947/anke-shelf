@@ -236,6 +236,20 @@ class EpubBook(val path: File) : Closeable {
         return decodeText(data)
     }
 
+    /** 章节所在目录（EPUB 内相对路径基准，如 "OEBPS/ch01"）。 */
+    fun chapterBaseDir(index: Int): String =
+        if (index in chapters.indices) {
+            chapters[index].href.substringBeforeLast('/', "")
+        } else {
+            ""
+        }
+
+    /** 按章节相对路径读资源（图片/字体等），目录穿越由 normHref + 条目映射兜底。 */
+    fun resolveAsset(chapterIndex: Int, rel: String): ByteArray? {
+        val dir = chapterBaseDir(chapterIndex)
+        return readFile(normHref(rel, dir))
+    }
+
     fun chapterTitle(index: Int): String {
         if (index !in chapters.indices) return ""
         return tocMap[chapters[index].href] ?: "第 ${index + 1} 章"

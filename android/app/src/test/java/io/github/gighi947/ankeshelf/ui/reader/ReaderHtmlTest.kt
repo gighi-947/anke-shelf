@@ -37,8 +37,8 @@ class ReaderHtmlTest {
         assertTrue(html.contains("--reader-bg:#222222"))
         assertTrue(html.contains("--reader-font-size:20px"))
         assertTrue(html.contains("--reader-line-height:1.9"))
-        assertTrue(html.contains("href=\"reader.css\""))
-        assertTrue(html.contains("src=\"reader.js\""))
+        assertTrue(html.contains("href=\"file:///android_asset/reader/reader.css\""))
+        assertTrue(html.contains("src=\"file:///android_asset/reader/reader.js\""))
         assertTrue(html.contains("<div id=\"paged-scroll\">"))
         assertTrue(html.contains("<p>你好</p>"))
     }

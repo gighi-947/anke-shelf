@@ -114,12 +114,13 @@ fun buildReaderHtml(
     }
     return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/>" +
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>" +
-        "<link rel=\"stylesheet\" href=\"reader.css\"/>" +
+        // 绝对路径引用外壳资源：章节 base 可能换成 file:///android_epub/...（EPUB 图片）。
+        "<link rel=\"stylesheet\" href=\"file:///android_asset/reader/reader.css\"/>" +
         "<style>$css</style></head><body>" +
         "<div id=\"paged-scroll\">${parts.body}</div>" +
         "<div class=\"chapter-nav-row\">" +
         "<button type=\"button\" id=\"android-prev-chapter\" class=\"chapter-nav-btn\">← 上一章</button>" +
         "<button type=\"button\" id=\"android-next-chapter\" class=\"chapter-nav-btn\">下一章 →</button>" +
         "</div>" +
-        "<script src=\"reader.js\"></script></body></html>"
+        "<script src=\"file:///android_asset/reader/reader.js\"></script></body></html>"
 }

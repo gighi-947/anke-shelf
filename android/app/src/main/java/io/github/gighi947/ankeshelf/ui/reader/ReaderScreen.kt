@@ -101,6 +101,7 @@ import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.readerTheme
 import java.io.File
 import java.io.FileInputStream
+import java.io.ByteArrayInputStream
 import java.net.URLDecoder
 import okhttp3.Request
 import kotlinx.coroutines.Dispatchers
@@ -174,10 +175,13 @@ fun ReaderScreen(
     LaunchedEffect(plainLength) { lenRef.intValue = plainLength }
 
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
+    val sessionRef = remember { mutableStateOf(session) }
     val loadedChapter = remember { mutableIntStateOf(-1) }
     val pageReady = remember { mutableStateOf(false) }
     val loadSeqRef = remember { mutableIntStateOf(0) }
     val insetRef = remember { mutableStateOf(0 to 0) }
+
+    LaunchedEffect(session) { sessionRef.value = session }
 
     // 供 WebView factory（仅创建一次）读取最新值。
     val settingsRef = remember { mutableStateOf(readerSettings) }
@@ -499,16 +503,32 @@ fun ReaderScreen(
     // 章节加载放在 LaunchedEffect：chapterIndex 变化后重组完成再构建 HTML，
     // 避免 AndroidView.update 闭包在重组前被调用时捕获旧章节 HTML（换章失效根因）。
     LaunchedEffect(chapterIndex, session) {
-        val partsNow = extractReaderParts(session.chapterText(chapterIndex).orEmpty())
-        val htmlNow = buildReaderHtml(partsNow, themeRef.value, settingsRef.value)
-        lenRef.intValue = TextExtractor.extractDomText(partsNow.body).length
+        // 章节文本读取 + 清洗 + 组装放到后台线程：NGA 排版大章（数百 KB~MB 级 HTML）
+        // 若在主线程做多遍正则会直接卡住打开动画。
+        val current = session
+        val (htmlNow, lenNow) = withContext(Dispatchers.Default) {
+            val partsNow = extractReaderParts(current.chapterText(chapterIndex).orEmpty())
+            val html = buildReaderHtml(partsNow, themeRef.value, settingsRef.value)
+            val len = TextExtractor.extractDomText(partsNow.body).length
+            html to len
+        }
+        lenRef.intValue = lenNow
         loadedChapter.intValue = chapterIndex
         pageReady.value = false
         loadSeqRef.intValue++
         val web = webViewRef.value ?: return@LaunchedEffect
         web.tag = loadSeqRef.intValue
+        // EPUB 章节用自定义 base 指向章节目录：图片相对路径经
+        // shouldInterceptRequest(file:///android_epub/) 从压缩包按需读取，
+        // 此前 base 固定在 android_asset 导致 EPUB 图片全部加载失败。
+        val baseDir = current.chapterBaseDir(chapterIndex)
+        val base = if (baseDir.isNotEmpty()) {
+            "file:///android_epub/${current.id}/$baseDir/"
+        } else {
+            "file:///android_asset/reader/"
+        }
         web.loadDataWithBaseURL(
-            "file:///android_asset/reader/",
+            base,
             htmlNow,
             "text/html",
             "utf-8",
@@ -554,6 +574,29 @@ fun ReaderScreen(
                             request: WebResourceRequest,
                         ): WebResourceResponse? {
                             val url = request.url.toString()
+                            // EPUB 章节资源（图片等）：file:///android_epub/<bookId>/<rel>
+                            // 按当前章节相对路径从压缩包读取。
+                            if (url.startsWith("file:///android_epub/")) {
+                                val rel = URLDecoder.decode(
+                                    url.removePrefix("file:///android_epub/").substringAfter('/'),
+                                    "UTF-8",
+                                )
+                                val bytes = sessionRef.value.readAsset(loadedChapter.intValue, rel)
+                                if (bytes != null) {
+                                    val mime = when (rel.substringAfterLast('.', "").lowercase()) {
+                                        "png" -> "image/png"
+                                        "gif" -> "image/gif"
+                                        "webp" -> "image/webp"
+                                        "svg" -> "image/svg+xml"
+                                        "woff2" -> "font/woff2"
+                                        "woff" -> "font/woff"
+                                        "ttf" -> "font/ttf"
+                                        "otf" -> "font/otf"
+                                        else -> "application/octet-stream"
+                                    }
+                                    return WebResourceResponse(mime, null, ByteArrayInputStream(bytes))
+                                }
+                            }
                             if (url.startsWith("file:///android_fonts/")) {
                                 val name = URLDecoder.decode(
                                     url.removePrefix("file:///android_fonts/"),

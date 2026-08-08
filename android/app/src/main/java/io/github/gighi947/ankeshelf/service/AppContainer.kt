@@ -60,9 +60,17 @@ class BookSession(
     private val textFn: (Int) -> String?,
     private val titleFn: (Int) -> String,
     private val closeFn: () -> Unit,
+    private val baseDirFn: (Int) -> String = { "" },
+    private val assetFn: ((Int, String) -> ByteArray?)? = null,
 ) : Closeable {
     fun chapterText(index: Int): String? = textFn(index)
     fun chapterTitle(index: Int): String = titleFn(index)
+    fun chapterBaseDir(index: Int): String = baseDirFn(index)
+
+    /** 读章节相对资源（EPUB 图片等）；原生书返回 null（走远程/本地图拦截）。 */
+    fun readAsset(chapterIndex: Int, rel: String): ByteArray? =
+        assetFn?.invoke(chapterIndex, rel)
+
     override fun close() = closeFn()
 }
 
@@ -195,6 +203,8 @@ class BookRepository(
                     textFn = { eb.chapterText(it) },
                     titleFn = { eb.chapterTitle(it) },
                     closeFn = { eb.close() },
+                    baseDirFn = { eb.chapterBaseDir(it) },
+                    assetFn = { idx, rel -> eb.resolveAsset(idx, rel) },
                 )
             }
         } catch (_: Exception) {
