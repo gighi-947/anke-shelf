@@ -818,3 +818,15 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **排版对齐桌面 OVERRIDE**：body 字体/字号/行高/默认文字色加 `!important` 压过章节自带样式（桌面 BASE/NGA_OVERRIDE 语义；显式彩色字体保留）。
 - 验证：`node --check reader.js`；单测全部通过；`assembleDebug` 成功。
 - 提交：`c37f881`。
+
+### 9.33 原生 Kotlin 渲染器（替代 WebView 第一步）（2026-08-08）
+
+- **架构**：阅读器切换为 Compose 原生渲染（`ui/reader/native/`），不再用 WebView 拼 HTML；设计约束与坑位清单见 [docs/ANDROID_NATIVE_RENDERER.md](docs/ANDROID_NATIVE_RENDERER.md)（分页几何防右漏/安全区/模式切换/字体/图片/进度/标注/性能均从开发日志回填）。
+- **块模型**：`ReaderModel.kt` 把清洗后的章节 XHTML 解析成 DOM → 楼层/段落/标题/引用/骰子/表格/图片/追评，span 携带颜色/粗斜体；同时生成章内折叠纯文本与块偏移（桌面 TextPos 同口径）。
+- **渲染**：`NativeChapterView.kt` 滚动模式（Column + verticalScroll + text_offset 进度/恢复）；分页模式用 `TextMeasurer` 按桌面几何（P = min(margin, gap-8)、advance = colW+gap、页高减安全区）切行成页，页首偏移即进度锚点；超大章回退滚动；内置霞鹜文楷 Typeface 缓存；NGA 楼层卡片/引用/骰子/表格原生绘制；显式彩色 span 保留、默认色随主题。
+- **阅读页**：`NativeReaderScreen.kt` 顶/底栏、目录弹层、主题/字号/模式切换、亮度遮罩、长按图片原生查看（双击缩放、×/返回关闭、SAF 保存）、进度保存（text_offset + 每次落盘）、退后台 flush。
+- **图片**：统一字节回调——EPUB 走压缩包相对路径，NGA 在线图走 OkHttp（Referer/Cookie/UA）。
+- **保留**：旧 WebView `ReaderScreen` 暂未删除（作为对照与回退），路由已切到原生。
+- 验证：`compileDebugKotlin` / `testDebugUnitTest` / `assembleDebug` 全部通过。
+- 待办：选区建标注、双栏渲染、真机视觉对齐调优、移除旧路径。
+- 提交：`f5045cd`。
