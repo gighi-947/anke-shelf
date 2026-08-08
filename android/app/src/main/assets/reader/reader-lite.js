@@ -652,6 +652,19 @@
     root.style.setProperty('--reader-top-inset', state.topInset + 'px');
     root.style.setProperty('--reader-bottom-inset', state.bottomInset + 'px');
     bindImages();
+    // 滚动模式底部换章按钮（分页模式下由 CSS 隐藏）。
+    var prevBtn = document.getElementById('android-prev-chapter');
+    var nextBtn = document.getElementById('android-next-chapter');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function () {
+        try { AnkeReaderBridge.requestChapter(-1); } catch (e) { /* ignore */ }
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function () {
+        try { AnkeReaderBridge.requestChapter(1); } catch (e) { /* ignore */ }
+      });
+    }
     // 只拦截章节内链接；图片打开由 Kotlin 长按（openImageAt）触发，单击不放行。
     document.addEventListener('click', function (e) {
       var t = e.target;

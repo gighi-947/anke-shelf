@@ -128,18 +128,21 @@ fun WebViewChapterView(
         if (web != null && old != chapterIndex) {
             // Desktop loadChapter: capture the old chapter's exact offset before
             // the new page replaces it. Run the latch off the main thread so the
-            // evaluateJavascript callback (main thread) can complete.
+            // evaluateJavascript callback (main thread) can complete. The WebView
+            // call itself must be posted to the main thread (checkThread).
             if (pageReady.value) {
                 val captured = withContext(Dispatchers.Default) {
                     val latch = CountDownLatch(1)
                     var value = 0
-                    web.evaluateJavascript(
-                        "(function(){try{return AnkeReader.currentOffset();}catch(e){return 0;}})()",
-                        ValueCallback { v ->
-                            value = v?.toDoubleOrNull()?.toInt() ?: 0
-                            latch.countDown()
-                        },
-                    )
+                    web.post {
+                        web.evaluateJavascript(
+                            "(function(){try{return AnkeReader.currentOffset();}catch(e){return 0;}})()",
+                            ValueCallback { v ->
+                                value = v?.toDoubleOrNull()?.toInt() ?: 0
+                                latch.countDown()
+                            },
+                        )
+                    }
                     if (latch.await(300, TimeUnit.MILLISECONDS)) value else 0
                 }
                 if (captured > 0) callbacksRef.value.onProgress(old, captured)

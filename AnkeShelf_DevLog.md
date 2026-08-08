@@ -975,3 +975,24 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 新增 `ChapterProgressTrackerTest` 6 条（恢复优先内存/防抖去重/翻页立即/换章即存/flush 取消 pending/零值忽略）；全量单测 91 通过、1 跳过（NGA 网络用例），`assembleDebug` 通过。
 - 编译清理：新增 `lifecycle-runtime-compose` 依赖替换弃用 `LocalLifecycleOwner`；ValueCallback 冗余转换警告消除。
 - 待真机验证：滚动暂停后立即退出/换章的位置准确性、分页翻页即时进度、深色主题下退出再进恢复点。
+
+### 9.44 真机三症状根因定位与修复：换章闪退（WebView 线程检查）+ 滚动底部换章失效（2026-08-09）
+
+用户实测 9.43 版本反馈三症状：只有重进应用后第一次进入再退出书籍能记录进度；之后无论跳转多少章节都不记录；滚动模式底部换章不可用；悬浮底栏点换章直接闪退。
+
+#### 根因（logcat 实证）
+
+- **换章闪退**：`WebViewChapterView` 换章前“取旧章 offset”的 `evaluateJavascript` 在 `Dispatchers.Default` 后台线程直接调用，触发 Android WebView 线程检查：
+  `A WebView method was called on thread 'DefaultDispatcher-worker-1'. All WebView methods must be called on the same thread.`（`WebView.checkThread` → `evaluateJavascript`），主线程崩溃。三个崩溃堆栈（02:07/02:08/02:09）全部指向 `WebViewChapterView.kt:136`。
+- **“只有第一次能记进度”的连锁**：由于任何真实换章（悬浮底栏、目录跳转）都会走到同一条换章路径并闪退，后续章节的进度事件全部发生在崩溃进程中，落不了盘；只有“进入→直接退出”的会话能走通 dispose 保存。闪退修复后该连锁自然解除。
+- **滚动模式底部换章不可用**：正文底部 `android-prev-chapter/android-next-chapter` 按钮（`.chapter-nav-row`，分页模式 CSS 隐藏）在旧 `reader.js` 里有绑定，重写成 `reader-lite.js` 时漏掉了绑定，点击无任何回调。
+
+#### 修复
+
+- `WebViewChapterView`：`evaluateJavascript` 改为 `web.post { ... }` 投递到主线程再执行；`CountDownLatch` 仍在 Default 线程等待（主线程空闲，回调可送达，无死锁），超时 300ms 兜底。
+- `reader-lite.js`：`init()` 里补回 `android-prev-chapter → requestChapter(-1)`、`android-next-chapter → requestChapter(1)` 绑定（与旧 reader.js 语义一致）。
+
+#### 验证
+
+- 全量单测 + `assembleDebug` 通过；修复版已安装真机。
+- 待真机确认：悬浮底栏/目录/滚动底部按钮换章不闪退；换章后进度随退出/跳转正常落盘（多次连续换章后退出再进，恢复点应为最后阅读位置）。
