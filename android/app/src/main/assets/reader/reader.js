@@ -745,7 +745,7 @@
   }
 
   /* ---------------- 图片点击放大查看器 ---------------- */
-  var imageViewerState = { open: false, scale: 1, panX: 0, panY: 0 };
+  var imageViewerState = { open: false, scale: 1, panX: 0, panY: 0, lastTapAt: 0 };
 
   function imageViewerEl() {
     return document.getElementById('image-lightbox');
@@ -763,24 +763,6 @@
           e.target.classList.contains('lightbox-hint')) {
         closeImageViewer();
       }
-    });
-    // 单击关闭、双击缩放：用计时器区分，避免双击时先触发关闭。
-    var clickTimer = null;
-    img.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (clickTimer) {
-        clearTimeout(clickTimer);
-        clickTimer = null;
-        imageViewerState.scale = imageViewerState.scale === 1 ? 2 : 1;
-        imageViewerState.panX = 0;
-        imageViewerState.panY = 0;
-        applyImageViewerTransform(img);
-        return;
-      }
-      clickTimer = setTimeout(function () {
-        clickTimer = null;
-        closeImageViewer();
-      }, 260);
     });
 
     var pointers = {};
@@ -808,7 +790,6 @@
           pointers[ids[0]].y - pointers[ids[1]].y,
         );
       }
-      e.preventDefault();
     }, { passive: false });
     ov.addEventListener('touchmove', function (e) {
       for (var i = 0; i < e.changedTouches.length; i++) {
@@ -840,7 +821,6 @@
         imageViewerState.panY = drag.panY + dy;
         applyImageViewerTransform(img);
       }
-      e.preventDefault();
     }, { passive: false });
     var endTouch = function (e) {
       for (var i = 0; i < e.changedTouches.length; i++) {
@@ -853,6 +833,30 @@
     };
     ov.addEventListener('touchend', endTouch);
     ov.addEventListener('touchcancel', endTouch);
+  }
+
+  // 由 Kotlin 触摸层驱动：单击关闭、300ms 内双击缩放，避免 DOM click 被手势吞掉。
+  var viewerTapTimer = null;
+  function onViewerTap() {
+    var now = Date.now();
+    if (now - imageViewerState.lastTapAt <= 300) {
+      imageViewerState.lastTapAt = 0;
+      clearTimeout(viewerTapTimer);
+      viewerTapTimer = null;
+      var img = document.getElementById('lightbox-img');
+      if (img) {
+        imageViewerState.scale = imageViewerState.scale === 1 ? 2 : 1;
+        imageViewerState.panX = 0;
+        imageViewerState.panY = 0;
+        applyImageViewerTransform(img);
+      }
+      return;
+    }
+    imageViewerState.lastTapAt = now;
+    viewerTapTimer = setTimeout(function () {
+      viewerTapTimer = null;
+      closeImageViewer();
+    }, 300);
   }
 
   function ensureImageViewer() {
@@ -1007,6 +1011,7 @@
     openImage: openImageViewer,
     openImageAt: openImageAt,
     closeImage: closeImageViewer,
+    onViewerTap: onViewerTap,
     isImageOpen: function () { return imageViewerState.open; },
     applyAnnotations: applyAnnotations,
     clearSelection: clearSelection,

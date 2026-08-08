@@ -659,3 +659,14 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 完善 [android/scripts/check-release.ps1](android/scripts/check-release.ps1)：输出 APK 大小与 SHA256；内容扫描限定文本类条目（.ini/.properties/.xml/.json/.txt/.md/.html/.js/.css），避免二进制 dex 误报。
 - 排障：脚本首跑把 dex 中的代码字段名（`ngaPassportUid=` 模板字符串）误判为真实凭据 → 内容扫描只针对文本条目后，对当前 debug APK 实测 `RESULT: PASS`（SHA256 输出）。
 - 提交：`ebaca20`。
+
+### 9.18 下载后书架自动刷新 / 图片查看器触摸与退出修复 / 封面更新导出按钮（2026-08-08）
+
+- **下载后书架刷新**：Root 每秒轮询 `NgaServiceStatus`，服务状态进入 done/error/cancelled 且发生变化时自动 `refresh++`，下载完成后书架立即出现新书（此前只在点击下载按钮时刷新一次）。
+- **图片查看器触摸/退出修复**：根因是查看器 DOM 的 touch 事件 `preventDefault` 吞掉了 click，导致单击关闭/双击缩放全部失效、看起来“触摸无响应且退不出”。
+  - 关闭/缩放改由 Kotlin 触摸层驱动：查看器打开时单击 → `AnkeReader.onViewerTap()`（JS 300ms 双击判定：双击缩放、单击关闭）；查看器内拖动不再触发翻页；
+  - 系统返回键关闭、点空白/×关闭保留；
+  - 移除 DOM touch 的 preventDefault（CSS `touch-action:none` 已防滚动），平移/捏合不受影响。
+- **封面更新/导出按钮**：网格书架封面右上角悬浮圆形图标（28dp 按钮 + 16dp 图标，surface 92% 底）：NGA 书显示「更新」「导出」，EPUB 书显示「导出」；导出菜单支持 EPUB / Markdown（NGA 书），EPUB 书导出原文件副本（SAF）。
+- 验证：模拟器网格书架封面按钮出现（content-desc 更新/导出）；编译与单测通过；查看器触摸修复与下载刷新逻辑已实现（模拟器网络/无图章节限制下未端到端复测）。
+- 提交：见后续记录。

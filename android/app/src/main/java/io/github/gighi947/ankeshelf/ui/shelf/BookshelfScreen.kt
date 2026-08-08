@@ -1,10 +1,13 @@
 package io.github.gighi947.ankeshelf.ui.shelf
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +26,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
@@ -34,6 +39,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -41,18 +47,29 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.service.AppContainer
+import io.github.gighi947.ankeshelf.service.NgaDownloadService
+import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.BookUi
+import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -62,6 +79,7 @@ import kotlin.math.roundToInt
 fun BookshelfScreen(
     books: List<BookUi>,
     coversDir: File,
+    container: AppContainer,
     onImport: (Uri) -> Unit,
     onOpen: (BookRecord) -> Unit,
     shelfView: String,
@@ -73,6 +91,19 @@ fun BookshelfScreen(
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(onImport) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var pendingExport by remember { mutableStateOf<Pair<BookRecord, String>?>(null) }
+    val epubLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/epub+zip"),
+    ) { uri ->
+        uri?.let { pendingExport?.let { (rec, fmt) -> exportBook(context, scope, rec, fmt, it) } }
+    }
+    val mdLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/markdown"),
+    ) { uri ->
+        uri?.let { pendingExport?.let { (rec, fmt) -> exportBook(context, scope, rec, fmt, it) } }
+    }
     val launchPicker = {
         launcher.launch(arrayOf("application/epub+zip", "application/octet-stream"))
     }
@@ -175,7 +206,21 @@ fun BookshelfScreen(
                         .padding(padding),
                 ) {
                     items(sortedBooks, key = { it.record.id }) { ui ->
-                        BookCard(ui, coversDir, onClick = { onOpen(ui.record) })
+                        BookCard(
+                            ui = ui,
+                            coversDir = coversDir,
+                            context = context,
+                            container = container,
+                            onClick = { onOpen(ui.record) },
+                            onExportEpub = { rec ->
+                                pendingExport = rec to "epub"
+                                epubLauncher.launch(safeExportName(rec.title) + ".epub")
+                            },
+                            onExportMd = { rec ->
+                                pendingExport = rec to "md"
+                                mdLauncher.launch(safeExportName(rec.title) + ".md")
+                            },
+                        )
                     }
                 }
             }
@@ -241,8 +286,17 @@ private fun BookListRow(ui: BookUi, coversDir: File, onClick: () -> Unit) {
 }
 
 @Composable
-private fun BookCard(ui: BookUi, coversDir: File, onClick: () -> Unit) {
+private fun BookCard(
+    ui: BookUi,
+    coversDir: File,
+    context: Context,
+    container: AppContainer,
+    onClick: () -> Unit,
+    onExportEpub: (BookRecord) -> Unit,
+    onExportMd: (BookRecord) -> Unit,
+) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
+    var exportMenu by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -269,6 +323,48 @@ private fun BookCard(ui: BookUi, coversDir: File, onClick: () -> Unit) {
                     style = MaterialTheme.typography.headlineMedium,
                 )
             }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(AnkeSpacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs),
+            ) {
+                if (ui.record.nga_tid > 0) {
+                    CoverAction(Icons.Filled.Refresh, "更新") {
+                        val intent = Intent(context, NgaDownloadService::class.java).apply {
+                            action = NgaDownloadService.ACTION_START
+                            putExtra("action", "update")
+                            putExtra("bookId", ui.record.id)
+                            putExtra("tid", ui.record.nga_tid.toLong())
+                        }
+                        ContextCompat.startForegroundService(context, intent)
+                    }
+                }
+                Box {
+                    CoverAction(Icons.Filled.IosShare, "导出") { exportMenu = true }
+                    DropdownMenu(
+                        expanded = exportMenu,
+                        onDismissRequest = { exportMenu = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("导出 EPUB") },
+                            onClick = {
+                                exportMenu = false
+                                onExportEpub(ui.record)
+                            },
+                        )
+                        if (ui.record.nga_tid > 0) {
+                            DropdownMenuItem(
+                                text = { Text("导出 Markdown") },
+                                onClick = {
+                                    exportMenu = false
+                                    onExportMd(ui.record)
+                                },
+                            )
+                        }
+                    }
+                }
+            }
         }
         Text(
             ui.record.title,
@@ -289,5 +385,54 @@ private fun BookCard(ui: BookUi, coversDir: File, onClick: () -> Unit) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
         )
+    }
+}
+
+@Composable
+private fun CoverAction(icon: ImageVector, desc: String, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .size(28.dp)
+            .clickable(onClick = onClick),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        shadowElevation = 2.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                icon,
+                contentDescription = desc,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun exportBook(
+    context: Context,
+    scope: CoroutineScope,
+    rec: BookRecord,
+    fmt: String,
+    uri: Uri,
+) {
+    scope.launch(Dispatchers.IO) {
+        try {
+            val os = context.contentResolver.openOutputStream(uri) ?: return@launch
+            os.use { out ->
+                if (rec.nga_tid > 0) {
+                    val dir = File(rec.path)
+                    val meta = NgaExport.metaOf(dir) ?: return@launch
+                    if (fmt == "md") {
+                        out.write(NgaExport.markdownText(dir, meta).toByteArray(Charsets.UTF_8))
+                    } else {
+                        out.write(NgaExport.epubBytes(dir, meta))
+                    }
+                } else if (fmt == "epub") {
+                    File(rec.path).inputStream().use { input -> input.copyTo(out) }
+                }
+            }
+        } catch (_: Exception) {
+        }
     }
 }

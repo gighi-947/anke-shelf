@@ -620,9 +620,16 @@ fun ReaderScreen(
                                 val isSwipe = pagedRef.value && abs(dx) >= 60f && abs(dx) >= abs(dy) * 1.2f
                                 val isTap = dx * dx + dy * dy < 50f * 50f
                                 when {
+                                    isSwipe && imageViewerOpen -> {
+                                        // 查看器内拖动平移由 JS 处理，不翻页。
+                                    }
                                     isSwipe -> {
                                         flipPage(if (dx < 0) 1 else -1)
                                         hideBars()
+                                    }
+                                    isTap && imageViewerOpen -> {
+                                        // 单击关闭 / 双击缩放（JS 判定），避免 DOM click 被手势吞掉。
+                                        evaluateJavascript("AnkeReader.onViewerTap();", null)
                                     }
                                     isTap -> {
                                         val w = width

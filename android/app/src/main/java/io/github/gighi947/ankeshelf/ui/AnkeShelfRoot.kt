@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.data.SettingsPatch
+import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.ui.download.DownloadScreen
 import io.github.gighi947.ankeshelf.ui.reader.ReaderScreen
 import io.github.gighi947.ankeshelf.ui.search.SearchScreen
@@ -51,6 +52,8 @@ import io.github.gighi947.ankeshelf.ui.shelf.BookshelfScreen
 import io.github.gighi947.ankeshelf.ui.stats.StatsScreen
 import io.github.gighi947.ankeshelf.ui.theme.AnkeShelfTheme
 import java.io.File
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 private data class TabSpec(
     val name: String,
@@ -75,6 +78,7 @@ fun AnkeShelfRoot(container: AppContainer) {
     var jumpOffset by rememberSaveable { mutableStateOf<Int?>(null) }
     var refresh by remember { mutableIntStateOf(0) }
     var settingsTick by remember { mutableIntStateOf(0) }
+    var lastServiceStage by remember { mutableStateOf("") }
     val context = LocalContext.current
     val activity = LocalActivity.current
 
@@ -87,6 +91,20 @@ fun AnkeShelfRoot(container: AppContainer) {
         record?.let { container.repository.progressOf(it.id) }
     }
     val statsGlobal = remember(refresh, settingsTick) { container.stats.getGlobal() }
+
+    // 下载服务状态变化（完成/失败/取消）后自动刷新书架，避免下载完看不到新书。
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            val stage = NgaServiceStatus.snapshot().stage
+            if (lastServiceStage != stage &&
+                (stage == "done" || stage == "error" || stage == "cancelled")
+            ) {
+                refresh++
+            }
+            lastServiceStage = stage
+            delay(1000)
+        }
+    }
 
     // Compose 1.11 的 MotionDurationScale 会自动按系统动画时长缩放（含"关闭动画"）。
     val duration = 200
@@ -170,6 +188,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                                 "shelf" -> BookshelfScreen(
                                     books = books,
                                     coversDir = container.appPaths.coversDir,
+                                    container = container,
                                     shelfView = container.settings.getAll().shelf_view,
                                     onShelfViewChange = { view ->
                                         container.settings.update(SettingsPatch(shelf_view = view))
