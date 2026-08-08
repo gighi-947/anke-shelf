@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.TouchApp
@@ -113,18 +114,20 @@ private data class SettingsTab(val id: String, val label: String, val icon: Imag
 private val TABS = listOf(
     SettingsTab("appearance", "外观", Icons.Filled.Palette),
     SettingsTab("reading", "阅读", Icons.Filled.FormatSize),
-    SettingsTab("gestures", "操作", Icons.Filled.TouchApp),
-    SettingsTab("stats", "统计", Icons.Filled.Insights),
-    SettingsTab("data", "数据", Icons.Filled.FolderOpen),
-)
+               SettingsTab("gestures", "操作", Icons.Filled.TouchApp),                                                   
+               SettingsTab("stats", "统计", Icons.Filled.Insights),                                                      
+               SettingsTab("data", "数据", Icons.Filled.FolderOpen),                                                      
+               SettingsTab("help", "帮助", Icons.Filled.Info),                                                            
+           )                                                                                                           
 
 private val GROUP_SUMMARIES = mapOf(
     "appearance" to "主题模式、亮度、预设色板、自定义颜色",
     "reading" to "字号、行高、页面宽度、翻页方式",
-    "gestures" to "点按区域、滑动翻页、音量键",
-    "stats" to "阅读时长、会话、连续阅读",
-    "data" to "数据目录、清除数据、版本",
-)
+               "gestures" to "点按区域、滑动翻页、音量键",                                                                          
+               "stats" to "阅读时长、会话、连续阅读",                                                                              
+               "data" to "数据目录、清除数据、版本",                                                                               
+               "help" to "使用说明、关于应用",                                                                                    
+           )                                                                                                           
 
 private val THEME_MODES = listOf(
     "system" to "跟随系统",
@@ -167,6 +170,7 @@ fun SettingsScreen(
     statsGlobal: EnrichedStats,
     appPaths: AppPaths,
     onOpenStats: () -> Unit,
+    onOpenGuide: () -> Unit,
     onBack: () -> Unit,
     onChanged: () -> Unit,
     onClearAllData: () -> Unit,
@@ -235,6 +239,7 @@ fun SettingsScreen(
                         context = context,
                         statsGlobal = statsGlobal,
                         onOpenStats = onOpenStats,
+                        onOpenGuide = onOpenGuide,
                         appPaths = appPaths,
                         onShowPath = { showPathDialog = true },
                         onClearAll = { showClearConfirm = true },
@@ -276,6 +281,7 @@ fun SettingsScreen(
                         context = context,
                         statsGlobal = statsGlobal,
                         onOpenStats = onOpenStats,
+                        onOpenGuide = onOpenGuide,
                         appPaths = appPaths,
                         onShowPath = { showPathDialog = true },
                         onClearAll = { showClearConfirm = true },
@@ -442,6 +448,7 @@ private fun GroupContent(
     context: Context,
     statsGlobal: EnrichedStats,
     onOpenStats: () -> Unit,
+    onOpenGuide: () -> Unit,
     appPaths: AppPaths,
     onShowPath: () -> Unit,
     onClearAll: () -> Unit,
@@ -464,6 +471,7 @@ private fun GroupContent(
             onShowPath = onShowPath,
             onClearAll = onClearAll,
         )
+        "help" -> HelpPanel(onOpenGuide = onOpenGuide)
     }
 }
 
@@ -1211,7 +1219,39 @@ private fun AnnotationExportRow(book: BookUi, annotations: AnnotationStore) {
     }
 }
 
-/* ---------------- 通用 ---------------- */
+           /* ---------------- 帮助 ---------------- */                                                                  
+                                                                                                                      
+           @Composable                                                                                                  
+           private fun HelpPanel(onOpenGuide: () -> Unit) {                                                             
+               SettingsList {                                                                                            
+                   SettingsSection("帮助") {                                                                              
+                       Row(                                                                                              
+                           modifier = Modifier                                                                           
+                               .fillMaxWidth()                                                                           
+                               .clickable { onOpenGuide() }                                                             
+                               .padding(vertical = AnkeSpacing.xs),                                                      
+                           verticalAlignment = Alignment.CenterVertically,                                               
+                       ) {                                                                                               
+                           Column(modifier = Modifier.weight(1f)) {                                                      
+                               Text("使用说明", style = MaterialTheme.typography.bodyLarge)                                
+                               Text(                                                                                     
+                                   "导入、下载、阅读操作与数据说明",                                                        
+                                   style = MaterialTheme.typography.bodySmall,                                           
+                                   color = MaterialTheme.colorScheme.onSurfaceVariant,                                    
+                                   modifier = Modifier.padding(top = AnkeSpacing.xxs),                                   
+                               )                                                                                         
+                           }                                                                                             
+                           Icon(                                                                                         
+                               Icons.AutoMirrored.Filled.KeyboardArrowRight,                                             
+                               contentDescription = null,                                                               
+                               tint = MaterialTheme.colorScheme.onSurfaceVariant,                                        
+                           )                                                                                             
+                       }                                                                                                 
+                   }                                                                                                     
+               }                                                                                                         
+           }                                                                                                             
+                                                                                                                      
+           /* ---------------- 通用 ---------------- */                                                                  
 
 @Composable
 private fun SettingsList(content: @Composable ColumnScope.() -> Unit) {

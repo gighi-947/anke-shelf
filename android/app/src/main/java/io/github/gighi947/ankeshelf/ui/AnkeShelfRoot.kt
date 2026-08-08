@@ -47,6 +47,7 @@ import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.ui.download.DownloadScreen
 import io.github.gighi947.ankeshelf.ui.reader.ReaderScreen
 import io.github.gighi947.ankeshelf.ui.search.SearchScreen
+import io.github.gighi947.ankeshelf.ui.settings.GuideScreen
 import io.github.gighi947.ankeshelf.ui.settings.SettingsScreen
 import io.github.gighi947.ankeshelf.ui.shelf.BookshelfScreen
 import io.github.gighi947.ankeshelf.ui.stats.StatsScreen
@@ -75,6 +76,7 @@ fun AnkeShelfRoot(container: AppContainer) {
     var bookId by rememberSaveable { mutableStateOf<String?>(null) }
     var chapter by rememberSaveable { mutableIntStateOf(0) }
     var jumpOffset by rememberSaveable { mutableStateOf<Int?>(null) }
+    var guideReturn by rememberSaveable { mutableStateOf("settings") }
     var refresh by remember { mutableIntStateOf(0) }
     var settingsTick by remember { mutableIntStateOf(0) }
     var lastServiceStage by remember { mutableStateOf("") }
@@ -199,6 +201,10 @@ fun AnkeShelfRoot(container: AppContainer) {
                                     container = container,
                                     shelfView = container.settings.getAll().shelf_view,
                                     onOpenDownload = { routeName = "download" },
+                                    onOpenGuide = {
+                                        guideReturn = "shelf"
+                                        routeName = "guide"
+                                    },
                                     onShelfViewChange = { view ->
                                         container.settings.update(SettingsPatch(shelf_view = view))
                                         settingsTick++
@@ -243,6 +249,10 @@ fun AnkeShelfRoot(container: AppContainer) {
                                     statsGlobal = statsGlobal,
                                     appPaths = container.appPaths,
                                     onOpenStats = { routeName = "stats" },
+                                    onOpenGuide = {
+                                        guideReturn = "settings"
+                                        routeName = "guide"
+                                    },
                                     onBack = { routeName = "shelf" },
                                     onChanged = { settingsTick++ },
                                     onClearAllData = {
@@ -250,6 +260,8 @@ fun AnkeShelfRoot(container: AppContainer) {
                                             container.appPaths.root.deleteRecursively()
                                         }
                                         context.getSharedPreferences("reader", android.content.Context.MODE_PRIVATE)
+                                            .edit().clear().apply()
+                                        context.getSharedPreferences("guide", android.content.Context.MODE_PRIVATE)
                                             .edit().clear().apply()
                                         activity?.finish()
                                     },
@@ -260,6 +272,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                                     refreshKey = refresh,
                                     onBack = { routeName = "settings" },
                                 )
+                                "guide" -> GuideScreen(onBack = { routeName = guideReturn })
                             }
                         }
                     }

@@ -25,13 +25,16 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Sort
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +45,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -83,6 +87,7 @@ fun BookshelfScreen(
     container: AppContainer,
     onImport: (Uri) -> Unit,
     onOpenDownload: () -> Unit,
+    onOpenGuide: () -> Unit,
     onOpen: (BookRecord) -> Unit,
     shelfView: String,
     onShelfViewChange: (String) -> Unit,
@@ -127,7 +132,7 @@ fun BookshelfScreen(
                 title = { PageHeaderTitle("安科书架") },
                 actions = {
                     IconButton(onClick = { sortMenu = true }) {
-                        Icon(Icons.Filled.Sort, contentDescription = "\u6392\u5e8f")
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "\u6392\u5e8f")
                     }
                     Box {
                         DropdownMenu(
@@ -152,7 +157,7 @@ fun BookshelfScreen(
                         onShelfViewChange(if (shelfView == "list") "grid" else "list")
                     }) {
                         Icon(
-                            if (shelfView == "list") Icons.Filled.ViewModule else Icons.Filled.ViewList,
+                            if (shelfView == "list") Icons.Filled.ViewModule else Icons.AutoMirrored.Filled.ViewList,
                             contentDescription = if (shelfView == "list") {
                                 "\u5207\u6362\u5230\u7f51\u683c\u89c6\u56fe"
                             } else {
@@ -189,27 +194,78 @@ fun BookshelfScreen(
         },
     ) { padding ->
         if (books.isEmpty()) {
-            Column(
+            val guidePrefs = context.getSharedPreferences("guide", android.content.Context.MODE_PRIVATE)
+            var guideSeen by remember { mutableStateOf(guidePrefs.getBoolean("seen", false)) }
+            fun markGuideSeen() {
+                guidePrefs.edit().putBoolean("seen", true).apply()
+                guideSeen = true
+            }
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
-                    .padding(AnkeSpacing.xl),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                    .padding(padding),
             ) {
-                Text("书架为空", style = MaterialTheme.typography.headlineMedium)
-                Text(
-                    "导入 EPUB 开始阅读",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = AnkeSpacing.sm, bottom = AnkeSpacing.lg),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
-                    Button(shape = MaterialTheme.shapes.small, onClick = launchPicker) {
-                        Text("导入 EPUB")
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(AnkeSpacing.xl),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text("书架为空", style = MaterialTheme.typography.headlineMedium)
+                    Text(
+                        "导入 EPUB 开始阅读",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = AnkeSpacing.sm, bottom = AnkeSpacing.lg),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
+                        Button(shape = MaterialTheme.shapes.small, onClick = launchPicker) {
+                            Text("导入 EPUB")
+                        }
+                        OutlinedButton(shape = MaterialTheme.shapes.small, onClick = onOpenDownload) {
+                            Text("从 NGA 下载")
+                        }
                     }
-                    OutlinedButton(shape = MaterialTheme.shapes.small, onClick = onOpenDownload) {
-                        Text("从 NGA 下载")
+                }
+                // 首次打开且书架为空：顶部提醒查看内置使用说明（查看/关闭后不再出现）。
+                if (!guideSeen) {
+                    Card(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .padding(AnkeSpacing.md),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        ),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(
+                                start = AnkeSpacing.lg,
+                                top = AnkeSpacing.sm,
+                                bottom = AnkeSpacing.sm,
+                                end = AnkeSpacing.xs,
+                            ),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("新用户？", style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    "应用内置使用说明：导入 EPUB、NGA 下载、阅读操作等。",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = AnkeSpacing.xxs),
+                                )
+                            }
+                            TextButton(onClick = {
+                                markGuideSeen()
+                                onOpenGuide()
+                            }) { Text("查看") }
+                            IconButton(onClick = { markGuideSeen() }) {
+                                Icon(Icons.Filled.Close, contentDescription = "关闭提醒")
+                            }
+                        }
                     }
                 }
             }
