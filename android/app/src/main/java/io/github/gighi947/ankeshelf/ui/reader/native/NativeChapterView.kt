@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -62,6 +64,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.distinctUntilChanged
 import android.graphics.BitmapFactory
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
 /** 高亮（id/起始/结束/色键，与 AnnotationStore 字段一致）。 */
@@ -343,6 +346,9 @@ private fun NativePagedView(
                     var idx = result.indexOfLast { it.startOffset <= initialOffset }
                     if (idx < 0) idx = 0
                     currentPage = idx
+                    // 等 pager 页数同步后再定位，避免 pageCount 仍为旧值导致越界崩溃。
+                    snapshotFlow { pagerState.pageCount }
+                        .first { it == result.size }
                     pagerState.scrollToPage(idx)
                 }
             }
@@ -683,24 +689,36 @@ private fun NativeBlock(
 ) {
     when (block) {
         is ReaderBlock.Floor -> {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, theme.accentColor.copy(alpha = 0.25f), MaterialTheme.shapes.small)
-                    .background(theme.bgColor)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .height(IntrinsicSize.Min)
+                    .background(theme.bgColor),
             ) {
-                Text(
-                    "${block.lou}楼 · ${block.likes}赞 · ${block.username}(${block.userId}) · ${block.time}",
-                    style = baseStyle.style(SpanStyle(
-                        fontSize = (baseStyle.fontSize * 0.82f).sp,
-                        color = theme.fgColor.copy(alpha = 0.7f),
-                    )),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                Box(
+                    Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(theme.accentColor.copy(alpha = 0.35f)),
                 )
-                block.body.forEach { sub ->
-                    NativeBlock(sub, theme, baseStyle, scrollMode, highlights, highlightColors, imageBytes, onImageLongPress)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .border(1.dp, theme.accentColor.copy(alpha = 0.25f), MaterialTheme.shapes.small)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        "${block.lou}楼 · ${block.likes}赞 · ${block.username}(${block.userId}) · ${block.time}",
+                        style = baseStyle.style(SpanStyle(
+                            fontSize = (baseStyle.fontSize * 0.82f).sp,
+                            color = theme.fgColor.copy(alpha = 0.7f),
+                        )),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    block.body.forEach { sub ->
+                        NativeBlock(sub, theme, baseStyle, scrollMode, highlights, highlightColors, imageBytes, onImageLongPress)
+                    }
                 }
             }
         }
@@ -712,16 +730,28 @@ private fun NativeBlock(
             highlights,
             highlightColors,
         )
-        is ReaderBlock.Quote -> Column(
-            modifier = Modifier
+        is ReaderBlock.Quote -> Row(
+            Modifier
                 .fillMaxWidth()
-                .background(theme.bgColor.copy(alpha = 0.5f))
-                .padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
+                .height(IntrinsicSize.Min),
         ) {
-            if (block.title.isNotBlank()) {
-                Text(block.title, style = baseStyle.style(SpanStyle(fontWeight = FontWeight.Medium, fontSize = (baseStyle.fontSize * 0.9f).sp)))
+            Box(
+                Modifier
+                    .width(3.dp)
+                    .fillMaxHeight()
+                    .background(theme.accentColor.copy(alpha = 0.45f)),
+            )
+            Column(
+                Modifier
+                    .weight(1f)
+                    .background(theme.bgColor.copy(alpha = 0.5f))
+                    .padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
+            ) {
+                if (block.title.isNotBlank()) {
+                    Text(block.title, style = baseStyle.style(SpanStyle(fontWeight = FontWeight.Medium, fontSize = (baseStyle.fontSize * 0.9f).sp)))
+                }
+                block.body.forEach { NativeBlock(it, theme, baseStyle, scrollMode, highlights, highlightColors, imageBytes, onImageLongPress) }
             }
-            block.body.forEach { NativeBlock(it, theme, baseStyle, scrollMode, highlights, highlightColors, imageBytes, onImageLongPress) }
         }
         is ReaderBlock.Dice -> Text(
             block.text,
@@ -763,7 +793,7 @@ private fun NativeTextBlock(
             )
         }
     }
-    Text(text = ann, style = style)
+    Text(text = ann, style = style, modifier = Modifier.padding(vertical = 2.dp))
 }
 
 @Composable

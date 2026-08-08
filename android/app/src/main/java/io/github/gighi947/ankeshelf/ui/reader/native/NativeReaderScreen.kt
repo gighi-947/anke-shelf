@@ -456,8 +456,8 @@ fun NativeReaderScreen(
 
     DisposableEffect(Unit) {
         onDispose {
-            saveProgress()
-            container.progress.flush()
+            runCatching { saveProgress() }
+            runCatching { container.progress.flush() }
         }
     }
 }

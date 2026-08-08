@@ -156,6 +156,8 @@ fun sniffImageExt(data: ByteArray): String {
 class ProgressStore(private val progressFile: File) {
 
     private val lock = ReentrantLock()
+    // 文件写锁：主线程 flush 与后台 set 写盘串行，避免并发写同一个 .tmp 崩溃/损坏。
+    private val writeLock = ReentrantLock()
     private var data: MutableMap<String, ProgressEntry> = mutableMapOf()
     // 对齐桌面 ProgressStore.set：每次保存立即落盘；安卓把写盘放到串行后台线程，
     // 不阻塞 UI（桌面是 Python 后台线程写盘，语义一致）。
@@ -170,10 +172,12 @@ class ProgressStore(private val progressFile: File) {
 
     fun save() {
         val snapshot = lock.withLock { data.toMap() }
-        atomicWriteJson(
-            progressFile,
-            Shelf.json.encodeToString(ProgressFile.serializer(), ProgressFile(progress = snapshot)),
-        )
+        writeLock.withLock {
+            atomicWriteJson(
+                progressFile,
+                Shelf.json.encodeToString(ProgressFile.serializer(), ProgressFile(progress = snapshot)),
+            )
+        }
     }
 
     fun get(bookId: String): ProgressEntry? = lock.withLock { data[bookId] }
