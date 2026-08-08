@@ -29,7 +29,23 @@ fun extractReaderParts(htmlText: String): ReaderHtmlParts {
     val styles = Regex("(?is)<style[^>]*>.*?</style>")
         .findAll(htmlText)
         .joinToString("\n") { it.value }
-    return ReaderHtmlParts(body = body, headStyles = styles)
+    return ReaderHtmlParts(body = sanitizeReaderBody(body), headStyles = styles)
+}
+
+/** 清洗章节 body：删除脚本/危险标签/事件属性/javascript: 链接，保留 NGA 排版样式。 */
+fun sanitizeReaderBody(body: String): String {
+    var s = body
+    s = s.replace(Regex("(?is)<script\\b[^>]*>.*?</script\\s*>"), "")
+    s = s.replace(Regex("(?is)<script\\b[^>]*>.*"), "")
+    s = s.replace(
+        Regex("(?is)<\\s*(?:iframe|object|embed|base|form)\\b[^>]*>.*?</\\s*(?:iframe|object|embed|form)\\s*>"),
+        "",
+    )
+    s = s.replace(Regex("(?is)<\\s*(?:iframe|object|embed|base|form)\\b[^>]*/?>"), "")
+    s = s.replace(Regex("(?is)<meta\\b[^>]*http-equiv\\s*=\\s*[\"']?refresh[^>]*>"), "")
+    s = s.replace(Regex("(?is)\\son\\w+\\s*=\\s*(\"[^\"]*\"|'[^']*'|[^\\s>]+)"), "")
+    s = s.replace(Regex("(?is)\\b(?:href|src)\\s*=\\s*[\"']?\\s*javascript:[^\"'>\\s]*[\"']?"), "")
+    return s
 }
 
 /**

@@ -670,4 +670,13 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **封面更新/导出按钮**：网格书架封面右上角悬浮圆形图标（28dp 按钮 + 16dp 图标，surface 92% 底）：NGA 书显示「更新」「导出」，EPUB 书显示「导出」；导出菜单支持 EPUB / Markdown（NGA 书），EPUB 书导出原文件副本（SAF）。
 - **列表视图同款入口**：列表行不在封面上叠按钮，改在行尾放同样的 28dp 圆形「更新」「导出」图标（EPUB 书只有「导出」），与网格封面一致。
 - 验证：模拟器网格书架封面按钮出现（content-desc 更新/导出）；编译与单测通过；查看器触摸修复与下载刷新逻辑已实现（模拟器网络/无图章节限制下未端到端复测）。
+- 提交：`67d11a3`。
+
+### 9.19 安全检查（2026-08-08）
+
+- 全量审计 Android 端与仓库级安全（报告见 [docs/ANDROID_SECURITY_REVIEW.md](docs/ANDROID_SECURITY_REVIEW.md)）。
+- 修复（中危）：章节 HTML 脚本注入——`extractReaderParts` 增加 `sanitizeReaderBody` 清洗（删除 script/iframe/object/embed/base/form/meta refresh/on* 事件/javascript: 链接，保留 NGA 内联样式），并补单测。
+- CSP 尝试后放弃：WebView file:// 下 `'self'` 不匹配 asset 子资源（实测 reader.css 被拦），改以输入清洗 + 导航拦截为主。
+- 核查通过：权限最小化、allowBackup=false、Service exported=false + dataSync 类型、NGA 仅 https、凭据仅存私有目录、git 历史无敏感文件、CI 无密钥、EPUB 解压无越界、调试开关仅 debug。
+- 提醒：`D:\Codex\project1\.local\archive\` 下存在含真实 NGA uid/cid 的本地存档（被 gitignore 覆盖、未入库），建议清理。
 - 提交：见后续记录。

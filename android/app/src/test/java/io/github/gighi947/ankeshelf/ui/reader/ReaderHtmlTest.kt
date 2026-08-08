@@ -67,4 +67,21 @@ class ReaderHtmlTest {
         assertTrue(html.contains("system-ui"))
         assertFalse(html.contains("@font-face"))
     }
+
+    @Test
+    fun sanitizeRemovesScriptsAndEventAttrs() {
+        val html = "<p onclick=\"x()\" style=\"color:red\">你好<script>alert(1)</script></p>" +
+            "<a href=\"javascript:alert(2)\">x</a>" +
+            "<iframe src=\"https://evil.example\"></iframe>"
+        val clean = sanitizeReaderBody(html)
+        println("CLEAN=[" + clean + "]")
+        assertFalse(clean.contains("<script"))
+        assertFalse(clean.contains("onclick"))
+        assertFalse(clean.contains("javascript:"))
+        assertFalse(clean.contains("iframe"))
+        assertTrue(clean.contains("style=\"color:red\""))
+        assertTrue(clean.contains("你好"))
+        assertTrue(clean.contains("<a >x</a>"))
+    }
+
 }
