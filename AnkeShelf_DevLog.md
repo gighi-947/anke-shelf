@@ -658,4 +658,4 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 完善 [android/VERSIONING.md](android/VERSIONING.md)：安卓独立版本线（0.1.0→1.0.0，首个正式发布建议直接 android-v1.0.0）、标签 `android-vX.Y.Z`、资产 `AnkeShelf-vX.Y.Z-android.apk`、签名（keystore 生成/keystore.properties/build.gradle 配置示例）、发布检查清单（回归→版本号→assembleRelease→凭据扫描→tag→gh release→REST 核验）、凭据红线、中文标题经管道乱码的注意事项；与桌面 SOP 并列不混用。
 - 完善 [android/scripts/check-release.ps1](android/scripts/check-release.ps1)：输出 APK 大小与 SHA256；内容扫描限定文本类条目（.ini/.properties/.xml/.json/.txt/.md/.html/.js/.css），避免二进制 dex 误报。
 - 排障：脚本首跑把 dex 中的代码字段名（`ngaPassportUid=` 模板字符串）误判为真实凭据 → 内容扫描只针对文本条目后，对当前 debug APK 实测 `RESULT: PASS`（SHA256 输出）。
-- 提交：见后续记录。
+- 提交：`ebaca20`。
