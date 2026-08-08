@@ -150,12 +150,8 @@ fun AnkeShelfRoot(container: AppContainer) {
                         session = session,
                         initialChapter = chapter,
                         savedOffset = savedProgress?.text_offset ?: 0,
-                        annotations = container.annotations,
                         container = container,
                         readerSettings = container.settings.getAll(),
-                        onProgress = { idx, offset ->
-                            container.repository.saveProgress(session.id, idx, offset)
-                        },
                         onSettingsPatch = { patch ->
                             container.settings.update(patch)
                             settingsTick++

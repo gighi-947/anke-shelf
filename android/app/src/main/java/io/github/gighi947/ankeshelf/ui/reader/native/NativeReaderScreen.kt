@@ -65,13 +65,17 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.ViewCompat
-import io.github.gighi947.ankeshelf.data.AnnotationStore
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
+import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookSession
 import io.github.gighi947.ankeshelf.service.ngaHeaders
 import io.github.gighi947.ankeshelf.ui.reader.extractReaderParts
+import io.github.gighi947.ankeshelf.ui.reader.buildReaderHtml
+import io.github.gighi947.ankeshelf.ui.reader.ChapterProgressTracker
+import io.github.gighi947.ankeshelf.ui.reader.WebViewChapterView
+import io.github.gighi947.ankeshelf.ui.reader.WebViewReaderCallbacks
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.readerTheme
 import kotlinx.coroutines.Dispatchers
@@ -79,6 +83,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import okhttp3.Request
 import java.io.File
 import kotlin.math.roundToInt
@@ -98,21 +105,19 @@ fun NativeReaderScreen(
     session: BookSession,
     initialChapter: Int,
     savedOffset: Int,
-    annotations: AnnotationStore,
     container: AppContainer,
     readerSettings: SettingsData,
-    onProgress: (chapterIndex: Int, textOffset: Int) -> Unit,
     onSettingsPatch: (SettingsPatch) -> Unit,
     onStatsTick: (seconds: Int, pagesFlipped: Int) -> Unit = { _, _ -> },
     onBack: () -> Unit,
 ) {
     var chapterIndex by remember(session.id) { mutableIntStateOf(initialChapter.coerceIn(0, session.chapters.lastIndex.coerceAtLeast(0))) }
-    var doc by remember { mutableStateOf<ReaderDoc?>(null) }
     var showToc by remember { mutableStateOf(false) }
     var barsVisible by remember { mutableStateOf(true) }
+    // 手动唤出的控制条保持显示（不再 3 秒自动收），滚动/翻页后才收起。
+    var barsHeld by remember { mutableStateOf(false) }
     var pageInfo by remember { mutableStateOf(Pair(0, 1)) }
     var scrollRatio by remember { mutableFloatStateOf(0f) }
-    var lastOffset by remember { mutableIntStateOf(0) }
     var lightboxSrc by remember { mutableStateOf<String?>(null) }
     var pendingSeconds by remember { mutableIntStateOf(0) }
     var flippedPages by remember { mutableIntStateOf(0) }
@@ -121,8 +126,17 @@ fun NativeReaderScreen(
     val scope = rememberCoroutineScope()
     // 恢复锚点每章只取一次：书架刷新等外部变化会重建 savedOffset（可能读到旧值），
     // 不能让它在阅读中途变化并把滚动/分页位置拉回章节首。
+    val progressTracker = remember(session.id) {
+        ChapterProgressTracker(
+            bookId = session.id,
+            initialChapter = initialChapter,
+            initialOffset = savedOffset,
+            restoreFrom = { container.progress.get(it) },
+            persist = { id, idx, offset -> container.repository.saveProgress(id, idx, offset) },
+        )
+    }
     val restoreOffset = remember(chapterIndex, session.id) {
-        if (chapterIndex == initialChapter) savedOffset else 0
+        progressTracker.restoreOffsetFor(chapterIndex)
     }
     val activity = androidx.activity.compose.LocalActivity.current
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -130,6 +144,21 @@ fun NativeReaderScreen(
     val ngaConfig = remember { container.ngaConfig.load() }
     val fg = remember(theme) {
         runCatching { Color(android.graphics.Color.parseColor(theme.text)) }.getOrDefault(Color.Black)
+    }
+    // 悬浮栏配色跟随阅读器主题（背景=正文背景、文字=正文前景、强调=主题色），
+    // 不再依赖 MaterialTheme：应用主题与阅读器深色主题分离时不会出现黑字。
+    val barBg = remember(theme) {
+        runCatching { Color(android.graphics.Color.parseColor(theme.background)) }.getOrDefault(Color.White)
+    }
+
+    // 章节 HTML：换章/换书时后台组装一次；主题/字号后续用 JS 桥更新，不重载页面。
+    val htmlState = remember(session.id, chapterIndex) {
+        runCatching {
+            val parts = extractReaderParts(session.chapterText(chapterIndex).orEmpty())
+            val len = TextExtractor.extractDomText(parts.body).length
+            val html = buildReaderHtml(parts, theme, readerSettings)
+            html to len
+        }.getOrNull()
     }
 
     // 异形屏安全区：沉浸式时顶部保留挖孔约 3/8（手动 dp 可覆盖）。
@@ -151,19 +180,6 @@ fun NativeReaderScreen(
         cutoutBottom * 3 / 8
     }
 
-    // 章节解析放后台。只用 chapterIndex + session.id 做键：书架刷新等外部状态变化
-    // 可能重建 session 对象（同一本书），不能因此把阅读器重置回章节首。
-    LaunchedEffect(chapterIndex, session.id) {
-        doc = null
-        val d = withContext(Dispatchers.Default) {
-            runCatching {
-                val parts = extractReaderParts(session.chapterText(chapterIndex).orEmpty())
-                ReaderHtmlModel.parse(parts.body, parts.headStyles)
-            }.getOrNull()
-        }
-        doc = d
-    }
-
     // 图片字节：EPUB 走压缩包相对路径；NGA 在线图走 OkHttp（防盗链头）。
     suspend fun imageBytes(src: String): ByteArray? = withContext(Dispatchers.IO) {
         when {
@@ -179,12 +195,6 @@ fun NativeReaderScreen(
             }.getOrNull()
             else -> null
         }
-    }
-
-    val highlights = remember(doc, chapterIndex) {
-        annotations.getHighlights(session.id)
-            .filter { it.chapter_index == chapterIndex }
-            .map { NativeHighlight(it.id, it.start_offset, it.end_offset, it.color) }
     }
 
     val saveLauncher = rememberLauncherForActivityResult(
@@ -213,7 +223,7 @@ fun NativeReaderScreen(
     }
 
     fun saveProgress() {
-        onProgress(chapterIndex, lastOffset)
+        progressTracker.flush()
     }
 
     // 5 秒心跳统计。
@@ -229,9 +239,9 @@ fun NativeReaderScreen(
         }
     }
 
-    // 控制条 3 秒自动收起（对齐 WebView 时代的移动端筛选行为）。
-    LaunchedEffect(barsVisible, chapterIndex) {
-        if (barsVisible) {
+    // 控制条：非手动保持时 3 秒自动收起（对齐 WebView 时代最终行为）。
+    LaunchedEffect(barsVisible, barsHeld, showToc) {
+        if (barsVisible && !barsHeld && !showToc) {
             delay(3000)
             barsVisible = false
         }
@@ -258,14 +268,15 @@ fun NativeReaderScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(themeColor(theme.background, Color.White))) {
-        val currentDoc = doc
-        if (currentDoc == null) {
+        val html = htmlState
+        if (html == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("正在加载章节…", color = fg.copy(alpha = 0.7f))
             }
         } else {
-            NativeChapterView(
-                doc = currentDoc,
+            WebViewChapterView(
+                html = html.first,
+                chapterIndex = chapterIndex,
                 paged = readerSettings.pagination,
                 theme = theme,
                 fontSize = readerSettings.font_size,
@@ -276,31 +287,43 @@ fun NativeReaderScreen(
                 dualPage = readerSettings.dual_page,
                 autoDual = readerSettings.auto_dual != false,
                 topInsetPx = topInsetPx,
-                bottomInsetPx = 0,
                 initialOffset = restoreOffset,
-                highlights = highlights,
-                imageBytes = ::imageBytes,
-                customFont = readerSettings.custom_font,
-                fontsDir = container.appPaths.fontsDir,
-                callbacks = NativeReaderCallbacks(
-                    onProgress = { offset ->
-                        lastOffset = offset
-                        onProgress(chapterIndex, offset)
-                        if (readerSettings.pagination) {
-                            scrollRatio = if (currentDoc.plainText.length > 0) {
-                                offset.toFloat() / currentDoc.plainText.length
-                            } else 0f
+                session = session,
+                container = container,
+                callbacks = WebViewReaderCallbacks(
+                    onProgress = { ch, offset ->
+                        progressTracker.onOffset(ch, offset)
+                        if (ch == chapterIndex) {
+                            // 滚动一段距离后收起手动唤出的控制条（对齐 WebView 时代行为）。
+                            if (!readerSettings.pagination && barsHeld) {
+                                barsHeld = false
+                                barsVisible = false
+                            }
+                            scrollRatio = if (html.second > 0) {
+                                offset.toFloat() / html.second
+                            } else {
+                                0f
+                            }
                         }
                     },
-                    onPageChanged = { page, total, offset ->
-                        lastOffset = offset
-                        pageInfo = page to total
-                        onProgress(chapterIndex, offset)
+                    onPageChanged = { ch, page, total, offset ->
+                        progressTracker.onPageTurn(ch, offset)
+                        if (ch == chapterIndex) pageInfo = page to total
                     },
-                    onImageLongPress = { lightboxSrc = it },
-                    onHighlightTap = { },
+                    onChapterSwitch = { from, to -> progressTracker.onChapterSwitch(from, to) },
+                    onFlush = { progressTracker.flush() },
+                    onImageTap = { lightboxSrc = it },
                     onTapZone = { zone ->
-                        if (zone == "middle") barsVisible = !barsVisible
+                        when (zone) {
+                            "middle" -> {
+                                barsVisible = !barsVisible
+                                barsHeld = barsVisible
+                            }
+                            "hide" -> {
+                                barsVisible = false
+                                barsHeld = false
+                            }
+                        }
                     },
                     onRequestChapter = { delta ->
                         chapterIndex = (chapterIndex + delta)
@@ -329,19 +352,20 @@ fun NativeReaderScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+                    .background(barBg.copy(alpha = 0.96f))
                     .statusBarsPadding()
                     .padding(horizontal = 4.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = { saveProgress(); onBack() }) { Text("← 返回") }
+                TextButton(onClick = { saveProgress(); onBack() }) { Text("← 返回", color = fg) }
                 Text(
                     session.chapterTitle(chapterIndex),
                     modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                    color = fg,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                TextButton(onClick = { showToc = !showToc }) { Text("目录") }
+                TextButton(onClick = { showToc = !showToc }) { Text("目录", color = fg) }
             }
         }
 
@@ -354,7 +378,7 @@ fun NativeReaderScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+                    .background(barBg.copy(alpha = 0.96f))
                     .navigationBarsPadding()
                     .padding(horizontal = 4.dp, vertical = 2.dp),
             ) {
@@ -363,26 +387,28 @@ fun NativeReaderScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = { chapterIndex = (chapterIndex - 1).coerceAtLeast(0) }) { Text("上一章") }
+                    TextButton(onClick = { chapterIndex = (chapterIndex - 1).coerceAtLeast(0) }) {
+                        Text("上一章", color = fg)
+                    }
                     TextButton(onClick = {
                         onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size - 1).coerceAtLeast(14)))
-                    }) { Text("A-") }
+                    }) { Text("A-", color = fg) }
                     TextButton(onClick = {
                         val next = THEME_CYCLE[(THEME_CYCLE.indexOf(readerSettings.theme) + 1) % THEME_CYCLE.size]
                         onSettingsPatch(SettingsPatch(theme = next))
-                    }) { Text("主题") }
+                    }) { Text("主题", color = fg) }
                     TextButton(onClick = {
                         onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size + 1).coerceAtMost(28)))
-                    }) { Text("A+") }
+                    }) { Text("A+", color = fg) }
                     TextButton(onClick = {
                         chapterIndex = (chapterIndex + 1).coerceAtMost(session.chapters.lastIndex)
-                    }) { Text("下一章") }
+                    }) { Text("下一章", color = fg) }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = {
                         onSettingsPatch(SettingsPatch(pagination = !readerSettings.pagination))
                     }) {
-                        Text(if (readerSettings.pagination) "分页" else "滚动")
+                        Text(if (readerSettings.pagination) "分页" else "滚动", color = fg)
                     }
                     Text(
                         if (readerSettings.pagination && pageInfo.second > 0) {
@@ -391,6 +417,7 @@ fun NativeReaderScreen(
                             "${(scrollRatio * 100).roundToInt()}%"
                         },
                         modifier = Modifier.weight(1f).padding(end = 12.dp),
+                        color = fg,
                         textAlign = androidx.compose.ui.text.style.TextAlign.End,
                     )
                 }
@@ -488,9 +515,19 @@ fun NativeReaderScreen(
         }
     }
 
-    DisposableEffect(Unit) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                // 按 Home 退后台/切走：立即落盘，避免进程被杀丢进度（对齐 Legado onPause save）。
+                runCatching { progressTracker.flush() }
+                runCatching { container.progress.flush() }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
-            runCatching { saveProgress() }
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            runCatching { progressTracker.flush() }
             runCatching { container.progress.flush() }
             val act = activity
             if (act != null) {

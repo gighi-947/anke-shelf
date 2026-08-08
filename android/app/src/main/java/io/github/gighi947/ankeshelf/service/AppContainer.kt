@@ -19,6 +19,7 @@ import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.data.nowIso
 import java.io.Closeable
 import java.io.File
+import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 import okhttp3.Cache
 import okhttp3.OkHttpClient
@@ -88,6 +89,9 @@ class BookRepository(
     private val progress: ProgressStore,
 ) {
 
+    private val io = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "book-repo-io").apply { isDaemon = true }
+    }
     private val booksDir: File get() = File(appPaths.root, "books")
 
     fun listBooks(): List<BookUi> = shelf.listBooks().map { rec ->
@@ -217,10 +221,11 @@ class BookRepository(
         TextExtractor.extractDomText(session.chapterText(index) ?: "").length
 
     fun saveProgress(bookId: String, chapterIndex: Int, textOffset: Int) {
+        // 对齐桌面 api.save_progress：更新进度并同步“最近阅读”（60s 节流落盘）。
+        // progress.set 同步更新内存并自行排队落盘（write 已在后台线程）；
+        // shelf.touch 的整文件写入放到本仓库后台线程，主线程不做磁盘 I/O。
         progress.set(bookId, chapterIndex, textOffset)
-        // 对齐桌面 api.save_progress：每次上报同步更新“最近阅读”（60s 节流落盘），
-        // 书架按最近阅读排序依赖该字段。
-        shelf.touch(bookId)
+        io.execute { shelf.touch(bookId) }
     }
 
     /** 重命名书籍显示标题：书架记录 + 原生书 meta.json（EPUB 仅书架记录）。 */

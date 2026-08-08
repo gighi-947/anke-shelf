@@ -113,35 +113,7 @@ object ReaderHtmlModel {
                     val bodyBlocks = mutableListOf<ReaderBlock>()
                     val bodyPlain = StringBuilder()
                     if (bodyNode != null) {
-                        // 楼层正文多为“文字<br/>文字”平铺：连续内联内容合并成同一段
-                        // （<br/>=换行），块级元素（引用/图片/表格/详情）单独成块。
-                        val pending = mutableListOf<ReaderSpan>()
-                        fun flushPending() {
-                            if (pending.isNotEmpty()) {
-                                bodyBlocks.add(ReaderBlock.Paragraph(pending.toList()))
-                                bodyPlain.append(' ').append(pending.joinToString("") { it.text })
-                                pending.clear()
-                            }
-                        }
-                        for (c in bodyNode.children) {
-                            when {
-                                c.tag == "br" -> pending.add(ReaderSpan("\n"))
-                                c.tag == "img" -> {
-                                    flushPending()
-                                    val src = c.attr("src").orEmpty()
-                                    if (src.isNotBlank()) {
-                                        bodyBlocks.add(ReaderBlock.Image(src, c.attr("alt").orEmpty()))
-                                        bodyPlain.append(' ').append(c.attr("alt").orEmpty())
-                                    }
-                                }
-                                c.tag in BLOCK_TAGS -> {
-                                    flushPending()
-                                    convert(c, bodyBlocks, bodyPlain, depth + 1, classColors)
-                                }
-                                else -> spansOf(listOf(c), pending, classColors = classColors)
-                            }
-                        }
-                        flushPending()
+                        convertInlineContent(bodyNode.children, bodyBlocks, bodyPlain, depth + 1, classColors)
                     }
                     val floor = ReaderBlock.Floor(
                         lou = Regex("(\\d+)\\s*楼").find(headText)?.groupValues?.get(1)?.toIntOrNull() ?: 0,
@@ -175,7 +147,7 @@ object ReaderHtmlModel {
                 node.hasClass("nga-quote") -> {
                     val inner = mutableListOf<ReaderBlock>()
                     val innerPlain = StringBuilder()
-                    for (c in node.children) convert(c, inner, innerPlain, depth + 1, classColors)
+                    convertInlineContent(node.children, inner, innerPlain, depth + 1, classColors)
                     out.add(ReaderBlock.Quote(inner))
                     plain.append(' ').append(innerPlain)
                 }
@@ -225,7 +197,7 @@ object ReaderHtmlModel {
             "blockquote" -> {
                 val inner = mutableListOf<ReaderBlock>()
                 val innerPlain = StringBuilder()
-                for (c in node.children) convert(c, inner, innerPlain, depth + 1, classColors)
+                convertInlineContent(node.children, inner, innerPlain, depth + 1, classColors)
                 out.add(ReaderBlock.Quote(inner))
                 plain.append(' ').append(innerPlain)
             }
@@ -282,6 +254,45 @@ object ReaderHtmlModel {
             }
             else -> convertChildren(node, out, plain, depth, classColors)
         }
+    }
+
+    /** 连续内联内容合并成段（<br/>=换行），块级元素（引用/图片/表格/详情）单独成块。
+     *  楼层正文与引用块共用：保证 <b>/<span color>/<del> 等样式在合并中保留，
+     *  不会拆成一堆窄段落丢格式。 */
+    private fun convertInlineContent(
+        nodes: List<Node>,
+        out: MutableList<ReaderBlock>,
+        plain: StringBuilder,
+        depth: Int,
+        classColors: Map<String, String>,
+    ) {
+        val pending = mutableListOf<ReaderSpan>()
+        fun flushPending() {
+            if (pending.isNotEmpty()) {
+                out.add(ReaderBlock.Paragraph(pending.toList()))
+                plain.append(' ').append(pending.joinToString("") { it.text })
+                pending.clear()
+            }
+        }
+        for (c in nodes) {
+            when {
+                c.tag == "br" -> pending.add(ReaderSpan("\n"))
+                c.tag == "img" -> {
+                    flushPending()
+                    val src = c.attr("src").orEmpty()
+                    if (src.isNotBlank()) {
+                        out.add(ReaderBlock.Image(src, c.attr("alt").orEmpty()))
+                        plain.append(' ').append(c.attr("alt").orEmpty())
+                    }
+                }
+                c.tag in BLOCK_TAGS -> {
+                    flushPending()
+                    convert(c, out, plain, depth + 1, classColors)
+                }
+                else -> spansOf(listOf(c), pending, classColors = classColors)
+            }
+        }
+        flushPending()
     }
 
     private fun convertChildren(

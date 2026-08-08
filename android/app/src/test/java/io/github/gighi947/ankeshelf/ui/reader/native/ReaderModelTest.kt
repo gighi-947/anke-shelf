@@ -140,6 +140,34 @@ class ReaderModelTest {
         assertTrue("s 应标记删除线", s != null && s.strike && s.muted)
     }
 
+    @Test
+    fun quoteInlineContentMergesAndKeepsStyles() {
+        val doc = ReaderHtmlModel.parse(
+            """<div class="nga-floor" id="pid1">
+                 <div class="floor-head"><span class="lou">1楼</span> · 0赞 · u(9) · t</div>
+                 <div class="floor-body">
+                   <blockquote class="nga-quote">
+                     <br/>[观前提醒]<br/>
+                     1.这是以<b>动画《Bang Dream It's Mygo!!!!!》</b>登场角色
+                     <span style="color:#7ec8e3"><b>丰川祥子</b></span> 为主角、以
+                     <del> 燃烧天堂 </del>炽焰天穹
+                     <br/>2.第二段文字<br/>
+                   </blockquote>
+                 </div>
+               </div>""",
+        )
+        val floor = doc.blocks.filterIsInstance<ReaderBlock.Floor>().first()
+        val quote = floor.body.filterIsInstance<ReaderBlock.Quote>().firstOrNull()
+        assertTrue("引用块应存在", quote != null)
+        val paras = quote!!.body.filterIsInstance<ReaderBlock.Paragraph>()
+        assertEquals("连续内联内容应合并为一个段落", 1, paras.size)
+        val spans = paras.first().spans
+        assertTrue("加粗保留", spans.any { it.bold && it.text.contains("Bang Dream") })
+        assertTrue("颜色保留", spans.any { it.color == "#7ec8e3" && it.text.contains("丰川祥子") })
+        assertTrue("删除线保留", spans.any { it.strike && it.muted && it.text.contains("燃烧天堂") })
+        assertTrue("换行保留", spans.any { it.text.contains("\n") })
+    }
+
     private fun countImages(blocks: List<ReaderBlock>): Int = blocks.sumOf { countImages(it) }
 
     private fun countImages(b: ReaderBlock): Int = when (b) {

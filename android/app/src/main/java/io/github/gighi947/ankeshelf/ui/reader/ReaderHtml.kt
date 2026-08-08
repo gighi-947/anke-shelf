@@ -122,5 +122,5 @@ fun buildReaderHtml(
         "<button type=\"button\" id=\"android-prev-chapter\" class=\"chapter-nav-btn\">← 上一章</button>" +
         "<button type=\"button\" id=\"android-next-chapter\" class=\"chapter-nav-btn\">下一章 →</button>" +
         "</div>" +
-        "<script src=\"file:///android_asset/reader/reader.js\"></script></body></html>"
+        "<script src=\"file:///android_asset/reader/reader-lite.js\"></script></body></html>"
 }
