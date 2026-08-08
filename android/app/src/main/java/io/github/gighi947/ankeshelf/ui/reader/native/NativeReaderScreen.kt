@@ -151,9 +151,8 @@ fun NativeReaderScreen(
         doc = null
         val d = withContext(Dispatchers.Default) {
             runCatching {
-                ReaderHtmlModel.parse(
-                    extractReaderParts(session.chapterText(chapterIndex).orEmpty()).body,
-                )
+                val parts = extractReaderParts(session.chapterText(chapterIndex).orEmpty())
+                ReaderHtmlModel.parse(parts.body, parts.headStyles)
             }.getOrNull()
         }
         doc = d

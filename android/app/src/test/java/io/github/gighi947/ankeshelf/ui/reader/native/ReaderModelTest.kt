@@ -42,4 +42,32 @@ class ReaderModelTest {
         assertTrue("纯文本偏移", doc.plainText.isNotBlank())
         assertTrue("偏移表", doc.blockOffsets.size == doc.blocks.size + 1)
     }
+
+    @Test
+    fun classAttrWithExtraWhitespaceStillParsesFloor() {
+        val doc = ReaderHtmlModel.parse(
+            """<div class="nga-floor " id="pid1">
+                 <div class=" floor-head "><span class="lou">5楼</span> · 0赞 · u(9) · t</div>
+                 <div class=" floor-body "><p>正文</p></div>
+               </div>""",
+        )
+        val floor = doc.blocks.filterIsInstance<ReaderBlock.Floor>().firstOrNull()
+        assertTrue("带空格 class 的楼层", floor != null)
+        assertEquals(5, floor!!.lou)
+        assertEquals("u", floor.username)
+    }
+
+    @Test
+    fun cssClassColorsApplyToSpans() {
+        val doc = ReaderHtmlModel.parse(
+            """<p>普通 <span class="red">红字</span> 与 <span class="gray">灰字</span></p>""",
+            styles = ".red { color: #ff0000; } .gray{color:#888888}",
+        )
+        val colors = doc.blocks
+            .filterIsInstance<ReaderBlock.Paragraph>()
+            .flatMap { it.spans }
+            .mapNotNull { it.color }
+        assertTrue("CSS 类颜色 red", colors.contains("#ff0000"))
+        assertTrue("CSS 类颜色 gray", colors.contains("#888888"))
+    }
 }

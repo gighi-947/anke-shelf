@@ -61,12 +61,13 @@ data class ReaderDoc(
 /** 解析清洗后的章节 body → 块模型。 */
 object ReaderHtmlModel {
 
-    fun parse(body: String): ReaderDoc {
+    fun parse(body: String, styles: String = ""): ReaderDoc {
+        val classColors = parseClassColors(styles)
         val root = Tokenizer(body).parse()
         val blocks = mutableListOf<ReaderBlock>()
         val plain = StringBuilder()
         for (child in root.children) {
-            convert(child, blocks, plain, 0)
+            convert(child, blocks, plain, 0, classColors)
         }
         val text = plain.toString().replace(Regex("\\s+"), " ").trim()
         // 每个顶层块一个起点偏移（楼层与其追评同属一个根节点，按块数均匀切分；
@@ -81,25 +82,36 @@ object ReaderHtmlModel {
         return ReaderDoc(blocks = blocks, plainText = text, blockOffsets = offsets)
     }
 
+    /** 解析章节自带 <style> 中的类颜色（.red{color:#ff0000} 等）。 */
+    private fun parseClassColors(styles: String): Map<String, String> {
+        val out = mutableMapOf<String, String>()
+        for (m in Regex("""\.([a-zA-Z][\w-]*)\s*\{[^}]*?color\s*:\s*([^;}]+)""")
+            .findAll(styles)) {
+            out[m.groupValues[1].trim()] = m.groupValues[2].trim()
+        }
+        return out
+    }
+
     private fun convert(
         node: Node,
         out: MutableList<ReaderBlock>,
         plain: StringBuilder,
         depth: Int,
+        classColors: Map<String, String>,
     ) {
         if (depth > 24) return
         when (node.tag) {
-            "div" -> when (node.className) {
-                "nga-floor" -> {
+            "div" -> when {
+                node.hasClass("nga-floor") -> {
                     val head = node.findClass("floor-head")
                     val bodyNode = node.findClass("floor-body")
-                    val comments = node.children.filter { it.className == "nga-comment" }
+                    val comments = node.children.filter { it.hasClass("nga-comment") }
                     val headText = head?.textAll.orEmpty()
                     val bodyBlocks = mutableListOf<ReaderBlock>()
                     val bodyPlain = StringBuilder()
                     if (bodyNode != null) {
                         for (c in bodyNode.children) {
-                            convert(c, bodyBlocks, bodyPlain, depth + 1)
+                            convert(c, bodyBlocks, bodyPlain, depth + 1, classColors)
                         }
                     }
                     val floor = ReaderBlock.Floor(
@@ -114,7 +126,7 @@ object ReaderHtmlModel {
                     out.add(floor)
                     plain.append(' ').append(bodyPlain.toString().trim())
                     for (c in comments) {
-                        val spans = spansOf(c.children, mutableListOf())
+                        val spans = spansOf(c.children, mutableListOf(), classColors = classColors)
                         out.add(
                             ReaderBlock.Comment(
                                 spans = spans,
@@ -125,50 +137,49 @@ object ReaderHtmlModel {
                         plain.append(' ').append(spans.joinToString("") { it.text })
                     }
                 }
-                "nga-quote" -> {
+                node.hasClass("nga-quote") -> {
                     val inner = mutableListOf<ReaderBlock>()
                     val innerPlain = StringBuilder()
-                    for (c in node.children) convert(c, inner, innerPlain, depth + 1)
+                    for (c in node.children) convert(c, inner, innerPlain, depth + 1, classColors)
                     out.add(ReaderBlock.Quote(inner))
                     plain.append(' ').append(innerPlain)
                 }
-                "nga-dice" -> {
+                node.hasClass("nga-dice") -> {
                     val t = node.textAll
                     out.add(ReaderBlock.Dice(t))
                     plain.append(' ').append(t)
                 }
-                "nga-comment" -> {
-                    val spans = spansOf(node.children, mutableListOf())
+                node.hasClass("nga-comment") -> {
+                    val spans = spansOf(node.children, mutableListOf(), classColors = classColors)
                     out.add(ReaderBlock.Comment(spans, 0, ""))
                     plain.append(' ').append(spans.joinToString("") { it.text })
                 }
-                "nga-table-scroll" -> convertChildren(node, out, plain, depth)
-                "collapse_content" -> convertChildren(node, out, plain, depth)
-                "foldBox" -> convertChildren(node, out, plain, depth)
+                node.hasClass("nga-table-scroll") || node.hasClass("collapse_content") || node.hasClass("foldBox") ->
+                    convertChildren(node, out, plain, depth, classColors)
                 else -> {
                     val text = node.textAll
                     if (text.isBlank()) {
-                        convertChildren(node, out, plain, depth)
+                        convertChildren(node, out, plain, depth, classColors)
                     } else {
-                        out.add(ReaderBlock.Paragraph(spansOf(node.children, mutableListOf())))
+                        out.add(ReaderBlock.Paragraph(spansOf(node.children, mutableListOf(), classColors = classColors)))
                         plain.append(' ').append(text)
                     }
                 }
             }
             "p" -> {
-                val spans = spansOf(node.children, mutableListOf())
+                val spans = spansOf(node.children, mutableListOf(), classColors = classColors)
                 if (spans.isNotEmpty()) out.add(ReaderBlock.Paragraph(spans))
                 plain.append(' ').append(spans.joinToString("") { it.text })
             }
             "h1", "h2", "h3", "h4" -> {
-                val spans = spansOf(node.children, mutableListOf())
+                val spans = spansOf(node.children, mutableListOf(), classColors = classColors)
                 if (spans.isNotEmpty()) out.add(ReaderBlock.Heading(spans))
                 plain.append(' ').append(spans.joinToString("") { it.text })
             }
             "blockquote" -> {
                 val inner = mutableListOf<ReaderBlock>()
                 val innerPlain = StringBuilder()
-                for (c in node.children) convert(c, inner, innerPlain, depth + 1)
+                for (c in node.children) convert(c, inner, innerPlain, depth + 1, classColors)
                 out.add(ReaderBlock.Quote(inner))
                 plain.append(' ').append(innerPlain)
             }
@@ -179,10 +190,10 @@ object ReaderHtmlModel {
                     if (tr.tag == "tbody") {
                         tbodySeen = true
                         for (row in tr.children.filter { it.tag == "tr" }) {
-                            rows.add(tableRow(row))
+                            rows.add(tableRow(row, classColors))
                         }
                     } else {
-                        rows.add(tableRow(tr))
+                        rows.add(tableRow(tr, classColors))
                     }
                 }
                 if (rows.isNotEmpty()) {
@@ -208,14 +219,14 @@ object ReaderHtmlModel {
                 val inner = mutableListOf<ReaderBlock>()
                 val innerPlain = StringBuilder()
                 for (c in node.children.filter { it.tag != "summary" }) {
-                    convert(c, inner, innerPlain, depth + 1)
+                    convert(c, inner, innerPlain, depth + 1, classColors)
                 }
                 out.add(ReaderBlock.Quote(inner, title = summary))
                 plain.append(' ').append(summary).append(' ').append(innerPlain)
             }
             "a", "b", "i", "span", "strong", "em", "u", "font", "del", "s", "sub", "sup", "code", "pre" ->
-                convertChildren(node, out, plain, depth)
-            "ul", "ol", "li" -> convertChildren(node, out, plain, depth)
+                convertChildren(node, out, plain, depth, classColors)
+            "ul", "ol", "li" -> convertChildren(node, out, plain, depth, classColors)
             "script", "style", "head", "iframe", "object", "embed", "base", "form", "meta" -> Unit
             "#text" -> {
                 if (node.text.isNotBlank()) {
@@ -223,7 +234,7 @@ object ReaderHtmlModel {
                     plain.append(' ').append(node.text)
                 }
             }
-            else -> convertChildren(node, out, plain, depth)
+            else -> convertChildren(node, out, plain, depth, classColors)
         }
     }
 
@@ -232,13 +243,14 @@ object ReaderHtmlModel {
         out: MutableList<ReaderBlock>,
         plain: StringBuilder,
         depth: Int,
+        classColors: Map<String, String>,
     ) {
-        for (c in node.children) convert(c, out, plain, depth + 1)
+        for (c in node.children) convert(c, out, plain, depth + 1, classColors)
     }
 
-    private fun tableRow(tr: Node): ReaderBlock.TableRow {
+    private fun tableRow(tr: Node, classColors: Map<String, String>): ReaderBlock.TableRow {
         val cells = tr.children.filter { it.tag == "td" || it.tag == "th" }
-            .map { spansOf(it.children, mutableListOf()) }
+            .map { spansOf(it.children, mutableListOf(), classColors = classColors) }
         return ReaderBlock.TableRow(cells)
     }
 
@@ -250,6 +262,7 @@ object ReaderHtmlModel {
         italic: Boolean = false,
         color: String? = null,
         link: String? = null,
+        classColors: Map<String, String> = emptyMap(),
     ): MutableList<ReaderSpan> {
         for (n in nodes) {
             when (n.tag) {
@@ -260,22 +273,26 @@ object ReaderHtmlModel {
                         out.add(ReaderSpan(alt, bold = bold, italic = italic, color = color, link = link))
                     }
                 }
-                "b", "strong" -> spansOf(n.children, out, bold = true, italic = italic, color = color, link = link)
-                "i", "em" -> spansOf(n.children, out, bold = bold, italic = true, color = color, link = link)
-                "u" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)
-                "del", "s" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)
-                "a" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = n.attr("href"))
+                "b", "strong" -> spansOf(n.children, out, bold = true, italic = italic, color = color, link = link, classColors = classColors)
+                "i", "em" -> spansOf(n.children, out, bold = bold, italic = true, color = color, link = link, classColors = classColors)
+                "u" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, classColors = classColors)
+                "del", "s" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, classColors = classColors)
+                "a" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = n.attr("href"), classColors = classColors)
                 "span", "font" -> {
-                    val c = parseColor(n.attr("style")) ?: n.attr("color") ?: color
-                    spansOf(n.children, out, bold = bold, italic = italic, color = c, link = link)
+                    val cls = n.attr("class")?.trim()
+                    val c = parseColor(n.attr("style"))
+                        ?: cls?.let { classColors[it] }
+                        ?: n.attr("color")
+                        ?: color
+                    spansOf(n.children, out, bold = bold, italic = italic, color = c, link = link, classColors = classColors)
                 }
-                "code", "pre", "sub", "sup" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)
+                "code", "pre", "sub", "sup" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, classColors = classColors)
                 "#text" -> {
                     if (n.text.isNotEmpty()) {
                         out.add(ReaderSpan(n.text, color = color, bold = bold, italic = italic, link = link))
                     }
                 }
-                else -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)
+                else -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, classColors = classColors)
             }
         }
         return out
@@ -297,10 +314,14 @@ object ReaderHtmlModel {
         val className: String
             get() = attrs["class"].orEmpty()
 
+        /** class 按空白拆词匹配（容忍 "nga-floor "、多类名等）。 */
+        fun hasClass(cls: String): Boolean =
+            attrs["class"].orEmpty().split(Regex("\\s+")).any { it == cls }
+
         fun attr(name: String): String? = attrs[name]
 
         fun findClass(cls: String): Node? {
-            if (className == cls) return this
+            if (hasClass(cls)) return this
             for (c in children) {
                 c.findClass(cls)?.let { return it }
             }
