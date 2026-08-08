@@ -605,4 +605,4 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 现象：NGA 下载 → 下载/更新 → 下载参数中，主题与图片的 4 个单选选项被硬塞进一行（8 个元素），窄屏下溢出错乱。
 - 处理：参照设置页“翻页方式”的 FilterChip 做法，拆成“主题（浅色/深色）”与“图片（在线/无图）”两个独立分组，每组标签 + FlowRow chips；沿用设计令牌（chip=pill 小型标签）。
 - 验证（模拟器）：主题、图片各占一组，chips 独立成行、无溢出。
-- 提交：见后续记录。
+- 提交：`05fa5b1`。
