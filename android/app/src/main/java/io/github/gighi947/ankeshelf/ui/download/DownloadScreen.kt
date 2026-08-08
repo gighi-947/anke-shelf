@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -137,6 +138,9 @@ fun DownloadScreen(
 ) {
     var group by remember { mutableStateOf<String?>(null) }
     val isTablet = LocalConfiguration.current.screenWidthDp >= 600
+
+    // 二级详情页：系统返回/侧滑返回先回下载一级菜单；一级菜单由 Root 处理（回书架）。
+    BackHandler(enabled = group != null) { group = null }
 
     if (isTablet) {
         val active = group ?: DOWNLOAD_TABS.first().id

@@ -3,6 +3,7 @@ package io.github.gighi947.ankeshelf.ui.settings
 import android.content.Context
 import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -188,6 +189,9 @@ fun SettingsScreen(
         settings.update(patch)
         onChanged()
     }
+
+    // 二级详情页：系统返回/侧滑返回先回设置一级菜单；一级菜单由 Root 处理（回书架）。
+    BackHandler(enabled = group != null) { group = null }
 
     if (isTablet) {
         val activeGroup = group ?: TABS.first().id
