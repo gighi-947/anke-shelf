@@ -18,6 +18,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -65,22 +67,12 @@ import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.BookSession
+import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
+import io.github.gighi947.ankeshelf.ui.theme.readerTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlin.math.abs
 import kotlin.math.roundToInt
-
-/** 阅读器配色（与 Compose 色板同源；M4 将并入 PALETTES 全量移植）。 */
-data class ReaderThemeColors(
-    val background: String,
-    val text: String,
-    val accent: String,
-)
-
-fun readerTheme(name: String): ReaderThemeColors = when (name.lowercase()) {
-    "dark" -> ReaderThemeColors("#171412", "#e9e2d8", "#e0b684")
-    "sepia" -> ReaderThemeColors("#f4ecd8", "#3b3226", "#8b5a2b")
-    else -> ReaderThemeColors("#ffffff", "#201a15", "#8b5a2b")
-}
 
 private val THEME_CYCLE = listOf("dark", "light", "sepia")
 
@@ -135,9 +127,11 @@ fun ReaderScreen(
     session: BookSession,
     initialChapter: Int,
     savedOffset: Int,
+    jumpOffset: Int? = null,
     readerSettings: SettingsData,
     onProgress: (chapterIndex: Int, textOffset: Int) -> Unit,
     onSettingsPatch: (SettingsPatch) -> Unit,
+    onStatsTick: (seconds: Int, pagesFlipped: Int) -> Unit = { _, _ -> },
     onBack: () -> Unit,
 ) {
     var chapterIndex by rememberSaveable(session.id) {
@@ -147,8 +141,13 @@ fun ReaderScreen(
     var showToc by remember { mutableStateOf(false) }
     var pageInfo by remember { mutableStateOf(PageInfo()) }
     var scrollRatio by remember { mutableFloatStateOf(0f) }
+    var pendingSeconds by remember { mutableIntStateOf(0) }
+    var flippedPages by remember { mutableIntStateOf(0) }
 
-    val theme = remember(readerSettings.theme) { readerTheme(readerSettings.theme) }
+    val systemDark = isSystemInDarkTheme()
+    val theme = remember(readerSettings, systemDark) {
+        readerTheme(readerSettings, systemDark)
+    }
     val parts = remember(session, chapterIndex) {
         extractReaderParts(session.chapterText(chapterIndex).orEmpty())
     }
@@ -263,7 +262,23 @@ fun ReaderScreen(
     }
 
     fun flipPage(dir: Int) {
+        flippedPages++
         webViewRef.value?.evaluateJavascript("AnkeReader.flipPage($dir);", null)
+    }
+
+    // 阅读统计：5 秒心跳累计，满 60 秒落盘（桌面 stats.js 语义）。
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            delay(5000)
+            if (pageReady.value) {
+                pendingSeconds += 5
+                if (pendingSeconds >= 60) {
+                    onStatsTick(pendingSeconds, flippedPages)
+                    pendingSeconds = 0
+                    flippedPages = 0
+                }
+            }
+        }
     }
 
     val bridge = remember {
@@ -390,7 +405,11 @@ fun ReaderScreen(
                             pageReady.value = true
                             val s = settingsRef.value
                             val t = themeRef.value
-                            val restoreOffset = if (chapterIndex == initialChapter) savedOffset else 0
+                            val restoreOffset = if (chapterIndex == initialChapter) {
+                                jumpOffset ?: savedOffset
+                            } else {
+                                0
+                            }
                             view.evaluateJavascript(
                                 "AnkeReader.init({chapterIndex:$chapterIndex,paged:${pagedRef.value}," +
                                     "offset:$restoreOffset,margin:${s.margin_px},gap:${s.gap_px}," +
@@ -461,6 +480,15 @@ fun ReaderScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
+
+        // 亮度遮罩：夜间调低屏幕亮度（桌面 Assist.setBrightness 的 Android 版）。
+        if (readerSettings.brightness > 0.0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(ComposeColor.Black.copy(alpha = readerSettings.brightness.toFloat().coerceIn(0f, 0.7f))),
+            )
+        }
 
         AnimatedVisibility(
             visible = barsVisible,
@@ -616,6 +644,9 @@ fun ReaderScreen(
             val web = webViewRef.value
             web?.removeJavascriptInterface("AnkeReaderBridge")
             saveNow(web)
+            if (pendingSeconds >= 1) {
+                onStatsTick(pendingSeconds, flippedPages)
+            }
             // 退出阅读器时恢复系统栏，避免返回书架后仍处于沉浸式。
             val act = activity
             if (act != null) {

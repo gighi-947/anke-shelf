@@ -29,16 +29,16 @@ data class StatsFile(
 )
 
 data class EnrichedStats(
-    val total_seconds: Int,
-    val sessions: Int,
-    val pages_flipped: Int,
-    val last_read_at: String,
-    val days: Map<String, DayEntry>,
-    val today_seconds: Int,
-    val today_pages: Int,
-    val week_seconds: Int,
-    val avg_session_seconds: Int,
-    val streak_days: Int,
+    val total_seconds: Int = 0,
+    val sessions: Int = 0,
+    val pages_flipped: Int = 0,
+    val last_read_at: String = "",
+    val days: Map<String, DayEntry> = emptyMap(),
+    val today_seconds: Int = 0,
+    val today_pages: Int = 0,
+    val week_seconds: Int = 0,
+    val avg_session_seconds: Int = 0,
+    val streak_days: Int = 0,
 )
 
 /** 阅读统计（statistics.json）：全局 + 每书 + 按天。 */
@@ -88,7 +88,12 @@ class StatsStore(private val file: File) {
 
             var g = global
             var gDay = g.days[today] ?: DayEntry()
-            g = g.copy(total_seconds = g.total_seconds + secs)
+            g = g.copy(
+                total_seconds = g.total_seconds + secs,
+                pages_flipped = if (pages > 0) g.pages_flipped + pages else g.pages_flipped,
+                sessions = if (secs > 0) g.sessions + 1 else g.sessions,
+                last_read_at = if (secs > 0) nowIso() else g.last_read_at,
+            )
             if (secs > 0) {
                 gDay = DayEntry(seconds = gDay.seconds + secs, pages = gDay.pages + pages)
                 g = g.copy(days = g.days + (today to gDay))

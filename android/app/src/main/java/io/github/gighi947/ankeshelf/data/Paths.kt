@@ -14,6 +14,7 @@ class AppPaths(val root: File) {
     val settingsFile: File get() = File(root, "settings.json")
     val annotationsFile: File get() = File(root, "annotations.json")
     val statisticsFile: File get() = File(root, "statistics.json")
+    val searchHistoryFile: File get() = File(root, "search_history.json")
     val coversDir: File get() = File(root, "covers")
     val ngaLibraryDir: File get() = File(root, "nga_library")
     val ngaConfigFile: File get() = File(root, "nga_config.ini")

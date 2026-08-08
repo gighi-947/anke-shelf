@@ -1,6 +1,7 @@
 package io.github.gighi947.ankeshelf.ui.reader
 
 import io.github.gighi947.ankeshelf.data.SettingsData
+import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
 
 /** 章节 HTML 的可渲染部分：<body> 内容 + <head> 里的样式块。 */
 data class ReaderHtmlParts(

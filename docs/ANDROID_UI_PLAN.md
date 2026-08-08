@@ -94,7 +94,7 @@ M4 的「设置 / 搜索 / 统计」三个页面在**信息结构、文案、选
 - **统计柱状图**：首次进入时柱高 `animateFloatAsState` 从 0 生长（400ms 强调减速）；数值切换时 `animateIntAsState`。
 - **状态层**：自定义可点击项使用 `clickable/combinedClickable`（保留 ripple 与 pressed 态），不用裸 `pointerInput`；按钮统一 M3 Button/IconButton。
 - **触觉反馈**：长按目录项、长按书架卡片、展开/收起结果组时 `LocalHapticFeedback.current.performHapticFeedback(LongPress)`；翻页按钮轻触由系统按键反馈。
-- **减少动效**：读取 `LocalReduceMotion`，为 `on` 时所有自定义动画直接跳转终态（时长 0）；`animate*AsState` 同理短路。
+- **减少动效**：Compose 1.11 的 `MotionDurationScale` 会自动按系统「动画时长缩放」（含关闭动画）缩放 `tween` 时长，无需手动读取 `LocalReduceMotion`；自定义动画统一走 `tween`/`animate*AsState` 即可。
 - **沉浸式**：阅读器进入/退出系统栏用 200–300ms 渐变（现有实现保留）；控制条滑入滑出保留现有 slide 动画。
 
 ## 5. 三个页面的组件级设计

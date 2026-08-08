@@ -10,6 +10,8 @@ import io.github.gighi947.ankeshelf.data.EpubError
 import io.github.gighi947.ankeshelf.data.NativeBook
 import io.github.gighi947.ankeshelf.data.ProgressEntry
 import io.github.gighi947.ankeshelf.data.ProgressStore
+import io.github.gighi947.ankeshelf.data.StatsStore
+import io.github.gighi947.ankeshelf.data.AnnotationStore
 import io.github.gighi947.ankeshelf.data.Shelf
 import io.github.gighi947.ankeshelf.data.SpineItem
 import io.github.gighi947.ankeshelf.data.TextExtractor
@@ -25,6 +27,9 @@ class AppContainer(context: Context) {
     val progress = ProgressStore(appPaths.progressFile)
     val settings = io.github.gighi947.ankeshelf.data.Settings(appPaths.settingsFile)
     val ngaConfig = io.github.gighi947.ankeshelf.data.NgaConfig(appPaths.ngaConfigFile)
+    val searchHistory = io.github.gighi947.ankeshelf.data.SearchHistoryStore(appPaths.searchHistoryFile)
+    val stats = StatsStore(appPaths.statisticsFile)
+    val annotations = AnnotationStore(appPaths.annotationsFile)
     val repository = BookRepository(appPaths, shelf, progress)
 
     init {
@@ -32,6 +37,9 @@ class AppContainer(context: Context) {
         progress.load()
         settings.load()
         ngaConfig.ensure()
+        searchHistory.load()
+        stats.load()
+        annotations.load()
     }
 }
 

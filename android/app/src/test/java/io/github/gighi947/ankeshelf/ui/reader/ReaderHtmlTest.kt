@@ -1,6 +1,7 @@
 package io.github.gighi947.ankeshelf.ui.reader
 
 import io.github.gighi947.ankeshelf.data.SettingsData
+import io.github.gighi947.ankeshelf.ui.theme.readerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -27,8 +28,12 @@ class ReaderHtmlTest {
     @Test
     fun buildWrapperContainsAssetsAndThemeVars() {
         val parts = extractReaderParts("<body><p>你好</p></body>")
-        val html = buildReaderHtml(parts, readerTheme("dark"), SettingsData(font_size = 20, line_height = 1.9))
-        assertTrue(html.contains("--reader-bg:#171412"))
+        val html = buildReaderHtml(
+            parts,
+            readerTheme(SettingsData(theme = "dark", font_size = 20, line_height = 1.9)),
+            SettingsData(font_size = 20, line_height = 1.9),
+        )
+        assertTrue(html.contains("--reader-bg:#222222"))
         assertTrue(html.contains("--reader-font-size:20px"))
         assertTrue(html.contains("--reader-line-height:1.9"))
         assertTrue(html.contains("href=\"reader.css\""))
