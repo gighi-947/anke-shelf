@@ -591,4 +591,4 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 颜色语义：`MaterialTheme.ankeColors` 提供桌面 PALETTES 语义映射（bg→background/surface、text→onSurface、primary、accent→secondary、error）；组件禁止硬编码色值（NGA 显式彩色字与一次性高亮/图表细节除外）。
 - 组件改造：主按钮与 SegmentedButton 由 M3 默认胶囊改为 small；搜索输入框/下拉、下载与设置输入框统一 medium；搜索历史 chip/徽标保留 pill。
 - 主题同步检查（浅色 default-light）：书架背景 #ffffff、页头 #0066cc、封面底 #efefef；设置卡片 #f4f4f4、选中态 primaryContainer、描边 outlineVariant；阅读器背景 #ffffff。搜索页因 NGA 书数据问题未出结果（输入未生效），chip/结果卡颜色由同一 scheme 驱动，代码已对齐。
-- 提交：见后续记录。
+- 提交：`062308a`。
