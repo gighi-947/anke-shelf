@@ -24,7 +24,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -42,6 +48,7 @@ import java.net.URLDecoder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -99,6 +106,7 @@ fun WebViewChapterView(
     val configuration = LocalConfiguration.current
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
     val pageReady = remember { mutableStateOf(false) }
+    val settled = remember { mutableStateOf(false) }
     val loadSeq = remember { mutableIntStateOf(0) }
     val chapterRef = remember { mutableIntStateOf(chapterIndex) }
     val loadWasSwitch = remember { mutableStateOf(false) }
@@ -125,6 +133,7 @@ fun WebViewChapterView(
     val ngaConfig = remember { container.ngaConfig.load() }
 
     LaunchedEffect(chapterIndex, html) {
+        settled.value = false
         val web = webViewRef.value
         val old = chapterRef.intValue
         if (web != null && old != chapterIndex) {
@@ -166,6 +175,12 @@ fun WebViewChapterView(
             "file:///android_asset/reader/"
         }
         web.loadDataWithBaseURL(base, html, "text/html", "utf-8", null)
+    }
+
+    // 加载/排版稳定最长屏蔽 5 秒，防止图片挂死导致永远无法操作。
+    LaunchedEffect(chapterIndex, html) {
+        delay(5000)
+        settled.value = true
     }
 
     LaunchedEffect(theme.background, theme.text, theme.accent) {
@@ -212,12 +227,16 @@ fun WebViewChapterView(
     }
 
     val bridge = remember {
-        LiteBridge(callbacks = { callbacksRef.value })
+        LiteBridge(
+            callbacks = { callbacksRef.value },
+            onSettled = { settled.value = true },
+        )
     }
 
-    AndroidView(
-        factory = { ctx ->
-            WebView(ctx).apply {
+    Box(modifier = modifier) {
+        AndroidView(
+            factory = { ctx ->
+                WebView(ctx).apply {
                 val fontsDir = containerRef.value.appPaths.fontsDir
                 if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
                 settings.javaScriptEnabled = true
@@ -404,11 +423,40 @@ fun WebViewChapterView(
                     }
                     false
                 }
-                webViewRef.value = this
+                    webViewRef.value = this
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+        // 跳转/排版未就绪前屏蔽视野与触摸：看不到中间布局、也不会误触翻页
+        // 把位置拉回章首；JS 侧 onSettled（字体/图片就绪并恢复完成）后撤下。
+        if (!pageReady.value || !settled.value) {
+            val shieldColor = runCatching {
+                androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(themeRef.value.background))
+            }.getOrDefault(androidx.compose.ui.graphics.Color.White)
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(shieldColor)
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                event.changes.forEach { it.consume() }
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "加载中…",
+                    color = runCatching {
+                        androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(themeRef.value.text))
+                    }.getOrDefault(androidx.compose.ui.graphics.Color.Gray).copy(alpha = 0.55f),
+                )
             }
-        },
-        modifier = modifier,
-    )
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -455,6 +503,7 @@ private data class ReaderViewSettings(
  */
 private class LiteBridge(
     private val callbacks: () -> WebViewReaderCallbacks,
+    private val onSettled: () -> Unit,
 ) {
     private val main = Handler(Looper.getMainLooper())
 
@@ -490,5 +539,10 @@ private class LiteBridge(
     @JavascriptInterface
     fun onReady() {
         main.post { callbacks().onReady() }
+    }
+
+    @JavascriptInterface
+    fun onSettled() {
+        main.post { onSettled() }
     }
 }

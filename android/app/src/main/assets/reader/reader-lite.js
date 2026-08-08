@@ -27,6 +27,7 @@
     restorePending: false,
     anchorOffset: 0,
     wasSwitch: false,
+    settled: false,
   };
 
   function log(msg) {
@@ -576,11 +577,21 @@
 
   function layoutReady() {
     if (document.fonts && document.fonts.status === 'loading') return false;
-    var imgs = document.images;
-    for (var i = 0; i < imgs.length; i++) {
-      if (!imgs[i].complete) return false;
+    // 分页模式依赖图片撑起列高，必须等图片；滚动模式图片懒加载，
+    // 等图片会拖到 8 秒兜底，只等字体即可。
+    if (state.paged) {
+      var imgs = document.images;
+      for (var i = 0; i < imgs.length; i++) {
+        if (!imgs[i].complete) return false;
+      }
     }
     return true;
+  }
+
+  function markSettled() {
+    if (state.settled) return;
+    state.settled = true;
+    try { AnkeReaderBridge.onSettled(); } catch (e) { /* ignore */ }
   }
 
   // 字体/图片加载期间多列布局会反复进入中间态（同一 offset 在不同列之间跳），
@@ -593,10 +604,15 @@
         tryRestoreAfterSettle(offset, t);
         return;
       }
-      prepare();
-      normalizeTallTables();
-      if (offset > 0) gotoOffset(offset);
+      if (state.paged) {
+        prepare();
+        normalizeTallTables();
+        if (offset > 0) gotoOffset(offset);
+      } else if (offset > 0) {
+        restoreScroll(offset);
+      }
       report(false);
+      markSettled();
     }, 200);
   }
 
@@ -645,7 +661,12 @@
 
   function refresh() {
     if (!state.paged) {
-      if (state.restorePending) restoreScroll(state.restoreOffset);
+      if (state.restorePending) {
+        restoreScroll(state.restoreOffset);
+        markSettled();
+      } else {
+        markSettled();
+      }
       return;
     }
     // 字体/图片未就绪时重排会把多列布局打回中间态，gotoOffset 会算出错误页
@@ -658,6 +679,7 @@
       var off = state.restorePending ? state.restoreOffset : state.anchorOffset;
       if (off > 0) gotoOffset(off);
       report(false);
+      markSettled();
     });
   }
 
@@ -676,6 +698,7 @@
     state.anchorOffset = state.restoreOffset;
     state.restorePending = state.restoreOffset > 0;
     state.wasSwitch = !!opts.wasSwitch;
+    state.settled = false;
     if (!document.body) return;
     state.huge = (document.body.textContent || '').length > MAX_PAGED_TEXT;
     state.paged = !!opts.paged && !state.huge;
@@ -691,6 +714,11 @@
         if (o > 0) {
           state.anchorOffset = o;
           try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
+        }
+        if (!layoutReady()) {
+          tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.anchorOffset, 0);
+        } else {
+          markSettled();
         }
       }, 0);
     }
@@ -765,8 +793,10 @@
       } else {
         if (state.restoreOffset > 0) restoreScroll(state.restoreOffset);
       }
-      if (state.paged && !layoutReady()) {
+      if (!layoutReady()) {
         tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.anchorOffset, 0);
+      } else {
+        setTimeout(markSettled, 100);
       }
       report(false);
       try { AnkeReaderBridge.onReady(); } catch (e) { /* ignore */ }
