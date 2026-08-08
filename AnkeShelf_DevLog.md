@@ -830,3 +830,13 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 验证：`compileDebugKotlin` / `testDebugUnitTest` / `assembleDebug` 全部通过。
 - 待办：选区建标注、双栏渲染、真机视觉对齐调优、移除旧路径。
 - 提交：`f5045cd`。
+
+### 9.34 原生渲染器：退出闪退修复 + 排版基础增强（2026-08-08）
+
+- **退出闪退修复（三个高风险点）**：
+  1. `ProgressStore` 主线程 `flush()` 与后台 `set()` 写盘并发写同一个 `progress.json.tmp`（可能 FileNotFoundException 崩在主线程）→ 增加 `writeLock` 串行化文件写；
+  2. 分页恢复时 `pagerState.pageCount` 尚未同步就 `scrollToPage(idx)` 可能越界崩溃 → 先用 `snapshotFlow` 等页数一致再定位；
+  3. 阅读页 `DisposableEffect.onDispose` 的保存/flush 加 `runCatching` 兜底，任何异常不再拖垮应用。
+- **排版基础增强**：楼层卡片加 4dp 主题色左边条（+ 边框 + 底色），引用块加 3dp 左边条与底色，段落上下 2dp 间距。
+- 验证：`testDebugUnitTest` 与 `assembleDebug` 通过。
+- 提交：`5ba3455`。
