@@ -637,4 +637,4 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **M4 验收**（[docs/ANDROID_M4_ACCEPTANCE.md](docs/ANDROID_M4_ACCEPTANCE.md)）：
   - 桌面 v1.2.0 特性对照表：除“自定义字体导入”“桌面→安卓数据迁移”外全部对齐；辅助阅读与最近阅读横条按用户决策移除/替代。
   - 冷启动 TotalTime 4563ms；阅读器 TOTAL PSS 182MB（<300MB ✅）；快速翻页 10 次无错误/崩溃。
-- 提交：见后续记录。
+- 提交：`d1e1074`。
