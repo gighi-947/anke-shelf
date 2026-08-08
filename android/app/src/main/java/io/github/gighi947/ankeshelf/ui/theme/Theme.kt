@@ -9,11 +9,14 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Density
 import io.github.gighi947.ankeshelf.data.SettingsData
 import kotlin.math.roundToInt
 
@@ -203,11 +206,21 @@ fun AnkeShelfTheme(
         remember(palette, dark) { buildReaderColorScheme(bg, text, primary, accent, dark) }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        shapes = AnkeShapes,
-        content = content,
-    )
+    // 界面字号：在系统字体缩放之上叠加应用内倍率（阅读器 WebView 用 CSS px，不受影响）。
+    val baseDensity = LocalDensity.current
+    val uiScale = settings.ui_font_scale.toFloat().coerceIn(0.8f, 1.4f)
+    CompositionLocalProvider(
+        LocalDensity provides Density(
+            density = baseDensity.density,
+            fontScale = baseDensity.fontScale * uiScale,
+        ),
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            shapes = AnkeShapes,
+            content = content,
+        )
+    }
 }
 
 /** 阅读器 WebView 配色（与 Compose 色板同源；M4 起支持自定义四色）。 */

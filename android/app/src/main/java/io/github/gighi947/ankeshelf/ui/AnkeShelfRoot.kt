@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.gighi947.ankeshelf.service.AppContainer
+import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.ui.download.DownloadScreen
 import io.github.gighi947.ankeshelf.ui.reader.ReaderScreen
 import io.github.gighi947.ankeshelf.ui.search.SearchScreen
@@ -169,6 +170,11 @@ fun AnkeShelfRoot(container: AppContainer) {
                                 "shelf" -> BookshelfScreen(
                                     books = books,
                                     coversDir = container.appPaths.coversDir,
+                                    shelfView = container.settings.getAll().shelf_view,
+                                    onShelfViewChange = { view ->
+                                        container.settings.update(SettingsPatch(shelf_view = view))
+                                        settingsTick++
+                                    },
                                     onImport = { uri ->
                                         container.repository.importEpub(context, uri)
                                         refresh++

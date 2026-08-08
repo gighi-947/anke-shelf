@@ -16,6 +16,7 @@ data class SettingsData(
     val theme_mode: String = "",
     val font_size: Int = 18,
     val line_height: Double = 1.8,
+    val ui_font_scale: Double = 1.0,
     val font_family: String = "reader",
     val custom_font: String = "sys:weidqczfkyxk.ttf",
     val book_fonts: Map<String, String> = emptyMap(),
@@ -59,6 +60,7 @@ data class SettingsPatch(
     val theme_mode: String? = null,
     val font_size: Int? = null,
     val line_height: Double? = null,
+    val ui_font_scale: Double? = null,
     val font_family: String? = null,
     val custom_font: String? = null,
     val book_fonts: Map<String, String>? = null,
@@ -136,6 +138,7 @@ class Settings(private val file: File) {
             "theme_mode" -> data.theme_mode
             "font_size" -> data.font_size
             "line_height" -> data.line_height
+            "ui_font_scale" -> data.ui_font_scale
             "font_family" -> data.font_family
             "custom_font" -> data.custom_font
             "book_fonts" -> data.book_fonts
@@ -173,6 +176,7 @@ class Settings(private val file: File) {
                 theme_mode = patch.theme_mode ?: data.theme_mode,
                 font_size = patch.font_size ?: data.font_size,
                 line_height = patch.line_height ?: data.line_height,
+                ui_font_scale = patch.ui_font_scale ?: data.ui_font_scale,
                 font_family = patch.font_family ?: data.font_family,
                 custom_font = patch.custom_font ?: data.custom_font,
                 book_fonts = patch.book_fonts ?: data.book_fonts,

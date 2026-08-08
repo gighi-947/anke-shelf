@@ -111,7 +111,6 @@ private data class SettingsTab(val id: String, val label: String, val icon: Imag
 private val TABS = listOf(
     SettingsTab("appearance", "外观", Icons.Filled.Palette),
     SettingsTab("reading", "阅读", Icons.Filled.FormatSize),
-    SettingsTab("assist", "辅助", Icons.Filled.Accessibility),
     SettingsTab("gestures", "操作", Icons.Filled.TouchApp),
     SettingsTab("stats", "统计", Icons.Filled.Insights),
     SettingsTab("data", "数据", Icons.Filled.FolderOpen),
@@ -120,7 +119,6 @@ private val TABS = listOf(
 private val GROUP_SUMMARIES = mapOf(
     "appearance" to "主题模式、亮度、预设色板、自定义颜色",
     "reading" to "字号、行高、页面宽度、翻页方式",
-    "assist" to "标尺、逐段、速读、滚读",
     "gestures" to "点按区域、滑动翻页、音量键",
     "stats" to "阅读时长、会话、连续阅读",
     "data" to "数据目录、清除数据、版本",
@@ -451,7 +449,6 @@ private fun GroupContent(
             context = context,
         )
         "reading" -> ReadingPanel(data, commit, context)
-        "assist" -> AssistPanel(data, commit)
         "gestures" -> GesturesPanel(data, commit, context)
         "stats" -> StatsPanel(statsGlobal, onOpenStats)
         "data" -> DataPanel(
@@ -506,6 +503,29 @@ private fun AppearancePanel(
         SettingsSection("亮度") {
             SettingsRow("亮度", "叠加一层黑色遮罩，适合夜间调低屏幕亮度") {
                 BrightnessSlider(data, commit)
+            }
+        }
+
+        SettingsSection("界面") {
+            SettingsRow("界面字号", "整体调整应用界面文字大小（阅读正文不受影响）") {
+                var value by remember(data.ui_font_scale) {
+                    mutableFloatStateOf(data.ui_font_scale.toFloat())
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Slider(
+                        value = value,
+                        onValueChange = { value = it },
+                        onValueChangeFinished = { commit(SettingsPatch(ui_font_scale = value.toDouble())) },
+                        valueRange = 0.85f..1.25f,
+                        steps = 7,
+                        modifier = Modifier.width(150.dp),
+                    )
+                    Text(
+                        "${(value * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(start = AnkeSpacing.sm),
+                    )
+                }
             }
         }
 
@@ -949,46 +969,6 @@ private fun TopInsetRow(context: Context) {
                 modifier = Modifier.width(150.dp),
             )
             Text("$value dp", style = MaterialTheme.typography.labelMedium)
-        }
-    }
-}
-
-/* ---------------- 辅助 ---------------- */
-
-@Composable
-private fun AssistPanel(data: SettingsData, commit: (SettingsPatch) -> Unit) {
-    SettingsList {
-        SettingsSection("辅助功能") {
-            SettingsRow("标尺", "显示一条横向参考线，辅助对齐阅读行") {
-                Switch(
-                    checked = data.show_ruler,
-                    onCheckedChange = { commit(SettingsPatch(show_ruler = it)) },
-                )
-            }
-            SettingsRow("逐段", "一次只显示一段，其余内容半透明遮罩") {
-                // Android 阅读器暂未实现逐段阅读，先保存开关，后续接入 reader.js。
-                Switch(
-                    checked = false,
-                    onCheckedChange = {},
-                )
-            }
-            SettingsRow("速读", "屏幕中央逐词显示，适合快速通读") {
-                Switch(
-                    checked = false,
-                    onCheckedChange = {},
-                )
-            }
-            SettingsRow("滚读", "按设定速度自动向下滚动阅读") {
-                Switch(
-                    checked = false,
-                    onCheckedChange = {},
-                )
-            }
-            Text(
-                "逐段/速读/滚读将在后续版本接入安卓阅读器（桌面功能语义已对齐）",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
