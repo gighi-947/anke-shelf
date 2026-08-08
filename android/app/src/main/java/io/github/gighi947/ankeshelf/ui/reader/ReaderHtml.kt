@@ -4,6 +4,8 @@ import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
 import java.net.URLEncoder
 
+private val RE_IMG_TAG = Regex("""(?is)<img\b[^>]*>""")
+
 /** 章节 HTML 的可渲染部分：<body> 内容 + <head> 里的样式块。 */
 data class ReaderHtmlParts(
     val body: String,
@@ -35,7 +37,7 @@ fun extractReaderParts(htmlText: String): ReaderHtmlParts {
 /** 正文图片统一补 `loading="lazy" decoding="async"`（已有 loading 的保持原样）。
  *  渲染期注入，覆盖已下载书籍；避免长帖打开时一次性加载/解码上千张图。 */
 fun deferContentImages(body: String): String =
-    Regex("""(?is)<img\b[^>]*>""").replace(body) { m ->
+    RE_IMG_TAG.replace(body) { m ->
         val tag = m.value
         if (tag.contains("loading=", ignoreCase = true)) {
             tag

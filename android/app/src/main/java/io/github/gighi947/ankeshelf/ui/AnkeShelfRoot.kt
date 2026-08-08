@@ -15,12 +15,12 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.LibraryBooks
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -51,7 +51,6 @@ import io.github.gighi947.ankeshelf.ui.settings.SettingsScreen
 import io.github.gighi947.ankeshelf.ui.shelf.BookshelfScreen
 import io.github.gighi947.ankeshelf.ui.stats.StatsScreen
 import io.github.gighi947.ankeshelf.ui.theme.AnkeShelfTheme
-import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 
@@ -63,7 +62,7 @@ private data class TabSpec(
 )
 
 private val TABS = listOf(
-    TabSpec("shelf", "书架", Icons.Filled.LibraryBooks, Icons.Outlined.LibraryBooks),
+    TabSpec("shelf", "书架", Icons.AutoMirrored.Filled.LibraryBooks, Icons.AutoMirrored.Outlined.LibraryBooks),
     TabSpec("download", "下载", Icons.Filled.FileDownload, Icons.Outlined.FileDownload),
     TabSpec("search", "搜索", Icons.Filled.Search, Icons.Outlined.Search),
     TabSpec("settings", "设置", Icons.Filled.Settings, Icons.Outlined.Settings),
@@ -248,7 +247,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                                     onChanged = { settingsTick++ },
                                     onClearAllData = {
                                         runCatching {
-                                            File(context.filesDir, "AnkeShelf").deleteRecursively()
+                                            container.appPaths.root.deleteRecursively()
                                         }
                                         context.getSharedPreferences("reader", android.content.Context.MODE_PRIVATE)
                                             .edit().clear().apply()

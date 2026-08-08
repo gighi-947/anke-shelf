@@ -611,26 +611,6 @@
   var resizeTimer = null;
   var resizeOffset = 0;
   var resizeScrolled = false;
-  var savedPosOffset = 0;
-  var positionMarked = false;
-
-  /** 系统栏显示/隐藏前由 Kotlin 调用：标记当前阅读位置。 */
-  function markPosition() {
-    savedPosOffset = currentOffset();
-    positionMarked = true;
-  }
-
-  /** 系统栏动画结束后由 Kotlin 调用：按标记位置恢复，绝不跳回第一页。 */
-  function restorePosition() {
-    if (savedPosOffset > 0) {
-      prepare();
-      normalizeTallTables();
-      gotoOffset(savedPosOffset);
-      report();
-    }
-    savedPosOffset = 0;
-    positionMarked = false;
-  }
 
   function onResize() {
     if (!state.paged) return;
@@ -648,17 +628,16 @@
     resizeTimer = setTimeout(function () {
       prepare();
       normalizeTallTables();
-      if (!positionMarked) {
-        // 系统栏动画期间位置恢复统一由 restorePosition 完成，这里只重排。
-        if (resizeOffset > 0) {
-          gotoOffset(resizeOffset);
-        } else if (resizeScrolled && el) {
-          // 采样失败兜底：按当前滚动比例粗恢复，绝不跳回第一页。
-          var len = (state.textCtx && state.textCtx.text.length) || 0;
-          if (len > 0) {
-            var ratio = el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth);
-            gotoOffset(Math.round(ratio * len));
-          }
+      // 系统栏动画期间 scrollLeft 可能被临时重置，这里按首个有效采样恢复，
+      // 避免跳回第一页；动画连续触发时由上面的 300ms 合并统一重排。
+      if (resizeOffset > 0) {
+        gotoOffset(resizeOffset);
+      } else if (resizeScrolled && el) {
+        // 采样失败兜底：按当前滚动比例粗恢复，绝不跳回第一页。
+        var len = (state.textCtx && state.textCtx.text.length) || 0;
+        if (len > 0) {
+          var ratio = el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth);
+          gotoOffset(Math.round(ratio * len));
         }
       }
       resizeOffset = 0;
@@ -1072,28 +1051,19 @@
   }
 
   window.AnkeReader = {
-    openImage: openImageViewer,
     openImageAt: openImageAt,
     closeImage: closeImageViewer,
     setLightboxImage: setLightboxImage,
     onViewerTap: onViewerTap,
-    isImageOpen: function () { return imageViewerState.open; },
     applyAnnotations: applyAnnotations,
     clearSelection: clearSelection,
     init: init,
     applyTheme: applyTheme,
     applyTypography: applyTypography,
     setMode: setMode,
-    gotoOffset: gotoOffset,
     flipPage: flipPage,
     currentOffset: currentOffset,
     onResize: onResize,
-    refresh: refresh,
     setInsets: setInsets,
-    markPosition: markPosition,
-    restorePosition: restorePosition,
-    measure: measure,
-    isPaged: function () { return state.paged; },
-    isHuge: function () { return state.huge; },
   };
 })();

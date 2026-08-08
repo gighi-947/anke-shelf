@@ -18,30 +18,6 @@ import java.util.concurrent.TimeUnit
 /** NGA 接口异常（message 为面向用户的中文说明）。 */
 class NgaHttpException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
-/** 楼层头部信息（供下载列表/进度展示；完整数据见 NgaPageData.floors）。 */
-data class NgaFloorHead(
-    val pid: Long,
-    val lou: Int,
-    val username: String,
-    val userId: Long,
-    val likeNum: Int,
-    val rawContent: String,
-    val commentCount: Int,
-)
-
-/** app_api.php?__lib=post&__act=list 的一页摘要（旧接口，保留兼容）。 */
-data class NgaPageSummary(
-    val code: Int,
-    val msg: String,
-    val tid: Long,
-    val title: String,
-    val author: String,
-    val authorId: Long,
-    val totalPage: Int,
-    val vrows: Int,
-    val floors: List<NgaFloorHead>,
-)
-
 /** 完整一页数据（对齐桌面 nga.py analyze_floors / page 语义）。 */
 data class NgaPageData(
     val code: Int,
@@ -84,12 +60,7 @@ class NgaClient(
             .build()
         val request = Request.Builder()
             .url("$base/app_api.php?__lib=post&__act=list")
-            .header("User-Agent", userAgent)
-            .apply {
-                if (cookieUid.isNotEmpty() && cookieCid.isNotEmpty()) {
-                    header("Cookie", "ngaPassportUid=$cookieUid;ngaPassportCid=$cookieCid")
-                }
-            }
+            .ngaHeaders(cookieUid, cookieCid, userAgent)
             .post(form)
             .build()
         return try {
@@ -97,7 +68,7 @@ class NgaClient(
                 if (!resp.isSuccessful) {
                     throw NgaHttpException("NGA 请求失败：HTTP ${resp.code}")
                 }
-                resp.body?.string().orEmpty()
+                resp.body.string().orEmpty()
             }
         } catch (e: NgaHttpException) {
             throw e
@@ -106,53 +77,9 @@ class NgaClient(
         }
     }
 
-    /** 拉取一页楼层摘要（兼容旧调用）。 */
-    fun fetchPage(tid: Long, page: Int, authorId: Long = 0): NgaPageSummary {
-        return parseResponse(tid, request(tid, page, authorId))
-    }
-
     /** 拉取一页完整楼层（下载流程使用，对齐桌面 page() + analyze_floors）。 */
     fun fetchPageFull(tid: Long, page: Int, authorId: Long = 0): NgaPageData {
         return parsePageFull(tid, request(tid, page, authorId))
-    }
-
-    /** 解析 app_api 返回 JSON（旧摘要接口）。 */
-    fun parseResponse(tid: Long, body: String): NgaPageSummary {
-        val root = try {
-            json.parseToJsonElement(body).jsonObject
-        } catch (e: Exception) {
-            throw NgaHttpException("NGA 返回无法解析：${e.message}", e)
-        }
-        val code = root["code"]?.jsonPrimitive?.intOrNull ?: -1
-        val result = root["result"]
-        val floors = if (result is JsonArray) {
-            result.map { el ->
-                val obj = el.jsonObject
-                val author = obj["author"]?.jsonObject
-                NgaFloorHead(
-                    pid = obj["pid"]?.jsonPrimitive?.longOrNull ?: 0L,
-                    lou = obj["lou"]?.jsonPrimitive?.intOrNull ?: -1,
-                    username = author?.get("username")?.jsonPrimitive?.content ?: "",
-                    userId = author?.get("uid")?.jsonPrimitive?.longOrNull ?: 0L,
-                    likeNum = obj["vote_good"]?.jsonPrimitive?.intOrNull ?: 0,
-                    rawContent = obj["content"]?.jsonPrimitive?.content ?: "",
-                    commentCount = (obj["comments"] as? JsonArray)?.size ?: 0,
-                )
-            }
-        } else {
-            emptyList()
-        }
-        return NgaPageSummary(
-            code = code,
-            msg = root["msg"]?.jsonPrimitive?.content ?: "",
-            tid = tid,
-            title = root["tsubject"]?.jsonPrimitive?.content ?: "",
-            author = root["tauthor"]?.jsonPrimitive?.content ?: "",
-            authorId = root["tauthorid"]?.jsonPrimitive?.longOrNull ?: 0L,
-            totalPage = root["totalPage"]?.jsonPrimitive?.intOrNull ?: 1,
-            vrows = root["vrows"]?.jsonPrimitive?.intOrNull ?: 1,
-            floors = floors,
-        )
     }
 
     /** 解析完整楼层（对齐桌面 analyze_floors：lou/pid/timestamp/author/comments 递归）。 */

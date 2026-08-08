@@ -2,6 +2,7 @@ package io.github.gighi947.ankeshelf
 
 import android.app.Application
 import android.util.Log
+import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.service.AppContainer
 import java.io.File
 import java.text.SimpleDateFormat
@@ -28,7 +29,7 @@ class AnkeShelfApp : Application() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
-                val dir = File(filesDir, "AnkeShelf/logs").apply { mkdirs() }
+                val dir = File(filesDir, "${AppPaths.APP_DIR_NAME}/logs").apply { mkdirs() }
                 val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
                 File(dir, "crash-$stamp.log").writeText(throwable.stackTraceToString())
                 Log.e(TAG, "uncaught exception", throwable)

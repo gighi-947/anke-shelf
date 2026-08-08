@@ -4,14 +4,11 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.graphics.Color
 import android.net.Uri
-import android.os.Handler
-import android.os.Looper
 import android.util.Base64
 import android.util.Log
 import android.view.MotionEvent
 import android.widget.Toast
 import android.webkit.ConsoleMessage
-import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -35,19 +32,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -87,7 +79,6 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -102,6 +93,7 @@ import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
+import io.github.gighi947.ankeshelf.service.ngaHeaders
 import io.github.gighi947.ankeshelf.service.BookSession
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
@@ -119,15 +111,6 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private val THEME_CYCLE = listOf("dark", "light", "sepia")
-
-/** 分页模式下 JS 上报的页码信息。 */
-data class PageInfo(
-    val page: Int = 0,
-    val total: Int = 0,
-    val offset: Int = 0,
-)
-
 private data class PendingSelection(
     val start: Int,
     val end: Int,
@@ -143,168 +126,6 @@ private val HL_COLOR_VALUES = mapOf(
     "purple" to ComposeColor(0xFFAB47BC),
     "cyan" to ComposeColor(0xFF26C6DA),
 )
-
-/**
- * WebView JS 桥：
- * - saveProgress(chapterIndex, value, isOffset)：isOffset=true 为 text_offset，
- *   false 为滚动比例 0..1；
- * - pageChanged(page, total, offset)：分页模式页码指示；
- * - requestChapter(delta)：分页翻到章首/章尾时请求切章；
- * - log(message)：调试日志。
- */
-class ReaderBridge(
-    private val onProgressValue: (Int, Double, Boolean) -> Unit,
-    private val onPageChanged: (Int, Int, Int) -> Unit,
-    private val onRequestChapter: (Int) -> Unit,
-    private val onImageLightbox: (Boolean) -> Unit,
-    private val onSaveImageCb: (String) -> Unit,
-    private val onLoadImageCb: (String) -> Unit,
-    private val onSelectionCb: (Int, Int, Int, String) -> Unit,
-    private val onHighlightTapCb: (String) -> Unit,
-    private val onLog: (String) -> Unit,
-) {
-    // JS 桥方法运行在 WebView 的 JS 线程，Compose 状态必须在主线程更新。
-    private val main = Handler(Looper.getMainLooper())
-
-    @JavascriptInterface
-    fun saveProgress(chapterIndex: Int, value: Double, isOffset: Boolean) {
-        main.post { onProgressValue(chapterIndex, value, isOffset) }
-    }
-
-    @JavascriptInterface
-    fun pageChanged(page: Int, total: Int, offset: Int) {
-        main.post { onPageChanged(page, total, offset) }
-    }
-
-    @JavascriptInterface
-    fun requestChapter(delta: Int) {
-        main.post { onRequestChapter(delta) }
-    }
-
-    @JavascriptInterface
-    fun setImageLightbox(open: Boolean) {
-        main.post { onImageLightbox(open) }
-    }
-
-    @JavascriptInterface
-    fun saveImage(src: String) {
-        main.post { onSaveImageCb(src) }
-    }
-
-    @JavascriptInterface
-    fun loadImage(src: String) {
-        main.post { onLoadImageCb(src) }
-    }
-
-    @JavascriptInterface
-    fun onSelection(chapterIndex: Int, start: Int, end: Int, text: String) {
-        main.post { onSelectionCb(chapterIndex, start, end, text) }
-    }
-
-    @JavascriptInterface
-    fun onHighlightTap(id: String) {
-        main.post { onHighlightTapCb(id) }
-    }
-
-    @JavascriptInterface
-    fun log(message: String) {
-        onLog(message)
-    }
-}
-
-/** 底部控制条（独立子组合：进度/页码状态只重组此子树，不连累整个阅读器）。 */
-@Composable
-private fun BoxScope.ReaderBottomBar(
-    barsVisible: Boolean,
-    readerSettings: SettingsData,
-    pageInfo: PageInfo,
-    scrollRatio: Float,
-    onChapter: (Int) -> Unit,
-    onSettingsPatch: (SettingsPatch) -> Unit,
-) {
-    AnimatedVisibility(
-        visible = barsVisible,
-        modifier = Modifier.align(Alignment.BottomCenter),
-        enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }),
-        exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
-                .navigationBarsPadding()
-                .padding(horizontal = 4.dp, vertical = 2.dp),
-        ) {
-            val fraction = if (readerSettings.pagination && pageInfo.total > 0) {
-                (pageInfo.page + 1f) / pageInfo.total
-            } else {
-                scrollRatio.coerceIn(0f, 1f)
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(3.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                        .height(3.dp)
-                        .background(MaterialTheme.colorScheme.primary),
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = { onChapter(-1) }) { Text("上一章") }
-                TextButton(onClick = {
-                    onSettingsPatch(
-                        SettingsPatch(font_size = (readerSettings.font_size - 1).coerceAtLeast(14)),
-                    )
-                }) { Text("A-") }
-                TextButton(onClick = {
-                    val next = THEME_CYCLE[(THEME_CYCLE.indexOf(readerSettings.theme) + 1) % THEME_CYCLE.size]
-                    onSettingsPatch(SettingsPatch(theme = next))
-                }) { Text("主题") }
-                TextButton(onClick = {
-                    onSettingsPatch(
-                        SettingsPatch(font_size = (readerSettings.font_size + 1).coerceAtMost(28)),
-                    )
-                }) { Text("A+") }
-                TextButton(onClick = { onChapter(1) }) { Text("下一章") }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = {
-                    onSettingsPatch(SettingsPatch(pagination = !readerSettings.pagination))
-                }) {
-                    Text(
-                        // 显示当前翻页模式；点击切换为另一种。
-                        text = if (readerSettings.pagination) "分页" else "滚动",
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-                Text(
-                    text = if (readerSettings.pagination && pageInfo.total > 0) {
-                        "第 ${pageInfo.page + 1} / ${pageInfo.total} 页"
-                    } else {
-                        "${(scrollRatio * 100).roundToInt()}%"
-                    },
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.End,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 12.dp),
-                )
-            }
-        }
-    }
-}
 
 @SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -461,16 +282,9 @@ fun ReaderScreen(
     // 在线图仍走 OkHttp（Referer/Cookie/UA 与正文代理一致），file:// 直接复制。
     suspend fun fetchHttpBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
         runCatching {
-            val cfg = ngaConfigSnapshot
             val req = Request.Builder()
                 .url(url)
-                .header("Referer", "https://bbs.nga.cn/")
-                .header("User-Agent", cfg.ua.ifBlank { NgaConfig.DEFAULT_UA })
-                .apply {
-                    if (cfg.uid.isNotBlank() && cfg.cid.isNotBlank()) {
-                        header("Cookie", "ngaPassportUid=${cfg.uid}; ngaPassportCid=${cfg.cid}")
-                    }
-                }
+                .ngaHeaders(ngaConfigSnapshot)
                 .build()
             container.okHttp.newCall(req).execute().use { resp ->
                 if (resp.isSuccessful) resp.body.bytes() else null
@@ -706,7 +520,7 @@ fun ReaderScreen(
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).apply {
-                    val fontsDir = File(ctx.filesDir, "AnkeShelf/fonts")
+                    val fontsDir = container.appPaths.fontsDir
                     val density = resources.displayMetrics.density
                     if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
                     settings.javaScriptEnabled = true
@@ -754,19 +568,9 @@ fun ReaderScreen(
                                     )
                             ) {
                                 return runCatching {
-                                    val cfg = ngaConfigSnapshot
                                     val req = Request.Builder()
                                         .url(url)
-                                        .header("Referer", "https://bbs.nga.cn/")
-                                        .header("User-Agent", cfg.ua.ifBlank { NgaConfig.DEFAULT_UA })
-                                        .apply {
-                                            if (cfg.uid.isNotBlank() && cfg.cid.isNotBlank()) {
-                                                header(
-                                                    "Cookie",
-                                                    "ngaPassportUid=${cfg.uid}; ngaPassportCid=${cfg.cid}",
-                                                )
-                                            }
-                                        }
+                                        .ngaHeaders(ngaConfigSnapshot)
                                         .build()
                                     val resp = container.okHttp.newCall(req).execute()
                                     if (!resp.isSuccessful) {
@@ -775,13 +579,7 @@ fun ReaderScreen(
                                     } else {
                                         val mime = resp.header("Content-Type")?.substringBefore(";")
                                             ?: "image/jpeg"
-                                        val body = resp.body
-                                        if (body == null) {
-                                            resp.close()
-                                            null
-                                        } else {
-                                            WebResourceResponse(mime, null, body.byteStream())
-                                        }
+                                        WebResourceResponse(mime, null, resp.body.byteStream())
                                     }
                                 }.getOrNull()
                             }

@@ -10,9 +10,10 @@ class NgaClientTest {
 
     @Test
     fun parsePage_goldenFixture() {
-        val url = checkNotNull(javaClass.classLoader.getResource("reference/nga/page1.json"))
+        val loader = checkNotNull(javaClass.classLoader)
+        val url = checkNotNull(loader.getResource("reference/nga/page1.json"))
         val body = File(url.toURI()).readText(Charsets.UTF_8)
-        val page = NgaClient().parseResponse(tid = 41989465, body = body)
+        val page = NgaClient().parsePageFull(tid = 41989465, body = body)
         assertEquals(0, page.code)
         assertEquals("安科书架测试帖", page.title)
         assertEquals(3, page.totalPage)
@@ -22,10 +23,10 @@ class NgaClientTest {
         assertEquals(0L, main.pid)
         assertEquals(1, main.lou)
         assertEquals("楼主", main.username)
-        assertTrue(main.rawContent.contains("这是主楼"))
+        assertTrue(main.raw_content.contains("这是主楼"))
         val second = page.floors[1]
         assertEquals(2, second.lou)
-        assertEquals(1, second.commentCount)
+        assertEquals(1, second.comments.size)
     }
 
     /** 真实连通性 spike：默认跳过，设置环境变量 NGA_SPIKE=1 时执行。 */
@@ -37,7 +38,7 @@ class NgaClientTest {
             cookieCid = System.getenv("NGA_CID").orEmpty(),
             userAgent = System.getenv("NGA_UA").ifBlank { NgaClient.DEFAULT_NGA_UA },
         )
-        val page = client.fetchPage(tid = 41989465, page = 1)
+        val page = client.fetchPageFull(tid = 41989465, page = 1)
         println(
             "NGA_SPIKE code=${page.code} msg=${page.msg} title=${page.title} author=${page.author} " +
                 "totalPage=${page.totalPage} vrows=${page.vrows} floors=${page.floors.size}",
