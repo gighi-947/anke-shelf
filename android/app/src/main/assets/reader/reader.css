@@ -148,7 +148,7 @@ body.paged .chapter-nav-row {
     display: none;
 }
 
-/* 图片点击放大查看器（双击缩放、双指捏合、拖动平移、点击空白关闭） */
+/* 图片点击放大查看器（双击缩放、双指捏合、拖动平移、×/保存、无点空白关闭） */
 .image-lightbox {
     position: fixed;
     inset: 0;
@@ -184,6 +184,22 @@ body.paged .chapter-nav-row {
     background: rgba(255, 255, 255, 0.18);
     color: #ffffff;
     font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.lightbox-save {
+    position: absolute;
+    top: 14px;
+    right: 58px;
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 18px;
+    border: none;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    font-size: 14px;
     line-height: 1;
     cursor: pointer;
     z-index: 10;

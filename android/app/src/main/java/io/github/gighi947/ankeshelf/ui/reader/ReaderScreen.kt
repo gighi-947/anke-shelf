@@ -3,6 +3,7 @@ package io.github.gighi947.ankeshelf.ui.reader
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.graphics.Color
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -19,11 +20,16 @@ import android.webkit.WebViewClient
 import android.webkit.ValueCallback
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +48,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,6 +74,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -101,8 +109,11 @@ import java.io.File
 import java.io.FileInputStream
 import java.net.URLDecoder
 import okhttp3.Request
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -144,6 +155,7 @@ class ReaderBridge(
     private val onPageChanged: (Int, Int, Int) -> Unit,
     private val onRequestChapter: (Int) -> Unit,
     private val onImageLightbox: (Boolean) -> Unit,
+    private val onSaveImageCb: (String) -> Unit,
     private val onSelectionCb: (Int, Int, Int, String) -> Unit,
     private val onHighlightTapCb: (String) -> Unit,
     private val onLog: (String) -> Unit,
@@ -169,6 +181,11 @@ class ReaderBridge(
     @JavascriptInterface
     fun setImageLightbox(open: Boolean) {
         main.post { onImageLightbox(open) }
+    }
+
+    @JavascriptInterface
+    fun saveImage(src: String) {
+        main.post { onSaveImageCb(src) }
     }
 
     @JavascriptInterface
@@ -212,6 +229,7 @@ fun ReaderScreen(
     var pageInfo by remember { mutableStateOf(PageInfo()) }
     var scrollRatio by remember { mutableFloatStateOf(0f) }
     var imageViewerOpen by remember { mutableStateOf(false) }
+    var pendingSaveUrl by remember { mutableStateOf<String?>(null) }
     var pendingSelection by remember { mutableStateOf<PendingSelection?>(null) }
     var tappedHighlightId by remember { mutableStateOf<String?>(null) }
     var noteTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -335,6 +353,79 @@ fun ReaderScreen(
         webViewRef.value?.evaluateJavascript("AnkeReader.clearSelection();", null)
     }
 
+    // 查看器“保存”：SAF 自选保存位置（CreateDocument，免存储权限），
+    // 在线图仍走 OkHttp（Referer/Cookie/UA 与正文代理一致），file:// 直接复制。
+    suspend fun fetchHttpBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
+        runCatching {
+            val cfg = container.ngaConfig.load()
+            val req = Request.Builder()
+                .url(url)
+                .header("Referer", "https://bbs.nga.cn/")
+                .header("User-Agent", cfg.ua.ifBlank { NgaConfig.DEFAULT_UA })
+                .apply {
+                    if (cfg.uid.isNotBlank() && cfg.cid.isNotBlank()) {
+                        header("Cookie", "ngaPassportUid=${cfg.uid}; ngaPassportCid=${cfg.cid}")
+                    }
+                }
+                .build()
+            container.okHttp.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) resp.body.bytes() else null
+            }
+        }.getOrNull()
+    }
+
+    suspend fun fetchImageBytes(src: String): ByteArray? = withContext(Dispatchers.IO) {
+        runCatching {
+            when {
+                src.startsWith("file://", ignoreCase = true) -> {
+                    val p = Uri.parse(src).path
+                    if (p != null) File(p).takeIf { it.isFile }?.readBytes() else null
+                }
+                src.startsWith("//") -> fetchHttpBytes("https:$src")
+                else -> fetchHttpBytes(src)
+            }
+        }.getOrNull()
+    }
+
+    val scope = rememberCoroutineScope()
+    val saveLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("image/*"),
+    ) { uri ->
+        val src = pendingSaveUrl ?: return@rememberLauncherForActivityResult
+        pendingSaveUrl = null
+        if (uri != null) {
+            scope.launch {
+                val ok = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val bytes = fetchImageBytes(src)
+                        if (bytes == null) {
+                            false
+                        } else {
+                            context.contentResolver.openOutputStream(uri)?.use { out ->
+                                out.write(bytes)
+                                true
+                            } ?: false
+                        }
+                    }.getOrDefault(false)
+                }
+                Toast.makeText(
+                    context,
+                    if (ok) "图片已保存到所选位置" else "图片保存失败",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
+
+    fun requestSaveImage(src: String) {
+        if (src.isBlank()) return
+        pendingSaveUrl = src
+        val clean = src.substringBefore('?').substringBefore('#').substringAfterLast('/')
+            .replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_")
+            .ifBlank { "AnkeShelf-image" }
+        saveLauncher.launch(if (clean.contains('.')) clean else "$clean.jpg")
+    }
+
     LaunchedEffect(barsVisible, barsHeld, showToc, pageReady.value) {
         if (barsVisible && !barsHeld && !showToc && pageReady.value) {
             delay(3000)
@@ -404,6 +495,7 @@ fun ReaderScreen(
             },
             onRequestChapter = { delta -> changeChapter(delta) },
             onImageLightbox = { open -> imageViewerOpen = open },
+            onSaveImageCb = { src -> requestSaveImage(src) },
             onSelectionCb = { idx, start, end, text ->
                 if (idx == chapterIndex) {
                     pendingSelection = PendingSelection(start, end, text)
@@ -469,7 +561,9 @@ fun ReaderScreen(
 
     // 系统返回键 = 保存进度并返回书架（避免直接退出应用）。
     BackHandler {
-        if (imageViewerOpen) {
+        if (showToc) {
+            showToc = false
+        } else if (imageViewerOpen) {
             webViewRef.value?.evaluateJavascript("AnkeReader.closeImage();", null)
         } else {
             saveNow(webViewRef.value)
@@ -665,7 +759,8 @@ fun ReaderScreen(
                                         hideBars()
                                     }
                                     isTap && imageViewerOpen -> {
-                                        // 单击图片不退出、双击缩放、点空白关闭（JS 判定），避免误触。
+                                        // 单击图片不退出、双击缩放；点空白不关闭（防误触），
+                                        // 关闭只走 ×/保存按钮/系统返回。
                                         evaluateJavascript(
                                             "AnkeReader.onViewerTap(${ev.x / density},${ev.y / density});",
                                             null,
@@ -995,6 +1090,25 @@ fun ReaderScreen(
             }
         }
 
+        // 目录弹层：半透明遮罩点击面板外任意区域关闭；面板收窄到 280dp，
+        // 小屏再按 82% 屏宽收缩，避免占满整屏。
+        AnimatedVisibility(
+            visible = showToc,
+            modifier = Modifier.fillMaxSize(),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(ComposeColor.Black.copy(alpha = 0.32f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { showToc = false },
+            )
+        }
+
         AnimatedVisibility(
             visible = showToc,
             modifier = Modifier.align(Alignment.CenterEnd),
@@ -1004,7 +1118,8 @@ fun ReaderScreen(
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(300.dp)
+                    .fillMaxWidth(0.82f)
+                    .widthIn(max = 280.dp)
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(12.dp),
             ) {

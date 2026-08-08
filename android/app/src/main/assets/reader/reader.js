@@ -757,12 +757,9 @@
   }
 
   function bindImageViewerEvents(ov, img) {
+    // 仅 × 明确关闭；空白/提示文字不关闭，避免长按放大后误触退出。
     ov.addEventListener('click', function (e) {
-      if (e.target === ov ||
-          e.target.classList.contains('lightbox-close') ||
-          e.target.classList.contains('lightbox-hint')) {
-        closeImageViewer();
-      }
+      if (e.target.classList.contains('lightbox-close')) closeImageViewer();
     });
 
     var pointers = {};
@@ -835,17 +832,14 @@
     ov.addEventListener('touchcancel', endTouch);
   }
 
-  // 由 Kotlin 触摸层驱动：单击关闭、300ms 内双击缩放，避免 DOM click 被手势吞掉。
+  // 由 Kotlin 触摸层驱动：单击图片不退出、300ms 内双击缩放；点空白不操作。
+  // 关闭只走 ×/保存按钮/系统返回，避免误触退出。
   function onViewerTap(x, y) {
     var img = document.getElementById('lightbox-img');
     if (!img) return;
     var el = document.elementFromPoint(x, y);
     var onImage = el === img || (el && img.contains ? img.contains(el) : false);
-    if (!onImage) {
-      imageViewerState.lastTapAt = 0;
-      closeImageViewer();
-      return;
-    }
+    if (!onImage) return;
     var now = Date.now();
     if (now - imageViewerState.lastTapAt <= 300) {
       imageViewerState.lastTapAt = 0;
@@ -871,10 +865,19 @@
     var close = document.createElement('button');
     close.className = 'lightbox-close';
     close.textContent = '\u00d7';
+    var save = document.createElement('button');
+    save.className = 'lightbox-save';
+    save.type = 'button';
+    save.textContent = '\u4fdd\u5b58';
+    save.addEventListener('click', function () {
+      var imgEl = document.getElementById('lightbox-img');
+      if (!imgEl || !imgEl.src) return;
+      try { AnkeReaderBridge.saveImage(imgEl.src); } catch (e) { /* ignore */ }
+    });
     var hint = document.createElement('div');
     hint.className = 'lightbox-hint';
-    hint.textContent = '\u53cc\u51fb\u7f29\u653e \u00b7 \u53cc\u6307\u634f\u5408 \u00b7 \u62d6\u52a8\u5e73\u79fb \u00b7 \u70b9\u51fb\u7a7a\u767d\u5173\u95ed';
-    ov.append(img, close, hint);
+    hint.textContent = '\u53cc\u51fb\u7f29\u653e \u00b7 \u53cc\u6307\u634f\u5408 \u00b7 \u62d6\u52a8\u5e73\u79fb';
+    ov.append(img, save, close, hint);
     document.body.appendChild(ov);
     bindImageViewerEvents(ov, img);
     return ov;
