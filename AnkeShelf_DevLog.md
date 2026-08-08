@@ -691,3 +691,13 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **下载后书架刷新（根因修复）**：NgaDownloadService 原先创建独立 `Shelf` 实例（内存与 UI 不同步），改为与 UI 共享 `AnkeShelfApp.container`；Root 再叠加 shelf.json mtime 轮询（变化则 `shelf.load()` + 刷新），双保险。
 - 验证（模拟器）：空书架双按钮、右上角导入菜单；编译与单测通过。
 - 提交：`b98f5ef`。
+
+### 9.21 图片查看器去误触+保存按钮、目录弹层收窄与点击外部关闭（2026-08-08）
+
+- **明确保留“在线图片”做法**：撤销此前 embedded/本地化方向的未提交实验（`NativeBook.kt` / `NgaDownloader.kt` / `DownloadScreen.kt` 恢复 HEAD，仅阅读器保留 OkHttp 代理），下载参数维持「在线 / 无图」；正文与查看器图片仍走在线加载 + Referer/Cookie/UA 代理（真机网络可用时有效）。
+- **查看器退出与保存**：
+  - 单击图片不退出、双击缩放、双指捏合、拖动平移保留；**点空白/提示文字不再关闭**（此前实现导致误触退出），关闭只走 ×、保存按钮、系统返回键。
+  - 新增「保存」按钮（查看器右上角 × 左侧胶囊小按钮）：JS 调 `AnkeReaderBridge.saveImage(src)` → Kotlin 用 SAF `CreateDocument("image/*")` 自选保存位置（免存储权限）；在线图走 OkHttp（Referer/Cookie/UA 与正文代理一致），`file://` 直接复制；保存成功/失败 Toast 提示；文件名取 URL 最后一段并清洗，缺扩展名补 `.jpg`。
+- **目录弹层**：面板宽度 300dp → `min(280dp, 82% 屏宽)`，不再占满整屏；新增全屏半透明遮罩，点击面板外任意区域关闭；系统返回键顺序调整为：先关目录 → 再关图片查看器 → 最后退出阅读器。
+- 验证：`node --check reader.js` 通过；`testDebugUnitTest` + `assembleDebug` 通过（SAF 保存与查看器手势需真机/NGA 网络验证）。
+- 提交：`7ebaa87`。
