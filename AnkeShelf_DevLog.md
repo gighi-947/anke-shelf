@@ -712,3 +712,18 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
   - 修复：`setMode(false)` 增加 `clearPagedLayout()`，清空内联高度/minHeight/maxWidth 并移除双页 spacer，再恢复滚动位置。
 - 验证：`node --check reader.js`；新增 `NgaFormatHtmlTest`（协议相对 / `./` 前缀 / 缩略图后缀 / imgSrc 回调 4 条）；`testDebugUnitTest`（67 条）+ `assembleDebug` 通过。
 - 提交：`05cd9a9`。
+
+### 9.23 滚动惯性卡顿专项：进度后台防抖落盘等七项优化（2026-08-08）
+
+- **现象**：滚动模式手指离开屏幕后的惯性阶段周期性“一顿一顿”。
+- **根因与优化**（详见 [docs/ANDROID_PERFORMANCE_REVIEW.md](docs/ANDROID_PERFORMANCE_REVIEW.md)）：
+  1. 主因：进度约 1.2s/次上报 → `ProgressStore.set()` 每次同步原子写盘（主线程磁盘 I/O）。改为内存更新 + 单线程调度器 1.5s 合并落盘，新增 `flush()`，`saveNow` JS 回调完成与退出阅读器时立即 flush。
+  2. 正文图片全部立即加载/解码：渲染期注入 `loading="lazy" decoding="async"`（覆盖已下载书），分页模式进入时 `forceEagerImages()` 保持翻页即见图。
+  3. 图片代理加 OkHttp 64MB 磁盘缓存，回看/翻页往返不重复下载。
+  4. 代理/保存共用 `remember` 的 NGA 配置快照，去掉每请求读 ini。
+  5. 图片 load/error 改 document 捕获阶段事件委托，不再每图挂两个监听器。
+  6. 底部控制条抽成 `BoxScope.ReaderBottomBar`，进度/页码更新只重组该子树，不再整屏重组。
+  7. 滚动上报加 0.2% 变化阈值，顶部/底部与微小抖动不再调桥。
+- **权衡**：未启用 `content-visibility`（屏外尺寸估算会破坏滚动进度保存/恢复），作为后续方向记录。
+- 验证：`node --check reader.js`；单测 70 条通过（新增懒加载注入 3 条、进度 flush 适配）；`assembleDebug` 通过。
+- 提交：`ec8a01a`。
