@@ -343,9 +343,14 @@ private class Frag {
 }
 
 private class NativePage {
-    val frags = mutableListOf<Frag>()
+    /** 每屏的列（双页=2，单页=1），按桌面几何从第一列填到最后一列。 */
+    val columns = mutableListOf<MutableList<Frag>>()
     var startOffset: Int = 0
     var startBlock: Int = 0
+    var marginPx: Int = 0
+    var gapPx: Int = 0
+    var topInsetPx: Int = 0
+    var bottomInsetPx: Int = 0
 }
 
 @Composable
@@ -507,30 +512,43 @@ private fun paginate(
     )
     val colW = g.colW.toInt().coerceAtLeast(120)
     val pageH = (fhPx - topInsetPx - bottomInsetPx).coerceAtLeast(240)
+    val colCount = if (g.dual) 2 else 1
     val pages = mutableListOf<NativePage>()
     var page = NativePage()
+    page.marginPx = g.margin.toInt()
+    page.gapPx = g.gap.toInt()
+    page.topInsetPx = topInsetPx
+    page.bottomInsetPx = bottomInsetPx
+    var colIndex = 0
     var used = 0
     var plainCursor = 0
 
-    fun ensurePage(startOffset: Int, blockIdx: Int) {
-        if (used > 0 && used + 40 > pageH) {
-            pages.add(page)
-            page = NativePage()
-            used = 0
-            page.startOffset = startOffset
-            page.startBlock = blockIdx
-        }
+    fun ensureCols() {
+        while (page.columns.size <= colIndex) page.columns.add(mutableListOf())
     }
 
     fun addFrag(f: Frag) {
+        ensureCols()
         if (used > 0 && used + f.heightPx > pageH) {
-            pages.add(page)
-            page = NativePage()
-            used = 0
-            page.startOffset = plainCursor
+            if (colIndex < colCount - 1) {
+                colIndex++
+                used = 0
+                ensureCols()
+            } else {
+                pages.add(page)
+                page = NativePage()
+                page.marginPx = g.margin.toInt()
+                page.gapPx = g.gap.toInt()
+                page.topInsetPx = topInsetPx
+                page.bottomInsetPx = bottomInsetPx
+                page.startOffset = plainCursor
+                colIndex = 0
+                used = 0
+                ensureCols()
+            }
         }
         if (f.heightPx > pageH) f.heightPx = pageH
-        page.frags.add(f)
+        page.columns[colIndex].add(f)
         used += f.heightPx
     }
 
@@ -690,7 +708,7 @@ private fun paginate(
             }
         }
     }
-    if (page.frags.isNotEmpty()) pages.add(page)
+    if (page.columns.any { it.isNotEmpty() }) pages.add(page)
     return pages
 }
 
@@ -715,57 +733,82 @@ private fun NativePageContent(
     imageBytes: suspend (String) -> ByteArray?,
     onImageLongPress: (String) -> Unit,
 ) {
-    Column(Modifier.fillMaxSize()) {
-        page.frags.forEach { frag ->
-            when {
-                frag.image != null -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(frag.heightPx.dp)
-                            .padding(vertical = 4.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        NativeImage(frag.image!!, theme, imageBytes, onImageLongPress)
-                    }
+    // 双页 = 一屏两列（对齐桌面 PAGINATION_OVERRIDE：列宽 (fw-2P-G)/2，间距 G，边距 P）。
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = page.marginPx.dp)
+            .padding(top = page.topInsetPx.dp, bottom = page.bottomInsetPx.dp),
+        horizontalArrangement = Arrangement.spacedBy(page.gapPx.dp),
+    ) {
+        page.columns.forEach { col ->
+            Column(Modifier.weight(1f)) {
+                col.forEach { frag ->
+                    RenderFrag(frag, theme, baseStyle, highlights, highlightColors, imageBytes, onImageLongPress)
                 }
-                frag.table != null -> NativeTable(frag.table!!, theme, baseStyle, Modifier.height(frag.heightPx.dp))
-                frag.head != null -> {
-                    Text(
-                        frag.head!!,
-                        style = baseStyle.style(SpanStyle(
-                            fontSize = (baseStyle.fontSize * 0.82f).sp,
-                            color = frag.headColor ?: theme.fgColor.copy(alpha = 0.7f),
-                        )),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    HorizontalDivider(
-                        color = theme.fgColor.copy(alpha = 0.15f),
-                        modifier = Modifier.padding(top = 3.dp, bottom = 5.dp),
-                    )
-                }
-                frag.ann != null -> {
-                    val ann = applyHighlights(frag.ann!!, frag.plainStart, highlights, highlightColors)
-                    Text(
-                        text = ann,
-                        style = frag.style ?: baseStyle.style(),
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Clip,
-                    )
-                }
-            }
-            if (frag.floorCard) {
-                // 卡片上下留白由行高+间距近似；边框在每行上重复（对齐桌面碎片化边框）。
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height((frag.topPad + frag.bottomPad).dp)
-                        .background(frag.cardColor ?: Color.Transparent),
-                )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RenderFrag(
+    frag: Frag,
+    theme: ReaderThemeColors,
+    baseStyle: ReaderTextStyle,
+    highlights: List<NativeHighlight>,
+    highlightColors: Map<String, Color>,
+    imageBytes: suspend (String) -> ByteArray?,
+    onImageLongPress: (String) -> Unit,
+) {
+    when {
+        frag.image != null -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(frag.heightPx.dp)
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                NativeImage(frag.image!!, theme, imageBytes, onImageLongPress)
+            }
+        }
+        frag.table != null -> NativeTable(frag.table!!, theme, baseStyle, Modifier.height(frag.heightPx.dp))
+        frag.head != null -> {
+            Text(
+                frag.head!!,
+                style = baseStyle.style(SpanStyle(
+                    fontSize = (baseStyle.fontSize * 0.82f).sp,
+                    color = frag.headColor ?: theme.fgColor.copy(alpha = 0.7f),
+                )),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            HorizontalDivider(
+                color = theme.fgColor.copy(alpha = 0.15f),
+                modifier = Modifier.padding(top = 3.dp, bottom = 5.dp),
+            )
+        }
+        frag.ann != null -> {
+            val ann = applyHighlights(frag.ann!!, frag.plainStart, highlights, highlightColors)
+            Text(
+                text = ann,
+                style = frag.style ?: baseStyle.style(),
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Clip,
+            )
+        }
+    }
+    if (frag.floorCard) {
+        // 卡片上下留白由行高+间距近似；边框在每行上重复（对齐桌面碎片化边框）。
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height((frag.topPad + frag.bottomPad).dp)
+                .background(frag.cardColor ?: Color.Transparent),
+        )
     }
 }
 
