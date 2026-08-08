@@ -3,6 +3,8 @@ package io.github.gighi947.ankeshelf.ui.reader.native
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import io.github.gighi947.ankeshelf.ui.reader.extractReaderParts
+import java.io.File
 
 class ReaderModelTest {
 
@@ -69,5 +71,53 @@ class ReaderModelTest {
             .mapNotNull { it.color }
         assertTrue("CSS 类颜色 red", colors.contains("#ff0000"))
         assertTrue("CSS 类颜色 gray", colors.contains("#888888"))
+    }
+
+    @Test
+    fun parsesRealExportedChapter() {
+        val url = checkNotNull(javaClass.classLoader.getResource("native/real0000.xhtml"))
+        val html = File(url.toURI()).readText(Charsets.UTF_8)
+        val parts = extractReaderParts(html)
+        val doc = ReaderHtmlModel.parse(parts.body, parts.headStyles)
+        println("REAL blocks=${doc.blocks.size} plainLen=${doc.plainText.length}")
+        println("REAL floors=${doc.blocks.count { it is ReaderBlock.Floor }}")
+        println("REAL quotes=${doc.blocks.count { it is ReaderBlock.Quote }}")
+        println("REAL images=${countImages(doc.blocks)}")
+        println("REAL colors=${collectColors(doc.blocks).distinct().take(12)}")
+        assertTrue("真实章节应有楼层", doc.blocks.any { it is ReaderBlock.Floor })
+    }
+
+    @Test
+    fun parsesRealMultiFloorChapter() {
+        val url = checkNotNull(javaClass.classLoader.getResource("native/real0001.xhtml"))
+        val html = File(url.toURI()).readText(Charsets.UTF_8)
+        val parts = extractReaderParts(html)
+        val doc = ReaderHtmlModel.parse(parts.body, parts.headStyles)
+        val floors = doc.blocks.filterIsInstance<ReaderBlock.Floor>()
+        println("REAL1 floors=${floors.size} blocks=${doc.blocks.size} plainLen=${doc.plainText.length}")
+        println("REAL1 floorParas=${floors.firstOrNull()?.body?.count { it is ReaderBlock.Paragraph }}")
+        println("REAL1 quotesInFloors=${floors.sumOf { f -> f.body.count { it is ReaderBlock.Quote } }}")
+        println("REAL1 colors=${collectColors(doc.blocks).distinct().take(12)}")
+        assertTrue("真实章节应有多楼层", floors.size >= 10)
+        assertTrue("真实章节应有引用", floors.any { f -> f.body.any { it is ReaderBlock.Quote } })
+    }
+
+    private fun countImages(blocks: List<ReaderBlock>): Int = blocks.sumOf { countImages(it) }
+
+    private fun countImages(b: ReaderBlock): Int = when (b) {
+        is ReaderBlock.Image -> 1
+        is ReaderBlock.Floor -> b.body.sumOf { countImages(it) }
+        is ReaderBlock.Quote -> b.body.sumOf { countImages(it) }
+        else -> 0
+    }
+
+    private fun collectColors(blocks: List<ReaderBlock>): List<String> = blocks.flatMap { collectColors(it) }
+
+    private fun collectColors(b: ReaderBlock): List<String> = when (b) {
+        is ReaderBlock.Paragraph -> b.spans.mapNotNull { it.color }
+        is ReaderBlock.Floor -> b.body.flatMap { collectColors(it) }
+        is ReaderBlock.Quote -> b.body.flatMap { collectColors(it) }
+        is ReaderBlock.Comment -> b.spans.mapNotNull { it.color }
+        else -> emptyList()
     }
 }

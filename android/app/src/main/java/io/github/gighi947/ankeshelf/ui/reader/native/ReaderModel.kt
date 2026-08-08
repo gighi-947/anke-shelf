@@ -110,9 +110,35 @@ object ReaderHtmlModel {
                     val bodyBlocks = mutableListOf<ReaderBlock>()
                     val bodyPlain = StringBuilder()
                     if (bodyNode != null) {
-                        for (c in bodyNode.children) {
-                            convert(c, bodyBlocks, bodyPlain, depth + 1, classColors)
+                        // 楼层正文多为“文字<br/>文字”平铺：连续内联内容合并成同一段
+                        // （<br/>=换行），块级元素（引用/图片/表格/详情）单独成块。
+                        val pending = mutableListOf<ReaderSpan>()
+                        fun flushPending() {
+                            if (pending.isNotEmpty()) {
+                                bodyBlocks.add(ReaderBlock.Paragraph(pending.toList()))
+                                bodyPlain.append(' ').append(pending.joinToString("") { it.text })
+                                pending.clear()
+                            }
                         }
+                        for (c in bodyNode.children) {
+                            when {
+                                c.tag == "br" -> pending.add(ReaderSpan("\n"))
+                                c.tag == "img" -> {
+                                    flushPending()
+                                    val src = c.attr("src").orEmpty()
+                                    if (src.isNotBlank()) {
+                                        bodyBlocks.add(ReaderBlock.Image(src, c.attr("alt").orEmpty()))
+                                        bodyPlain.append(' ').append(c.attr("alt").orEmpty())
+                                    }
+                                }
+                                c.tag in BLOCK_TAGS -> {
+                                    flushPending()
+                                    convert(c, bodyBlocks, bodyPlain, depth + 1, classColors)
+                                }
+                                else -> spansOf(listOf(c), pending, classColors = classColors)
+                            }
+                        }
+                        flushPending()
                     }
                     val floor = ReaderBlock.Floor(
                         lou = Regex("(\\d+)\\s*楼").find(headText)?.groupValues?.get(1)?.toIntOrNull() ?: 0,
@@ -344,6 +370,7 @@ object ReaderHtmlModel {
 
     private val VOID_TAGS = setOf("br", "img", "hr", "meta", "link", "input", "source", "col")
     private val AUTO_CLOSE = setOf("p", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "dt", "dd")
+    private val BLOCK_TAGS = setOf("div", "p", "blockquote", "table", "details", "ul", "ol", "h1", "h2", "h3", "h4")
 
     /** 轻量 HTML 分词器 → DOM 树（容忍 NGA/EPUB 常见脏标签）。 */
     private class Tokenizer(private val html: String) {
