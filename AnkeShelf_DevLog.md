@@ -863,3 +863,17 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 页面结构改为 `NativePage.columns`（单页=1 列、双页=2 列），进度锚点仍为页首 text_offset；安全区上下留白按页内边距渲染。
 - 验证：`testDebugUnitTest` 与 `assembleDebug` 通过。
 - 提交：`c446992`。
+
+### 9.37 原生阅读器：分页楼层卡片缺失 + NGA 颜色解析修复（2026-08-08）
+
+- **根因**：
+  1. 分页模式 `RenderFrag` 只画了文字行，楼层卡片的边框/左侧主题色条/内边距从未绘制（`frag.borderColor/accentColor` 没被使用）→“分页毫无排版”；
+  2. NGA 常见的 `<font color="red">` 颜色属性未解析 → 滚动/分页的显式彩色缺失；
+  3. 楼层头字段靠字符串截取，格式稍有出入就解析错。
+- **修复**：
+  - 分页楼层碎片统一包“边框 + 4dp 主题色条 + 内边距”（对齐桌面 break-inside 碎片化边框），头部虚线保留；
+  - `spansOf` 的 span/font 同时支持 `style="color:..."` 与 `color="..."` 属性；
+  - 楼层头改为正则解析（楼号/赞/用户名/uid/时间）；`blockOffsets` 改为按块数均匀切分（单调且末位=全文长）。
+- 新增解析器单测（楼层/引用/骰子/表格/图片/追评/红蓝颜色），验证通过。
+- 验证：全量单测 + `assembleDebug` 通过。
+- 提交：`d062a51`。
