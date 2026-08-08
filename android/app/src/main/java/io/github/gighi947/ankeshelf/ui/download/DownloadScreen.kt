@@ -13,14 +13,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,6 +38,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -46,7 +47,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -355,6 +355,7 @@ private fun ConfigPanel(container: AppContainer) {
 
 /* ---------------- 下载 / 更新 ---------------- */
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
     val context = LocalContext.current
@@ -429,23 +430,49 @@ private fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                     .fillMaxWidth()
                     .padding(top = AnkeSpacing.sm),
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = AnkeSpacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
+            // 主题/图片选项拆成独立分组（参照设置页“翻页方式”的 FilterChip 做法），
+            // 避免窄屏下单行 8 个元素溢出错乱。
+            Text(
+                "主题",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = AnkeSpacing.sm),
+            )
+            FlowRow(
+                modifier = Modifier.padding(top = AnkeSpacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
             ) {
-                Text("主题：")
-                RadioButton(selected = !themeDark, onClick = { themeDark = false })
-                Text("浅色")
-                RadioButton(selected = themeDark, onClick = { themeDark = true })
-                Text("深色")
-                Spacer(modifier = Modifier.height(0.dp))
-                Text("图片：", modifier = Modifier.padding(start = AnkeSpacing.lg))
-                RadioButton(selected = imageOnline, onClick = { imageOnline = true })
-                Text("在线")
-                RadioButton(selected = !imageOnline, onClick = { imageOnline = false })
-                Text("无图")
+                FilterChip(
+                    selected = !themeDark,
+                    onClick = { themeDark = false },
+                    label = { Text("浅色") },
+                )
+                FilterChip(
+                    selected = themeDark,
+                    onClick = { themeDark = true },
+                    label = { Text("深色") },
+                )
+            }
+            Text(
+                "图片",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = AnkeSpacing.sm),
+            )
+            FlowRow(
+                modifier = Modifier.padding(top = AnkeSpacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+            ) {
+                FilterChip(
+                    selected = imageOnline,
+                    onClick = { imageOnline = true },
+                    label = { Text("在线") },
+                )
+                FilterChip(
+                    selected = !imageOnline,
+                    onClick = { imageOnline = false },
+                    label = { Text("无图") },
+                )
             }
         }
 
