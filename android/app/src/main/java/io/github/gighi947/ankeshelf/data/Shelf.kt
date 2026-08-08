@@ -183,6 +183,7 @@ class ProgressStore(private val progressFile: File) {
     fun get(bookId: String): ProgressEntry? = lock.withLock { data[bookId] }
 
     fun set(bookId: String, chapterIndex: Int, textOffset: Int) {
+        runCatching { android.util.Log.d("AnkeShelf", "progress.set ch=$chapterIndex off=$textOffset") }
         val entry = ProgressEntry(
             chapter_index = maxOf(0, chapterIndex),
             text_offset = maxOf(0, textOffset),

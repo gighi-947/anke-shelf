@@ -367,14 +367,32 @@
       y = Math.max(2, er.top + (state.topInset || 0) + 8);
     } else {
       x = Math.max(2, Math.min(window.innerWidth / 2, window.innerWidth - 2));
-      // 正文顶部内边距 = 18px + topInset（异形屏安全区），采样点必须越过它，
-      // 否则 caretRangeFromPoint 落在空白处返回 null -> offset=0（进度漂移根因）。
-      // caretRangeFromPoint needs viewport coords (0..viewH), not document coords.
-      // Depth matches restoreScroll anchor (-18-topInset-8) for a stable round trip.
-      y = Math.max(8, 18 + (state.topInset || 0) + 8);
+      // 视口中线采样：落在正文段落内的概率远高于顶部（顶部常是楼卡 padding/楼头），
+      // 精度从“楼层”提升到“段落/行”；与 restoreScroll 的 scrollAnchorY 严格对应。
+      y = sampleOffsetY();
     }
-    var off = TextPos.currentOffsetFromPoint(ctx, x, y);
+    var off = offsetAtPoint(ctx, x, y);
     return off === null ? 0 : off;
+  }
+
+  function sampleOffsetY() {
+    return Math.max(8, Math.round(viewH() * 0.45));
+  }
+
+  function scrollAnchorY() {
+    return Math.max(8, sampleOffsetY() - Math.round((state.fontSize * state.lineHeight) / 2));
+  }
+
+  // caretRangeFromPoint 落在段落间隙/卡片 padding 时会返回 null 或元素首文本；
+  // 向下逐行扫描取第一个命中点，保证采样落在正文文本上。
+  function offsetAtPoint(ctx, x, y) {
+    var off = TextPos.currentOffsetFromPoint(ctx, x, y);
+    if (off !== null) return off;
+    for (var d = 24; d <= 120; d += 24) {
+      off = TextPos.currentOffsetFromPoint(ctx, x, y + d);
+      if (off !== null) return off;
+    }
+    return null;
   }
 
   function restoreScroll(offset) {
@@ -391,8 +409,8 @@
         range.setStart(point.node, point.charIndex);
         range.collapse(true);
         var rect = range.getBoundingClientRect();
-        // align with sampling: body top padding 18px + topInset, sample y = scrollY + 18 + topInset + 8
-        window.scrollTo(0, Math.max(0, rect.top + window.scrollY - (18 + (state.topInset || 0) + 8)));
+        // align with sampling: the anchor line's top lands at scrollAnchorY (viewport center).
+        window.scrollTo(0, Math.max(0, rect.top + window.scrollY - scrollAnchorY()));
         state.restorePending = false;
         return;
       } catch (e) { /* fall through to ratio */ }
@@ -436,7 +454,11 @@
     if (state.restorePending && off > 0 && doSave) state.restorePending = false;
     try {
       AnkeReaderBridge.pageChanged(state.chapterIndex, m.current, m.total);
-      if (off > 0 && doSave) AnkeReaderBridge.saveProgress(state.chapterIndex, off, true);
+      // 翻页保存立即落盘（saveProgressNow），避免“进度缓存赶不上操作”。
+      if (off > 0 && doSave) {
+        log('[save:flip] ch=' + state.chapterIndex + ' off=' + off);
+        AnkeReaderBridge.saveProgressNow(state.chapterIndex, off, true);
+      }
     } catch (e) { /* ignore */ }
   }
 
@@ -712,6 +734,7 @@
         var o = 0;
         try { o = currentOffset(); } catch (e) { /* ignore */ }
         if (o > 0) {
+          log('[save:scroll] ch=' + state.chapterIndex + ' off=' + o);
           state.anchorOffset = o;
           try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
         }
@@ -757,6 +780,9 @@
     // debounced scroll progress (scroll mode, same as desktop reader.js 500ms)
     var scrollTimer = null;
     window.addEventListener('scroll', function () {
+      // 分页模式的保存只走翻页 saveProgressNow；字体/图片重排引发的
+      // window 滚动事件绝不能当成滚动进度保存（会把正确偏移覆盖成页顶采样）。
+      if (state.paged) return;
       if (scrollTimer) clearTimeout(scrollTimer);
       scrollTimer = setTimeout(function () {
         scrollTimer = null;
@@ -768,13 +794,9 @@
         }
       }, 500);
     });
-    window.addEventListener('pagehide', function () {
-      var o = 0;
-      try { o = currentOffset(); } catch (e) { /* ignore */ }
-      if (o > 0) {
-        try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
-      }
-    });
+    // 不再用 pagehide 兜底保存：销毁时页面 scrollLeft/滚动位置会被重置，
+    // 迟到的 pagehide 会用错误 offset 覆盖刚 flush 的正确进度（9.48 根因）。
+    // 退出保存统一由 Kotlin dispose 查询 + flush 完成。
     var finish = function () {
       if (state.paged) {
         prepare();
@@ -788,7 +810,8 @@
           try { o = currentOffset(); } catch (e) { /* ignore */ }
           // 章首采样可能落在首楼卡片 padding 上返回 0；此时也应把“已换到本章”
           // 落库（offset=1 即章首），否则退出重进会回到上一章。
-          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o > 0 ? o : 1, true); } catch (e) { /* ignore */ }
+          log('[save:switch] ch=' + state.chapterIndex + ' off=' + (o > 0 ? o : 1));
+          try { AnkeReaderBridge.saveProgressNow(state.chapterIndex, o > 0 ? o : 1, true); } catch (e) { /* ignore */ }
         }
       } else {
         if (state.restoreOffset > 0) restoreScroll(state.restoreOffset);

@@ -61,6 +61,7 @@ import okhttp3.Request
 data class WebViewReaderCallbacks(
     val onReady: () -> Unit = {},
     val onProgress: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
+    val onProgressNow: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
     val onPageChanged: (chapter: Int, page: Int, total: Int) -> Unit = { _, _, _ -> },
     val onImageTap: (String) -> Unit = {},
     val onTapZone: (String) -> Unit = {},
@@ -466,10 +467,15 @@ fun WebViewChapterView(
                 // Read the final offset before teardown; delay destroy so the
                 // async value callback is delivered and the tracker flushes.
                 web.evaluateJavascript(
-                    "(function(){try{return AnkeReader.currentOffset();}catch(e){return 0;}})()",
+                    // 分页模式返回 -1：退出保存直接 flush 已保存的锚点（翻页即时落盘），
+                    // 不能用“当前页顶采样”覆盖——字体/图片重排后页顶会比锚点靠前，
+                    // 每次退出都把进度往回拉（9.48 漂移根因）。滚动模式才需要取即时值。
+                    "(function(){try{return state.paged ? -1 : AnkeReader.currentOffset();}catch(e){return 0;}})()",
                     ValueCallback { v ->
                         val o = v?.toDoubleOrNull()?.toInt() ?: 0
-                        if (o > 0) callbacksRef.value.onProgress(idx, o)
+                        // 加载/排版未稳定（遮罩期间）退出的查询值不可信，
+                        // 保留已保存的锚点，不覆盖进度。
+                        if (o > 0 && settled.value) callbacksRef.value.onProgress(idx, o)
                         callbacksRef.value.onFlush()
                     },
                 )
@@ -518,6 +524,14 @@ private class LiteBridge(
         val offset = value.toInt()
         if (offset <= 0) return
         main.post { callbacks().onProgress(idx, offset) }
+    }
+
+    @JavascriptInterface
+    fun saveProgressNow(idx: Int, value: Double, isOffset: Boolean) {
+        if (!isOffset) return
+        val offset = value.toInt()
+        if (offset <= 0) return
+        main.post { callbacks().onProgressNow(idx, offset) }
     }
 
     @JavascriptInterface

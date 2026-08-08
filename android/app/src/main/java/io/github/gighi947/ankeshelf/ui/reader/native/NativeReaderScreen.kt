@@ -308,6 +308,10 @@ fun NativeReaderScreen(
                             }
                         }
                     },
+                    onProgressNow = { ch, offset ->
+                        // 翻页/换章立即落盘（不等待 500ms 防抖），退出时进度不落后。
+                        progressTracker.onPageTurn(ch, offset)
+                    },
                     onPageChanged = { ch, page, total ->
                         // 纯 UI 事件：页码指示；进度落盘只走 onProgress（JS 端仅在
                         // 用户翻页时上报），恢复/重排的中间页不会污染已保存进度。
@@ -532,6 +536,12 @@ fun NativeReaderScreen(
             lifecycleOwner.lifecycle.removeObserver(observer)
             runCatching { progressTracker.flush() }
             runCatching { container.progress.flush() }
+            // 延迟关闭追踪器：WebView 销毁（+200ms）期间若还有迟到的桥事件，
+            // 不应覆盖刚 flush 的正确进度。
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                { progressTracker.close() },
+                400,
+            )
             val act = activity
             if (act != null) {
                 runCatching {

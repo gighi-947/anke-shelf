@@ -34,6 +34,8 @@ class ChapterProgressTracker(
     private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "progress-debounce").apply { isDaemon = true }
     }
+    @Volatile
+    private var closed = false
 
     init {
         synchronized(lock) {
@@ -54,7 +56,7 @@ class ChapterProgressTracker(
 
     /** 滚动/页面上报：更新内存，500ms 防抖落盘（对齐桌面 scroll debounce）。 */
     fun onOffset(chapter: Int, offset: Int) {
-        if (offset <= 0) return
+        if (closed || offset <= 0) return
         val shouldSchedule = synchronized(lock) {
             lastKnown[chapter] = offset
             saved[chapter] != offset
@@ -66,7 +68,7 @@ class ChapterProgressTracker(
 
     /** 翻页事件：立即落盘（对齐桌面 onPageTurned -> saveProgress）。 */
     fun onPageTurn(chapter: Int, offset: Int) {
-        if (offset <= 0) return
+        if (closed || offset <= 0) return
         synchronized(lock) { lastKnown[chapter] = offset }
         persist(chapter)
     }
@@ -78,13 +80,22 @@ class ChapterProgressTracker(
 
     /** 退出/退后台/离开页面：取消防抖并立即落盘所有已知章节。 */
     fun flush() {
+        if (closed) return
         val chapters = synchronized(lock) { lastKnown.keys.toList() }
         pending.values.forEach { it.cancel(false) }
         pending.clear()
         chapters.forEach { persist(it) }
     }
 
+    /** 屏幕销毁后的延迟关闭：阻止页面销毁期间迟到的桥事件覆盖正确进度。 */
+    fun close() {
+        closed = true
+        pending.values.forEach { it.cancel(false) }
+        pending.clear()
+    }
+
     private fun persist(chapter: Int) {
+        if (closed) return
         val offset = synchronized(lock) {
             val o = lastKnown[chapter] ?: return
             if (o <= 0 || saved[chapter] == o) return
