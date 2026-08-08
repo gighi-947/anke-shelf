@@ -791,3 +791,18 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 使用说明同步更新图片选项说明。
 - 验证：`node --check reader.js`；单测全部通过；`assembleDebug` 成功。
 - 提交：`8b3dccc`。
+
+### 9.31 重新审视渲染方案：NGA 排版 EPUB / 大章加载提速（2026-08-08）
+
+- **定位到的卡顿根因**：
+  1. 章节文本读取 + 清洗 + 组装（多遍正则）全在主线程执行，NGA 排版大章（数百 KB~MB）直接卡住打开动画；
+  2. EPUB 章节 base 固定在 `file:///android_asset/reader/`，章节内相对路径图片全部 404（渲染方案缺陷）；
+  3. 每章 `applyAnnotations` 无条件重建 `TextPos`（等于每章第二次全量遍历）；
+  4. 超大章滚动模式仍同步 `TextPos.build`，阻塞首帧。
+- **修复**：
+  1. 章节处理移到 `Dispatchers.Default` 后台线程（读取 + extractReaderParts + sanitize + deferImages + buildReaderHtml），UI 不再冻结；
+  2. EPUB 章节改用自定义 base `file:///android_epub/<bookId>/<章节目录>/`，`reader.css/js` 改绝对 asset 路径；图片经 `shouldInterceptRequest` 按章节相对路径从压缩包按需读取（顺带修复 EPUB 图片此前完全不显示）；`BookSession` 增加 `chapterBaseDir` / `readAsset`；
+  3. `applyAnnotations` 仅当 DOM 实际变化（移除/添加高亮）才重建 TextPos；
+  4. 超大章判断改用 `textContent` 粗估；滚动模式 `TextPos.build` 延后到首帧之后，恢复先用比例兜底、坐标就绪后按 DOM 锚点重定位。
+- 验证：`node --check reader.js`；单测全部通过（ReaderHtml 断言同步为绝对资源路径）；`assembleDebug` 成功。
+- 提交：`f92a40b`。
