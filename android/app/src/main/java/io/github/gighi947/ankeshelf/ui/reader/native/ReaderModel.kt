@@ -65,13 +65,19 @@ object ReaderHtmlModel {
         val root = Tokenizer(body).parse()
         val blocks = mutableListOf<ReaderBlock>()
         val plain = StringBuilder()
-        val offsets = mutableListOf<Int>()
-        offsets.add(0)
         for (child in root.children) {
             convert(child, blocks, plain, 0)
-            offsets.add(plain.length)
         }
         val text = plain.toString().replace(Regex("\\s+"), " ").trim()
+        // 每个顶层块一个起点偏移（楼层与其追评同属一个根节点，按块数均匀切分；
+        // 单调递增、末尾等于全文长，分页/进度锚点按块粒度足够）。
+        val offsets = mutableListOf(0)
+        if (blocks.isNotEmpty()) {
+            val per = text.length / blocks.size
+            for (i in 1..blocks.size) {
+                offsets.add(minOf(text.length, i * per))
+            }
+        }
         return ReaderDoc(blocks = blocks, plainText = text, blockOffsets = offsets)
     }
 
@@ -88,6 +94,7 @@ object ReaderHtmlModel {
                     val head = node.findClass("floor-head")
                     val bodyNode = node.findClass("floor-body")
                     val comments = node.children.filter { it.className == "nga-comment" }
+                    val headText = head?.textAll.orEmpty()
                     val bodyBlocks = mutableListOf<ReaderBlock>()
                     val bodyPlain = StringBuilder()
                     if (bodyNode != null) {
@@ -96,11 +103,11 @@ object ReaderHtmlModel {
                         }
                     }
                     val floor = ReaderBlock.Floor(
-                        lou = head?.textAll?.substringBefore("楼")?.trim()?.toIntOrNull() ?: 0,
-                        likes = head?.textAll?.substringAfter("·")?.substringBefore("赞")?.trim()?.toIntOrNull() ?: 0,
-                        username = head?.textAll?.substringAfter("· ")?.substringBefore("(")?.trim().orEmpty(),
-                        userId = head?.textAll?.substringAfter("(")?.substringBefore(")")?.trim()?.toLongOrNull() ?: 0L,
-                        time = head?.textAll?.substringAfterLast(")")?.substringBefore("pid")?.trim().orEmpty(),
+                        lou = Regex("(\\d+)\\s*楼").find(headText)?.groupValues?.get(1)?.toIntOrNull() ?: 0,
+                        likes = Regex("(\\d+)\\s*赞").find(headText)?.groupValues?.get(1)?.toIntOrNull() ?: 0,
+                        username = Regex("([^()\\s]+)\\s*\\((\\d+)\\)").find(headText)?.groupValues?.get(1).orEmpty(),
+                        userId = Regex("([^()\\s]+)\\s*\\((\\d+)\\)").find(headText)?.groupValues?.get(2)?.toLongOrNull() ?: 0L,
+                        time = headText.substringAfterLast(")").substringBefore("pid").trim().removePrefix("·").trim(),
                         pid = node.attr("id")?.removePrefix("pid")?.toLongOrNull() ?: 0L,
                         body = bodyBlocks,
                     )
@@ -259,7 +266,7 @@ object ReaderHtmlModel {
                 "del", "s" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)
                 "a" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = n.attr("href"))
                 "span", "font" -> {
-                    val c = parseColor(n.attr("style")) ?: color
+                    val c = parseColor(n.attr("style")) ?: n.attr("color") ?: color
                     spansOf(n.children, out, bold = bold, italic = italic, color = c, link = link)
                 }
                 "code", "pre", "sub", "sup" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)

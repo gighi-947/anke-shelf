@@ -762,53 +762,76 @@ private fun RenderFrag(
     imageBytes: suspend (String) -> ByteArray?,
     onImageLongPress: (String) -> Unit,
 ) {
-    when {
-        frag.image != null -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(frag.heightPx.dp)
-                    .padding(vertical = 4.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                NativeImage(frag.image!!, theme, imageBytes, onImageLongPress)
+    val content: @Composable () -> Unit = {
+        when {
+            frag.image != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(frag.heightPx.dp)
+                        .padding(vertical = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    NativeImage(frag.image!!, theme, imageBytes, onImageLongPress)
+                }
             }
-        }
-        frag.table != null -> NativeTable(frag.table!!, theme, baseStyle, Modifier.height(frag.heightPx.dp))
-        frag.head != null -> {
-            Text(
-                frag.head!!,
-                style = baseStyle.style(SpanStyle(
-                    fontSize = (baseStyle.fontSize * 0.82f).sp,
-                    color = frag.headColor ?: theme.fgColor.copy(alpha = 0.7f),
-                )),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            HorizontalDivider(
-                color = theme.fgColor.copy(alpha = 0.15f),
-                modifier = Modifier.padding(top = 3.dp, bottom = 5.dp),
-            )
-        }
-        frag.ann != null -> {
-            val ann = applyHighlights(frag.ann!!, frag.plainStart, highlights, highlightColors)
-            Text(
-                text = ann,
-                style = frag.style ?: baseStyle.style(),
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Clip,
-            )
+            frag.table != null -> NativeTable(frag.table!!, theme, baseStyle, Modifier.height(frag.heightPx.dp))
+            frag.head != null -> {
+                Text(
+                    frag.head!!,
+                    style = baseStyle.style(SpanStyle(
+                        fontSize = (baseStyle.fontSize * 0.82f).sp,
+                        color = frag.headColor ?: theme.fgColor.copy(alpha = 0.7f),
+                    )),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                HorizontalDivider(
+                    color = theme.fgColor.copy(alpha = 0.15f),
+                    modifier = Modifier.padding(top = 3.dp, bottom = 5.dp),
+                )
+            }
+            frag.ann != null -> {
+                val ann = applyHighlights(frag.ann!!, frag.plainStart, highlights, highlightColors)
+                Text(
+                    text = ann,
+                    style = frag.style ?: baseStyle.style(),
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Clip,
+                )
+            }
         }
     }
     if (frag.floorCard) {
-        // 卡片上下留白由行高+间距近似；边框在每行上重复（对齐桌面碎片化边框）。
-        Box(
-            modifier = Modifier
+        // 楼层卡片碎片：每片断都带边框 + 左侧主题色条（对齐桌面 break-inside:auto 的碎片化边框）。
+        Row(
+            Modifier
                 .fillMaxWidth()
-                .height((frag.topPad + frag.bottomPad).dp)
-                .background(frag.cardColor ?: Color.Transparent),
-        )
+                .height(IntrinsicSize.Min)
+                .border(1.dp, frag.borderColor ?: Color.Transparent, MaterialTheme.shapes.small),
+        ) {
+            Box(
+                Modifier
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(frag.accentColor ?: Color.Transparent),
+            )
+            Column(
+                Modifier
+                    .weight(1f)
+                    .padding(
+                        start = 10.dp,
+                        end = 10.dp,
+                        top = frag.topPad.dp,
+                        bottom = frag.bottomPad.dp,
+                    ),
+            ) {
+                content()
+            }
+        }
+    } else {
+        content()
     }
 }
 
