@@ -651,4 +651,4 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
   - 阅读器：`buildReaderHtml` 注入 `@font-face url(file:///android_fonts/<name>)`；WebView `shouldInterceptRequest` 映射到应用私有字体目录（不开启 file access）。
   - `custom_font` 语义：空/`sys:*`=内置，`system`=系统默认，其他=导入文件名（桌面旧值兼容）。
   - 验证：设置选择 lxgw-test.ttf 落库；打开阅读器渲染正常、无字体加载错误；JVM 单测新增字体注入两条。
-- 提交：见后续记录。
+- 提交：`f67e050`。
