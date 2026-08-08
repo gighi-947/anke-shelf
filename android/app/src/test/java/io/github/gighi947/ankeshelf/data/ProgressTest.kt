@@ -16,6 +16,7 @@ class ProgressTest {
     fun `set get roundtrip and clamp`() {
         val store = ProgressStore(File(Files.createTempDirectory("progress").toFile(), "progress.json"))
         store.set("a".repeat(32), 3, 1204)
+        store.flush()
         store.load()
         val p = store.get("a".repeat(32))
         assertEquals(3, p!!.chapter_index)
@@ -43,6 +44,7 @@ class ProgressTest {
         val file = File(Files.createTempDirectory("progress").toFile(), "progress.json")
         val store = ProgressStore(file)
         store.set("a".repeat(32), 0, 0)
+        store.flush()
         val data = Shelf.json.parseToJsonElement(file.readText(Charsets.UTF_8)).jsonObject
         assertEquals(2, data["version"]!!.jsonPrimitive.int)
     }

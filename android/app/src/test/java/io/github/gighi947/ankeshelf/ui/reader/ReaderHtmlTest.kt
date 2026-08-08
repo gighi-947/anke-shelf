@@ -84,4 +84,24 @@ class ReaderHtmlTest {
         assertTrue(clean.contains("<a >x</a>"))
     }
 
+    @Test
+    fun deferImagesAddsLazyAndAsyncDecode() {
+        val out = deferContentImages("<p><img src=\"a.jpg\"/><img src=\"b.png\"></p>")
+        assertTrue(out.contains("<img src=\"a.jpg\" loading=\"lazy\" decoding=\"async\">"))
+        assertTrue(out.contains("<img src=\"b.png\" loading=\"lazy\" decoding=\"async\">"))
+    }
+
+    @Test
+    fun deferImagesKeepsExistingLoadingAttr() {
+        val out = deferContentImages("<img loading=\"eager\" src=\"a.jpg\">")
+        assertTrue(out.contains("loading=\"eager\""))
+        assertFalse(out.contains("loading=\"lazy\""))
+    }
+
+    @Test
+    fun extractReaderPartsAppliesImageDefer() {
+        val parts = extractReaderParts("<body><img src='x.jpg'></body>")
+        assertTrue(parts.body.contains("loading=\"lazy\" decoding=\"async\""))
+    }
+
 }

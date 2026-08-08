@@ -5,6 +5,7 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.OffsetDateTime
+import java.util.concurrent.Executors
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -156,10 +157,20 @@ class ProgressStore(private val progressFile: File) {
 
     private val lock = ReentrantLock()
     private var data: MutableMap<String, ProgressEntry> = mutableMapOf()
+    private val flushScheduler = Executors.newSingleThreadScheduledExecutor { r ->
+        Thread(r, "progress-flush").apply { isDaemon = true }
+    }
+    private var pendingFlush: java.util.concurrent.ScheduledFuture<*>? = null
+    private var dirty = false
 
     fun load() {
         val loaded = readJsonOrNull<ProgressFile>(progressFile) ?: ProgressFile()
-        lock.withLock { data = loaded.progress.toMutableMap() }
+        lock.withLock {
+            pendingFlush?.cancel(false)
+            pendingFlush = null
+            dirty = false
+            data = loaded.progress.toMutableMap()
+        }
     }
 
     fun save() {
@@ -178,8 +189,33 @@ class ProgressStore(private val progressFile: File) {
             text_offset = maxOf(0, textOffset),
             updated_at = nowIso(),
         )
-        lock.withLock { data[bookId] = entry }
-        save()
+        lock.withLock {
+            data[bookId] = entry
+            dirty = true
+            // 滚动模式进度每 ~1.2s 上报一次：只更新内存并合并到后台延迟落盘，
+            // 避免同步写盘阻塞 UI 线程造成惯性滚动“一顿一顿”。
+            pendingFlush?.cancel(false)
+            pendingFlush = flushScheduler.schedule(
+                { flush() },
+                1500,
+                java.util.concurrent.TimeUnit.MILLISECONDS,
+            )
+        }
+    }
+
+    /** 立即落盘（退出阅读器/切章/测试断言前调用），幂等。 */
+    fun flush() {
+        val snapshot = lock.withLock {
+            pendingFlush?.cancel(false)
+            pendingFlush = null
+            if (!dirty) return
+            dirty = false
+            data.toMap()
+        }
+        atomicWriteJson(
+            progressFile,
+            Shelf.json.encodeToString(ProgressFile.serializer(), ProgressFile(progress = snapshot)),
+        )
     }
 
     fun remove(bookId: String) {

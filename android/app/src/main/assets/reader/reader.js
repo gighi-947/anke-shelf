@@ -499,9 +499,23 @@
     var imgs = document.querySelectorAll('img');
     for (var i = 0; i < imgs.length; i++) {
       imgs[i].referrerPolicy = 'no-referrer';
-      imgs[i].addEventListener('load', onImgChange);
-      imgs[i].addEventListener('error', onImgChange);
     }
+    // 事件委托：上千张图不再各挂两个监听器；load 不冒泡，用捕获阶段监听。
+    // 查看器大图的重排由自身逻辑处理，这里跳过，避免分页模式下重复 onResize。
+    document.addEventListener('load', function (e) {
+      var t = e.target;
+      if (t && t.tagName === 'IMG' && t.id !== 'lightbox-img' && state.paged) onImgChange();
+    }, true);
+    document.addEventListener('error', function (e) {
+      var t = e.target;
+      if (t && t.tagName === 'IMG' && t.id !== 'lightbox-img' && state.paged) onImgChange();
+    }, true);
+  }
+
+  /** 分页模式下取消懒加载：列在横向滚动容器里，保持原有“翻页即见图”行为。 */
+  function forceEagerImages() {
+    var imgs = document.querySelectorAll('img[loading="lazy"]');
+    for (var i = 0; i < imgs.length; i++) imgs[i].loading = 'eager';
   }
 
   /* ---------------- Kotlin 下发接口 ---------------- */
@@ -568,6 +582,7 @@
       log('超大章回退滚动模式（> ' + MAX_PAGED_TEXT + ' 字符）');
     }
     document.body.classList.toggle('paged', state.paged);
+    if (state.paged) forceEagerImages();
     requestAnimationFrame(function () {
       if (state.paged) {
         prepare();
@@ -697,6 +712,7 @@
       log('超大章回退滚动模式（> ' + MAX_PAGED_TEXT + ' 字符）');
     }
     document.body.classList.toggle('paged', state.paged);
+    if (state.paged) forceEagerImages();
     // 滚动模式底部换章按钮（分页模式下由 CSS 隐藏）。
     var prevBtn = document.getElementById('android-prev-chapter');
     var nextBtn = document.getElementById('android-next-chapter');

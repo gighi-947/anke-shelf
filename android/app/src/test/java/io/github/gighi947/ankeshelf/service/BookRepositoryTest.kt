@@ -43,6 +43,7 @@ class BookRepositoryTest {
             assertTrue(offset in 0..len)
 
             repo.saveProgress(rec.id, 1, offset)
+            progress.flush()
             val p = repo.progressOf(rec.id)!!
             assertEquals(1, p.chapter_index)
             assertEquals(offset, p.text_offset)
