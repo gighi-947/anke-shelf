@@ -31,11 +31,19 @@ try {
                 $found = $true
             }
         }
-        if ($entry.Length -gt 0 -and $entry.Length -lt 2MB) {
+        $isText = $false
+        foreach ($ext in @('.ini', '.properties', '.xml', '.json', '.txt', '.md', '.html', '.js', '.css')) {
+            if ($name.EndsWith($ext, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $isText = $true
+                break
+            }
+        }
+        if ($entry.Length -gt 0 -and $entry.Length -lt 2MB -and $isText) {
             $reader = New-Object System.IO.StreamReader($entry.Open())
             try {
                 $text = $reader.ReadToEnd()
-                if ($text -match 'ngaPassport(Cid|Uid)') {
+                # 只匹配“键=非空值”的真实凭据形态；代码里的字段名（裸键）不算。
+                if ($text -match 'ngaPassport(Cid|Uid)\s*=\s*[^\s"''=]') {
                     Write-Host "FOUND credential content in: $name"
                     $found = $true
                 }
@@ -44,6 +52,11 @@ try {
             }
         }
     }
+    $file = Get-Item -LiteralPath $ApkPath
+    $hash = Get-FileHash -LiteralPath $ApkPath -Algorithm SHA256
+    Write-Host "APK: $($file.FullName)"
+    Write-Host "Size: $($file.Length) bytes"
+    Write-Host "SHA256: $($hash.Hash)"
     if ($found) {
         Write-Host "RESULT: FAIL - suspicious content found."
         exit 1
