@@ -741,3 +741,11 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 完整审查记录见 [docs/ANDROID_CODE_REVIEW.md](docs/ANDROID_CODE_REVIEW.md)。
 - 验证：`node --check reader.js`；单测全部通过；`assembleDebug` 成功且无新增警告。
 - 提交：`ae98f8d`。
+
+### 9.25 内置使用说明 + 首次启动空书架提醒（2026-08-08）
+
+- **使用说明随包内置**：新增 `assets/guide/usage.txt`（书架/导入、NGA 下载与更新、阅读器操作、设置、隐私数据、小贴士），由 `GuideScreen` 滚动展示（页头返回键）。
+- **设置入口**：设置页新增「帮助」Tab（手机一级菜单与平板 NavigationRail 同步），内含「使用说明」行；`AnkeShelfRoot` 新增 `guide` 路由，从设置或书架进入后返回原页面。
+- **首次启动提醒**：书架为空且未看过说明时，空态顶部显示「新用户？」提醒卡（查看使用说明 / 关闭提醒）；已查看或关闭后写 `SharedPreferences("guide").seen`，不再出现；「清除全部数据」会一并重置该标记。
+- 验证：单测全部通过；`assembleDebug` 成功（顺带清理书架页两个弃用图标警告）。
+- 提交：`c0700c5`。
