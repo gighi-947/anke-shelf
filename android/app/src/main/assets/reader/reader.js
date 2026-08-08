@@ -27,6 +27,8 @@
     topInset: 0,
     bottomInset: 0,
     textCtx: null,
+    restoreOffset: 0,
+    restorePending: false,
   };
 
   function log(msg) {
@@ -417,19 +419,47 @@
     var el = scrollEl();
     if (!ctx || !el) return 0;
     var er = el.getBoundingClientRect();
-    var x = Math.max(2, Math.min(er.left + state.margin + 2, window.innerWidth - 2));
-    // 采样点必须落在正文文本区（避开顶部安全区 padding），
-    // 否则 caretRangeFromPoint 在空白处返回 null -> offset=0，
-    // 唤出系统栏触发重排时会把阅读位置误跳回第一页。
-    var y = Math.max(2, er.top + (state.topInset || 0) + 8);
+    var x, y;
+    if (state.paged) {
+      // 采样点必须落在正文文本区（避开顶部安全区 padding），
+      // 否则 caretRangeFromPoint 在空白处返回 null -> offset=0，
+      // 唤出系统栏触发重排时会把阅读位置误跳回第一页。
+      x = Math.max(2, Math.min(er.left + state.margin + 2, window.innerWidth - 2));
+      y = Math.max(2, er.top + (state.topInset || 0) + 8);
+    } else {
+      // 滚动模式：取视口顶部中间正文（对齐桌面 scroller().scrollTop+8；
+      // +24 越过 #paged-scroll 的 18px 顶部内边距）。
+      x = Math.max(2, Math.min(window.innerWidth / 2, window.innerWidth - 2));
+      y = window.scrollY + 24;
+    }
     var off = TextPos.currentOffsetFromPoint(ctx, x, y);
     return off === null ? 0 : off;
   }
 
   function restoreScroll(offset) {
-    var len = (state.textCtx && state.textCtx.text.length) || 0;
+    var ctx = state.textCtx;
+    if (!ctx || offset <= 0) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    var len = ctx.text.length;
+    // 与桌面 seekToOffset 一致：text_offset → DOM 锚点（段落级精度），
+    // 不再用比例换算，避免“只回到章开头/比例漂移”。
+    var point = TextPos.plainToPoint(ctx, len > 0 ? clamp(offset, 0, len) : 0);
+    if (point && point.node) {
+      try {
+        var range = document.createRange();
+        range.setStart(point.node, point.charIndex);
+        range.collapse(true);
+        var rect = range.getBoundingClientRect();
+        window.scrollTo(0, Math.max(0, rect.top + window.scrollY - 16));
+        state.restorePending = false;
+        return;
+      } catch (e) { /* 落到比例兜底 */ }
+    }
     var ratio = len > 0 ? clamp(offset / len, 0, 1) : 0;
     window.scrollTo(0, ratio * Math.max(1, document.body.scrollHeight - window.innerHeight));
+    state.restorePending = false;
   }
 
   function gotoOffset(offset) {
@@ -458,6 +488,7 @@
     if (!state.paged) return;
     var m = measure();
     var off = currentOffset();
+    if (state.restorePending && off > 0) state.restorePending = false;
     try {
       AnkeReaderBridge.pageChanged(m.current, m.total, off);
       AnkeReaderBridge.saveProgress(state.chapterIndex, off, true);
@@ -632,6 +663,9 @@
       // 避免跳回第一页；动画连续触发时由上面的 300ms 合并统一重排。
       if (resizeOffset > 0) {
         gotoOffset(resizeOffset);
+      } else if (state.restorePending) {
+        // 首帧布局/字体未稳定时恢复可能落到第 0 页，这里按原始 offset 重试。
+        gotoOffset(state.restoreOffset);
       } else if (resizeScrolled && el) {
         // 采样失败兜底：按当前滚动比例粗恢复，绝不跳回第一页。
         var len = (state.textCtx && state.textCtx.text.length) || 0;
@@ -659,10 +693,15 @@
   }
 
   function refresh() {
-    if (!state.paged) return;
+    if (!state.paged) {
+      // 滚动模式首帧高度不稳定时同样重试 DOM 锚点恢复。
+      if (state.restorePending) restoreScroll(state.restoreOffset);
+      return;
+    }
     prepare();
     requestAnimationFrame(function () {
       normalizeTallTables();
+      if (state.restorePending) gotoOffset(state.restoreOffset);
       report();
     });
   }
@@ -679,6 +718,8 @@
     state.autoDual = opts.autoDual !== false;
     state.topInset = Math.max(0, opts.topInset || 0);
     state.bottomInset = Math.max(0, opts.bottomInset || 0);
+    state.restoreOffset = Math.max(0, opts.offset || 0);
+    state.restorePending = state.restoreOffset > 0;
     if (!document.body) return;
     state.textCtx = TextPos.build(document);
     state.huge = state.textCtx.text.length > MAX_PAGED_TEXT;
@@ -741,10 +782,10 @@
       if (state.paged) {
         prepare();
         normalizeTallTables();
-        if (opts.offset > 0) gotoOffset(opts.offset);
+        if (state.restoreOffset > 0) gotoOffset(state.restoreOffset);
         else gotoPage(firstContentPage());
       } else {
-        if (opts.offset > 0) restoreScroll(opts.offset);
+        if (state.restoreOffset > 0) restoreScroll(state.restoreOffset);
       }
       report();
     };

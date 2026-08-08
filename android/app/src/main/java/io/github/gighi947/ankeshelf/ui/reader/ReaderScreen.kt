@@ -379,8 +379,10 @@ fun ReaderScreen(
             "(function(){try{var o=AnkeReader.currentOffset();" +
                 "AnkeReaderBridge.saveProgress($chapterIndex,o,true);}catch(e){}})();"
         } else {
-            "(function(){var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);" +
-                "try{AnkeReaderBridge.saveProgress($chapterIndex,r,false);}catch(e){}})();"
+            // 滚动模式优先用 DOM 锚点 text_offset（段落级精度），采样失败退回比例。
+            "(function(){var o=0;try{o=AnkeReader.currentOffset();}catch(e){};" +
+                "var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);" +
+                "try{AnkeReaderBridge.saveProgress($chapterIndex,o>0?o:r,o>0);}catch(e){}})();"
         }
         if (web != null) {
             // JS 完成（进度已写入内存）后立即落盘，退出/切章时最终位置不丢。
@@ -425,6 +427,16 @@ fun ReaderScreen(
                 if (isOffset) {
                     val offset = value.toInt().coerceIn(0, lenRef.intValue)
                     onProgress(idx, offset)
+                    if (!pagedRef.value) {
+                        // 滚动模式现在也上报 text_offset（与桌面一致），
+                        // 这里反推比例用于底部进度条与自动收起控制条。
+                        if (barsHeld) hideBars()
+                        scrollRatio = if (lenRef.intValue > 0) {
+                            offset.toFloat() / lenRef.intValue
+                        } else {
+                            0f
+                        }
+                    }
                 } else {
                     val ratio = value.coerceIn(0.0, 1.0)
                     // 滚动模式下滑动一段距离（节流回调触发）后收起手动唤出的控制条。
@@ -557,6 +569,24 @@ fun ReaderScreen(
                                     return WebResourceResponse(mime, null, FileInputStream(f))
                                 }
                             }
+                            // embedded 本地化图片：file:///android_images/<bookId>/<name>
+                            // 映射到 filesDir/AnkeShelf/images/<bookId>/<name>。
+                            if (url.startsWith("file:///android_images/")) {
+                                val name = URLDecoder.decode(
+                                    url.removePrefix("file:///android_images/"),
+                                    "UTF-8",
+                                )
+                                val f = File(container.appPaths.root, "images/$name")
+                                if (f.isFile) {
+                                    val mime = when (f.extension.lowercase()) {
+                                        "png" -> "image/png"
+                                        "gif" -> "image/gif"
+                                        "webp" -> "image/webp"
+                                        else -> "image/jpeg"
+                                    }
+                                    return WebResourceResponse(mime, null, FileInputStream(f))
+                                }
+                            }
                             // NGA 图床防盗链：补 Referer/Cookie/UA 后由 OkHttp 代理
                             // （覆盖 img.nga.cn / img*.nga.178.com / ngabbs.com，DNS 可达时有效）。
                             if (
@@ -632,16 +662,17 @@ fun ReaderScreen(
                             view.evaluateJavascript("AnkeReader.applyAnnotations(${highlightsJson()});", null)
                             view.evaluateJavascript(
                                 """(function(){
-                                   var last=0; var lastRatio=-1;
+                                   var last=0;
                                     window.addEventListener('scroll',function(){
                                      var now=Date.now(); if(now-last<1200) return; last=now;
+                                     var o=0; try{o=AnkeReader.currentOffset();}catch(e){}
                                      var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);
-                                     if (Math.abs(r-lastRatio)<0.002) return; lastRatio=r;
-                                     try{AnkeReaderBridge.saveProgress($chapterIndex,r,false);}catch(e){}
+                                     try{AnkeReaderBridge.saveProgress($chapterIndex,o>0?o:r,o>0);}catch(e){}
                                    });
                                    window.addEventListener('pagehide',function(){
+                                     var o=0; try{o=AnkeReader.currentOffset();}catch(e){}
                                      var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);
-                                     try{AnkeReaderBridge.saveProgress($chapterIndex,r,false);}catch(e){}
+                                     try{AnkeReaderBridge.saveProgress($chapterIndex,o>0?o:r,o>0);}catch(e){}
                                    });
                                  })();""",
                                 null,

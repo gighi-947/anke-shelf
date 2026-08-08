@@ -248,11 +248,13 @@ object NativeBookWriter {
         bookId: String,
         tocChapters: List<NativeTocChapter>? = null,
         tocMode: String = "index",
+        imagesDir: File? = null,
     ): File {
         val nativeDir = nativeDirFor(ngaLibraryRoot, folderName)
         val chaptersDir = File(nativeDir, NATIVE_CHAPTERS_DIR)
         chaptersDir.mkdirs()
         val colors = themeColors(theme)
+        val imgSrc = localImageSrc(imagesDir, bookId)
 
         val grouped: List<Pair<String, List<NativeFloor>>> = if (tocMode == "split" && !tocChapters.isNullOrEmpty()) {
             groupFloorsByToc(validFloors, tocChapters)
@@ -264,7 +266,7 @@ object NativeBookWriter {
         grouped.forEachIndexed { gi, (title, group) ->
             val body = buildString {
                 if (group[0].pid == 0L) append("<h1>${escapeHtml(tieziTitle)}</h1>")
-                group.forEach { append(renderFloorHtml(it, colors, theme == "dark")) }
+                group.forEach { append(renderFloorHtml(it, colors, theme == "dark", imgSrc)) }
             }
             val fileName = "%04d.xhtml".format(gi)
             File(chaptersDir, fileName).writeText(chapterHtml(title, body, theme), Charsets.UTF_8)
@@ -311,6 +313,7 @@ object NativeBookWriter {
         perChapter: Int,
         imageMode: String,
         theme: String,
+        imagesDir: File? = null,
     ): Int {
         val nativeDir = nativeDirFor(ngaLibraryRoot, folderName)
         val meta = loadMeta(nativeDir)
@@ -321,6 +324,7 @@ object NativeBookWriter {
 
         val chaptersDir = File(nativeDir, NATIVE_CHAPTERS_DIR)
         val colors = themeColors(theme)
+        val imgSrc = localImageSrc(imagesDir, meta.book_id)
         val chapters = meta.chapters.toMutableList()
         val pending = fresh.toMutableList()
         val chunkSize = maxOf(1, perChapter)
@@ -333,7 +337,9 @@ object NativeBookWriter {
                 val take = pending.take(room)
                 pending.removeAll(take)
                 if (take.isNotEmpty()) {
-                    val html = take.joinToString("") { renderFloorHtml(it, colors, theme == "dark") }
+                    val html = take.joinToString("") {
+                        renderFloorHtml(it, colors, theme == "dark", imgSrc)
+                    }
                     val chapterFile = File(nativeDir, last.file)
                     val text = chapterFile.readText(Charsets.UTF_8)
                     chapterFile.writeText(text.replace("</body>", html + "</body>"), Charsets.UTF_8)
@@ -357,7 +363,9 @@ object NativeBookWriter {
         while (i < pending.size) {
             val group = pending.subList(i, minOf(i + chunkSize, pending.size))
             val title = groupTitle(group)
-            val body = group.joinToString("") { renderFloorHtml(it, colors, theme == "dark") }
+            val body = group.joinToString("") {
+                renderFloorHtml(it, colors, theme == "dark", imgSrc)
+            }
             val fileName = "%04d.xhtml".format(nextIndex)
             File(chaptersDir, fileName).writeText(chapterHtml(title, body, theme), Charsets.UTF_8)
             chapters.add(
@@ -497,7 +505,12 @@ object NativeBookWriter {
     private fun ts2t(ts: Long): String =
         TS_FORMAT.format(Instant.ofEpochSecond(ts).atZone(ZoneId.systemDefault()))
 
-    private fun renderFloorHtml(f: NativeFloor, colors: ThemeColors, dark: Boolean): String {
+    private fun renderFloorHtml(
+        f: NativeFloor,
+        colors: ThemeColors,
+        dark: Boolean,
+        imgSrc: (String) -> String = { it },
+    ): String {
         val floorStyle =
             "border:1px solid ${colors.border}; border-left:4px solid ${colors.accent}; " +
                 "padding:12px 14px; margin:14px 0; border-radius:2px;"
@@ -514,7 +527,9 @@ object NativeBookWriter {
         val out = StringBuilder(
             "<div class=\"nga-floor\" id=\"pid${f.pid}\" style=\"$floorStyle\">" +
                 "<div class=\"floor-head\" style=\"$headStyle\">$head</div>" +
-                "<div class=\"floor-body\">${NgaFormatHtml.renderContentHtml(f.raw_content, dark = dark)}</div></div>",
+                "<div class=\"floor-body\">" +
+                NgaFormatHtml.renderContentHtml(f.raw_content, dark = dark, imgSrc = imgSrc) +
+                "</div></div>",
         )
         for (c in f.comments) {
             if (c.lou <= 0) continue
@@ -542,6 +557,26 @@ object NativeBookWriter {
         return "<html xmlns=\"http://www.w3.org/1999/xhtml\">" +
             "<head><meta charset=\"utf-8\"/><title>${escapeHtml(title)}</title>" +
             "<style>$css</style></head><body>$bodyHtml</body></html>"
+    }
+
+    /** 图片 URL → 本地文件名（md5(url) + 扩展名），用于 embedded 本地化。 */
+    internal fun imageFileName(url: String): String {
+        val digest = MessageDigest.getInstance("MD5")
+            .digest(url.toByteArray(Charsets.UTF_8))
+        val hex = digest.joinToString("") { "%02x".format(it) }
+        val path = url.substringBefore('?').substringBefore('#')
+        val ext = path.substringAfterLast('.', "").lowercase().takeIf {
+            it in setOf("jpg", "jpeg", "png", "gif", "webp", "bmp")
+        } ?: "jpg"
+        return "$hex.$ext"
+    }
+
+    /** 根据 imagesDir 生成 URL→本地 file:///android_images/<bookId>/<name> 的映射。 */
+    private fun localImageSrc(imagesDir: File?, bookId: String): (String) -> String {
+        return { url ->
+            val f = imagesDir?.let { dir -> File(dir, imageFileName(url)) }
+            if (f != null && f.isFile) "file:///android_images/$bookId/${f.name}" else url
+        }
     }
 }
 

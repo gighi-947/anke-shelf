@@ -394,7 +394,7 @@ private fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
     var maxFloorsText by remember { mutableStateOf("") }
     var themeDark by remember { mutableStateOf(false) }
     var perChapterText by remember { mutableStateOf("20") }
-    var imageOnline by remember { mutableStateOf(true) }
+    var imageMode by remember { mutableStateOf("online") }
     var status by remember { mutableStateOf(NgaServiceStatus.snapshot()) }
 
     LaunchedEffect(Unit) {
@@ -492,16 +492,14 @@ private fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                 modifier = Modifier.padding(top = AnkeSpacing.xs),
                 horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
             ) {
-                FilterChip(
-                    selected = imageOnline,
-                    onClick = { imageOnline = true },
-                    label = { Text("在线") },
-                )
-                FilterChip(
-                    selected = !imageOnline,
-                    onClick = { imageOnline = false },
-                    label = { Text("无图") },
-                )
+                listOf("online" to "在线", "embedded" to "内嵌", "none" to "无图")
+                    .forEach { (value, label) ->
+                        FilterChip(
+                            selected = imageMode == value,
+                            onClick = { imageMode = value },
+                            label = { Text(label) },
+                        )
+                    }
             }
         }
 
@@ -521,7 +519,7 @@ private fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                             putExtra("maxFloors", maxFloorsText.trim().toIntOrNull() ?: 0)
                             putExtra("theme", if (themeDark) "dark" else "light")
                             putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
-                            putExtra("imageMode", if (imageOnline) "online" else "none")
+                            putExtra("imageMode", imageMode)
                             // 已存在同 tid 书时点击“重新下载”= 强制全量重下；
                             // 否则（首次）走全量，已存在场景由下载器自动转为增量。
                             putExtra("fullRedownload", existing != null)
@@ -543,7 +541,7 @@ private fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                                 putExtra("authorId", authorIdText.trim().toLongOrNull() ?: 0L)
                                 putExtra("theme", if (themeDark) "dark" else "light")
                                 putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
-                                putExtra("imageMode", if (imageOnline) "online" else "none")
+                                putExtra("imageMode", imageMode)
                             }
                             ContextCompat.startForegroundService(context, intent)
                             onChanged()

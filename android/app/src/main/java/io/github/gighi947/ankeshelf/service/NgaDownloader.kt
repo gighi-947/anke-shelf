@@ -10,6 +10,8 @@ import io.github.gighi947.ankeshelf.data.nowIso
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 /** 下载/更新参数（对齐桌面 NgaService.start / update_book 的子集）。 */
 data class NgaDownloadParams(
@@ -51,6 +53,7 @@ class NgaDownloader(
     private val repository: BookRepository,
     private val config: NgaConfig,
 ) {
+    private val imageHttp = OkHttpClient()
 
     @Volatile
     var cancelled = false
@@ -73,6 +76,52 @@ class NgaDownloader(
     private fun checkCancel() {
         if (cancelled) throw NgaCancelled()
     }
+
+    /** 下载楼层正文中的 [img] 图片到 images/<bookId>/（embedded 本地化模式）。 */
+    private fun downloadImages(floors: List<NativeFloor>, bookId: String) {
+        if (bookId.isBlank()) return
+        val cfg = config.load()
+        val urls = LinkedHashSet<String>()
+        for (f in floors) {
+            collectImageUrls(f.raw_content, urls)
+            f.comments.forEach { collectImageUrls(it.raw_content, urls) }
+        }
+        if (urls.isEmpty()) return
+        val dir = File(appPaths.root, "images/$bookId").apply { mkdirs() }
+        for (url in urls) {
+            val target = File(dir, NativeBookWriter.imageFileName(url))
+            if (target.isFile && target.length() > 0) continue
+            runCatching {
+                val req = Request.Builder()
+                    .url(url)
+                    .ngaHeaders(cfg)
+                    .build()
+                imageHttp.newCall(req).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        resp.body.byteStream().use { input ->
+                            target.outputStream().use { out -> input.copyTo(out) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun collectImageUrls(content: String, out: MutableSet<String>) {
+        Regex("\\[img\\](.+?)\\[/img\\]", RegexOption.IGNORE_CASE)
+            .findAll(content)
+            .forEach { m ->
+                val raw = m.groupValues[1].trim()
+                if (raw.isNotEmpty()) out.add(normalizeImageUrl(raw))
+            }
+    }
+
+    private fun normalizeImageUrl(url: String): String =
+        if (url.startsWith("//")) {
+            "https://img.nga.178.com/attachments/" + url.substring(2)
+        } else {
+            url
+        }
 
     /** 首次下载：拉全部页 → 写原生书 → 注册书架，返回 bookId。 */
     fun download(params: NgaDownloadParams): String {
@@ -121,9 +170,12 @@ class NgaDownloader(
                 }
             }
             checkCancel()
-            progress("format", 0, 0, "正在写入原生书…")
             val valid = validFloors(floors, params.maxFloors)
-            val bookId = if (valid.isNotEmpty()) {
+            val bookId = nativeBookId(nativeDir)
+            if (valid.isNotEmpty()) {
+                val imagesDir = File(appPaths.root, "images/$bookId")
+                if (params.imageMode == "embedded") downloadImages(valid, bookId)
+                progress("format", 0, 0, "正在写入原生书…")
                 NativeBookWriter.writeContainer(
                     ngaLibraryRoot = appPaths.ngaLibraryDir,
                     folderName = folderName,
@@ -137,11 +189,11 @@ class NgaDownloader(
                     perChapter = params.perChapter,
                     imageMode = params.imageMode,
                     theme = params.theme,
-                    bookId = nativeBookId(nativeDir),
+                    bookId = bookId,
+                    imagesDir = imagesDir,
                 )
                 saveState(folderName, lastPage, valid, params)
                 repository.registerNativeDir(nativeDir, params.tid)
-                nativeBookId(nativeDir)
             } else {
                 throw NgaHttpException("没有可用的楼层内容")
             }
@@ -215,8 +267,11 @@ class NgaDownloader(
             }
         }
         checkCancel()
-        progress("format", 0, 0, "正在追加楼层…")
         val valid = validFloors(newFloors, params.maxFloors)
+        val meta = NativeBookWriter.loadMeta(nativeDir)
+        val imagesDir = File(appPaths.root, "images/${meta.book_id}")
+        if (params.imageMode == "embedded") downloadImages(valid, meta.book_id)
+        progress("format", 0, 0, "正在追加楼层…")
         val added = NativeBookWriter.appendContainer(
             ngaLibraryRoot = appPaths.ngaLibraryDir,
             folderName = folderName,
@@ -224,6 +279,7 @@ class NgaDownloader(
             perChapter = params.perChapter,
             imageMode = params.imageMode,
             theme = params.theme,
+            imagesDir = imagesDir,
         )
         saveState(folderName, lastPage, valid, params.copy(tid = tid))
         progress("done", totalPage, totalPage, if (added > 0) "已更新 $added 楼" else "已是最新")
