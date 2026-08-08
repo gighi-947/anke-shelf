@@ -2,34 +2,37 @@ package io.github.gighi947.ankeshelf.ui.settings
 
 import android.content.Context
 import android.widget.Toast
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Insights
@@ -43,10 +46,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -54,10 +59,10 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -71,10 +76,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -100,6 +106,15 @@ private val TABS = listOf(
     SettingsTab("gestures", "操作", Icons.Filled.TouchApp),
     SettingsTab("stats", "统计", Icons.Filled.Insights),
     SettingsTab("data", "数据", Icons.Filled.FolderOpen),
+)
+
+private val GROUP_SUMMARIES = mapOf(
+    "appearance" to "主题模式、亮度、预设色板、自定义颜色",
+    "reading" to "字号、行高、页面宽度、翻页方式",
+    "assist" to "标尺、逐段、速读、滚读",
+    "gestures" to "点按区域、滑动翻页、音量键",
+    "stats" to "阅读时长、会话、连续阅读",
+    "data" to "数据目录、清除数据、版本",
 )
 
 private val THEME_MODES = listOf(
@@ -128,7 +143,11 @@ private const val LAYOUT_AUTO = "auto"
 private const val LAYOUT_SINGLE = "single"
 private const val LAYOUT_DUAL = "dual"
 
-/** 设置页（M4 全六 Tab，对齐桌面 settings.js 的语义与文案）。 */
+/**
+ * 设置页（一二级菜单 + 平板主从式布局）：
+ * - 手机：一级为设置分组列表（类似系统设置），点入二级详情；
+ * - 平板（宽度 ≥600dp）：左侧 NavigationRail 分组导航，右侧直接显示详情面板。
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
@@ -142,70 +161,109 @@ fun SettingsScreen(
     onClearAllData: () -> Unit,
 ) {
     val data = remember(refreshKey) { settings.getAll() }
-    var tabIndex by remember { mutableIntStateOf(0) }
+    var group by remember { mutableStateOf<String?>(null) }
     var sheetKey by remember { mutableStateOf<String?>(null) }
     var showClearConfirm by remember { mutableStateOf(false) }
     var showClearFinal by remember { mutableStateOf(false) }
     var showPathDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val isTablet = LocalConfiguration.current.screenWidthDp >= 600
 
     fun commit(patch: SettingsPatch) {
         settings.update(patch)
         onChanged()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("设置") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-            PrimaryTabRow(selectedTabIndex = tabIndex) {
-                TABS.forEachIndexed { i, tab ->
-                    Tab(
-                        selected = i == tabIndex,
-                        onClick = { tabIndex = i },
-                        icon = { Icon(tab.icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        text = {
-                            Text(
-                                tab.label,
-                                maxLines = 1,
-                                style = MaterialTheme.typography.labelSmall,
-                                overflow = TextOverflow.Ellipsis,
+    if (isTablet) {
+        val activeGroup = group ?: TABS.first().id
+        Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            topBar = {
+                TopAppBar(
+                    title = { AppBarTitle("设置") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                )
+            },
+        ) { padding ->
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            ) {
+                NavigationRail(modifier = Modifier.fillMaxHeight()) {
+                    // 手机横屏等矮屏下允许滚动，平板高度足够时无需滚动。
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        TABS.forEach { tab ->
+                            NavigationRailItem(
+                                selected = activeGroup == tab.id,
+                                onClick = { group = tab.id },
+                                icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                label = { Text(tab.label) },
                             )
-                        },
+                        }
+                    }
+                }
+                VerticalDivider()
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                ) {
+                    GroupContent(
+                        groupId = activeGroup,
+                        data = data,
+                        commit = ::commit,
+                        onPickColor = { sheetKey = it },
+                        context = context,
+                        statsGlobal = statsGlobal,
+                        onOpenStats = onOpenStats,
+                        appPaths = appPaths,
+                        onShowPath = { showPathDialog = true },
+                        onClearAll = { showClearConfirm = true },
                     )
                 }
             }
-
-            when (TABS[tabIndex].id) {
-                "appearance" -> AppearancePanel(
-                    data = data,
-                    commit = ::commit,
-                    onPickColor = { sheetKey = it },
-                    context = context,
-                )
-                "reading" -> ReadingPanel(data, ::commit, context)
-                "assist" -> AssistPanel(data, ::commit)
-                "gestures" -> GesturesPanel(data, ::commit, context)
-                "stats" -> StatsPanel(statsGlobal, onOpenStats)
-                "data" -> DataPanel(
-                    appPaths,
-                    version = "安科书架 v${BuildConfig.VERSION_NAME}",
-                    onShowPath = { showPathDialog = true },
-                    onClearAll = { showClearConfirm = true },
-                )
+        }
+    } else {
+        if (group == null) {
+            PhoneGroupList(onBack = onBack, onSelect = { group = it })
+        } else {
+            val tab = TABS.first { it.id == group }
+            Scaffold(
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                topBar = {
+                    TopAppBar(
+                        title = { AppBarTitle(tab.label) },
+                        navigationIcon = {
+                            IconButton(onClick = { group = null }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                            }
+                        },
+                    )
+                },
+            ) { padding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                ) {
+                    GroupContent(
+                        groupId = tab.id,
+                        data = data,
+                        commit = ::commit,
+                        onPickColor = { sheetKey = it },
+                        context = context,
+                        statsGlobal = statsGlobal,
+                        onOpenStats = onOpenStats,
+                        appPaths = appPaths,
+                        onShowPath = { showPathDialog = true },
+                        onClearAll = { showClearConfirm = true },
+                    )
+                }
             }
         }
     }
@@ -277,6 +335,119 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showClearFinal = false }) { Text("取消") }
             },
+        )
+    }
+}
+
+/** 页头标题：加粗 + 主题色（底部 Tab 初始页统一风格）。 */
+@Composable
+private fun AppBarTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleLarge.copy(
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+        ),
+    )
+}
+
+/** 手机一级菜单：设置分组列表（类似系统设置）。 */
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun PhoneGroupList(onBack: () -> Unit, onSelect: (String) -> Unit) {
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            TopAppBar(
+                title = { AppBarTitle("设置") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(vertical = 4.dp),
+        ) {
+            items(TABS) { tab ->
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            tab.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            GROUP_SUMMARIES[tab.id] ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    leadingContent = {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    tab.icon,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            }
+                        }
+                    },
+                    trailingContent = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    modifier = Modifier.clickable { onSelect(tab.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupContent(
+    groupId: String,
+    data: SettingsData,
+    commit: (SettingsPatch) -> Unit,
+    onPickColor: (String) -> Unit,
+    context: Context,
+    statsGlobal: EnrichedStats,
+    onOpenStats: () -> Unit,
+    appPaths: AppPaths,
+    onShowPath: () -> Unit,
+    onClearAll: () -> Unit,
+) {
+    when (groupId) {
+        "appearance" -> AppearancePanel(
+            data = data,
+            commit = commit,
+            onPickColor = onPickColor,
+            context = context,
+        )
+        "reading" -> ReadingPanel(data, commit, context)
+        "assist" -> AssistPanel(data, commit)
+        "gestures" -> GesturesPanel(data, commit, context)
+        "stats" -> StatsPanel(statsGlobal, onOpenStats)
+        "data" -> DataPanel(
+            appPaths = appPaths,
+            version = "安科书架 v${BuildConfig.VERSION_NAME}",
+            onShowPath = onShowPath,
+            onClearAll = onClearAll,
         )
     }
 }
@@ -387,7 +558,7 @@ private fun BrightnessSlider(data: SettingsData, commit: (SettingsPatch) -> Unit
             onValueChange = { value = it },
             onValueChangeFinished = { commit(SettingsPatch(brightness = value.toDouble())) },
             valueRange = 0f..0.7f,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.width(170.dp),
         )
         Text(
             "${(value * 100).roundToInt()}%",
@@ -570,8 +741,7 @@ private fun ThemePreview(data: SettingsData) {
     val primary = hexColor(p.primary) ?: MaterialTheme.colorScheme.primary
     val previewText = buildAnnotatedString {
         append("这是一段用于预览主题效果的示例文字。")
-        withStyle(SpanStyle(color = Color(0xFFE11D48))) { append("彩色字体保留原色")
-        }
+        withStyle(SpanStyle(color = Color(0xFFE11D48))) { append("彩色字体保留原色") }
         append("，仅默认黑/白文字跟随主题。")
     }
     Surface(
@@ -720,7 +890,7 @@ private fun RangeSliderRow(
             onValueChangeFinished = { onChangeFinished(current) },
             valueRange = range,
             steps = steps,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.width(150.dp),
         )
         Text(
             format(current),
@@ -758,7 +928,7 @@ private fun TopInsetRow(context: Context) {
                 onValueChangeFinished = { prefs.edit().putInt("top_inset_dp", value).apply() },
                 valueRange = 0f..64f,
                 steps = 15,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.width(150.dp),
             )
             Text("$value dp", style = MaterialTheme.typography.labelMedium)
         }
@@ -816,8 +986,8 @@ private fun GesturesPanel(data: SettingsData, commit: (SettingsPatch) -> Unit, c
     SettingsList {
         SettingsSection("手势说明") {
             listOf(
-                "点按左侧" to "上一页 / 上一章（滚动模式）",
-                "点按右侧" to "下一页 / 下一章（滚动模式）",
+                "点按左侧" to "上一页（分页模式）；滚动模式下不换章",
+                "点按右侧" to "下一页（分页模式）；滚动模式下不换章",
                 "点按中间" to "切换顶底控制条",
                 "横向滑动" to "分页模式下翻页",
                 "返回键" to "保存进度并返回书架",
@@ -897,7 +1067,7 @@ private fun DataPanel(
 private fun SettingsList(content: @Composable ColumnScope.() -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+        contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
             top = 12.dp,
@@ -962,6 +1132,12 @@ private fun SettingsRow(
                 )
             }
         }
-        control()
+        // 控件限定最大宽度，避免滑块/按钮抢占整行导致左侧说明被压成一字一行的竖排。
+        Box(
+            modifier = Modifier.widthIn(max = 220.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            control()
+        }
     }
 }
