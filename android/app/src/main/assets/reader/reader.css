@@ -117,3 +117,34 @@ body.paged #paged-scroll code {
     overflow-wrap: anywhere;
     word-break: break-all;
 }
+
+/* 滚动模式底部换章按钮（对齐桌面 chapter-nav-row；分页模式隐藏） */
+.chapter-nav-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    max-width: 46em;
+    margin: 4px auto 24px;
+    padding: 0 16px;
+}
+
+.chapter-nav-btn {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--reader-primary);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--reader-primary);
+    font: inherit;
+    font-size: 0.85em;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.chapter-nav-btn:active {
+    opacity: 0.7;
+}
+
+body.paged .chapter-nav-row {
+    display: none;
+}

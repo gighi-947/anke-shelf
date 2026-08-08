@@ -681,6 +681,19 @@
       log('超大章回退滚动模式（> ' + MAX_PAGED_TEXT + ' 字符）');
     }
     document.body.classList.toggle('paged', state.paged);
+    // 滚动模式底部换章按钮（分页模式下由 CSS 隐藏）。
+    var prevBtn = document.getElementById('android-prev-chapter');
+    var nextBtn = document.getElementById('android-next-chapter');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function () {
+        try { AnkeReaderBridge.requestChapter(-1); } catch (e) { /* ignore */ }
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function () {
+        try { AnkeReaderBridge.requestChapter(1); } catch (e) { /* ignore */ }
+      });
+    }
     if (opts.theme) applyTheme(opts.theme);
     applyTypography({ fontSize: state.fontSize, lineHeight: state.lineHeight });
     loadReaderFont();

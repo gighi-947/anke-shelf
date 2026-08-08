@@ -459,15 +459,17 @@ fun ReaderScreen(
                                     isTap -> {
                                         val w = width
                                         when {
-                                            ev.x < w / 3f -> {
-                                                if (pagedRef.value) flipPage(-1) else changeChapter(-1)
+                                            pagedRef.value && ev.x < w / 3f -> {
+                                                flipPage(-1)
                                                 barsVisible = false
                                             }
-                                            ev.x > 2 * w / 3f -> {
-                                                if (pagedRef.value) flipPage(1) else changeChapter(1)
+                                            pagedRef.value && ev.x > 2 * w / 3f -> {
+                                                flipPage(1)
                                                 barsVisible = false
                                             }
-                                            else -> barsVisible = !barsVisible
+                                            ev.x >= w / 3f && ev.x <= 2 * w / 3f -> barsVisible = !barsVisible
+                                            // 滚动模式下侧边点击不换章（防误触），换章走底部按钮。
+                                            else -> Unit
                                         }
                                     }
                                 }

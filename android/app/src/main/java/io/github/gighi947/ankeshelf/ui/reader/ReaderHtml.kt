@@ -63,5 +63,9 @@ fun buildReaderHtml(
         "<link rel=\"stylesheet\" href=\"reader.css\"/>" +
         "<style>$css</style></head><body>" +
         "<div id=\"paged-scroll\">${parts.body}</div>" +
+        "<div class=\"chapter-nav-row\">" +
+        "<button type=\"button\" id=\"android-prev-chapter\" class=\"chapter-nav-btn\">← 上一章</button>" +
+        "<button type=\"button\" id=\"android-next-chapter\" class=\"chapter-nav-btn\">下一章 →</button>" +
+        "</div>" +
         "<script src=\"reader.js\"></script></body></html>"
 }
