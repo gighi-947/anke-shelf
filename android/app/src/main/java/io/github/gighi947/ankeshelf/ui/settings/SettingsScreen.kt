@@ -2,6 +2,8 @@ package io.github.gighi947.ankeshelf.ui.settings
 
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -85,6 +87,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.github.gighi947.ankeshelf.BuildConfig
 import io.github.gighi947.ankeshelf.data.AppPaths
+import io.github.gighi947.ankeshelf.data.AnnotationStore
 import io.github.gighi947.ankeshelf.data.EnrichedStats
 import io.github.gighi947.ankeshelf.data.Settings
 import io.github.gighi947.ankeshelf.data.SettingsData
@@ -97,6 +100,10 @@ import io.github.gighi947.ankeshelf.ui.theme.AnkeRadius
 import io.github.gighi947.ankeshelf.ui.theme.effectivePalette
 import io.github.gighi947.ankeshelf.ui.theme.formatDuration
 import io.github.gighi947.ankeshelf.ui.theme.hexColor
+import io.github.gighi947.ankeshelf.service.BookUi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import kotlin.math.roundToInt
 
 private data class SettingsTab(val id: String, val label: String, val icon: ImageVector)
@@ -155,6 +162,8 @@ private const val LAYOUT_DUAL = "dual"
 fun SettingsScreen(
     settings: Settings,
     refreshKey: Int,
+    books: List<BookUi>,
+    annotations: AnnotationStore,
     statsGlobal: EnrichedStats,
     appPaths: AppPaths,
     onOpenStats: () -> Unit,
@@ -219,6 +228,8 @@ fun SettingsScreen(
                         groupId = activeGroup,
                         data = data,
                         commit = ::commit,
+                        books = books,
+                        annotations = annotations,
                         onPickColor = { sheetKey = it },
                         context = context,
                         statsGlobal = statsGlobal,
@@ -257,6 +268,8 @@ fun SettingsScreen(
                         groupId = tab.id,
                         data = data,
                         commit = ::commit,
+                        books = books,
+                        annotations = annotations,
                         onPickColor = { sheetKey = it },
                         context = context,
                         statsGlobal = statsGlobal,
@@ -420,6 +433,8 @@ private fun GroupContent(
     groupId: String,
     data: SettingsData,
     commit: (SettingsPatch) -> Unit,
+    books: List<BookUi>,
+    annotations: AnnotationStore,
     onPickColor: (String) -> Unit,
     context: Context,
     statsGlobal: EnrichedStats,
@@ -442,6 +457,8 @@ private fun GroupContent(
         "data" -> DataPanel(
             appPaths = appPaths,
             version = "安科书架 v${BuildConfig.VERSION_NAME}",
+            books = books,
+            annotations = annotations,
             onShowPath = onShowPath,
             onClearAll = onClearAll,
         )
@@ -1036,6 +1053,8 @@ private fun StatsPanel(statsGlobal: EnrichedStats, onOpenStats: () -> Unit) {
 private fun DataPanel(
     appPaths: AppPaths,
     version: String,
+    books: List<BookUi>,
+    annotations: AnnotationStore,
     onShowPath: () -> Unit,
     onClearAll: () -> Unit,
 ) {
@@ -1053,12 +1072,81 @@ private fun DataPanel(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        SettingsSection("导出标注") {
+            val withAnnotations = books.filter { ui ->
+                val b = annotations.getAll(ui.record.id)
+                b.highlights.isNotEmpty() || b.bookmarks.isNotEmpty()
+            }
+            if (withAnnotations.isEmpty()) {
+                Text(
+                    "暂无标注可导出（在阅读器中选中文字即可添加高亮/书签）",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                withAnnotations.forEach { ui ->
+                    AnnotationExportRow(book = ui, annotations = annotations)
+                }
+            }
+        }
         Text(
             version,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = AnkeSpacing.sm),
         )
+    }
+}
+
+@Composable
+private fun AnnotationExportRow(book: BookUi, annotations: AnnotationStore) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val safeName = book.record.title.replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_")
+        .ifBlank { book.record.id }
+    val mdLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/markdown"),
+    ) { uri ->
+        uri?.let {
+            val text = annotations.export(book.record.id, "md", book.record.title) { "第 ${it + 1} 章" }
+            scope.launch(Dispatchers.IO) {
+                context.contentResolver.openOutputStream(it)?.use { os ->
+                    os.write(text.toByteArray(Charsets.UTF_8))
+                }
+            }
+        }
+    }
+    val jsonLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        uri?.let {
+            val text = annotations.export(book.record.id, "json", book.record.title) { "第 ${it + 1} 章" }
+            scope.launch(Dispatchers.IO) {
+                context.contentResolver.openOutputStream(it)?.use { os ->
+                    os.write(text.toByteArray(Charsets.UTF_8))
+                }
+            }
+        }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = AnkeSpacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = book.record.title,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(shape = MaterialTheme.shapes.small, onClick = {
+            mdLauncher.launch("$safeName-annotations.md")
+        }) { Text("MD") }
+        TextButton(shape = MaterialTheme.shapes.small, onClick = {
+            jsonLauncher.launch("$safeName-annotations.json")
+        }) { Text("JSON") }
     }
 }
 

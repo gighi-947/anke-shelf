@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
+import android.widget.Toast
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -18,7 +19,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,13 +34,25 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,6 +67,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
@@ -66,11 +82,14 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.ViewCompat
 import io.github.gighi947.ankeshelf.BuildConfig
+import io.github.gighi947.ankeshelf.data.AnnotationPatch
+import io.github.gighi947.ankeshelf.data.AnnotationStore
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.BookSession
 import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
+import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.readerTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -86,6 +105,22 @@ data class PageInfo(
     val offset: Int = 0,
 )
 
+private data class PendingSelection(
+    val start: Int,
+    val end: Int,
+    val text: String,
+)
+
+/** 标注 6 色显示值（存储键与桌面 HL_COLORS 一致）。 */
+private val HL_COLOR_VALUES = mapOf(
+    "yellow" to ComposeColor(0xFFFDD835),
+    "green" to ComposeColor(0xFF66BB6A),
+    "blue" to ComposeColor(0xFF42A5F5),
+    "pink" to ComposeColor(0xFFEC407A),
+    "purple" to ComposeColor(0xFFAB47BC),
+    "cyan" to ComposeColor(0xFF26C6DA),
+)
+
 /**
  * WebView JS 桥：
  * - saveProgress(chapterIndex, value, isOffset)：isOffset=true 为 text_offset，
@@ -98,6 +133,9 @@ class ReaderBridge(
     private val onProgressValue: (Int, Double, Boolean) -> Unit,
     private val onPageChanged: (Int, Int, Int) -> Unit,
     private val onRequestChapter: (Int) -> Unit,
+    private val onImageLightbox: (Boolean) -> Unit,
+    private val onSelectionCb: (Int, Int, Int, String) -> Unit,
+    private val onHighlightTapCb: (String) -> Unit,
     private val onLog: (String) -> Unit,
 ) {
     // JS 桥方法运行在 WebView 的 JS 线程，Compose 状态必须在主线程更新。
@@ -119,18 +157,35 @@ class ReaderBridge(
     }
 
     @JavascriptInterface
+    fun setImageLightbox(open: Boolean) {
+        main.post { onImageLightbox(open) }
+    }
+
+    @JavascriptInterface
+    fun onSelection(chapterIndex: Int, start: Int, end: Int, text: String) {
+        main.post { onSelectionCb(chapterIndex, start, end, text) }
+    }
+
+    @JavascriptInterface
+    fun onHighlightTap(id: String) {
+        main.post { onHighlightTapCb(id) }
+    }
+
+    @JavascriptInterface
     fun log(message: String) {
         onLog(message)
     }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
     session: BookSession,
     initialChapter: Int,
     savedOffset: Int,
     jumpOffset: Int? = null,
+    annotations: AnnotationStore,
     readerSettings: SettingsData,
     onProgress: (chapterIndex: Int, textOffset: Int) -> Unit,
     onSettingsPatch: (SettingsPatch) -> Unit,
@@ -145,6 +200,10 @@ fun ReaderScreen(
     var showToc by remember { mutableStateOf(false) }
     var pageInfo by remember { mutableStateOf(PageInfo()) }
     var scrollRatio by remember { mutableFloatStateOf(0f) }
+    var imageViewerOpen by remember { mutableStateOf(false) }
+    var pendingSelection by remember { mutableStateOf<PendingSelection?>(null) }
+    var tappedHighlightId by remember { mutableStateOf<String?>(null) }
+    var noteTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
     var pendingSeconds by remember { mutableIntStateOf(0) }
     var flippedPages by remember { mutableIntStateOf(0) }
 
@@ -247,6 +306,24 @@ fun ReaderScreen(
         barsHeld = barsVisible
     }
 
+    fun highlightsJson(): String {
+        val list = annotations.getHighlights(session.id)
+            .filter { it.chapter_index == chapterIndex }
+        return list.joinToString(prefix = "[", postfix = "]") { h ->
+            """{"id":"${h.id}","start":${h.start_offset},"end":${h.end_offset},"color":"${h.color}"}"""
+        }
+    }
+
+    fun applyAnnotationsJs() {
+        if (pageReady.value) {
+            webViewRef.value?.evaluateJavascript("AnkeReader.applyAnnotations(${highlightsJson()});", null)
+        }
+    }
+
+    fun clearWebSelection() {
+        webViewRef.value?.evaluateJavascript("AnkeReader.clearSelection();", null)
+    }
+
     LaunchedEffect(barsVisible, barsHeld, showToc, pageReady.value) {
         if (barsVisible && !barsHeld && !showToc && pageReady.value) {
             delay(3000)
@@ -315,6 +392,13 @@ fun ReaderScreen(
                 pageInfo = PageInfo(page = page, total = total, offset = offset)
             },
             onRequestChapter = { delta -> changeChapter(delta) },
+            onImageLightbox = { open -> imageViewerOpen = open },
+            onSelectionCb = { idx, start, end, text ->
+                if (idx == chapterIndex) {
+                    pendingSelection = PendingSelection(start, end, text)
+                }
+            },
+            onHighlightTapCb = { id -> tappedHighlightId = id },
             onLog = { Log.d("AnkeShelf", it) },
         )
     }
@@ -374,8 +458,12 @@ fun ReaderScreen(
 
     // 系统返回键 = 保存进度并返回书架（避免直接退出应用）。
     BackHandler {
-        saveNow(webViewRef.value)
-        onBack()
+        if (imageViewerOpen) {
+            webViewRef.value?.evaluateJavascript("AnkeReader.closeImage();", null)
+        } else {
+            saveNow(webViewRef.value)
+            onBack()
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -437,6 +525,7 @@ fun ReaderScreen(
                                     "theme:{bg:'${t.background}',fg:'${t.text}',primary:'${t.accent}'}});",
                                 null,
                             )
+                            view.evaluateJavascript("AnkeReader.applyAnnotations(${highlightsJson()});", null)
                             view.evaluateJavascript(
                                 """(function(){
                                    var last=0;
@@ -506,6 +595,164 @@ fun ReaderScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(ComposeColor.Black.copy(alpha = readerSettings.brightness.toFloat().coerceIn(0f, 0.7f))),
+            )
+        }
+
+        // 选区操作条：高亮 6 色 / 书签 / 笔记 / 关闭。
+        pendingSelection?.let { sel ->
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 110.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.97f),
+                shadowElevation = 6.dp,
+            ) {
+                Row(
+                    modifier = Modifier.padding(
+                        horizontal = AnkeSpacing.md,
+                        vertical = AnkeSpacing.sm,
+                    ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+                ) {
+                    HL_COLOR_VALUES.forEach { (key, color) ->
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .clickable {
+                                    annotations.addHighlight(
+                                        session.id, chapterIndex, sel.start, sel.end, sel.text, key,
+                                    )
+                                    applyAnnotationsJs()
+                                    clearWebSelection()
+                                    pendingSelection = null
+                                    Toast.makeText(context, "已添加高亮", Toast.LENGTH_SHORT).show()
+                                },
+                        )
+                    }
+                    IconButton(onClick = {
+                        annotations.addBookmark(session.id, chapterIndex, sel.start, sel.text.take(200))
+                        clearWebSelection()
+                        pendingSelection = null
+                        Toast.makeText(context, "已添加书签", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(Icons.Filled.Bookmark, contentDescription = "书签")
+                    }
+                    IconButton(onClick = {
+                        val h = annotations.addHighlight(
+                            session.id, chapterIndex, sel.start, sel.end, sel.text, "yellow",
+                        )
+                        applyAnnotationsJs()
+                        clearWebSelection()
+                        pendingSelection = null
+                        noteTarget = h.id to h.text
+                    }) {
+                        Icon(Icons.Filled.Edit, contentDescription = "笔记")
+                    }
+                    IconButton(onClick = {
+                        clearWebSelection()
+                        pendingSelection = null
+                    }) {
+                        Icon(Icons.Filled.Close, contentDescription = "取消")
+                    }
+                }
+            }
+        }
+
+        // 点按已有高亮：改色 / 笔记 / 删除。
+        tappedHighlightId?.let { id ->
+            val h = annotations.getHighlights(session.id).firstOrNull { it.id == id }
+            if (h != null) {
+                ModalBottomSheet(onDismissRequest = { tappedHighlightId = null }) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AnkeSpacing.lg)
+                            .padding(bottom = AnkeSpacing.xxl),
+                    ) {
+                        Text("高亮", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            h.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = AnkeSpacing.xs),
+                        )
+                        Row(
+                            modifier = Modifier.padding(top = AnkeSpacing.md),
+                            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+                        ) {
+                            HL_COLOR_VALUES.forEach { (key, color) ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                        .clickable {
+                                            annotations.updateAnnotation(
+                                                session.id, id, AnnotationPatch(color = key),
+                                            )
+                                            applyAnnotationsJs()
+                                            tappedHighlightId = null
+                                        },
+                                )
+                            }
+                        }
+                        Row(modifier = Modifier.padding(top = AnkeSpacing.md)) {
+                            TextButton(onClick = {
+                                noteTarget = id to h.text
+                                tappedHighlightId = null
+                            }) { Text("笔记") }
+                            TextButton(onClick = {
+                                annotations.deleteAnnotation(session.id, id)
+                                applyAnnotationsJs()
+                                tappedHighlightId = null
+                                Toast.makeText(context, "已删除高亮", Toast.LENGTH_SHORT).show()
+                            }) { Text("删除") }
+                        }
+                    }
+                }
+            } else {
+                LaunchedEffect(id) { tappedHighlightId = null }
+            }
+        }
+
+        // 笔记编辑对话框。
+        noteTarget?.let { (id, _) ->
+            var note by remember(id) {
+                mutableStateOf(
+                    annotations.getHighlights(session.id)
+                        .firstOrNull { it.id == id }?.note.orEmpty(),
+                )
+            }
+            AlertDialog(
+                onDismissRequest = { noteTarget = null },
+                title = { Text("笔记") },
+                text = {
+                    OutlinedTextField(
+                        value = note,
+                        onValueChange = { note = it },
+                        placeholder = { Text("给这条高亮加一段笔记…") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.medium,
+                        minLines = 2,
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        annotations.updateAnnotation(session.id, id, AnnotationPatch(note = note))
+                        applyAnnotationsJs()
+                        noteTarget = null
+                        Toast.makeText(context, "笔记已保存", Toast.LENGTH_SHORT).show()
+                    }) { Text("保存") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { noteTarget = null }) { Text("取消") }
+                },
             )
         }
 

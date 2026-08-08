@@ -657,6 +657,7 @@
   }
 
   function init(opts) {
+    closeImageViewer();
     state.chapterIndex = opts.chapterIndex || 0;
     state.margin = opts.margin || 40;
     state.gap = opts.gap || 28;
@@ -703,12 +704,30 @@
     // （shouldOverrideUrlLoading 虽拦截，但导航尝试可能重置阅读状态）。
     document.addEventListener('click', function (e) {
       var t = e.target;
+      var img = t && t.closest ? t.closest('img') : null;
+      if (img) {
+        e.preventDefault();
+        e.stopPropagation();
+        openImageViewer(img.currentSrc || img.src || '');
+        return;
+      }
+      var mark = t && t.closest ? t.closest('mark.hl-mark') : null;
+      if (mark) {
+        e.preventDefault();
+        e.stopPropagation();
+        try { AnkeReaderBridge.onHighlightTap(mark.getAttribute('data-id') || ''); } catch (err) { /* ignore */ }
+        return;
+      }
       var a = t && t.closest ? t.closest('a[href]') : null;
       if (a) {
         e.preventDefault();
         e.stopPropagation();
       }
     }, true);
+    document.addEventListener('selectionchange', function () {
+      clearTimeout(selectionTimer);
+      selectionTimer = setTimeout(reportSelection, 300);
+    });
     // WebView 首帧尺寸可能尚未稳定（高度为 0/极小），尺寸变化后需重排保位。
     window.addEventListener('resize', function () {
       onResize();
@@ -731,7 +750,246 @@
     setTimeout(refresh, 600);
   }
 
+  /* ---------------- 图片点击放大查看器 ---------------- */
+  var imageViewerState = { open: false, scale: 1, panX: 0, panY: 0 };
+
+  function imageViewerEl() {
+    return document.getElementById('image-lightbox');
+  }
+
+  function applyImageViewerTransform(img) {
+    img.style.transform = 'scale(' + imageViewerState.scale + ') translate(' +
+      imageViewerState.panX + 'px,' + imageViewerState.panY + 'px)';
+  }
+
+  function bindImageViewerEvents(ov, img) {
+    ov.addEventListener('click', function (e) {
+      if (e.target === ov ||
+          e.target.classList.contains('lightbox-close') ||
+          e.target.classList.contains('lightbox-hint')) {
+        closeImageViewer();
+      }
+    });
+    img.addEventListener('dblclick', function () {
+      imageViewerState.scale = imageViewerState.scale === 1 ? 2 : 1;
+      imageViewerState.panX = 0;
+      imageViewerState.panY = 0;
+      applyImageViewerTransform(img);
+    });
+
+    var pointers = {};
+    var lastDist = 0;
+    var drag = null;
+    ov.addEventListener('touchstart', function (e) {
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        var t = e.changedTouches[i];
+        pointers[t.identifier] = { x: t.clientX, y: t.clientY };
+      }
+      var ids = Object.keys(pointers);
+      if (ids.length === 1) {
+        var p = pointers[ids[0]];
+        drag = {
+          x: p.x,
+          y: p.y,
+          panX: imageViewerState.panX,
+          panY: imageViewerState.panY,
+          moved: false,
+        };
+      } else if (ids.length === 2) {
+        drag = null;
+        lastDist = Math.hypot(
+          pointers[ids[0]].x - pointers[ids[1]].x,
+          pointers[ids[0]].y - pointers[ids[1]].y,
+        );
+      }
+      e.preventDefault();
+    }, { passive: false });
+    ov.addEventListener('touchmove', function (e) {
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        var t = e.changedTouches[i];
+        if (pointers[t.identifier]) {
+          pointers[t.identifier] = { x: t.clientX, y: t.clientY };
+        }
+      }
+      var ids = Object.keys(pointers);
+      if (ids.length === 2) {
+        var d = Math.hypot(
+          pointers[ids[0]].x - pointers[ids[1]].x,
+          pointers[ids[0]].y - pointers[ids[1]].y,
+        );
+        if (lastDist > 0) {
+          imageViewerState.scale = Math.max(
+            0.5,
+            Math.min(5, imageViewerState.scale * (d / lastDist)),
+          );
+          applyImageViewerTransform(img);
+        }
+        lastDist = d;
+      } else if (ids.length === 1 && drag && imageViewerState.scale > 1) {
+        var p = pointers[ids[0]];
+        var dx = p.x - drag.x;
+        var dy = p.y - drag.y;
+        if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true;
+        imageViewerState.panX = drag.panX + dx;
+        imageViewerState.panY = drag.panY + dy;
+        applyImageViewerTransform(img);
+      }
+      e.preventDefault();
+    }, { passive: false });
+    var endTouch = function (e) {
+      for (var i = 0; i < e.changedTouches.length; i++) {
+        delete pointers[e.changedTouches[i].identifier];
+      }
+      if (Object.keys(pointers).length === 0) {
+        drag = null;
+        lastDist = 0;
+      }
+    };
+    ov.addEventListener('touchend', endTouch);
+    ov.addEventListener('touchcancel', endTouch);
+  }
+
+  function ensureImageViewer() {
+    var ov = imageViewerEl();
+    if (ov) return ov;
+    ov = document.createElement('div');
+    ov.id = 'image-lightbox';
+    ov.className = 'image-lightbox';
+    var img = document.createElement('img');
+    img.id = 'lightbox-img';
+    img.alt = '';
+    var close = document.createElement('button');
+    close.className = 'lightbox-close';
+    close.textContent = '\u00d7';
+    var hint = document.createElement('div');
+    hint.className = 'lightbox-hint';
+    hint.textContent = '\u53cc\u51fb\u7f29\u653e \u00b7 \u53cc\u6307\u634f\u5408 \u00b7 \u62d6\u52a8\u5e73\u79fb \u00b7 \u70b9\u51fb\u7a7a\u767d\u5173\u95ed';
+    ov.append(img, close, hint);
+    document.body.appendChild(ov);
+    bindImageViewerEvents(ov, img);
+    return ov;
+  }
+
+  function openImageViewer(src) {
+    if (!src) return;
+    var ov = ensureImageViewer();
+    var img = document.getElementById('lightbox-img');
+    img.src = src;
+    imageViewerState.scale = 1;
+    imageViewerState.panX = 0;
+    imageViewerState.panY = 0;
+    applyImageViewerTransform(img);
+    ov.classList.add('open');
+    imageViewerState.open = true;
+    try { AnkeReaderBridge.setImageLightbox(true); } catch (e) { /* ignore */ }
+  }
+
+  function closeImageViewer() {
+    var ov = imageViewerEl();
+    if (!ov || !imageViewerState.open) return;
+    ov.classList.remove('open');
+    imageViewerState.open = false;
+    try { AnkeReaderBridge.setImageLightbox(false); } catch (e) { /* ignore */ }
+  }
+
+  /* ---------------- 标注：选区上报 + 高亮渲染 ---------------- */
+  var selectionTimer = null;
+
+  function clearHighlights() {
+    var marks = document.querySelectorAll('mark.hl-mark');
+    for (var i = marks.length - 1; i >= 0; i--) {
+      var m = marks[i];
+      var txt = document.createTextNode(m.textContent || '');
+      m.parentNode.replaceChild(txt, m);
+    }
+  }
+
+  function wrapSingleTextNode(node, start, end, color, id) {
+    if (!node || node.nodeType !== Node.TEXT_NODE || end <= start) return;
+    var range = document.createRange();
+    range.setStart(node, start);
+    range.setEnd(node, end);
+    var mark = document.createElement('mark');
+    mark.className = 'hl-mark hl-' + color;
+    mark.setAttribute('data-id', id);
+    try {
+      range.surroundContents(mark);
+    } catch (e) { /* 跨节点由分段包装兜底 */ }
+  }
+
+  function wrapHighlight(ctx, h) {
+    var sp = TextPos.plainToPoint(ctx, h.start);
+    var ep = TextPos.plainToPoint(ctx, Math.max(h.start, h.end - 1));
+    if (!sp || !ep) return;
+    var startOff = sp.charIndex;
+    var endOff = Math.min(ep.node.data.length, ep.charIndex + 1);
+    if (sp.node === ep.node) {
+      wrapSingleTextNode(sp.node, startOff, endOff, h.color, h.id);
+      return;
+    }
+    // 跨文本节点：先收集中间节点，再分段包装，避免遍历时 DOM 被改动。
+    var middle = [];
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    var collecting = false;
+    var n = walker.nextNode();
+    while (n) {
+      if (n === sp.node) {
+        collecting = true;
+      } else if (n === ep.node) {
+        collecting = false;
+        break;
+      }
+      if (collecting && n !== sp.node) middle.push(n);
+      n = walker.nextNode();
+    }
+    wrapSingleTextNode(sp.node, startOff, sp.node.data.length, h.color, h.id);
+    for (var j = 0; j < middle.length; j++) {
+      wrapSingleTextNode(middle[j], 0, middle[j].data.length, h.color, h.id);
+    }
+    wrapSingleTextNode(ep.node, 0, endOff, h.color, h.id);
+  }
+
+  function applyAnnotations(list) {
+    clearHighlights();
+    var ctx = state.textCtx;
+    if (ctx && list && list.length) {
+      for (var i = 0; i < list.length; i++) {
+        var h = list[i];
+        if (!h || typeof h.start !== 'number' || typeof h.end !== 'number') continue;
+        wrapHighlight(ctx, h);
+      }
+    }
+    // 高亮包装会替换文本节点，重建坐标上下文，保证后续选区/进度映射仍准确。
+    state.textCtx = TextPos.build(document);
+  }
+
+  function clearSelection() {
+    var sel = window.getSelection ? window.getSelection() : null;
+    if (sel) sel.removeAllRanges();
+  }
+
+  function reportSelection() {
+    var sel = window.getSelection ? window.getSelection() : null;
+    if (!sel || sel.isCollapsed) return;
+    var text = sel.toString();
+    if (!text || !text.trim()) return;
+    if (imageViewerState.open) return;
+    var ctx = state.textCtx;
+    if (!ctx || sel.rangeCount < 1) return;
+    var range = sel.getRangeAt(0);
+    var offs = TextPos.rangeToOffsets(ctx, range);
+    if (!offs || offs[1] - offs[0] < 1) return;
+    try {
+      AnkeReaderBridge.onSelection(state.chapterIndex, offs[0], offs[1], text.slice(0, 2000));
+    } catch (e) { /* ignore */ }
+  }
+
   window.AnkeReader = {
+    openImage: openImageViewer,
+    closeImage: closeImageViewer,
+    isImageOpen: function () { return imageViewerState.open; },
+    applyAnnotations: applyAnnotations,
+    clearSelection: clearSelection,
     init: init,
     applyTheme: applyTheme,
     applyTypography: applyTypography,

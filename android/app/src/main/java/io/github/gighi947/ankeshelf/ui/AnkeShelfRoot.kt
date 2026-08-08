@@ -105,6 +105,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                         initialChapter = chapter,
                         savedOffset = savedProgress?.text_offset ?: 0,
                         jumpOffset = jumpOffset,
+                        annotations = container.annotations,
                         readerSettings = container.settings.getAll(),
                         onProgress = { idx, offset ->
                             container.repository.saveProgress(session.id, idx, offset)
@@ -199,6 +200,8 @@ fun AnkeShelfRoot(container: AppContainer) {
                                 "settings" -> SettingsScreen(
                                     settings = container.settings,
                                     refreshKey = settingsTick,
+                                    books = books,
+                                    annotations = container.annotations,
                                     statsGlobal = statsGlobal,
                                     appPaths = container.appPaths,
                                     onOpenStats = { routeName = "stats" },

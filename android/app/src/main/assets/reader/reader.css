@@ -147,3 +147,86 @@ body.paged #paged-scroll code {
 body.paged .chapter-nav-row {
     display: none;
 }
+
+/* 图片点击放大查看器（双击缩放、双指捏合、拖动平移、点击空白关闭） */
+.image-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+}
+
+.image-lightbox.open {
+    display: flex;
+}
+
+#lightbox-img {
+    max-width: 90vw;
+    max-height: 86vh;
+    object-fit: contain;
+    transform-origin: center center;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.lightbox-hint {
+    position: absolute;
+    bottom: 18px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    pointer-events: none;
+}
+
+/* 标注高亮（6 色，仅作用于选中文字，不改变显式颜色） */
+mark.hl-mark {
+    padding: 1px 0;
+    border-radius: 2px;
+    color: inherit;
+}
+
+mark.hl-yellow {
+    background: rgba(255, 214, 0, 0.45);
+}
+
+mark.hl-green {
+    background: rgba(76, 175, 80, 0.40);
+}
+
+mark.hl-blue {
+    background: rgba(33, 150, 243, 0.40);
+}
+
+mark.hl-pink {
+    background: rgba(233, 30, 99, 0.35);
+}
+
+mark.hl-purple {
+    background: rgba(156, 39, 176, 0.35);
+}
+
+mark.hl-cyan {
+    background: rgba(0, 188, 212, 0.40);
+}

@@ -606,3 +606,18 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 处理：参照设置页“翻页方式”的 FilterChip 做法，拆成“主题（浅色/深色）”与“图片（在线/无图）”两个独立分组，每组标签 + FlowRow chips；沿用设计令牌（chip=pill 小型标签）。
 - 验证（模拟器）：主题、图片各占一组，chips 独立成行、无溢出。
 - 提交：`05fa5b1`。
+
+### 9.13 图片查看器与标注（高亮/笔记/书签/导出）（2026-08-08）
+
+- **图片点击放大**：在阅读器 WebView 内实现查看器（暗色全屏遮罩、双击缩放、双指捏合、放大后拖动平移、点击空白/×/系统返回键关闭）；新增 JS 桥 `setImageLightbox`，Kotlin BackHandler 在查看器打开时优先关闭而非退出阅读器。
+- **标注链路**：
+  - JS：选区变化（300ms 防抖）经 `TextPos.rangeToOffsets` 上报 `onSelection(chapterIndex, start, end, text)`；`applyAnnotations` 按 text_offset 用 6 色 `<mark>` 渲染高亮；点击高亮上报 `onHighlightTap(id)`。
+  - Compose：选区操作条（6 色圆点 / 书签 / 笔记 / 关闭）；点已有高亮弹层支持改色、笔记、删除；笔记用对话框保存。
+  - 数据：沿用 M1 的 `AnnotationStore`（annotations.json），text_offset 坐标与进度/搜索一致。
+  - 导出：设置 → 数据 新增「导出标注」，按书导出 Markdown / JSON（SAF 自选位置）。
+- **排障记录**：
+  1. `ReaderBridge` 方法 `onSelection` 与构造参数同名，方法体内 `main.post { onSelection(...) }` 递归调用自身，主线程被 post 洪泛（曾表现为 ANR/日志缺失）。处理：回调参数改名 `onSelectionCb / onHighlightTapCb`。
+  2. 高亮包装会替换文本节点，旧 `textCtx` 引用失效导致再次选区返回 null；`applyAnnotations` 末尾重建 `state.textCtx = TextPos.build(document)`。
+  3. adb 长按选词在模拟器 WebView 上不可靠，验证时用临时程序化选区 hook 打通全链路，验证后已移除。
+- 验证（模拟器）：程序化选区 → 操作条出现 → 加黄色高亮（annotations.json 落库 + 页面渲染黄色 mark）→ 点高亮弹层 → 笔记保存成功；图片查看器打开（全屏暗色遮罩）确认；设置-数据导出标注入口确认；清理测试数据后无自动操作条。
+- 提交：见后续记录。
