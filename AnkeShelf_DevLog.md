@@ -771,3 +771,12 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 按当前功能全面重写 `assets/guide/usage.txt`：新增书籍管理（长按重命名/删除）、已下载页网格/列表双视图与更新/导出/删除图标按钮、更新完成通知（已更新 X 楼/已是最新/失败）、系统返回键层级说明；设置 → 帮助可随时查看，空书架首启提醒同步受益。
 - 验证：单测与 `assembleDebug` 通过。
 - 提交：`300bc38`。
+
+### 9.29 阅读进度保留修复 + 对齐桌面保存策略（2026-08-08）
+
+- **根因 1（章节号不恢复）**：从书架打开书籍时 `onOpen` 固定 `chapter = 0`，保存的章节号从未用于恢复（只有搜索结果跳转会带章节）。修复：打开时从 `progressOf` 恢复 `chapter_index`（夹取到章节范围），`text_offset` 同步传入，同一章内续读。
+- **根因 2（策略缺半截）**：桌面 `api.save_progress` 每次上报还会 `shelf.touch()` 更新 `last_read_at`（60s 节流落盘）；安卓 `Shelf.touch` 早已实现但从未被调用，“按最近阅读”排序一直失效。修复：`BookRepository.saveProgress` 追加 `shelf.touch(bookId)`。
+- **持久化兜底**：`MainActivity.onStop` 立即 `progress.flush()`（按 Home 退后台也不丢防抖窗口内最后一次位置）；新增单测验证 `set()` 后台防抖 1.5s 后文件真实落盘。
+- **与桌面策略对照**：`progress.json` v2 `{chapter_index, text_offset, updated_at}`、翻页/切章/滚动节流/退出时上报、打开按 chapter + text_offset 恢复——均已对齐（安卓侧写盘改为后台防抖是性能适配，字段与语义一致）。
+- 验证：单测全部通过；`assembleDebug` 成功。
+- 提交：`b9f2a67`。
