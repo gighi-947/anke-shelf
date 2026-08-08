@@ -37,3 +37,4 @@ android/keystore/
 android/keystore.properties
 android/app/release/
 *.jks
+android/*.epub
