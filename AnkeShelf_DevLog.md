@@ -690,4 +690,4 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
   - 单击图片不再退出（防误触），双击缩放、点空白/提示/×/系统返回键关闭。
 - **下载后书架刷新（根因修复）**：NgaDownloadService 原先创建独立 `Shelf` 实例（内存与 UI 不同步），改为与 UI 共享 `AnkeShelfApp.container`；Root 再叠加 shelf.json mtime 轮询（变化则 `shelf.load()` + 刷新），双保险。
 - 验证（模拟器）：空书架双按钮、右上角导入菜单；编译与单测通过。
-- 提交：见后续记录。
+- 提交：`b98f5ef`。
