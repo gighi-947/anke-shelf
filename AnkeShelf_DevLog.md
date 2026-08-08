@@ -679,4 +679,4 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - CSP 尝试后放弃：WebView file:// 下 `'self'` 不匹配 asset 子资源（实测 reader.css 被拦），改以输入清洗 + 导航拦截为主。
 - 核查通过：权限最小化、allowBackup=false、Service exported=false + dataSync 类型、NGA 仅 https、凭据仅存私有目录、git 历史无敏感文件、CI 无密钥、EPUB 解压无越界、调试开关仅 debug。
 - 提醒：`D:\Codex\project1\.local\archive\` 下存在含真实 NGA uid/cid 的本地存档（被 gitignore 覆盖、未入库），建议清理。
-- 提交：见后续记录。
+- 提交：`340843d`。
