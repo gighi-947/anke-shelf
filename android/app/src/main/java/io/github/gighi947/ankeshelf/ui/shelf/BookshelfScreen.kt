@@ -22,18 +22,25 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,9 +64,10 @@ fun BookshelfScreen(
     coversDir: File,
     onImport: (Uri) -> Unit,
     onOpen: (BookRecord) -> Unit,
-    onSettings: () -> Unit,
     shelfView: String,
     onShelfViewChange: (String) -> Unit,
+    sort: String,
+    onSortChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val launcher = rememberLauncherForActivityResult(
@@ -67,6 +75,14 @@ fun BookshelfScreen(
     ) { uri -> uri?.let(onImport) }
     val launchPicker = {
         launcher.launch(arrayOf("application/epub+zip", "application/octet-stream"))
+    }
+    var sortMenu by remember { mutableStateOf(false) }
+    val sortedBooks = remember(books, sort) {
+        when (sort) {
+            "added" -> books.sortedByDescending { it.record.added_at }
+            "name" -> books.sortedBy { it.record.title }
+            else -> books.sortedByDescending { it.record.last_read_at }
+        }
     }
 
     Scaffold(
@@ -76,16 +92,43 @@ fun BookshelfScreen(
             TopAppBar(
                 title = { PageHeaderTitle("安科书架") },
                 actions = {
+                    IconButton(onClick = { sortMenu = true }) {
+                        Icon(Icons.Filled.Sort, contentDescription = "\u6392\u5e8f")
+                    }
+                    Box {
+                        DropdownMenu(
+                            expanded = sortMenu,
+                            onDismissRequest = { sortMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("\u6309\u6700\u8fd1\u9605\u8bfb") },
+                                onClick = { onSortChange("recent"); sortMenu = false },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("\u6309\u5bfc\u5165\u65f6\u95f4") },
+                                onClick = { onSortChange("added"); sortMenu = false },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("\u6309\u540d\u79f0") },
+                                onClick = { onSortChange("name"); sortMenu = false },
+                            )
+                        }
+                    }
                     IconButton(onClick = {
                         onShelfViewChange(if (shelfView == "list") "grid" else "list")
                     }) {
                         Icon(
                             if (shelfView == "list") Icons.Filled.ViewModule else Icons.Filled.ViewList,
-                            contentDescription = if (shelfView == "list") "切换到网格视图" else "切换到列表视图",
+                            contentDescription = if (shelfView == "list") {
+                                "\u5207\u6362\u5230\u7f51\u683c\u89c6\u56fe"
+                            } else {
+                                "\u5207\u6362\u5230\u5217\u8868\u89c6\u56fe"
+                            },
                         )
                     }
-                    TextButton(shape = MaterialTheme.shapes.small, onClick = launchPicker) { Text("导入") }
-                    TextButton(onClick = onSettings) { Text("设置") }
+                    IconButton(onClick = launchPicker) {
+                        Icon(Icons.Filled.Add, contentDescription = "\u5bfc\u5165 EPUB")
+                    }
                 },
             )
         },
@@ -117,7 +160,7 @@ fun BookshelfScreen(
                         .fillMaxSize()
                         .padding(padding),
                 ) {
-                    lazyItems(books, key = { it.record.id }) { ui ->
+                    lazyItems(sortedBooks, key = { it.record.id }) { ui ->
                         BookListRow(ui, coversDir, onClick = { onOpen(ui.record) })
                     }
                 }
@@ -131,7 +174,7 @@ fun BookshelfScreen(
                         .fillMaxSize()
                         .padding(padding),
                 ) {
-                    items(books, key = { it.record.id }) { ui ->
+                    items(sortedBooks, key = { it.record.id }) { ui ->
                         BookCard(ui, coversDir, onClick = { onOpen(ui.record) })
                     }
                 }

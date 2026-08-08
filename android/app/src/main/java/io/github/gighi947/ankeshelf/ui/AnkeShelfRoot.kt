@@ -175,6 +175,11 @@ fun AnkeShelfRoot(container: AppContainer) {
                                         container.settings.update(SettingsPatch(shelf_view = view))
                                         settingsTick++
                                     },
+                                    sort = container.settings.getAll().shelf_sort,
+                                    onSortChange = { value ->
+                                        container.settings.update(SettingsPatch(shelf_sort = value))
+                                        settingsTick++
+                                    },
                                     onImport = { uri ->
                                         container.repository.importEpub(context, uri)
                                         refresh++
@@ -185,7 +190,6 @@ fun AnkeShelfRoot(container: AppContainer) {
                                         jumpOffset = null
                                         routeName = "reader"
                                     },
-                                    onSettings = { routeName = "settings" },
                                 )
                                 "download" -> DownloadScreen(
                                     container = container,

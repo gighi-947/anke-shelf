@@ -629,3 +629,12 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **书架列表视图**：对齐桌面 `shelf_view` 设置，书架顶栏新增网格/列表切换图标；列表行 = 封面缩略图 + 书名/作者/进度；切换持久化到 settings.json。
 - 验证（模拟器）：设置一级菜单 5 组且无辅助；界面字号 1.25 下文字明显放大；列表视图切换后布局正确、`shelf_view:"list"` 落库。
 - 提交：`41b6fa8`。
+
+### 9.15 书架排序/页头精简 + M4 验收（2026-08-08）
+
+- 按用户要求：不做“最近阅读横条”（占空间），改为书架顶栏排序按钮（按最近阅读/导入时间/名称，复用 `shelf_sort` 设置并持久化）；页头“导入”改为“+”图标按钮，删除页头“设置”按钮（设置仍可从底栏进入）。
+- 排障记录：一度怀疑增量编译产物丢失新字符串，实际是 Compose 编译器把菜单文案提升到 `ComposableSingletons$BookshelfScreenKt` 类 + 多 dex 分布，且 uiautomator 转储旧文件误导；代码与产物均正常，纯排查弯路。
+- **M4 验收**（[docs/ANDROID_M4_ACCEPTANCE.md](docs/ANDROID_M4_ACCEPTANCE.md)）：
+  - 桌面 v1.2.0 特性对照表：除“自定义字体导入”“桌面→安卓数据迁移”外全部对齐；辅助阅读与最近阅读横条按用户决策移除/替代。
+  - 冷启动 TotalTime 4563ms；阅读器 TOTAL PSS 182MB（<300MB ✅）；快速翻页 10 次无错误/崩溃。
+- 提交：见后续记录。
