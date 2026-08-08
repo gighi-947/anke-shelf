@@ -1023,3 +1023,24 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 滚动模式：`scrollY 973→1529→2083→2629` 分别采到 `390/589/349/884`，progress.json 实时更新；重进恢复到 390 所在段落。
 - 分页模式：翻页 `page1..6` 分别保存 `315/454/709/841/1023/1252`；退出重进 `tracker store=param=1252`，稳定恢复到含 1252 的页（字体/图片重排后不再振荡、不再闪回章首）。
 - progress.json 全程未被中间态污染；单测 91 通过 / 1 跳过；`assembleDebug` 通过。
+
+### 9.46 换章落点修复：下一章跳到“章中间”的根因（2026-08-09）
+
+用户反馈：在“第 21~40 楼”第 7 页点下一章，跳到“第 41~60 楼”第 11 页——下一章应从章首开始。
+
+#### 根因
+
+- **`onPageFinished` 闭包捕获了过期的 `initialOffset`**：`AndroidView` 的 factory 只在首次组合时创建 `WebView` 和 `WebViewClient`，闭包里的 `initialOffset` 是**打开书那一刻**的参数值。之后每次换章，Compose 虽然把 `initialOffset` 更新为 0，但 `onPageFinished` 仍用首次捕获的旧值（打开书时的恢复偏移）去初始化新章 → 下一章永远继承上一章的偏移，表现为“跳到下一章中间”且页码随偏移漂移。
+- 另外发现：换章后新章“章首”位置没有真正落库——章首采样落在首楼卡片 padding 上返回 0，被 `offset > 0` 守卫跳过，progress.json 仍指向上一章；搜索跳转的 `jumpOffset` 也没有传给阅读器（`savedOffset` 只取书架进度）。
+
+#### 修复
+
+- `WebViewChapterView` 新增 `initialOffsetRef = rememberUpdatedState(initialOffset)`，`onPageFinished` 的 init 用 `initialOffsetRef.value`，换章后新章恢复偏移恒为 0（章首）。
+- `NativeReaderScreen` 恢复锚点改为：仅 `chapterIndex == initialChapter`（打开书/搜索跳转）才用追踪器 offset；会话内换章（上一章/下一章/目录/翻页到章界）一律 0——与桌面 `nextChapter/prevChapter/TOC → loadChapter(i, 0)` 语义一致。
+- JS 换章保存加兜底：采样为 0（章首 padding）时保存 offset=1，保证“已换到本章章首”落库，退出重进回到新章而非旧章。
+- `AnkeShelfRoot`：`savedOffset = jumpOffset ?: savedProgress?.text_offset`，搜索跳转目标真正传入阅读器。
+
+#### 真机验证
+
+- 打开书（恢复历史进度）→ 点下一章 → 新章显示“第 1 / N 页”，正文为该章首楼；progress.json 更新为新章 offset=1；退出重进恢复新章第 1 页。
+- 单测 91 通过 / 1 跳过；`assembleDebug` 通过。
