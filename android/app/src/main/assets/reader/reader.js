@@ -524,6 +524,26 @@
     }
   }
 
+  /** 动态注入内置字体 @font-face 并异步加载（不阻塞页面加载）。 */
+  function loadReaderFont() {
+    if (window.__readerFontLoaded__) return;
+    window.__readerFontLoaded__ = true;
+    var style = document.createElement('style');
+    style.textContent =
+      '@font-face{font-family:"LXGW WenKai";' +
+      'src:url("../fonts/LXGWWenKai-Regular.ttf") format("truetype");' +
+      'font-weight:400;font-display:swap;}';
+    document.head.appendChild(style);
+    if (document.fonts && document.fonts.load) {
+      document.fonts.load('16px "LXGW WenKai"').then(function () {
+        log('font ready ms=' + Math.round(performance.now()));
+        requestAnimationFrame(function () {
+          onResize();
+        });
+      }).catch(function () { /* 字体加载失败时保持系统字体 */ });
+    }
+  }
+
   function setMode(paged) {
     if (!document.body) return;
     var el = scrollEl();
@@ -655,13 +675,15 @@
     state.paged = !!opts.paged && !state.huge;
     log('init paged=' + state.paged + ' huge=' + state.huge +
         ' len=' + state.textCtx.text.length + ' offset=' + (opts.offset || 0) +
-        ' insets=' + state.topInset + '/' + state.bottomInset);
+        ' insets=' + state.topInset + '/' + state.bottomInset +
+        ' ms=' + Math.round(performance.now()));
     if (opts.paged && state.huge) {
       log('超大章回退滚动模式（> ' + MAX_PAGED_TEXT + ' 字符）');
     }
     document.body.classList.toggle('paged', state.paged);
     if (opts.theme) applyTheme(opts.theme);
     applyTypography({ fontSize: state.fontSize, lineHeight: state.lineHeight });
+    loadReaderFont();
     var root = document.documentElement;
     root.style.setProperty('--reader-top-inset', state.topInset + 'px');
     root.style.setProperty('--reader-bottom-inset', state.bottomInset + 'px');
@@ -691,13 +713,8 @@
       }
       report();
     };
-    if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(function () {
-        requestAnimationFrame(finish);
-      });
-    } else {
-      requestAnimationFrame(finish);
-    }
+    // 首屏不等待字体（26MB LXGW 动态异步加载）：立即用系统字体布局并恢复位置。
+    requestAnimationFrame(finish);
     // WebView 首帧高度可能不稳定，延时重排兜底（稳定后 report 幂等）。
     setTimeout(refresh, 150);
     setTimeout(refresh, 600);

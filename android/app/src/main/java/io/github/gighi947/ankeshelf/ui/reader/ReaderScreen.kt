@@ -155,10 +155,6 @@ fun ReaderScreen(
     val plainLength = remember(session, chapterIndex) {
         TextExtractor.extractDomText(parts.body).length
     }
-    // HTML 壳只在切章时重建；主题/字号/模式变化走 JS 实时应用，不重载页面。
-    val wrapperHtml = remember(parts) {
-        buildReaderHtml(parts, theme, readerSettings)
-    }
 
     val lenRef = remember { mutableIntStateOf(plainLength) }
     LaunchedEffect(plainLength) { lenRef.intValue = plainLength }
@@ -166,6 +162,7 @@ fun ReaderScreen(
     val webViewRef = remember { mutableStateOf<WebView?>(null) }
     val loadedChapter = remember { mutableIntStateOf(-1) }
     val pageReady = remember { mutableStateOf(false) }
+    val loadSeqRef = remember { mutableIntStateOf(0) }
     val insetRef = remember { mutableStateOf(0 to 0) }
 
     // 供 WebView factory（仅创建一次）读取最新值。
@@ -244,6 +241,8 @@ fun ReaderScreen(
     }
 
     fun saveNow(web: WebView?) {
+        // 页面未就绪/已被切章中断时跳过，避免在旧页面销毁后执行 JS 报错。
+        if (!pageReady.value) return
         val js = if (pagedRef.value) {
             "(function(){try{var o=AnkeReader.currentOffset();" +
                 "AnkeReaderBridge.saveProgress($chapterIndex,o,true);}catch(e){}})();"
@@ -321,6 +320,26 @@ fun ReaderScreen(
         scrollRatio = 0f
     }
 
+    // 章节加载放在 LaunchedEffect：chapterIndex 变化后重组完成再构建 HTML，
+    // 避免 AndroidView.update 闭包在重组前被调用时捕获旧章节 HTML（换章失效根因）。
+    LaunchedEffect(chapterIndex, session) {
+        val partsNow = extractReaderParts(session.chapterText(chapterIndex).orEmpty())
+        val htmlNow = buildReaderHtml(partsNow, themeRef.value, settingsRef.value)
+        lenRef.intValue = TextExtractor.extractDomText(partsNow.body).length
+        loadedChapter.intValue = chapterIndex
+        pageReady.value = false
+        loadSeqRef.intValue++
+        val web = webViewRef.value ?: return@LaunchedEffect
+        web.tag = loadSeqRef.intValue
+        web.loadDataWithBaseURL(
+            "file:///android_asset/reader/",
+            htmlNow,
+            "text/html",
+            "utf-8",
+            null,
+        )
+    }
+
     // 系统返回键 = 保存进度并返回书架（避免直接退出应用）。
     BackHandler {
         saveNow(webViewRef.value)
@@ -362,6 +381,12 @@ fun ReaderScreen(
                         }
 
                         override fun onPageFinished(view: WebView, url: String?) {
+                            // 忽略过期加载回调：快速换章时旧页面的 onPageFinished 可能迟到，
+                            // 避免用旧 DOM 初始化新章节（未完全加载时换章失效的根因之一）。
+                            if (view.tag as? Int != loadSeqRef.intValue) {
+                                Log.d("AnkeShelf", "stale page finished ignored")
+                                return
+                            }
                             pageReady.value = true
                             val s = settingsRef.value
                             val t = themeRef.value
@@ -432,19 +457,6 @@ fun ReaderScreen(
                         false
                     }
                     webViewRef.value = this
-                }
-            },
-            update = { view ->
-                if (loadedChapter.intValue != chapterIndex) {
-                    loadedChapter.intValue = chapterIndex
-                    pageReady.value = false
-                    view.loadDataWithBaseURL(
-                        "file:///android_asset/reader/",
-                        wrapperHtml,
-                        "text/html",
-                        "utf-8",
-                        null,
-                    )
                 }
             },
             modifier = Modifier.fillMaxSize(),
