@@ -592,3 +592,10 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 组件改造：主按钮与 SegmentedButton 由 M3 默认胶囊改为 small；搜索输入框/下拉、下载与设置输入框统一 medium；搜索历史 chip/徽标保留 pill。
 - 主题同步检查（浅色 default-light）：书架背景 #ffffff、页头 #0066cc、封面底 #efefef；设置卡片 #f4f4f4、选中态 primaryContainer、描边 outlineVariant；阅读器背景 #ffffff。搜索页因 NGA 书数据问题未出结果（输入未生效），chip/结果卡颜色由同一 scheme 驱动，代码已对齐。
 - 提交：`062308a`。
+
+### 9.11 下载页分组重构与底栏精简（2026-08-08）
+
+- 下载页（NGA 下载）参照设置页做法重构：手机端一级分组菜单（登录配置 / 下载·更新 / 已下载，各带摘要），点入二级详情；平板/横屏（≥600dp）左侧 NavigationRail + 右侧详情面板；各级页头都带返回键（一级返回书架、二级返回一级）。输入框/按钮/卡片沿用设计令牌（medium 圆角、small 按钮、surfaceContainerLow 卡片）。
+- 底栏精简：移除“统计”Tab（5→4：书架/下载/搜索/设置）；统计入口仅保留“设置 → 统计 → 详情”，统计页返回键回到设置页。
+- 验证（模拟器）：底栏四项；下载一级/二级导航与返回箭头；设置→统计→详情→返回设置链路全部正常。
+- 提交：见后续记录。

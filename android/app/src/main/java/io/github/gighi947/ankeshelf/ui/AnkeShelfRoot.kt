@@ -16,12 +16,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.LibraryBooks
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
@@ -65,7 +63,6 @@ private val TABS = listOf(
     TabSpec("download", "下载", Icons.Filled.FileDownload, Icons.Outlined.FileDownload),
     TabSpec("search", "搜索", Icons.Filled.Search, Icons.Outlined.Search),
     TabSpec("settings", "设置", Icons.Filled.Settings, Icons.Outlined.Settings),
-    TabSpec("stats", "统计", Icons.Filled.Insights, Icons.Outlined.Insights),
 )
 
 /** 应用外壳（M4）：M3 底部导航 + 五页路由；阅读器全屏沉浸。 */
@@ -186,6 +183,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                                 "download" -> DownloadScreen(
                                     container = container,
                                     onChanged = { refresh++ },
+                                    onBack = { routeName = "shelf" },
                                 )
                                 "search" -> SearchScreen(
                                     books = books,
@@ -219,7 +217,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                                     books = books,
                                     container = container,
                                     refreshKey = refresh,
-                                    onBack = { routeName = "shelf" },
+                                    onBack = { routeName = "settings" },
                                 )
                             }
                         }
