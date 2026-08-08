@@ -908,3 +908,18 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **其他**：楼层头时间解析去掉尾部多余分隔符（消除 `时间 · · pid`）；新增 2 条单测（实体解码、追评头不混入正文），解析器测试总数 7 条。
 - 验证：模拟器实测——滚动与分页模式均确认蓝色卡片条/彩色字/引用底/虚线分隔；像素分析确认分页页有主题蓝（#60A8D8 簇）与大量彩色字；全量单测 + `assembleDebug` 通过。
 - 提交：`b788e21`。
+
+### 9.41 实机五图对比 + 链接/删除线补齐 + 阅读中重载修复（2026-08-09）
+
+- 用户提供五张实机整页滚动截图（前三张旧 WebView 版：00:07/00:08/00:09；后两张当前原生版：00:12/00:13）。按要求把五张图**同时**拼成一张带编号长图发给视觉模型做整体对比，再分别把“旧三张”“新两张”拼成高清长图各看一轮；并用像素统计交叉验证（蓝/红像素分布、内容边界、左条区域）。
+- **对比结论（可信且可复现的两处差距）**：
+  1. 旧 WebView 的 `<a>` 链接编号（#6016 等）是主题蓝，原生版渲染成白色——原生渲染器解析了 `ReaderSpan.link` 但从未使用；
+  2. 旧 WebView 的 `<del>/<s>` 是灰色 + 删除线（桌面 `del{color:muted}`），原生版是白色原文无删除线。
+- **修复**：`ReaderSpan` 新增 `strike/muted`；`spansOf` 对 del/s 置删除线与 muted；渲染层 `spanColor` 统一实现“链接无显式色→强调色、del 无显式色→muted”，并加 `TextDecoration.LineThrough`；分页 `spansAnn` 同步。新增单测：链接 href 保留、del/s 删除线标记。
+- **阅读中突然重载回章节首的根因与修复**：
+  1. 章节解析 `LaunchedEffect(chapterIndex, session)` 以整个 session 对象为键——书架刷新/下载完成会重建 `record/session`，导致阅读中重解析章节并回到起点；改为只以 `chapterIndex + session.id` 为键；
+  2. 分页模式视图尺寸变化（系统栏/安全区/旋转）会重新分页并按 `initialOffset` 定位，等于跳回章节首；新增 `restoreOffset`（按最近一页的 startOffset 持续更新），重排后恢复到当前页；
+  3. 滚动模式 `rememberScrollState()` 跨章节复用旧滚动位置；改为 `remember(doc)` 按章节持有，恢复 effect 以 `doc + initialOffset` 为键；
+  4. `savedOffset` 在书架刷新后会重建（可能读到旧值）并改变 `initialOffset`；恢复锚点改为 `remember(chapterIndex, session.id)` 每章只取一次。
+- **验证**：模拟器端到端——阅读中 `touch shelf.json` 触发书架刷新，阅读位置不变（前后内容行范围完全一致）；最新构建实机截图确认链接编号为蓝色、删除线为灰色 + 删除线、左蓝条正常；全量单测 + `assembleDebug` 通过。
+- 提交：`1133592`。
