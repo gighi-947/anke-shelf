@@ -856,3 +856,10 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **性能**：滚动进度上报改为 450ms 防抖（不再每帧写盘）。
 - 验证：`testDebugUnitTest` 与 `assembleDebug` 通过。
 - 提交：`af8f9cd`。
+
+### 9.36 原生阅读器：双栏分页渲染（2026-08-08）
+
+- 对齐桌面 PAGINATION_OVERRIDE：横屏且宽高比合适时（PagedLayout 规则），每屏渲染两列，列宽 = (fw − 2P − G) / 2、间距 G、左右边距 P；正文先填满左列再填右列，整屏两列填满后翻到下一页（翻页步进=2 列）。
+- 页面结构改为 `NativePage.columns`（单页=1 列、双页=2 列），进度锚点仍为页首 text_offset；安全区上下留白按页内边距渲染。
+- 验证：`testDebugUnitTest` 与 `assembleDebug` 通过。
+- 提交：`c446992`。
