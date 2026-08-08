@@ -12,6 +12,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
@@ -318,6 +319,12 @@ fun ReaderScreen(
     LaunchedEffect(chapterIndex) {
         pageInfo = PageInfo()
         scrollRatio = 0f
+    }
+
+    // 系统返回键 = 保存进度并返回书架（避免直接退出应用）。
+    BackHandler {
+        saveNow(webViewRef.value)
+        onBack()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

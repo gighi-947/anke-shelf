@@ -244,7 +244,9 @@ fun DownloadScreen(
                         putExtra("theme", if (themeDark) "dark" else "light")
                         putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
                         putExtra("imageMode", if (imageOnline) "online" else "none")
-                        putExtra("fullRedownload", false)
+                        // 已存在同 tid 书时点击“重新下载”= 强制全量重下；
+                        // 否则（首次）走全量，已存在场景由下载器自动转为增量。
+                        putExtra("fullRedownload", existing != null)
                     }
                     ContextCompat.startForegroundService(context, intent)
                     onChanged()
@@ -378,6 +380,17 @@ private fun NgaBooksExportSection(
                 val meta = NgaExport.metaOf(nativeDir) ?: return@TextButton
                 mdLauncher.launch(safeExportName(meta.title) + ".md")
             }) { Text("MD") }
+            TextButton(onClick = {
+                val meta = NgaExport.metaOf(nativeDir) ?: return@TextButton
+                val intent = Intent(context, NgaDownloadService::class.java).apply {
+                    action = NgaDownloadService.ACTION_START
+                    putExtra("action", "update")
+                    putExtra("bookId", book.id)
+                    putExtra("tid", meta.tid)
+                }
+                ContextCompat.startForegroundService(context, intent)
+                onChanged()
+            }) { Text("更新") }
         }
     }
 }

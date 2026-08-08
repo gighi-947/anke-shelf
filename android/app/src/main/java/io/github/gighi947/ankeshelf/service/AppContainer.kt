@@ -150,6 +150,10 @@ class BookRepository(
     /** 按 id 查书架记录。 */
     fun recordOf(bookId: String): BookRecord? = shelf.get(bookId)
 
+    /** 按 NGA tid 查书架记录。 */
+    fun findByNgaTid(tid: Long): BookRecord? =
+        shelf.listBooks().firstOrNull { it.nga_tid.toLong() == tid }
+
     /** 打开书籍（原生书目录或 EPUB 文件）。 */
     fun openSession(rec: BookRecord): BookSession? {
         val f = File(rec.path)

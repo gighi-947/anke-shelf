@@ -118,7 +118,25 @@ class NgaDownloadService : Service() {
         }
         try {
             if (action == "update") {
-                val added = downloader.update(bookId, params)
+                // 更新默认参数回填：UI 未传时用最近一次下载设置 / meta（对齐桌面 update_defaults）。
+                val d = downloader.defaultsFor(bookId)
+                val effective = if (d != null) {
+                    NgaDownloadParams(
+                        tid = params.tid,
+                        authorId = if (params.authorId > 0) params.authorId else d.authorId,
+                        imageMode = if (params.imageMode in setOf("online", "embedded", "none")) {
+                            params.imageMode
+                        } else {
+                            d.imageMode
+                        },
+                        theme = if (params.theme in setOf("light", "dark")) params.theme else d.theme,
+                        perChapter = if (params.perChapter > 0) params.perChapter else d.perChapter,
+                        maxFloors = 0,
+                    )
+                } else {
+                    params
+                }
+                val added = downloader.update(bookId, effective)
                 NgaServiceStatus.detail = if (added > 0) "已更新 $added 楼" else "已是最新"
                 NgaServiceStatus.stage = "done"
                 NgaServiceStatus.bookId = bookId

@@ -86,6 +86,13 @@ class NgaDownloader(
         val nativeDir = NativeBookWriter.nativeDirFor(appPaths.ngaLibraryDir, folderName)
         if (params.fullRedownload) {
             File(appPaths.ngaLibraryDir, folderName).deleteRecursively()
+        } else if (NativeBookWriter.isNativeDir(nativeDir)) {
+            // 已存在同 tid 原生书且非强制重下：对齐桌面走增量更新
+            val added = updateFolder(folderName, params.tid, params.authorId, params)
+            val rec = repository.findByNgaTid(params.tid)
+                ?: throw NgaHttpException("书架中找不到该书")
+            progress("done", added, added, if (added > 0) "已更新 $added 楼" else "已是最新")
+            return rec.id
         }
         try {
             progress("pages", 0, 1, "正在初始化…")
@@ -94,6 +101,7 @@ class NgaDownloader(
                 throw NgaHttpException("NGA 返回代码不为 0：${first.code} ${first.msg}")
             }
             val totalPage = first.totalPage.coerceAtLeast(1)
+            var lastPage = totalPage
             val floors = mutableListOf<NativeFloor>()
             floors.addAll(first.floors)
             progress("pages", 1, totalPage, "正在下载第 1/$totalPage 页")
@@ -108,6 +116,7 @@ class NgaDownloader(
                 if (params.maxFloors > 0 &&
                     floors.count { it.lou != -1 } >= params.maxFloors
                 ) {
+                    lastPage = p
                     break
                 }
             }
@@ -130,7 +139,7 @@ class NgaDownloader(
                     theme = params.theme,
                     bookId = nativeBookId(nativeDir),
                 )
-                saveState(folderName, first.totalPage, valid, params)
+                saveState(folderName, lastPage, valid, params)
                 repository.registerNativeDir(nativeDir, params.tid)
                 nativeBookId(nativeDir)
             } else {
@@ -152,21 +161,37 @@ class NgaDownloader(
     /** 增量热更新：断点续拉新页 → appendContainer，返回新增楼层数。 */
     fun update(bookId: String, params: NgaDownloadParams): Int {
         cancelled = false
-        val cfg = config.load()
-        if (!cfg.configured) {
-            throw NgaHttpException("请先配置 NGA Cookie")
-        }
         val record = repository.recordOf(bookId) ?: throw NgaHttpException("书架中找不到该书")
         val nativeDir = File(record.path)
         if (!NativeBookWriter.isNativeDir(nativeDir)) {
             throw NgaHttpException("仅支持更新 NGA 下载的原生书")
         }
         val folderName = nativeDir.parentFile.name
-        val state = loadState(folderName, params.tid, params.authorId)
-        val client = NgaClient(cookieUid = cfg.uid, cookieCid = cfg.cid, userAgent = cfg.ua, baseUrl = cfg.baseUrl)
+        return updateFolder(folderName, params.tid, params.authorId, params)
+    }
+
+    private fun updateFolder(
+        folderName: String,
+        tid: Long,
+        authorId: Long,
+        params: NgaDownloadParams,
+    ): Int {
+        cancelled = false
+        val cfg = config.load()
+        if (!cfg.configured) {
+            throw NgaHttpException("请先配置 NGA Cookie")
+        }
+        val nativeDir = NativeBookWriter.nativeDirFor(appPaths.ngaLibraryDir, folderName)
+        val state = loadState(folderName, tid, authorId)
+        val client = NgaClient(
+            cookieUid = cfg.uid,
+            cookieCid = cfg.cid,
+            userAgent = cfg.ua,
+            baseUrl = cfg.baseUrl,
+        )
         val startPage = state.max_page
         progress("pages", startPage, startPage, "正在检查更新…")
-        val first = client.fetchPageFull(params.tid, startPage.coerceAtLeast(1), params.authorId)
+        val first = client.fetchPageFull(tid, startPage.coerceAtLeast(1), authorId)
         if (first.code != 0) {
             throw NgaHttpException("NGA 返回代码不为 0：${first.code} ${first.msg}")
         }
@@ -177,9 +202,10 @@ class NgaDownloader(
         }
         val newFloors = mutableListOf<NativeFloor>()
         newFloors.addAll(first.floors)
+        var lastPage = totalPage
         for (p in (startPage + 1)..totalPage) {
             checkCancel()
-            val pageData = client.fetchPageFull(params.tid, p, params.authorId)
+            val pageData = client.fetchPageFull(tid, p, authorId)
             if (pageData.code != 0) {
                 throw NgaHttpException("NGA 返回代码不为 0：${pageData.code} ${pageData.msg}")
             }
@@ -188,6 +214,7 @@ class NgaDownloader(
             if (params.maxFloors > 0 &&
                 validFloors(newFloors, params.maxFloors).size >= params.maxFloors
             ) {
+                lastPage = p
                 break
             }
         }
@@ -202,9 +229,42 @@ class NgaDownloader(
             imageMode = params.imageMode,
             theme = params.theme,
         )
-        saveState(folderName, totalPage, valid, params.copy(tid = params.tid))
+        saveState(folderName, lastPage, valid, params.copy(tid = tid))
         progress("done", totalPage, totalPage, if (added > 0) "已更新 $added 楼" else "已是最新")
         return added
+    }
+
+    /**
+     * 返回某本已下载 NGA 书的更新默认参数（对齐桌面 update_defaults）：
+     * 优先 download.json（最近一次下载/更新设置），回退 meta.json。
+     */
+    fun defaultsFor(bookId: String): NgaDownloadParams? {
+        val record = repository.recordOf(bookId) ?: return null
+        val nativeDir = File(record.path)
+        if (!NativeBookWriter.isNativeDir(nativeDir)) return null
+        val meta = try {
+            NativeBookWriter.loadMeta(nativeDir)
+        } catch (_: Exception) {
+            return null
+        }
+        val folderName = nativeDir.parentFile.name
+        val state = try {
+            loadState(folderName, meta.tid, meta.author_id)
+        } catch (_: Exception) {
+            NgaDownloadState(tid = meta.tid, author_id = meta.author_id)
+        }
+        return NgaDownloadParams(
+            tid = meta.tid,
+            authorId = state.author_id,
+            imageMode = if (state.image_mode in setOf("online", "embedded", "none")) {
+                state.image_mode
+            } else {
+                meta.image_mode
+            },
+            theme = if (state.theme in setOf("light", "dark")) state.theme else meta.theme,
+            perChapter = maxOf(1, state.per_chapter),
+            maxFloors = 0,
+        )
     }
 
     private fun validFloors(floors: List<NativeFloor>, maxFloors: Int): List<NativeFloor> {
