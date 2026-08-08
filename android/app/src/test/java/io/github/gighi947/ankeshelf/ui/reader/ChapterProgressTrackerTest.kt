@@ -9,13 +9,19 @@ class ChapterProgressTrackerTest {
 
     private class FakeStore {
         val entries = mutableMapOf<String, ProgressEntry>()
-        val persisted = mutableListOf<Triple<String, Int, Int>>()
+        val persisted = mutableListOf<Array<Int>>()
 
         fun restore(bookId: String): ProgressEntry? = entries[bookId]
 
-        fun persist(bookId: String, chapter: Int, offset: Int) {
-            persisted += Triple(bookId, chapter, offset)
-            entries[bookId] = ProgressEntry(chapter_index = chapter, text_offset = offset, updated_at = "t")
+        fun persist(bookId: String, chapter: Int, offset: Int, page: Int, total: Int) {
+            persisted += arrayOf(chapter, offset, page, total)
+            entries[bookId] = ProgressEntry(
+                chapter_index = chapter,
+                text_offset = offset,
+                page_index = page,
+                page_total = total,
+                updated_at = "t",
+            )
         }
     }
 
@@ -34,7 +40,9 @@ class ChapterProgressTrackerTest {
 
     @Test
     fun `restore prefers persisted entry and in-memory updates`() {
-        val store = FakeStore().apply { entries["book"] = ProgressEntry(2, 123, "t") }
+        val store = FakeStore().apply {
+            entries["book"] = ProgressEntry(chapter_index = 2, text_offset = 123, updated_at = "t")
+        }
         val t = tracker(store, initialChapter = 2, initialOffset = 123)
         assertEquals(123, t.restoreOffsetFor(2))
 
@@ -49,7 +57,7 @@ class ChapterProgressTrackerTest {
         val t = tracker(store)
         t.onOffset(0, 100)
         Thread.sleep(700)
-        assertTrue(store.persisted.contains(Triple("book", 0, 100)))
+        assertTrue(store.persisted.any { it[0] == 0 && it[1] == 100 })
         val afterFirst = store.persisted.size
 
         t.onOffset(0, 100)
@@ -58,7 +66,7 @@ class ChapterProgressTrackerTest {
 
         t.onOffset(0, 200)
         Thread.sleep(700)
-        assertTrue(store.persisted.contains(Triple("book", 0, 200)))
+        assertTrue(store.persisted.any { it[0] == 0 && it[1] == 200 })
     }
 
     @Test
@@ -66,7 +74,7 @@ class ChapterProgressTrackerTest {
         val store = FakeStore()
         val t = tracker(store)
         t.onPageTurn(3, 777)
-        assertTrue(store.persisted.contains(Triple("book", 3, 777)))
+        assertTrue(store.persisted.any { it[0] == 3 && it[1] == 777 })
     }
 
     @Test
@@ -75,7 +83,7 @@ class ChapterProgressTrackerTest {
         val t = tracker(store)
         t.onOffset(0, 111)
         t.onChapterSwitch(0, 1)
-        assertTrue(store.persisted.contains(Triple("book", 0, 111)))
+        assertTrue(store.persisted.any { it[0] == 0 && it[1] == 111 })
     }
 
     @Test
@@ -86,9 +94,9 @@ class ChapterProgressTrackerTest {
         t.onOffset(3, 300)
         t.onOffset(1, 100)
         t.flush()
-        assertTrue(store.persisted.contains(Triple("book", 0, 999)))
-        assertTrue(store.persisted.contains(Triple("book", 3, 300)))
-        assertTrue(store.persisted.contains(Triple("book", 1, 100)))
+        assertTrue(store.persisted.any { it[0] == 0 && it[1] == 999 })
+        assertTrue(store.persisted.any { it[0] == 3 && it[1] == 300 })
+        assertTrue(store.persisted.any { it[0] == 1 && it[1] == 100 })
 
         val afterFlush = store.persisted.size
         Thread.sleep(700)

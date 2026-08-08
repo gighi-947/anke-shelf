@@ -105,6 +105,8 @@ fun NativeReaderScreen(
     session: BookSession,
     initialChapter: Int,
     savedOffset: Int,
+    initialPage: Int = -1,
+    initialTotal: Int = -1,
     container: AppContainer,
     readerSettings: SettingsData,
     onSettingsPatch: (SettingsPatch) -> Unit,
@@ -132,13 +134,21 @@ fun NativeReaderScreen(
             initialChapter = initialChapter,
             initialOffset = savedOffset,
             restoreFrom = { container.progress.get(it) },
-            persist = { id, idx, offset -> container.repository.saveProgress(id, idx, offset) },
+            persist = { id, idx, offset, page, total ->
+                container.repository.saveProgress(id, idx, offset, page, total)
+            },
         )
     }
     val restoreOffset = remember(chapterIndex, session.id) {
         // desktop loadChapter(i, 0): only the initial open/search jump restores an
         // offset; in-session chapter navigation always starts at the chapter head.
         if (chapterIndex == initialChapter) progressTracker.restoreOffsetFor(chapterIndex) else 0
+    }
+    val restorePage = remember(chapterIndex, session.id) {
+        if (chapterIndex == initialChapter) progressTracker.restorePageFor(chapterIndex) else -1
+    }
+    val restoreTotal = remember(chapterIndex, session.id) {
+        if (chapterIndex == initialChapter) progressTracker.restoreTotalFor(chapterIndex) else -1
     }
     val activity = androidx.activity.compose.LocalActivity.current
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -290,6 +300,8 @@ fun NativeReaderScreen(
                 autoDual = readerSettings.auto_dual != false,
                 topInsetPx = topInsetPx,
                 initialOffset = restoreOffset,
+                initialPage = restorePage,
+                initialTotal = restoreTotal,
                 session = session,
                 container = container,
                 callbacks = WebViewReaderCallbacks(
@@ -308,9 +320,9 @@ fun NativeReaderScreen(
                             }
                         }
                     },
-                    onProgressNow = { ch, offset ->
+                    onProgressNow = { ch, offset, page, total ->
                         // 翻页/换章立即落盘（不等待 500ms 防抖），退出时进度不落后。
-                        progressTracker.onPageTurn(ch, offset)
+                        progressTracker.onPageTurn(ch, offset, page, total)
                     },
                     onPageChanged = { ch, page, total ->
                         // 纯 UI 事件：页码指示；进度落盘只走 onProgress（JS 端仅在

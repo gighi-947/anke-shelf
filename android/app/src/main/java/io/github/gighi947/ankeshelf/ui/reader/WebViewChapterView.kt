@@ -61,7 +61,7 @@ import okhttp3.Request
 data class WebViewReaderCallbacks(
     val onReady: () -> Unit = {},
     val onProgress: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
-    val onProgressNow: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
+    val onProgressNow: (chapter: Int, offset: Int, page: Int, total: Int) -> Unit = { _, _, _, _ -> },
     val onPageChanged: (chapter: Int, page: Int, total: Int) -> Unit = { _, _, _ -> },
     val onImageTap: (String) -> Unit = {},
     val onTapZone: (String) -> Unit = {},
@@ -97,6 +97,8 @@ fun WebViewChapterView(
     autoDual: Boolean,
     topInsetPx: Int,
     initialOffset: Int,
+    initialPage: Int = -1,
+    initialTotal: Int = -1,
     session: BookSession,
     container: AppContainer,
     callbacks: WebViewReaderCallbacks,
@@ -357,6 +359,7 @@ fun WebViewChapterView(
                                 "lineHeight:${s.lineHeight},dualPage:${s.dualPage}," +
                                 "autoDual:${s.autoDual}," +
                                 "wasSwitch:${loadWasSwitch.value}," +
+                                "page:$initialPage,total:$initialTotal," +
                                 "topInset:${insetRef.intValue},bottomInset:0," +
                                 "theme:{bg:'${t.background}',fg:'${t.text}',primary:'${t.accent}'}});",
                             null,
@@ -527,11 +530,11 @@ private class LiteBridge(
     }
 
     @JavascriptInterface
-    fun saveProgressNow(idx: Int, value: Double, isOffset: Boolean) {
+    fun saveProgressNow(idx: Int, value: Double, isOffset: Boolean, page: Int, total: Int) {
         if (!isOffset) return
         val offset = value.toInt()
         if (offset <= 0) return
-        main.post { callbacks().onProgressNow(idx, offset) }
+        main.post { callbacks().onProgressNow(idx, offset, page, total) }
     }
 
     @JavascriptInterface

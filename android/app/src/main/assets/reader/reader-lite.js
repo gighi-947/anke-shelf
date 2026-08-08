@@ -28,6 +28,9 @@
     anchorOffset: 0,
     wasSwitch: false,
     settled: false,
+    userMoved: false,
+    restorePage: -1,
+    restoreTotal: -1,
   };
 
   function log(msg) {
@@ -342,7 +345,9 @@
 
   function flipPage(dir) {
     if (!state.paged) return;
+    state.userMoved = true;
     var m = measure();
+    try { log('[flip] dir=' + dir + ' before cur=' + m.current + '/' + m.total + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
     if (dir > 0 && m.current >= m.total - 1) {
       try { AnkeReaderBridge.requestChapter(1); } catch (e) { /* ignore */ }
       return;
@@ -353,7 +358,13 @@
     }
     gotoPage(skipToContent(m.current + (dir > 0 ? 1 : -1), dir));
     report(true);
-    try { state.anchorOffset = currentOffset(); } catch (e) { /* keep old anchor */ }
+    var o = 0;
+    try { o = currentOffset(); } catch (e) { /* keep old anchor */ }
+    try {
+      var mm = measure();
+      log('[flip] after cur=' + mm.current + '/' + mm.total + ' sl=' + scrollEl().scrollLeft + ' off=' + o);
+    } catch (e) { /* ignore */ }
+    if (o > 0) state.anchorOffset = o;
   }
 
   function currentOffset() {
@@ -383,13 +394,19 @@
     return Math.max(8, sampleOffsetY() - Math.round((state.fontSize * state.lineHeight) / 2));
   }
 
-  // caretRangeFromPoint 落在段落间隙/卡片 padding 时会返回 null 或元素首文本；
-  // 向下逐行扫描取第一个命中点，保证采样落在正文文本上。
+  // 采样必须落在正文文本上：
+  // - 段落间隙/卡片 padding 会让 caretRangeFromPoint 返回 null 或元素首文本；
+  // - 命中图片时 caretRangeFromPoint 会返回“邻近文本”（可能是别的页的旧锚点，
+  //   例如 NGA 大图跨列时每页都返回同一 offset）——必须跳过图片继续向下找。
+  // 分页模式扫描整页找第一个文本行；滚动模式只扫描采样点下方一小段。
   function offsetAtPoint(ctx, x, y) {
-    var off = TextPos.currentOffsetFromPoint(ctx, x, y);
-    if (off !== null) return off;
-    for (var d = 24; d <= 120; d += 24) {
-      off = TextPos.currentOffsetFromPoint(ctx, x, y + d);
+    var maxY = state.paged
+      ? Math.max(y + 24, Math.round(viewH() - 30))
+      : Math.min(Math.max(y + 24, Math.round(viewH() - 30)), y + 120);
+    for (var yy = y; yy <= maxY; yy += 24) {
+      var hit = document.elementFromPoint(x, yy);
+      if (hit && hit.closest && hit.closest('img,video,audio,svg,canvas,picture')) continue;
+      var off = TextPos.currentOffsetFromPoint(ctx, x, yy);
       if (off !== null) return off;
     }
     return null;
@@ -445,6 +462,21 @@
     return gotoPage(page);
   }
 
+  // 恢复优先“页码一致直接翻页”：同章同设置且图片加载状态一致时 total 相同，
+  // 能精确回到保存页（含整页图片的页面）；total 不一致（布局变了）再按 offset 定位。
+  function restoreToSavedPage() {
+    if (!state.paged || state.restorePage < 0 || state.restoreTotal <= 0) return false;
+    var m = measure();
+    try {
+      log('[restore-page] saved=' + state.restorePage + '/' + state.restoreTotal +
+        ' now=' + m.current + '/' + m.total);
+    } catch (e) { /* ignore */ }
+    if (m.total !== state.restoreTotal) return false;
+    gotoPage(state.restorePage);
+    try { log('[restore-page] goto -> ' + state.restorePage + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
+    return true;
+  }
+
   // doSave=true 只在用户翻页时传；重排/恢复/模式切换只更新 UI，不写进度，
   // 避免把中间布局的临时页码污染已保存的锚点（进度漂移根因）。
   function report(doSave) {
@@ -456,8 +488,8 @@
       AnkeReaderBridge.pageChanged(state.chapterIndex, m.current, m.total);
       // 翻页保存立即落盘（saveProgressNow），避免“进度缓存赶不上操作”。
       if (off > 0 && doSave) {
-        log('[save:flip] ch=' + state.chapterIndex + ' off=' + off);
-        AnkeReaderBridge.saveProgressNow(state.chapterIndex, off, true);
+        log('[save:flip] ch=' + state.chapterIndex + ' off=' + off + ' page=' + m.current + '/' + m.total);
+        AnkeReaderBridge.saveProgressNow(state.chapterIndex, off, true, m.current, m.total);
       }
     } catch (e) { /* ignore */ }
   }
@@ -629,7 +661,7 @@
       if (state.paged) {
         prepare();
         normalizeTallTables();
-        if (offset > 0) gotoOffset(offset);
+        if (!restoreToSavedPage() && offset > 0) gotoOffset(offset);
       } else if (offset > 0) {
         restoreScroll(offset);
       }
@@ -655,7 +687,9 @@
       }
       prepare();
       normalizeTallTables();
-      if (resizeOffset > 0) {
+      if (!state.userMoved && restoreToSavedPage()) {
+        // 恢复期重排：保持保存页（页码一致时精确翻页），不按锚点偏移定位。
+      } else if (resizeOffset > 0) {
         gotoOffset(resizeOffset);
       } else if (state.restorePending) {
         gotoOffset(state.restoreOffset);
@@ -699,7 +733,11 @@
     requestAnimationFrame(function () {
       normalizeTallTables();
       var off = state.restorePending ? state.restoreOffset : state.anchorOffset;
-      if (off > 0) gotoOffset(off);
+      if (!state.userMoved && restoreToSavedPage()) {
+        // 恢复期兜底重排：保持保存页。
+      } else if (off > 0) {
+        gotoOffset(off);
+      }
       report(false);
       markSettled();
     });
@@ -721,6 +759,8 @@
     state.restorePending = state.restoreOffset > 0;
     state.wasSwitch = !!opts.wasSwitch;
     state.settled = false;
+    state.restorePage = (opts.page === undefined || opts.page === null) ? -1 : opts.page;
+    state.restoreTotal = (opts.total === undefined || opts.total === null) ? -1 : opts.total;
     if (!document.body) return;
     state.huge = (document.body.textContent || '').length > MAX_PAGED_TEXT;
     state.paged = !!opts.paged && !state.huge;
@@ -801,8 +841,10 @@
       if (state.paged) {
         prepare();
         normalizeTallTables();
-        if (state.restoreOffset > 0) gotoOffset(state.restoreOffset);
-        else gotoPage(0);
+        if (!restoreToSavedPage()) {
+          if (state.restoreOffset > 0) gotoOffset(state.restoreOffset);
+          else gotoPage(0);
+        }
         // 换章后立即把新章位置落库（桌面 loadChapter 语义；首次打开不写，
         // 避免中间布局污染已保存的锚点）。
         if (state.wasSwitch) {

@@ -38,6 +38,8 @@ data class ShelfFile(
 data class ProgressEntry(
     val chapter_index: Int = 0,
     val text_offset: Int = 0,
+    val page_index: Int = -1,
+    val page_total: Int = -1,
     val updated_at: String = "",
 )
 
@@ -182,11 +184,18 @@ class ProgressStore(private val progressFile: File) {
 
     fun get(bookId: String): ProgressEntry? = lock.withLock { data[bookId] }
 
-    fun set(bookId: String, chapterIndex: Int, textOffset: Int) {
-        runCatching { android.util.Log.d("AnkeShelf", "progress.set ch=$chapterIndex off=$textOffset") }
+    fun set(bookId: String, chapterIndex: Int, textOffset: Int, pageIndex: Int = -1, pageTotal: Int = -1) {
+        runCatching {
+            android.util.Log.d(
+                "AnkeShelf",
+                "progress.set ch=$chapterIndex off=$textOffset page=$pageIndex/$pageTotal",
+            )
+        }
         val entry = ProgressEntry(
             chapter_index = maxOf(0, chapterIndex),
             text_offset = maxOf(0, textOffset),
+            page_index = pageIndex,
+            page_total = pageTotal,
             updated_at = nowIso(),
         )
         lock.withLock { data[bookId] = entry }

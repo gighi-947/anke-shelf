@@ -25,10 +25,12 @@ class ChapterProgressTracker(
     initialChapter: Int,
     initialOffset: Int,
     private val restoreFrom: (String) -> ProgressEntry?,
-    private val persist: (bookId: String, chapterIndex: Int, textOffset: Int) -> Unit,
+    private val persist: (bookId: String, chapterIndex: Int, textOffset: Int, pageIndex: Int, pageTotal: Int) -> Unit,
 ) {
     private val lock = Any()
     private val lastKnown = mutableMapOf<Int, Int>()
+    private val lastPage = mutableMapOf<Int, Int>()
+    private val lastTotal = mutableMapOf<Int, Int>()
     private val saved = mutableMapOf<Int, Int>()
     private val pending = mutableMapOf<Int, ScheduledFuture<*>>()
     private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
@@ -42,6 +44,8 @@ class ChapterProgressTracker(
             restoreFrom(bookId)?.let { p ->
                 if (p.chapter_index >= 0 && p.text_offset > 0) {
                     lastKnown[p.chapter_index] = p.text_offset
+                    if (p.page_index >= 0) lastPage[p.chapter_index] = p.page_index
+                    if (p.page_total > 0) lastTotal[p.chapter_index] = p.page_total
                 }
             }
             if (initialOffset > 0) lastKnown[initialChapter] = initialOffset
@@ -53,6 +57,10 @@ class ChapterProgressTracker(
     fun restoreOffsetFor(chapter: Int): Int = synchronized(lock) {
         (lastKnown[chapter] ?: 0).coerceAtLeast(0)
     }
+
+    fun restorePageFor(chapter: Int): Int = synchronized(lock) { lastPage[chapter] ?: -1 }
+
+    fun restoreTotalFor(chapter: Int): Int = synchronized(lock) { lastTotal[chapter] ?: -1 }
 
     /** 滚动/页面上报：更新内存，500ms 防抖落盘（对齐桌面 scroll debounce）。 */
     fun onOffset(chapter: Int, offset: Int) {
@@ -66,10 +74,14 @@ class ChapterProgressTracker(
         pending[chapter] = scheduler.schedule({ persist(chapter) }, 500, TimeUnit.MILLISECONDS)
     }
 
-    /** 翻页事件：立即落盘（对齐桌面 onPageTurned -> saveProgress）。 */
-    fun onPageTurn(chapter: Int, offset: Int) {
+    /** 翻页事件：立即落盘（对齐桌面 onPageTurned -> saveProgress），携带页码供精确恢复。 */
+    fun onPageTurn(chapter: Int, offset: Int, page: Int = -1, total: Int = -1) {
         if (closed || offset <= 0) return
-        synchronized(lock) { lastKnown[chapter] = offset }
+        synchronized(lock) {
+            lastKnown[chapter] = offset
+            if (page >= 0) lastPage[chapter] = page
+            if (total > 0) lastTotal[chapter] = total
+        }
         persist(chapter)
     }
 
@@ -102,6 +114,8 @@ class ChapterProgressTracker(
             saved[chapter] = o
             o
         }
-        persist(bookId, chapter, offset)
+        val page = synchronized(lock) { lastPage[chapter] ?: -1 }
+        val total = synchronized(lock) { lastTotal[chapter] ?: -1 }
+        persist(bookId, chapter, offset, page, total)
     }
 }

@@ -150,6 +150,8 @@ fun AnkeShelfRoot(container: AppContainer) {
                         session = session,
                         initialChapter = chapter,
                         savedOffset = jumpOffset ?: (savedProgress?.text_offset ?: 0),
+                        initialPage = if (jumpOffset == null) savedProgress?.page_index ?: -1 else -1,
+                        initialTotal = if (jumpOffset == null) savedProgress?.page_total ?: -1 else -1,
                         container = container,
                         readerSettings = container.settings.getAll(),
                         onSettingsPatch = { patch ->
