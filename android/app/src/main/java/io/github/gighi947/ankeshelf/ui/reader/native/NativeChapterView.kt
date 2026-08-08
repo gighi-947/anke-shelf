@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -20,10 +21,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,6 +35,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -40,6 +45,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -62,10 +68,13 @@ import io.github.gighi947.ankeshelf.ui.reader.PagedLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.debounce
 import android.graphics.BitmapFactory
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
+import java.io.File
 
 /** 高亮（id/起始/结束/色键，与 AnnotationStore 字段一致）。 */
 data class NativeHighlight(val id: String, val start: Int, val end: Int, val color: String)
@@ -76,18 +85,29 @@ data class NativeReaderCallbacks(
     val onPageChanged: (page: Int, total: Int, offset: Int) -> Unit,
     val onImageLongPress: (String) -> Unit,
     val onHighlightTap: (String) -> Unit,
+    val onTapZone: (String) -> Unit = {},
+    val onRequestChapter: (Int) -> Unit = {},
 )
 
 /** 内置字体单例缓存（26MB 只加载一次）。 */
 object NativeFonts {
     @Volatile
     var lxgw: Typeface? = null
+    private val customCache = HashMap<String, Typeface?>()
 
     fun ensure(context: android.content.Context) {
         if (lxgw == null) {
             lxgw = runCatching {
                 Typeface.createFromAsset(context.assets, "fonts/LXGWWenKai-Regular.ttf")
             }.getOrNull()
+        }
+    }
+
+    /** 导入字体（fontsDir 下），缓存避免重复解析。 */
+    fun custom(context: android.content.Context, name: String, dir: File): Typeface? {
+        if (name.isBlank()) return lxgw
+        return customCache.getOrPut(name) {
+            runCatching { Typeface.createFromFile(File(dir, name)) }.getOrNull()
         }
     }
 }
@@ -129,13 +149,23 @@ fun NativeChapterView(
     initialOffset: Int,
     highlights: List<NativeHighlight>,
     imageBytes: suspend (String) -> ByteArray?,
+    customFont: String = "",
+    fontsDir: File? = null,
     callbacks: NativeReaderCallbacks,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
     NativeFonts.ensure(context)
-    val fontFamily = remember { NativeFonts.lxgw?.let { FontFamily(it) } }
+    val fontFamily = remember(customFont, fontsDir) {
+        when {
+            customFont == "system" -> FontFamily.SansSerif
+            customFont.isBlank() || customFont.startsWith("sys:") ->
+                NativeFonts.lxgw?.let { FontFamily(it) } ?: FontFamily.SansSerif
+            else -> NativeFonts.custom(context, customFont, fontsDir ?: File(context.filesDir, "AnkeShelf/fonts"))
+                ?.let { FontFamily(it) } ?: FontFamily.SansSerif
+        }
+    }
     val baseStyle = remember(fontSize, lineHeight, theme) {
         ReaderTextStyle(
             span = SpanStyle(
@@ -172,6 +202,8 @@ fun NativeChapterView(
             highlights = highlights,
             highlightColors = highlightColors,
             imageBytes = imageBytes,
+            customFont = customFont,
+            fontsDir = fontsDir,
             callbacks = callbacks,
             modifier = modifier,
         )
@@ -184,6 +216,11 @@ fun NativeChapterView(
             highlightColors = highlightColors,
             initialOffset = initialOffset,
             imageBytes = imageBytes,
+            customFont = customFont,
+            fontsDir = fontsDir,
+            pageWidth = pageWidth,
+            fontSize = fontSize,
+            topInsetPx = topInsetPx,
             callbacks = callbacks,
             modifier = modifier,
         )
@@ -201,12 +238,18 @@ private fun NativeScrollView(
     highlightColors: Map<String, Color>,
     initialOffset: Int,
     imageBytes: suspend (String) -> ByteArray?,
+    customFont: String,
+    fontsDir: File?,
+    pageWidth: Double,
+    fontSize: Int,
+    topInsetPx: Int,
     callbacks: NativeReaderCallbacks,
     modifier: Modifier,
 ) {
     val scroll = rememberScrollState()
+    val density = LocalDensity.current
     val len = doc.plainText.length.coerceAtLeast(1)
-    var restored by remember { mutableStateOf(false) }
+    val maxWidth = with(density) { (46f * pageWidth.toFloat() * fontSize).sp.toDp() }
 
     LaunchedEffect(Unit) {
         // 首帧布局后再恢复（maxValue 才有效），对齐桌面 scrollToOffset。
@@ -214,38 +257,63 @@ private fun NativeScrollView(
         val ratio = initialOffset.toFloat() / len
         val target = (ratio * scroll.maxValue).roundToInt().coerceIn(0, scroll.maxValue)
         scroll.scrollTo(target)
-        restored = true
     }
 
     LaunchedEffect(Unit) {
         snapshotFlow { scroll.value }
-            .distinctUntilChanged()
+            .debounce(450)
             .collect { v ->
                 val ratio = if (scroll.maxValue > 0) v.toFloat() / scroll.maxValue else 0f
                 callbacks.onProgress((ratio * len).roundToInt().coerceIn(0, len))
             }
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(theme.bgColor)
             .verticalScroll(scroll)
-            .padding(horizontal = 16.dp)
-            .padding(top = (18 + 0).dp, bottom = 24.dp),
+            .pointerInput(Unit) {
+                detectTapGestures { pos ->
+                    val w = size.width
+                    // 滚动模式：点中间唤出/收起控制条；左右两侧不换章（移动端筛选结果）。
+                    if (pos.x >= w * 0.25f && pos.x <= w * 0.75f) {
+                        callbacks.onTapZone("middle")
+                    }
+                }
+            },
+        contentAlignment = Alignment.TopCenter,
     ) {
-        doc.blocks.forEachIndexed { bi, block ->
-            NativeBlock(
-                block = block,
-                theme = theme,
-                baseStyle = baseStyle,
-                scrollMode = true,
-                highlights = highlights,
-                highlightColors = highlightColors,
-                imageBytes = imageBytes,
-                onImageLongPress = callbacks.onImageLongPress,
-            )
-            if (bi < doc.blocks.lastIndex) Spacer(theme)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .widthIn(max = maxWidth)
+                .padding(horizontal = 16.dp)
+                .padding(top = (18 + topInsetPx).dp, bottom = 24.dp),
+        ) {
+            doc.blocks.forEachIndexed { bi, block ->
+                NativeBlock(
+                    block = block,
+                    theme = theme,
+                    baseStyle = baseStyle,
+                    scrollMode = true,
+                    highlights = highlights,
+                    highlightColors = highlightColors,
+                    imageBytes = imageBytes,
+                    onImageLongPress = callbacks.onImageLongPress,
+                )
+                if (bi < doc.blocks.lastIndex) Spacer(theme)
+            }
+            // 滚动模式底部换章按钮（对齐桌面 chapter-nav-row）。
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                TextButton(onClick = { callbacks.onRequestChapter(-1) }) { Text("← 上一章") }
+                TextButton(onClick = { callbacks.onRequestChapter(1) }) { Text("下一章 →") }
+            }
         }
     }
 }
@@ -298,11 +366,14 @@ private fun NativePagedView(
     highlights: List<NativeHighlight>,
     highlightColors: Map<String, Color>,
     imageBytes: suspend (String) -> ByteArray?,
+    customFont: String,
+    fontsDir: File?,
     callbacks: NativeReaderCallbacks,
     modifier: Modifier,
 ) {
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
+    val scope = rememberCoroutineScope()
     var pages by remember { mutableStateOf<List<NativePage>?>(null) }
     var currentPage by remember { mutableIntStateOf(0) }
     val pagerState = rememberPagerState(initialPage = 0) { pages?.size ?: 1 }
@@ -313,6 +384,24 @@ private fun NativePagedView(
         modifier = modifier
             .fillMaxSize()
             .background(theme.bgColor)
+            .pointerInput(Unit) {
+                detectTapGestures { pos ->
+                    val w = size.width
+                    when {
+                        pos.x < w / 3f ->
+                            scope.launch {
+                                pagerState.animateScrollToPage((pagerState.currentPage - 1).coerceAtLeast(0))
+                            }
+                        pos.x > 2 * w / 3f ->
+                            scope.launch {
+                                pagerState.animateScrollToPage(
+                                    (pagerState.currentPage + 1).coerceAtMost((pagerState.pageCount - 1).coerceAtLeast(0)),
+                                )
+                            }
+                        else -> callbacks.onTapZone("middle")
+                    }
+                }
+            }
             .onSizeChanged { size -> viewSize.value = androidx.compose.ui.geometry.Size(size.width.toFloat(), size.height.toFloat()) },
     ) {
         val size = viewSize.value
@@ -555,7 +644,7 @@ private fun paginate(
                             is ReaderBlock.Image -> {
                                 val f = Frag()
                                 f.image = sub.src
-                                f.heightPx = (220 * density.density).roundToInt()
+                                f.heightPx = minOf((220 * density.density).roundToInt(), (pageH * 0.6f).roundToInt())
                                 f.floorCard = true
                                 f.borderColor = border
                                 f.accentColor = accentColor
@@ -580,12 +669,12 @@ private fun paginate(
                 pushTextBlock(block, bi, plainCursor, 0, 0, false, null, null, null)
             is ReaderBlock.Quote -> {
                 val pad = (10 * density.density).roundToInt()
-                pushTextBlock(ReaderBlock.Paragraph(block.body.flatMap { it.spansOrEmpty() }), bi, plainCursor, pad, pad, false, null, null, Color(0x14000000))
+                pushTextBlock(ReaderBlock.Paragraph(block.body.flatMap { it.spansOrEmpty() }), bi, plainCursor, pad, pad, false, null, null, textColor.copy(alpha = 0.05f))
             }
             is ReaderBlock.Image -> {
                 val f = Frag()
                 f.image = block.src
-                f.heightPx = (260 * density.density).roundToInt()
+                f.heightPx = minOf((260 * density.density).roundToInt(), (pageH * 0.6f).roundToInt())
                 addFrag(f)
             }
             is ReaderBlock.Table -> {
@@ -650,6 +739,10 @@ private fun NativePageContent(
                         )),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                    )
+                    HorizontalDivider(
+                        color = theme.fgColor.copy(alpha = 0.15f),
+                        modifier = Modifier.padding(top = 3.dp, bottom = 5.dp),
                     )
                 }
                 frag.ann != null -> {
@@ -716,6 +809,10 @@ private fun NativeBlock(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    HorizontalDivider(
+                        color = theme.fgColor.copy(alpha = 0.15f),
+                        modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+                    )
                     block.body.forEach { sub ->
                         NativeBlock(sub, theme, baseStyle, scrollMode, highlights, highlightColors, imageBytes, onImageLongPress)
                     }
@@ -757,13 +854,32 @@ private fun NativeBlock(
             block.text,
             style = baseStyle.style(SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFFB8860B))),
         )
-        is ReaderBlock.Comment -> Text(
-            block.spans.joinToString("") { it.text },
-            style = baseStyle.style(SpanStyle(
-                fontSize = (baseStyle.fontSize * 0.92f).sp,
-                color = theme.fgColor.copy(alpha = 0.9f),
-            )),
-        )
+        is ReaderBlock.Comment -> Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp)
+                .border(1.dp, theme.accentColor.copy(alpha = 0.2f), MaterialTheme.shapes.small)
+                .background(theme.bgColor.copy(alpha = 0.5f))
+                .padding(8.dp),
+        ) {
+            if (block.lou > 0 || block.username.isNotBlank()) {
+                Text(
+                    "${if (block.lou > 0) "${block.lou}楼 · " else ""}${block.username}",
+                    style = baseStyle.style(SpanStyle(
+                        fontSize = (baseStyle.fontSize * 0.8f).sp,
+                        color = theme.fgColor.copy(alpha = 0.7f),
+                    )),
+                    modifier = Modifier.padding(bottom = 2.dp),
+                )
+            }
+            Text(
+                block.spans.joinToString("") { it.text },
+                style = baseStyle.style(SpanStyle(
+                    fontSize = (baseStyle.fontSize * 0.92f).sp,
+                    color = theme.fgColor.copy(alpha = 0.9f),
+                )),
+            )
+        }
         is ReaderBlock.Image -> NativeImage(block.src, theme, imageBytes, onImageLongPress)
         is ReaderBlock.Table -> NativeTable(block, theme, baseStyle, Modifier.heightIn(max = 320.dp))
         is ReaderBlock.Blank -> Box(Modifier.height(8.dp))
@@ -793,7 +909,7 @@ private fun NativeTextBlock(
             )
         }
     }
-    Text(text = ann, style = style, modifier = Modifier.padding(vertical = 2.dp))
+    Text(text = ann, style = style, modifier = Modifier.padding(vertical = 6.dp))
 }
 
 @Composable

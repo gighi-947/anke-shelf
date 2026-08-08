@@ -61,6 +61,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.ViewCompat
 import io.github.gighi947.ankeshelf.data.AnnotationStore
 import io.github.gighi947.ankeshelf.data.SettingsData
@@ -221,6 +224,23 @@ fun NativeReaderScreen(
         }
     }
 
+    // 控制条 3 秒自动收起（对齐 WebView 时代的移动端筛选行为）。
+    LaunchedEffect(barsVisible, chapterIndex) {
+        if (barsVisible) {
+            delay(3000)
+            barsVisible = false
+        }
+    }
+
+    // 沉浸式：进入阅读器隐藏系统栏，退出恢复。
+    LaunchedEffect(activity) {
+        val act = activity ?: return@LaunchedEffect
+        WindowCompat.getInsetsController(act.window, act.window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
     BackHandler {
         when {
             lightboxSrc != null -> lightboxSrc = null
@@ -255,6 +275,8 @@ fun NativeReaderScreen(
                 initialOffset = if (chapterIndex == initialChapter) savedOffset else 0,
                 highlights = highlights,
                 imageBytes = ::imageBytes,
+                customFont = readerSettings.custom_font,
+                fontsDir = container.appPaths.fontsDir,
                 callbacks = NativeReaderCallbacks(
                     onProgress = { offset ->
                         lastOffset = offset
@@ -272,6 +294,13 @@ fun NativeReaderScreen(
                     },
                     onImageLongPress = { lightboxSrc = it },
                     onHighlightTap = { },
+                    onTapZone = { zone ->
+                        if (zone == "middle") barsVisible = !barsVisible
+                    },
+                    onRequestChapter = { delta ->
+                        chapterIndex = (chapterIndex + delta)
+                            .coerceIn(0, session.chapters.lastIndex.coerceAtLeast(0))
+                    },
                 ),
                 modifier = Modifier.fillMaxSize(),
             )
@@ -458,6 +487,13 @@ fun NativeReaderScreen(
         onDispose {
             runCatching { saveProgress() }
             runCatching { container.progress.flush() }
+            val act = activity
+            if (act != null) {
+                runCatching {
+                    WindowCompat.getInsetsController(act.window, act.window.decorView)
+                        .show(WindowInsetsCompat.Type.systemBars())
+                }
+            }
         }
     }
 }
