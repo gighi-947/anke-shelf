@@ -157,20 +157,15 @@ class ProgressStore(private val progressFile: File) {
 
     private val lock = ReentrantLock()
     private var data: MutableMap<String, ProgressEntry> = mutableMapOf()
-    private val flushScheduler = Executors.newSingleThreadScheduledExecutor { r ->
-        Thread(r, "progress-flush").apply { isDaemon = true }
+    // 对齐桌面 ProgressStore.set：每次保存立即落盘；安卓把写盘放到串行后台线程，
+    // 不阻塞 UI（桌面是 Python 后台线程写盘，语义一致）。
+    private val io = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "progress-io").apply { isDaemon = true }
     }
-    private var pendingFlush: java.util.concurrent.ScheduledFuture<*>? = null
-    private var dirty = false
 
     fun load() {
         val loaded = readJsonOrNull<ProgressFile>(progressFile) ?: ProgressFile()
-        lock.withLock {
-            pendingFlush?.cancel(false)
-            pendingFlush = null
-            dirty = false
-            data = loaded.progress.toMutableMap()
-        }
+        lock.withLock { data = loaded.progress.toMutableMap() }
     }
 
     fun save() {
@@ -189,34 +184,12 @@ class ProgressStore(private val progressFile: File) {
             text_offset = maxOf(0, textOffset),
             updated_at = nowIso(),
         )
-        lock.withLock {
-            data[bookId] = entry
-            dirty = true
-            // 滚动模式进度每 ~1.2s 上报一次：只更新内存并合并到后台延迟落盘，
-            // 避免同步写盘阻塞 UI 线程造成惯性滚动“一顿一顿”。
-            pendingFlush?.cancel(false)
-            pendingFlush = flushScheduler.schedule(
-                { flush() },
-                1500,
-                java.util.concurrent.TimeUnit.MILLISECONDS,
-            )
-        }
+        lock.withLock { data[bookId] = entry }
+        io.execute { runCatching { save() } }
     }
 
-    /** 立即落盘（退出阅读器/切章/测试断言前调用），幂等。 */
-    fun flush() {
-        val snapshot = lock.withLock {
-            pendingFlush?.cancel(false)
-            pendingFlush = null
-            if (!dirty) return
-            dirty = false
-            data.toMap()
-        }
-        atomicWriteJson(
-            progressFile,
-            Shelf.json.encodeToString(ProgressFile.serializer(), ProgressFile(progress = snapshot)),
-        )
-    }
+    /** 立即同步落盘（退出阅读器/切章/退后台前调用），幂等。 */
+    fun flush() = save()
 
     fun remove(bookId: String) {
         lock.withLock {

@@ -50,11 +50,11 @@ class ProgressTest {
     }
 
     @Test
-    fun `set persists via debounced flush`() {
+    fun `set persists immediately via background write`() {
         val file = File(Files.createTempDirectory("progress").toFile(), "progress.json")
         val store = ProgressStore(file)
         store.set("a".repeat(32), 2, 777)
-        // 后台防抖 1.5s 后落盘，无需手动 flush。
+        // 对齐桌面：每次 set 立即在后台串行线程落盘；等写盘完成再重载。
         Thread.sleep(2200)
         val reloaded = ProgressStore(file).also { it.load() }
         assertEquals(2, reloaded.get("a".repeat(32))!!.chapter_index)

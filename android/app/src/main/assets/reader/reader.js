@@ -575,7 +575,9 @@
     var style = document.createElement('style');
     style.textContent =
       '@font-face{font-family:"LXGW WenKai";' +
-      'src:url("../fonts/LXGWWenKai-Regular.ttf") format("truetype");' +
+      // 绝对 asset 路径：章节 base 可能是 file:///android_epub/...（EPUB 图片），
+      // 相对路径 ../fonts/ 会解析到不存在的目录导致内置字体加载失败。
+      'src:url("file:///android_asset/fonts/LXGWWenKai-Regular.ttf") format("truetype");' +
       'font-weight:400;font-display:swap;}';
     document.head.appendChild(style);
     if (document.fonts && document.fonts.load) {
@@ -732,6 +734,12 @@
       setTimeout(function () {
         state.textCtx = TextPos.build(document);
         if (state.restorePending && state.restoreOffset > 0) restoreScroll(state.restoreOffset);
+        // 对齐桌面 loadChapter：换章后立即把新章位置落库（滚动模式无 report）。
+        var o = 0;
+        try { o = currentOffset(); } catch (e) { /* ignore */ }
+        if (o > 0) {
+          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
+        }
         if (window.__pendingAnnotations__) {
           var list = window.__pendingAnnotations__;
           window.__pendingAnnotations__ = null;
@@ -803,6 +811,14 @@
         if (state.restoreOffset > 0) restoreScroll(state.restoreOffset);
       }
       report();
+      // 滚动模式没有 report 保存，换章后立即保存当前章（桌面 loadChapter 语义）。
+      if (!state.paged) {
+        var o = 0;
+        try { o = currentOffset(); } catch (e) { /* ignore */ }
+        if (o > 0) {
+          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
+        }
+      }
     };
     // 首屏不等待字体（26MB LXGW 动态异步加载）：立即用系统字体布局并恢复位置。
     requestAnimationFrame(finish);

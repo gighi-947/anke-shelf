@@ -28,10 +28,14 @@ body {
     margin: 0;
     padding: 0;
     background: var(--reader-bg);
-    color: var(--reader-fg);
-    font-family: var(--reader-font-family);
-    font-size: var(--reader-font-size);
-    line-height: var(--reader-line-height);
+    /* 对齐桌面 BASE/NGA_OVERRIDE：排版以阅读器设置为准（!important 压过章节自带
+       body 样式）；默认文字色只作用于继承色，楼层内显式彩色字体保留。 */
+    color: var(--reader-fg) !important;
+    font-family: var(--reader-font-family) !important;
+    font-size: var(--reader-font-size) !important;
+    line-height: var(--reader-line-height) !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
     -webkit-text-size-adjust: 100%;
 }
 

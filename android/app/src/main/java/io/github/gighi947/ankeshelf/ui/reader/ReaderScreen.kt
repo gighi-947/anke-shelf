@@ -376,21 +376,29 @@ fun ReaderScreen(
         }
     }
 
-    fun saveNow(web: WebView?) {
+    fun saveNow(web: WebView?, chapter: Int = chapterIndex) {
         // 页面未就绪/已被切章中断时跳过，避免在旧页面销毁后执行 JS 报错。
-        if (!pageReady.value) return
+        if (!pageReady.value) {
+            container.progress.flush()
+            return
+        }
         val js = if (pagedRef.value) {
-            "(function(){try{var o=AnkeReader.currentOffset();" +
-                "AnkeReaderBridge.saveProgress($chapterIndex,o,true);}catch(e){}})();"
+            "(function(){var o=0;try{o=AnkeReader.currentOffset();}catch(e){};" +
+                "try{AnkeReaderBridge.saveProgress($chapter,o,true);}catch(e){};return String(o);})();"
         } else {
             // 滚动模式优先用 DOM 锚点 text_offset（段落级精度），采样失败退回比例。
             "(function(){var o=0;try{o=AnkeReader.currentOffset();}catch(e){};" +
                 "var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);" +
-                "try{AnkeReaderBridge.saveProgress($chapterIndex,o>0?o:r,o>0);}catch(e){}})();"
+                "try{AnkeReaderBridge.saveProgress($chapter,o>0?o:r,o>0);}catch(e){};return String(o);})();"
         }
         if (web != null) {
-            // JS 完成（进度已写入内存）后立即落盘，退出/切章时最终位置不丢。
-            web.evaluateJavascript(js) { container.progress.flush() }
+            // JS 返回调用时章节的 text_offset；bridge 上报可能被“当前章节”守卫
+            // 丢弃（换章竞态），这里按捕获的章节直接写入内存并立即落盘。
+            web.evaluateJavascript(js) { result ->
+                val off = result.trim().trim('"').toIntOrNull()
+                if (off != null && off > 0) onProgress(chapter, off)
+                container.progress.flush()
+            }
         } else {
             container.progress.flush()
         }
@@ -428,26 +436,30 @@ fun ReaderScreen(
     val bridge = remember {
         ReaderBridge(
             onProgressValue = { idx, value, isOffset ->
-                if (isOffset) {
-                    val offset = value.toInt().coerceIn(0, lenRef.intValue)
-                    onProgress(idx, offset)
-                    if (!pagedRef.value) {
-                        // 滚动模式现在也上报 text_offset（与桌面一致），
-                        // 这里反推比例用于底部进度条与自动收起控制条。
-                        if (barsHeld) hideBars()
-                        scrollRatio = if (lenRef.intValue > 0) {
-                            offset.toFloat() / lenRef.intValue
-                        } else {
-                            0f
+                // 对齐桌面：进度保存以“当前章节”为唯一真源；换章瞬间旧页面
+                // 延迟到达的 bridge 上报直接丢弃，避免新章进度被旧章覆盖。
+                if (idx == chapterIndex) {
+                    if (isOffset) {
+                        val offset = value.toInt().coerceIn(0, lenRef.intValue)
+                        onProgress(idx, offset)
+                        if (!pagedRef.value) {
+                            // 滚动模式现在也上报 text_offset（与桌面一致），
+                            // 这里反推比例用于底部进度条与自动收起控制条。
+                            if (barsHeld) hideBars()
+                            scrollRatio = if (lenRef.intValue > 0) {
+                                offset.toFloat() / lenRef.intValue
+                            } else {
+                                0f
+                            }
                         }
+                    } else {
+                        val ratio = value.coerceIn(0.0, 1.0)
+                        // 滚动模式下滑动一段距离（节流回调触发）后收起手动唤出的控制条。
+                        if (!pagedRef.value && barsHeld) hideBars()
+                        scrollRatio = ratio.toFloat()
+                        val offset = (ratio * lenRef.intValue).roundToInt().coerceIn(0, lenRef.intValue)
+                        onProgress(idx, offset)
                     }
-                } else {
-                    val ratio = value.coerceIn(0.0, 1.0)
-                    // 滚动模式下滑动一段距离（节流回调触发）后收起手动唤出的控制条。
-                    if (!pagedRef.value && barsHeld) hideBars()
-                    scrollRatio = ratio.toFloat()
-                    val offset = (ratio * lenRef.intValue).roundToInt().coerceIn(0, lenRef.intValue)
-                    onProgress(idx, offset)
                 }
             },
             onPageChanged = { page, total, offset ->
@@ -707,7 +719,7 @@ fun ReaderScreen(
                                 """(function(){
                                    var last=0;
                                     window.addEventListener('scroll',function(){
-                                     var now=Date.now(); if(now-last<1200) return; last=now;
+                                     var now=Date.now(); if(now-last<500) return; last=now;
                                      var o=0; try{o=AnkeReader.currentOffset();}catch(e){}
                                      var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);
                                      try{AnkeReaderBridge.saveProgress($chapterIndex,o>0?o:r,o>0);}catch(e){}
