@@ -58,6 +58,7 @@ import io.github.gighi947.ankeshelf.data.DayEntry
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookUi
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
+import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.formatDate
 import io.github.gighi947.ankeshelf.ui.theme.formatDuration
 import java.time.LocalDate
@@ -101,7 +102,7 @@ fun StatsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = AnkeSpacing.lg),
         ) {
             // 范围选择（桌面 stats-toolbar：当前范围 + 下拉）。
             Row(
@@ -130,7 +131,7 @@ fun StatsScreen(
                         modifier = Modifier
                             .width(150.dp)
                             .menuAnchor(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
                         textStyle = MaterialTheme.typography.bodySmall,
                     )
                     ExposedDropdownMenu(
@@ -175,7 +176,7 @@ fun StatsScreen(
                         "暂无统计数据",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = AnkeSpacing.sm),
                     )
                 }
                 return@Scaffold
@@ -183,13 +184,13 @@ fun StatsScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
             ) {
                 item {
                     // 8 张统计卡（桌面 stat-grid：auto-fit minmax(128px,1fr)）。
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
                     ) {
                         StatCard(formatDuration(current.total_seconds), "累计阅读", Modifier.weight(1f))
                         StatCard(formatDuration(current.today_seconds), "今日阅读", Modifier.weight(1f))
@@ -198,7 +199,7 @@ fun StatsScreen(
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
                     ) {
                         StatCard(formatDuration(current.week_seconds), "最近 7 天", Modifier.weight(1f))
                         StatCard("${current.sessions}", "阅读会话", Modifier.weight(1f))
@@ -207,7 +208,7 @@ fun StatsScreen(
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
                     ) {
                         StatCard(formatDuration(current.avg_session_seconds), "平均每次", Modifier.weight(1f))
                         StatCard("${current.pages_flipped}", "翻页次数", Modifier.weight(1f))
@@ -216,7 +217,7 @@ fun StatsScreen(
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
                     ) {
                         StatCard("${current.streak_days} 天", "连续阅读", Modifier.weight(1f))
                         StatCard(formatDate(current.last_read_at), "最近阅读", Modifier.weight(1f))
@@ -228,7 +229,7 @@ fun StatsScreen(
                         "最近 7 天",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = AnkeSpacing.sm),
                     )
                 }
                 item {
@@ -239,13 +240,13 @@ fun StatsScreen(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                         ),
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(modifier = Modifier.padding(AnkeSpacing.md)) {
                             if (tipText.isNotEmpty()) {
                                 Text(
                                     tipText,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(bottom = 6.dp),
+                                    modifier = Modifier.padding(bottom = AnkeSpacing.sm),
                                 )
                             }
                             WeekChart(current.days, onTip = { tipText = it })
@@ -258,7 +259,7 @@ fun StatsScreen(
                         "最近阅读书目",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp),
+                        modifier = Modifier.padding(top = AnkeSpacing.sm),
                     )
                 }
                 if (bookStats.values.none { it.total_seconds > 0 }) {
@@ -271,7 +272,7 @@ fun StatsScreen(
                     }
                 } else {
                     item {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
                             items(books.filter { (bookStats[it.record.id]?.total_seconds ?: 0) > 0 }) { ui ->
                                 BookStatCard(
                                     ui = ui,
@@ -285,7 +286,7 @@ fun StatsScreen(
                         }
                     }
                 }
-                item { Spacer(Modifier.height(24.dp)) }
+                item { Spacer(Modifier.height(AnkeSpacing.xl)) }
             }
         }
     }
@@ -300,7 +301,7 @@ private fun StatCard(value: String, label: String, modifier: Modifier = Modifier
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Column(modifier = Modifier.padding(horizontal = AnkeSpacing.md, vertical = AnkeSpacing.md)) {
             Text(
                 value,
                 style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
@@ -311,7 +312,7 @@ private fun StatCard(value: String, label: String, modifier: Modifier = Modifier
                 label,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp),
+                        modifier = Modifier.padding(top = AnkeSpacing.xxs),
             )
         }
     }
@@ -331,7 +332,7 @@ private fun WeekChart(days: Map<String, DayEntry>, onTip: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(96.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
         verticalAlignment = Alignment.Bottom,
     ) {
         rows.forEachIndexed { i, (key, secs) ->
@@ -364,7 +365,7 @@ private fun WeekChart(days: Map<String, DayEntry>, onTip: (String) -> Unit) {
                 )
                 Box(
                     modifier = Modifier
-                        .padding(top = 4.dp)
+                        .padding(top = AnkeSpacing.xs)
                         .fillMaxWidth()
                         .height(72.dp),
                     contentAlignment = Alignment.BottomCenter,
@@ -408,7 +409,7 @@ private fun BookStatCard(
             MaterialTheme.colorScheme.surfaceContainerLow
         },
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
+        Column(modifier = Modifier.padding(AnkeSpacing.md)) {
             Text(
                 formatDuration(stats.total_seconds),
                 style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
@@ -418,7 +419,7 @@ private fun BookStatCard(
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier.padding(top = AnkeSpacing.xxs),
             )
             val parts = buildList {
                 if (ui.record.author.isNotBlank()) add(ui.record.author)
@@ -432,7 +433,7 @@ private fun BookStatCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier.padding(top = AnkeSpacing.xxs),
                 )
             }
         }

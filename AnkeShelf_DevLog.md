@@ -582,3 +582,13 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 结论/验证：…
 - 待办/注意：…
 ```
+
+### 9.10 设计令牌与组件规范（2026-08-08）
+
+- 目标：当前阶段最后的 UI 打磨 + 为下一阶段组件确立规范；新增 `ui/theme/Tokens.kt` 与规范文档 [docs/ANDROID_DESIGN_TOKENS.md](docs/ANDROID_DESIGN_TOKENS.md)。
+- 圆角盘点：将散落的 8/12/28/50/1.5/3dp 收敛为 `AnkeRadius`：small=8（按钮/分段/列表行/命中行/封面）、medium=12（卡片/输入框/下拉/色板卡）、large=16（对话框/底部弹层）、pill=全圆角（仅 FilterChip/历史 chip/徽标/色点）。`AnkeShapes` 已接入 `MaterialTheme(shapes=…)`。
+- 间距盘点：归一到 `AnkeSpacing`（xxs=2/xs=4/sm=8/md=12/lg=16/xl=24/xxl=32），清掉 6/10/14/20dp 等零散值（组件尺寸与一次性图表细节除外）。
+- 颜色语义：`MaterialTheme.ankeColors` 提供桌面 PALETTES 语义映射（bg→background/surface、text→onSurface、primary、accent→secondary、error）；组件禁止硬编码色值（NGA 显式彩色字与一次性高亮/图表细节除外）。
+- 组件改造：主按钮与 SegmentedButton 由 M3 默认胶囊改为 small；搜索输入框/下拉、下载与设置输入框统一 medium；搜索历史 chip/徽标保留 pill。
+- 主题同步检查（浅色 default-light）：书架背景 #ffffff、页头 #0066cc、封面底 #efefef；设置卡片 #f4f4f4、选中态 primaryContainer、描边 outlineVariant；阅读器背景 #ffffff。搜索页因 NGA 书数据问题未出结果（输入未生效），chip/结果卡颜色由同一 scheme 驱动，代码已对齐。
+- 提交：见后续记录。

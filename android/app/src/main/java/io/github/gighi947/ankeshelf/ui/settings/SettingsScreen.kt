@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -93,6 +92,8 @@ import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.ui.theme.PALETTES
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.ReaderPalette
+import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
+import io.github.gighi947.ankeshelf.ui.theme.AnkeRadius
 import io.github.gighi947.ankeshelf.ui.theme.effectivePalette
 import io.github.gighi947.ankeshelf.ui.theme.formatDuration
 import io.github.gighi947.ankeshelf.ui.theme.hexColor
@@ -240,7 +241,7 @@ fun SettingsScreen(
                     TopAppBar(
                         title = { AppBarTitle(tab.label) },
                         navigationIcon = {
-                            IconButton(onClick = { group = null }) {
+                            IconButton(shape = MaterialTheme.shapes.small, onClick = { group = null }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                             }
                         },
@@ -301,7 +302,7 @@ fun SettingsScreen(
             title = { Text("数据目录") },
             text = { Text(appPaths.root.absolutePath) },
             confirmButton = {
-                TextButton(onClick = { showPathDialog = false }) { Text("知道了") }
+                TextButton(shape = MaterialTheme.shapes.small, onClick = { showPathDialog = false }) { Text("知道了") }
             },
         )
     }
@@ -312,13 +313,13 @@ fun SettingsScreen(
             title = { Text("清除全部数据？") },
             text = { Text("将删除全部用户数据（书架、进度、标注、NGA 配置、统计）。此操作不可恢复。") },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(shape = MaterialTheme.shapes.small, onClick = {
                     showClearConfirm = false
                     showClearFinal = true
                 }) { Text("继续") }
             },
             dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) { Text("取消") }
+                TextButton(shape = MaterialTheme.shapes.small, onClick = { showClearConfirm = false }) { Text("取消") }
             },
         )
     }
@@ -328,13 +329,13 @@ fun SettingsScreen(
             title = { Text("最后确认") },
             text = { Text("确定清除全部数据并退出？此操作不可恢复。") },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(shape = MaterialTheme.shapes.small, onClick = {
                     showClearFinal = false
                     onClearAllData()
                 }) { Text("清除并退出") }
             },
             dismissButton = {
-                TextButton(onClick = { showClearFinal = false }) { Text("取消") }
+                TextButton(shape = MaterialTheme.shapes.small, onClick = { showClearFinal = false }) { Text("取消") }
             },
         )
     }
@@ -367,7 +368,7 @@ private fun PhoneGroupList(onBack: () -> Unit, onSelect: (String) -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(vertical = 4.dp),
+            contentPadding = PaddingValues(vertical = AnkeSpacing.xs),
         ) {
             items(TABS) { tab ->
                 ListItem(
@@ -474,7 +475,11 @@ private fun AppearancePanel(
                                 commit(SettingsPatch(theme_mode = "", theme = mode))
                             }
                         },
-                        shape = SegmentedButtonDefaults.itemShape(index = i, count = THEME_MODES.size),
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = i,
+                            count = THEME_MODES.size,
+                            baseShape = AnkeRadius.small,
+                        ),
                         label = { Text(label, maxLines = 1) },
                     )
                 }
@@ -490,8 +495,8 @@ private fun AppearancePanel(
         SettingsSection("预设色板") {
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
             ) {
                 PALETTES.forEach { p ->
                     val active = data.custom_bg == p.bg && data.custom_text == p.text &&
@@ -511,7 +516,7 @@ private fun AppearancePanel(
                         },
                     )
                 }
-                TextButton(onClick = {
+                TextButton(shape = MaterialTheme.shapes.small, onClick = {
                     commit(
                         SettingsPatch(
                             custom_bg = "",
@@ -558,7 +563,7 @@ private fun BrightnessSlider(data: SettingsData, commit: (SettingsPatch) -> Unit
         Text(
             "${(value * 100).roundToInt()}%",
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(start = 8.dp),
+            modifier = Modifier.padding(start = AnkeSpacing.sm),
         )
     }
 }
@@ -579,7 +584,7 @@ private fun PaletteCard(palette: ReaderPalette, active: Boolean, onClick: () -> 
         shape = MaterialTheme.shapes.medium,
         color = if (active) primary.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
+        Column(modifier = Modifier.padding(AnkeSpacing.md)) {
             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                 Dot(hexColor(palette.bg) ?: Color.Gray)
                 Dot(hexColor(palette.text) ?: Color.Gray)
@@ -588,7 +593,7 @@ private fun PaletteCard(palette: ReaderPalette, active: Boolean, onClick: () -> 
             Text(
                 palette.name,
                 style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier.padding(top = AnkeSpacing.sm),
                 maxLines = 1,
             )
         }
@@ -640,19 +645,19 @@ private fun ColorPickerSheet(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .padding(bottom = 32.dp),
+                .padding(bottom = AnkeSpacing.xxl),
     ) {
         Text("选择颜色", style = MaterialTheme.typography.titleMedium)
         Text(
             CUSTOM_COLOR_META.firstOrNull { it.first == key }?.third ?: "",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp),
+            modifier = Modifier.padding(top = AnkeSpacing.xxs),
         )
         FlowRow(
-            modifier = Modifier.padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(top = AnkeSpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
         ) {
             (COLOR_SWATCHES[key] ?: listOf("")).forEach { value ->
                 val selected = value.removePrefix("#") == current.removePrefix("#")
@@ -690,9 +695,9 @@ private fun ColorPickerSheet(
             }
         }
         Row(
-            modifier = Modifier.padding(top = 16.dp),
+            modifier = Modifier.padding(top = AnkeSpacing.lg),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
         ) {
             OutlinedTextField(
                 value = hex,
@@ -702,9 +707,10 @@ private fun ColorPickerSheet(
                 label = { Text("#RRGGBB") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
             )
             Button(
+            shape = MaterialTheme.shapes.small,
                 onClick = {
                     val normalized = if (hex.length == 3) {
                         hex.map { "$it$it" }.joinToString("")
@@ -720,7 +726,7 @@ private fun ColorPickerSheet(
         }
         TextButton(
             onClick = { onApply("") },
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = AnkeSpacing.xs),
         ) { Text("恢复跟随主题") }
     }
 }
@@ -746,7 +752,7 @@ private fun ThemePreview(data: SettingsData) {
         shape = MaterialTheme.shapes.medium,
         color = bg,
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(AnkeSpacing.lg)) {
             Text(
                 "安科书架",
                 style = MaterialTheme.typography.titleMedium,
@@ -756,7 +762,7 @@ private fun ThemePreview(data: SettingsData) {
                 previewText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = fg,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = AnkeSpacing.xs),
             )
         }
     }
@@ -804,7 +810,7 @@ private fun ReadingPanel(data: SettingsData, commit: (SettingsPatch) -> Unit, co
                 data.auto_dual == false -> LAYOUT_SINGLE
                 else -> LAYOUT_AUTO
             }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
                 listOf(
                     LAYOUT_SCROLL to "滚动阅读",
                     LAYOUT_AUTO to "自动双页",
@@ -853,7 +859,7 @@ private fun ReadingPanel(data: SettingsData, commit: (SettingsPatch) -> Unit, co
                 "滚动阅读不分页、整章滚动到底即一章；分页模式支持单页与横屏双页",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier.padding(top = AnkeSpacing.sm),
             )
         }
 
@@ -890,7 +896,7 @@ private fun RangeSliderRow(
         Text(
             format(current),
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(start = 8.dp),
+            modifier = Modifier.padding(start = AnkeSpacing.sm),
         )
     }
 }
@@ -1020,7 +1026,7 @@ private fun StatsPanel(statsGlobal: EnrichedStats, onOpenStats: () -> Unit) {
                 "全部书籍 · 已读 ${formatDuration(statsGlobal.total_seconds)}",
                 "默认汇总全部书目；进入详情后可按具体书目查看",
             ) {
-                Button(onClick = onOpenStats) { Text("详情") }
+                Button(shape = MaterialTheme.shapes.small, onClick = onOpenStats) { Text("详情") }
             }
         }
     }
@@ -1036,10 +1042,10 @@ private fun DataPanel(
     SettingsList {
         SettingsSection("数据") {
             SettingsRow("打开数据目录", "查看书架/进度/标注等 JSON 数据文件位置") {
-                Button(onClick = onShowPath) { Text("查看路径") }
+                Button(shape = MaterialTheme.shapes.small, onClick = onShowPath) { Text("查看路径") }
             }
             SettingsRow("清除全部数据", "删除书架、进度、标注、NGA 配置与统计") {
-                Button(onClick = onClearAll) { Text("清除") }
+                Button(shape = MaterialTheme.shapes.small, onClick = onClearAll) { Text("清除") }
             }
             Text(
                 "NGA 帖子的下载与导出请在书架「下载」页操作；卸载将删除全部用户数据。",
@@ -1051,7 +1057,7 @@ private fun DataPanel(
             version,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = AnkeSpacing.sm),
         )
     }
 }
@@ -1063,17 +1069,17 @@ private fun SettingsList(content: @Composable ColumnScope.() -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 12.dp,
-            bottom = 32.dp,
+            start = AnkeSpacing.lg,
+            end = AnkeSpacing.lg,
+            top = AnkeSpacing.md,
+            bottom = AnkeSpacing.xxl,
         ),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
     ) {
         item {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
             ) {
                 content()
             }
@@ -1090,13 +1096,13 @@ private fun SettingsSection(title: String, content: @Composable () -> Unit) {
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(AnkeSpacing.lg)) {
             Text(
                 title,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Column(modifier = Modifier.padding(top = 10.dp)) {
+            Column(modifier = Modifier.padding(top = AnkeSpacing.md)) {
                 content()
             }
         }
@@ -1112,9 +1118,9 @@ private fun SettingsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = AnkeSpacing.xs),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(label, style = MaterialTheme.typography.bodyLarge)
@@ -1123,7 +1129,7 @@ private fun SettingsRow(
                     desc,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 1.dp),
+                    modifier = Modifier.padding(top = AnkeSpacing.xxs),
                 )
             }
         }

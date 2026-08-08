@@ -205,6 +205,7 @@ fun AnkeShelfTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        shapes = AnkeShapes,
         content = content,
     )
 }

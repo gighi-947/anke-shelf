@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +36,7 @@ import coil3.compose.AsyncImage
 import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.service.BookUi
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
+import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -65,7 +65,7 @@ fun BookshelfScreen(
             TopAppBar(
                 title = { PageHeaderTitle("安科书架") },
                 actions = {
-                    TextButton(onClick = launchPicker) { Text("导入") }
+                    TextButton(shape = MaterialTheme.shapes.small, onClick = launchPicker) { Text("导入") }
                     TextButton(onClick = onSettings) { Text("设置") }
                 },
             )
@@ -76,7 +76,7 @@ fun BookshelfScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(24.dp),
+                    .padding(AnkeSpacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -85,16 +85,16 @@ fun BookshelfScreen(
                     "导入 EPUB 开始阅读",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+                    modifier = Modifier.padding(top = AnkeSpacing.sm, bottom = AnkeSpacing.lg),
                 )
-                Button(onClick = launchPicker) { Text("导入 EPUB") }
+                Button(shape = MaterialTheme.shapes.small, onClick = launchPicker) { Text("导入 EPUB") }
             }
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(110.dp),
-                contentPadding = PaddingValues(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(AnkeSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
@@ -119,7 +119,7 @@ private fun BookCard(ui: BookUi, coversDir: File, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(3f / 4f)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(MaterialTheme.shapes.small)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center,
         ) {
@@ -142,7 +142,7 @@ private fun BookCard(ui: BookUi, coversDir: File, onClick: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier = Modifier.padding(top = AnkeSpacing.xs),
         )
         Text(
             ui.record.author.ifBlank { "未知作者" },

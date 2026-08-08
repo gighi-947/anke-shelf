@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -77,6 +76,8 @@ import io.github.gighi947.ankeshelf.data.SearchResponse
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookUi
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
+import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
+import io.github.gighi947.ankeshelf.ui.theme.AnkeRadius
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -192,7 +193,7 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = AnkeSpacing.lg),
         ) {
             if (books.isEmpty()) {
                 EmptyHint("书架为空，请先在书架页导入书籍", Icons.Filled.SearchOff)
@@ -214,7 +215,7 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.medium,
                 )
                 ExposedDropdownMenu(
                     expanded = menuExpanded,
@@ -268,16 +269,16 @@ fun SearchScreen(
                 }),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
-                shape = RoundedCornerShape(28.dp),
+                    .padding(top = AnkeSpacing.sm),
+                shape = MaterialTheme.shapes.medium,
             )
 
             // 选项：大小写敏感 / 全词匹配。
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(top = AnkeSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
             ) {
                 FilterChip(
                     selected = caseSensitive,
@@ -298,20 +299,20 @@ fun SearchScreen(
                 exit = fadeOut(tween(100)) + scaleOut(targetScale = 0.96f, animationSpec = tween(120)),
             ) {
                 FlowRow(
-                    modifier = Modifier.padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = AnkeSpacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
                 ) {
                     history.forEach { item ->
                         Surface(
-                            shape = RoundedCornerShape(50),
+                        shape = AnkeRadius.pill,
                             color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier
                                 .clickable {
                                     query = item
                                     showHistory = false
                                 }
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                .padding(horizontal = AnkeSpacing.md, vertical = AnkeSpacing.sm),
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -320,7 +321,7 @@ fun SearchScreen(
                                     modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
-                                Spacer(Modifier.width(6.dp))
+                                Spacer(Modifier.width(AnkeSpacing.sm))
                                 Text(item, style = MaterialTheme.typography.labelMedium)
                             }
                         }
@@ -334,7 +335,7 @@ fun SearchScreen(
                     status,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.padding(top = AnkeSpacing.sm),
                 )
             } else if (response != null && response!!.ready) {
                 val r = response!!
@@ -346,14 +347,14 @@ fun SearchScreen(
                             "（每章最多显示 $PER_CHAPTER 条，可展开更多）",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                        modifier = Modifier.padding(top = AnkeSpacing.sm, bottom = AnkeSpacing.xs),
                     )
                 }
             }
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
             ) {
                 items(response?.results ?: emptyList(), key = { it.chapter_index }) { group ->
                     SearchGroupCard(
@@ -433,7 +434,7 @@ private fun SearchGroupCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = AnkeSpacing.md, vertical = AnkeSpacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
@@ -451,22 +452,22 @@ private fun SearchGroupCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
-                        .padding(start = 6.dp),
+                    .padding(start = AnkeSpacing.sm),
                 )
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = AnkeRadius.pill,
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 ) {
                     Text(
                         "${group.chapter_hits} 处",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier.padding(horizontal = AnkeSpacing.sm, vertical = AnkeSpacing.xxs),
                     )
                 }
             }
             AnimatedVisibility(visible = isExpanded) {
-                Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp)) {
+                Column(modifier = Modifier.padding(start = AnkeSpacing.md, end = AnkeSpacing.md, bottom = AnkeSpacing.sm)) {
                     group.hits.forEach { hit ->
                         Text(
                             text = highlightSnippet(hit.snippet, query),
@@ -475,7 +476,7 @@ private fun SearchGroupCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onHit(hit) }
-                                .padding(vertical = 6.dp, horizontal = 8.dp)
+                                .padding(vertical = AnkeSpacing.sm, horizontal = AnkeSpacing.sm)
                                 .background(
                                     MaterialTheme.colorScheme.surfaceContainerHigh,
                                     MaterialTheme.shapes.small,
@@ -487,7 +488,7 @@ private fun SearchGroupCard(
                         TextButton(
                             onClick = onMore,
                             enabled = !moreLoading,
-                            modifier = Modifier.padding(top = 2.dp),
+                            modifier = Modifier.padding(top = AnkeSpacing.xxs),
                         ) {
                             Text(
                                 when {
@@ -535,7 +536,7 @@ private fun EmptyHint(text: String, icon: androidx.compose.ui.graphics.vector.Im
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(AnkeSpacing.xl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -549,7 +550,7 @@ private fun EmptyHint(text: String, icon: androidx.compose.ui.graphics.vector.Im
             text,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = AnkeSpacing.sm),
         )
     }
 }

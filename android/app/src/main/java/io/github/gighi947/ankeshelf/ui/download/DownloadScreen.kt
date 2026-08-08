@@ -45,6 +45,7 @@ import io.github.gighi947.ankeshelf.service.NgaProgress
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
+import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -104,20 +105,21 @@ fun DownloadScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
-            .padding(16.dp),
+            .padding(AnkeSpacing.lg),
     ) {
         PageHeaderTitle("NGA 下载")
 
         Text(
             "登录配置（仅存本机）",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 12.dp),
+            modifier = Modifier.padding(top = AnkeSpacing.md),
         )
         OutlinedTextField(
             value = uid,
             onValueChange = { uid = it },
             label = { Text("ngaPassportUid") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
@@ -125,26 +127,28 @@ fun DownloadScreen(
             onValueChange = { cid = it },
             label = { Text("ngaPassportCid") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = AnkeSpacing.sm),
         )
         OutlinedTextField(
             value = ua,
             onValueChange = { ua = it },
             label = { Text("User-Agent（留空用默认）") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = AnkeSpacing.sm),
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(top = AnkeSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
         ) {
-            Button(onClick = {
+            Button(shape = MaterialTheme.shapes.small, onClick = {
                 container.ngaConfig.save(
                     NgaConfigPatch(
                         uid = uid,
@@ -154,7 +158,7 @@ fun DownloadScreen(
                 )
                 configured = container.ngaConfig.load().configured
             }) { Text("保存配置") }
-            TextButton(onClick = {
+            TextButton(shape = MaterialTheme.shapes.small, onClick = {
                 container.ngaConfig.clear()
                 uid = ""
                 cid = ""
@@ -176,13 +180,14 @@ fun DownloadScreen(
         Text(
             "下载 / 更新",
             style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(top = 16.dp),
+            modifier = Modifier.padding(top = AnkeSpacing.lg),
         )
         OutlinedTextField(
             value = tidText,
             onValueChange = { tidText = it.filter { c -> c.isDigit() } },
             label = { Text("帖子 tid") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier.fillMaxWidth(),
         )
         OutlinedTextField(
@@ -190,32 +195,35 @@ fun DownloadScreen(
             onValueChange = { authorIdText = it.filter { c -> c.isDigit() } },
             label = { Text("只看楼主 uid（0=全部）") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = AnkeSpacing.sm),
         )
         OutlinedTextField(
             value = maxFloorsText,
             onValueChange = { maxFloorsText = it.filter { c -> c.isDigit() } },
             label = { Text("楼层上限（0=不限）") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = AnkeSpacing.sm),
         )
         OutlinedTextField(
             value = perChapterText,
             onValueChange = { perChapterText = it.filter { c -> c.isDigit() } },
             label = { Text("每章楼层数") },
             singleLine = true,
+            shape = MaterialTheme.shapes.medium,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = AnkeSpacing.sm),
         )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
+                .padding(top = AnkeSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("主题：")
@@ -224,7 +232,7 @@ fun DownloadScreen(
             RadioButton(selected = themeDark, onClick = { themeDark = true })
             Text("深色")
             Spacer(modifier = Modifier.height(0.dp))
-            Text("图片：", modifier = Modifier.padding(start = 16.dp))
+            Text("图片：", modifier = Modifier.padding(start = AnkeSpacing.lg))
             RadioButton(selected = imageOnline, onClick = { imageOnline = true })
             Text("在线")
             RadioButton(selected = !imageOnline, onClick = { imageOnline = false })
@@ -234,10 +242,11 @@ fun DownloadScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(top = AnkeSpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
         ) {
             Button(
+            shape = MaterialTheme.shapes.small,
                 enabled = tid > 0 && !NgaServiceStatus.running,
                 onClick = {
                     val intent = Intent(context, NgaDownloadService::class.java).apply {
@@ -258,6 +267,7 @@ fun DownloadScreen(
             ) { Text(if (existing != null) "重新下载" else "开始下载") }
             if (existing != null) {
                 Button(
+                shape = MaterialTheme.shapes.small,
                     enabled = !NgaServiceStatus.running,
                     onClick = {
                         val intent = Intent(context, NgaDownloadService::class.java).apply {
@@ -276,7 +286,7 @@ fun DownloadScreen(
                 ) { Text("检查更新") }
             }
             if (NgaServiceStatus.running) {
-                Button(onClick = {
+                Button(shape = MaterialTheme.shapes.small, onClick = {
                     context.startService(
                         Intent(context, NgaDownloadService::class.java)
                             .setAction(NgaDownloadService.ACTION_CANCEL),
@@ -286,7 +296,7 @@ fun DownloadScreen(
         }
 
         if (NgaServiceStatus.running || status.stage == "done" || status.stage == "error" || status.stage == "cancelled") {
-            Column(modifier = Modifier.padding(top = 16.dp)) {
+            Column(modifier = Modifier.padding(top = AnkeSpacing.lg)) {
                 Text(
                     when (status.stage) {
                         "pages" -> status.detail
@@ -309,7 +319,7 @@ fun DownloadScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp),
+                            .padding(top = AnkeSpacing.sm),
                     )
                 }
             }
@@ -336,7 +346,7 @@ private fun NgaBooksExportSection(
     Text(
         "已下载 NGA 书",
         style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(top = 16.dp),
+        modifier = Modifier.padding(top = AnkeSpacing.lg),
     )
     books.forEach { book ->
         val nativeDir = java.io.File(book.path)
@@ -367,7 +377,7 @@ private fun NgaBooksExportSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 6.dp),
+                .padding(top = AnkeSpacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -376,15 +386,15 @@ private fun NgaBooksExportSection(
                 maxLines = 1,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = {
+            TextButton(shape = MaterialTheme.shapes.small, onClick = {
                 val meta = NgaExport.metaOf(nativeDir) ?: return@TextButton
                 epubLauncher.launch(safeExportName(meta.title) + ".epub")
             }) { Text("EPUB") }
-            TextButton(onClick = {
+            TextButton(shape = MaterialTheme.shapes.small, onClick = {
                 val meta = NgaExport.metaOf(nativeDir) ?: return@TextButton
                 mdLauncher.launch(safeExportName(meta.title) + ".md")
             }) { Text("MD") }
-            TextButton(onClick = {
+            TextButton(shape = MaterialTheme.shapes.small, onClick = {
                 val meta = NgaExport.metaOf(nativeDir) ?: return@TextButton
                 val intent = Intent(context, NgaDownloadService::class.java).apply {
                     action = NgaDownloadService.ACTION_START
