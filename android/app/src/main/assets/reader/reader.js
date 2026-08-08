@@ -498,6 +498,7 @@
     };
     var imgs = document.querySelectorAll('img');
     for (var i = 0; i < imgs.length; i++) {
+      imgs[i].referrerPolicy = 'no-referrer';
       imgs[i].addEventListener('load', onImgChange);
       imgs[i].addEventListener('error', onImgChange);
     }
@@ -704,13 +705,6 @@
     // （shouldOverrideUrlLoading 虽拦截，但导航尝试可能重置阅读状态）。
     document.addEventListener('click', function (e) {
       var t = e.target;
-      var img = t && t.closest ? t.closest('img') : null;
-      if (img) {
-        e.preventDefault();
-        e.stopPropagation();
-        openImageViewer(img.currentSrc || img.src || '');
-        return;
-      }
       var mark = t && t.closest ? t.closest('mark.hl-mark') : null;
       if (mark) {
         e.preventDefault();
@@ -770,11 +764,23 @@
         closeImageViewer();
       }
     });
-    img.addEventListener('dblclick', function () {
-      imageViewerState.scale = imageViewerState.scale === 1 ? 2 : 1;
-      imageViewerState.panX = 0;
-      imageViewerState.panY = 0;
-      applyImageViewerTransform(img);
+    // 单击关闭、双击缩放：用计时器区分，避免双击时先触发关闭。
+    var clickTimer = null;
+    img.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (clickTimer) {
+        clearTimeout(clickTimer);
+        clickTimer = null;
+        imageViewerState.scale = imageViewerState.scale === 1 ? 2 : 1;
+        imageViewerState.panX = 0;
+        imageViewerState.panY = 0;
+        applyImageViewerTransform(img);
+        return;
+      }
+      clickTimer = setTimeout(function () {
+        clickTimer = null;
+        closeImageViewer();
+      }, 260);
     });
 
     var pointers = {};
@@ -858,6 +864,7 @@
     var img = document.createElement('img');
     img.id = 'lightbox-img';
     img.alt = '';
+    img.referrerPolicy = 'no-referrer';
     var close = document.createElement('button');
     close.className = 'lightbox-close';
     close.textContent = '\u00d7';
@@ -882,6 +889,18 @@
     ov.classList.add('open');
     imageViewerState.open = true;
     try { AnkeReaderBridge.setImageLightbox(true); } catch (e) { /* ignore */ }
+  }
+
+  function openImageAt(x, y) {
+    try {
+      var el = document.elementFromPoint(x, y);
+      var img = el && el.closest ? el.closest('img') : null;
+      if (img) {
+        openImageViewer(img.currentSrc || img.src || '');
+        return 'true';
+      }
+    } catch (e) { /* ignore */ }
+    return 'false';
   }
 
   function closeImageViewer() {
@@ -986,6 +1005,7 @@
 
   window.AnkeReader = {
     openImage: openImageViewer,
+    openImageAt: openImageAt,
     closeImage: closeImageViewer,
     isImageOpen: function () { return imageViewerState.open; },
     applyAnnotations: applyAnnotations,

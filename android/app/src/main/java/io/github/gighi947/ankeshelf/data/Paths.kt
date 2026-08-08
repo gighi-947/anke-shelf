@@ -16,12 +16,14 @@ class AppPaths(val root: File) {
     val statisticsFile: File get() = File(root, "statistics.json")
     val searchHistoryFile: File get() = File(root, "search_history.json")
     val coversDir: File get() = File(root, "covers")
+    val fontsDir: File get() = File(root, "fonts")
     val ngaLibraryDir: File get() = File(root, "nga_library")
     val ngaConfigFile: File get() = File(root, "nga_config.ini")
 
     fun ensure() {
         root.mkdirs()
         coversDir.mkdirs()
+        fontsDir.mkdirs()
         ngaLibraryDir.mkdirs()
     }
 

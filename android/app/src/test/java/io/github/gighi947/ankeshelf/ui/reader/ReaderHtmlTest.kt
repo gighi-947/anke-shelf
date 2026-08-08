@@ -3,6 +3,7 @@ package io.github.gighi947.ankeshelf.ui.reader
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.ui.theme.readerTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -40,5 +41,30 @@ class ReaderHtmlTest {
         assertTrue(html.contains("src=\"reader.js\""))
         assertTrue(html.contains("<div id=\"paged-scroll\">"))
         assertTrue(html.contains("<p>你好</p>"))
+    }
+
+    @Test
+    fun buildWrapperInjectsCustomFont() {
+        val parts = extractReaderParts("<body><p>你好</p></body>")
+        val html = buildReaderHtml(
+            parts,
+            readerTheme(SettingsData(theme = "light")),
+            SettingsData(theme = "light", custom_font = "my font.ttf"),
+        )
+        assertTrue(html.contains("@font-face"))
+        assertTrue(html.contains("'AnkeCustom'"))
+        assertTrue(html.contains("file:///android_fonts/my%20font.ttf"))
+    }
+
+    @Test
+    fun buildWrapperSystemFontUsesSystemStack() {
+        val parts = extractReaderParts("<body><p>你好</p></body>")
+        val html = buildReaderHtml(
+            parts,
+            readerTheme(SettingsData(theme = "light")),
+            SettingsData(theme = "light", custom_font = "system"),
+        )
+        assertTrue(html.contains("system-ui"))
+        assertFalse(html.contains("@font-face"))
     }
 }

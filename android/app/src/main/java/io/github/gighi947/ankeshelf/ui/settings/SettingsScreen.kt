@@ -1,6 +1,7 @@
 package io.github.gighi947.ankeshelf.ui.settings
 
 import android.content.Context
+import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -104,6 +105,7 @@ import io.github.gighi947.ankeshelf.service.BookUi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import java.io.File
 import kotlin.math.roundToInt
 
 private data class SettingsTab(val id: String, val label: String, val icon: ImageVector)
@@ -228,6 +230,7 @@ fun SettingsScreen(
                         commit = ::commit,
                         books = books,
                         annotations = annotations,
+                        fontsDir = appPaths.fontsDir,
                         onPickColor = { sheetKey = it },
                         context = context,
                         statsGlobal = statsGlobal,
@@ -268,6 +271,7 @@ fun SettingsScreen(
                         commit = ::commit,
                         books = books,
                         annotations = annotations,
+                        fontsDir = appPaths.fontsDir,
                         onPickColor = { sheetKey = it },
                         context = context,
                         statsGlobal = statsGlobal,
@@ -433,6 +437,7 @@ private fun GroupContent(
     commit: (SettingsPatch) -> Unit,
     books: List<BookUi>,
     annotations: AnnotationStore,
+    fontsDir: File,
     onPickColor: (String) -> Unit,
     context: Context,
     statsGlobal: EnrichedStats,
@@ -448,7 +453,7 @@ private fun GroupContent(
             onPickColor = onPickColor,
             context = context,
         )
-        "reading" -> ReadingPanel(data, commit, context)
+        "reading" -> ReadingPanel(data, commit, context, fontsDir)
         "gestures" -> GesturesPanel(data, commit, context)
         "stats" -> StatsPanel(statsGlobal, onOpenStats)
         "data" -> DataPanel(
@@ -808,7 +813,38 @@ private fun ThemePreview(data: SettingsData) {
 /* ---------------- 阅读 ---------------- */
 
 @Composable
-private fun ReadingPanel(data: SettingsData, commit: (SettingsPatch) -> Unit, context: Context) {
+private fun ReadingPanel(
+    data: SettingsData,
+    commit: (SettingsPatch) -> Unit,
+    context: Context,
+    fontsDir: File,
+) {
+    var fontsTick by remember { mutableIntStateOf(0) }
+    val importedFonts = remember(fontsTick) {
+        fontsDir.listFiles()
+            ?.filter { it.extension.equals("ttf", true) || it.extension.equals("otf", true) }
+            ?.sortedBy { it.name }
+            ?: emptyList()
+    }
+    val fontLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let {
+            val displayName = queryDisplayName(context.contentResolver, it)
+                ?: "font-${System.currentTimeMillis()}.ttf"
+            val safeName = displayName.replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_").ifBlank { "font.ttf" }
+            val target = File(fontsDir, safeName)
+            try {
+                context.contentResolver.openInputStream(it)?.use { input ->
+                    target.outputStream().use { out -> input.copyTo(out) }
+                }
+                commit(SettingsPatch(custom_font = target.name))
+                fontsTick++
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     SettingsList {
         SettingsSection("排版") {
             SettingsRow("字号", "正文显示大小") {
@@ -837,6 +873,51 @@ private fun ReadingPanel(data: SettingsData, commit: (SettingsPatch) -> Unit, co
                     format = { "${it.roundToInt()}%" },
                     onChangeFinished = { commit(SettingsPatch(page_width = (it / 100).toDouble())) },
                 )
+            }
+        }
+
+        SettingsSection("正文字体") {
+            SettingsRow(
+                "当前字体",
+                when {
+                    data.custom_font.isBlank() || data.custom_font.startsWith("sys:") -> "内置霞鹜文楷"
+                    data.custom_font == "system" -> "系统默认"
+                    else -> data.custom_font
+                },
+            ) {
+                TextButton(shape = MaterialTheme.shapes.small, onClick = {
+                    fontLauncher.launch(
+                        arrayOf(
+                            "font/ttf",
+                            "font/otf",
+                            "application/x-font-ttf",
+                            "application/octet-stream",
+                        ),
+                    )
+                }) { Text("导入字体…") }
+            }
+            FlowRow(
+                modifier = Modifier.padding(top = AnkeSpacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+            ) {
+                FilterChip(
+                    selected = data.custom_font.isBlank() || data.custom_font.startsWith("sys:"),
+                    onClick = { commit(SettingsPatch(custom_font = "")) },
+                    label = { Text("内置霞鹜文楷") },
+                )
+                FilterChip(
+                    selected = data.custom_font == "system",
+                    onClick = { commit(SettingsPatch(custom_font = "system")) },
+                    label = { Text("系统默认") },
+                )
+                importedFonts.forEach { f ->
+                    FilterChip(
+                        selected = data.custom_font == f.name,
+                        onClick = { commit(SettingsPatch(custom_font = f.name)) },
+                        label = { Text(f.nameWithoutExtension, maxLines = 1) },
+                    )
+                }
             }
         }
 
@@ -1209,4 +1290,15 @@ private fun SettingsRow(
             control()
         }
     }
+}
+
+private fun queryDisplayName(
+    resolver: android.content.ContentResolver,
+    uri: android.net.Uri,
+): String? = try {
+    resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+        if (c.moveToFirst()) c.getString(0) else null
+    }
+} catch (_: Exception) {
+    null
 }

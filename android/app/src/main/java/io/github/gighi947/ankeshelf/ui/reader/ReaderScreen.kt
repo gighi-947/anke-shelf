@@ -11,8 +11,12 @@ import android.widget.Toast
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.ValueCallback
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -84,6 +88,7 @@ import androidx.core.view.ViewCompat
 import io.github.gighi947.ankeshelf.BuildConfig
 import io.github.gighi947.ankeshelf.data.AnnotationPatch
 import io.github.gighi947.ankeshelf.data.AnnotationStore
+import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
@@ -91,6 +96,9 @@ import io.github.gighi947.ankeshelf.service.BookSession
 import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.readerTheme
+import java.io.File
+import java.io.FileInputStream
+import java.net.URLDecoder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
@@ -470,9 +478,13 @@ fun ReaderScreen(
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).apply {
+                    val fontsDir = File(ctx.filesDir, "AnkeShelf/fonts")
                     if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
                     settings.javaScriptEnabled = true
                     settings.setAllowFileAccess(false)
+                    // file:// 壳加载 https 图片属混合内容，显式放行；UA 用 NGA 默认，避免防盗链拦截。
+                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    settings.userAgentString = NgaConfig.DEFAULT_UA
                     setBackgroundColor(Color.parseColor(themeRef.value.background))
                     addJavascriptInterface(bridge, "AnkeReaderBridge")
                     webChromeClient = object : WebChromeClient() {
@@ -482,6 +494,29 @@ fun ReaderScreen(
                         }
                     }
                     webViewClient = object : WebViewClient() {
+                        override fun shouldInterceptRequest(
+                            view: WebView,
+                            request: WebResourceRequest,
+                        ): WebResourceResponse? {
+                            val url = request.url.toString()
+                            if (url.startsWith("file:///android_fonts/")) {
+                                val name = URLDecoder.decode(
+                                    url.removePrefix("file:///android_fonts/"),
+                                    "UTF-8",
+                                )
+                                val f = File(fontsDir, name)
+                                if (f.isFile) {
+                                    val mime = if (name.endsWith(".otf", ignoreCase = true)) {
+                                        "font/otf"
+                                    } else {
+                                        "font/ttf"
+                                    }
+                                    return WebResourceResponse(mime, null, FileInputStream(f))
+                                }
+                            }
+                            return super.shouldInterceptRequest(view, request)
+                        }
+
                         override fun shouldOverrideUrlLoading(
                             view: WebView,
                             request: android.webkit.WebResourceRequest?,
@@ -545,14 +580,41 @@ fun ReaderScreen(
                     }
                     var downX = 0f
                     var downY = 0f
+                    var longPressTask: Runnable? = null
                     setOnTouchListener { _, ev ->
                         when (ev.action) {
                             MotionEvent.ACTION_DOWN -> {
                                 downX = ev.x
                                 downY = ev.y
+                                val x = ev.x
+                                val y = ev.y
+                                val density = resources.displayMetrics.density
+                                val task = Runnable {
+                                    longPressTask = null
+                                    // 长按约 450ms：命中图片则打开查看器并取消系统长按；文字长按放行给文本选择。
+                                    evaluateJavascript(
+                                        "AnkeReader.openImageAt(${x / density},${y / density});",
+                                        object : ValueCallback<String> {
+                                            override fun onReceiveValue(value: String?) {
+                                                if (value == "true") cancelLongPress()
+                                            }
+                                        },
+                                    )
+                                }
+                                longPressTask = task
+                                postDelayed(task, 450)
+                            }
+
+                            MotionEvent.ACTION_MOVE -> {
+                                if (abs(ev.x - downX) + abs(ev.y - downY) > 24f) {
+                                    longPressTask?.let { removeCallbacks(it) }
+                                    longPressTask = null
+                                }
                             }
 
                             MotionEvent.ACTION_UP -> {
+                                longPressTask?.let { removeCallbacks(it) }
+                                longPressTask = null
                                 val dx = ev.x - downX
                                 val dy = ev.y - downY
                                 val isSwipe = pagedRef.value && abs(dx) >= 60f && abs(dx) >= abs(dy) * 1.2f

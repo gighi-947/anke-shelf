@@ -2,6 +2,7 @@ package io.github.gighi947.ankeshelf.ui.reader
 
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
+import java.net.URLEncoder
 
 /** 章节 HTML 的可渲染部分：<body> 内容 + <head> 里的样式块。 */
 data class ReaderHtmlParts(
@@ -44,6 +45,26 @@ fun buildReaderHtml(
     theme: ReaderThemeColors,
     settings: SettingsData,
 ): String {
+    // 正文字体："" / "sys:*" = 内置 LXGW（reader.css 默认栈）；
+    // "system" = 系统默认；其余 = 已导入字体文件名（经 shouldInterceptRequest 提供 file:///android_fonts/）。
+    val customFont = settings.custom_font
+    val fontFace = if (
+        customFont.isNotBlank() &&
+        !customFont.startsWith("sys:") &&
+        customFont != "system"
+    ) {
+        val encoded = URLEncoder.encode(customFont, "UTF-8").replace("+", "%20")
+        "@font-face{font-family:'AnkeCustom';src:url('file:///android_fonts/$encoded');}"
+    } else {
+        ""
+    }
+    val fontVar = when {
+        customFont == "system" ->
+            "--reader-font-family:system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;"
+        fontFace.isNotEmpty() ->
+            "--reader-font-family:'AnkeCustom','LXGW WenKai','Noto Sans CJK SC','PingFang SC','Microsoft YaHei',sans-serif;"
+        else -> ""
+    }
     val css = buildString {
         append(
             ":root{" +
@@ -52,8 +73,10 @@ fun buildReaderHtml(
                 "--reader-font-size:${settings.font_size}px;" +
                 "--reader-line-height:${settings.line_height};" +
                 "--reader-margin:${settings.margin_px}px;--reader-gap:${settings.gap_px}px;" +
+                fontVar +
                 "}",
         )
+        if (fontFace.isNotEmpty()) append(fontFace)
         if (parts.headStyles.isNotBlank()) {
             append("\n").append(parts.headStyles)
         }

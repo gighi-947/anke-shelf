@@ -638,3 +638,17 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
   - 桌面 v1.2.0 特性对照表：除“自定义字体导入”“桌面→安卓数据迁移”外全部对齐；辅助阅读与最近阅读横条按用户决策移除/替代。
   - 冷启动 TotalTime 4563ms；阅读器 TOTAL PSS 182MB（<300MB ✅）；快速翻页 10 次无错误/崩溃。
 - 提交：`d1e1074`。
+
+### 9.16 图片长按放大/加载/退出 + 自定义字体导入（2026-08-08）
+
+- **图片放大交互**：
+  - 打开方式由“点击”改为“长按约 450ms”：Kotlin 触摸层计时，命中图片时调 JS `openImageAt(x,y)` 并 `cancelLongPress()`（避免系统长按菜单）；文字长按放行给文本选择，不影响标注。
+  - 加载：WebView 显式允许混合内容（file:// 壳加载 https 图）、正文与查看器图片设 `referrerPolicy='no-referrer'`、UA 用 NGA 默认，规避防盗链。
+  - 退出：单击图片也关闭（260ms 计时区分双击缩放）、点空白/×/系统返回关闭。
+  - 说明：模拟器无法解析 img.nga.cn（DNS/网络环境问题，非代码），图片加载需在真机/可用网络环境验证。
+- **自定义字体导入**：
+  - 设置 → 阅读 → 正文字体：内置霞鹜文楷 / 系统默认 / 已导入字体（FilterChip 单选）+ “导入字体…”（SAF 选 .ttf/.otf，复制到 `filesDir/AnkeShelf/fonts/`）。
+  - 阅读器：`buildReaderHtml` 注入 `@font-face url(file:///android_fonts/<name>)`；WebView `shouldInterceptRequest` 映射到应用私有字体目录（不开启 file access）。
+  - `custom_font` 语义：空/`sys:*`=内置，`system`=系统默认，其他=导入文件名（桌面旧值兼容）。
+  - 验证：设置选择 lxgw-test.ttf 落库；打开阅读器渲染正常、无字体加载错误；JVM 单测新增字体注入两条。
+- 提交：见后续记录。
