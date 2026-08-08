@@ -620,4 +620,4 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
   2. 高亮包装会替换文本节点，旧 `textCtx` 引用失效导致再次选区返回 null；`applyAnnotations` 末尾重建 `state.textCtx = TextPos.build(document)`。
   3. adb 长按选词在模拟器 WebView 上不可靠，验证时用临时程序化选区 hook 打通全链路，验证后已移除。
 - 验证（模拟器）：程序化选区 → 操作条出现 → 加黄色高亮（annotations.json 落库 + 页面渲染黄色 mark）→ 点高亮弹层 → 笔记保存成功；图片查看器打开（全屏暗色遮罩）确认；设置-数据导出标注入口确认；清理测试数据后无自动操作条。
-- 提交：见后续记录。
+- 提交：`8344fad`。
