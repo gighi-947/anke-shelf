@@ -119,6 +119,7 @@ class NgaDownloadService : Service() {
             NgaServiceStatus.detail = p.detail
             updateNotification(p)
         }
+        var finalText = "任务结束"
         try {
             if (action == "update") {
                 // 更新默认参数回填：UI 未传时用最近一次下载设置 / meta（对齐桌面 update_defaults）。
@@ -143,25 +144,50 @@ class NgaDownloadService : Service() {
                 NgaServiceStatus.detail = if (added > 0) "已更新 $added 楼" else "已是最新"
                 NgaServiceStatus.stage = "done"
                 NgaServiceStatus.bookId = bookId
+                finalText = NgaServiceStatus.detail
             } else {
                 val newId = downloader.download(params)
                 NgaServiceStatus.bookId = newId
                 NgaServiceStatus.stage = "done"
                 NgaServiceStatus.detail = "下载完成"
+                finalText = "下载完成"
             }
             NgaServiceStatus.error = ""
         } catch (e: NgaCancelled) {
             NgaServiceStatus.stage = "cancelled"
             NgaServiceStatus.detail = "已取消"
+            finalText = "已取消"
         } catch (e: Exception) {
             NgaServiceStatus.stage = "error"
             NgaServiceStatus.error = e.message ?: "下载失败"
             NgaServiceStatus.detail = ""
+            finalText = "任务失败：${NgaServiceStatus.error}"
         } finally {
             NgaServiceStatus.running = false
             stopForeground(STOP_FOREGROUND_REMOVE)
+            postFinalNotification(finalText)
             stopSelf()
         }
+    }
+
+    /** 任务结束后保留一条非持续通知，明确提示“已是最新 / 已更新 X 楼 / 失败”。 */
+    private fun postFinalNotification(text: String) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            2,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("安科书架 · NGA 任务")
+            .setContentText(text)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentIntent(contentIntent)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .build()
+        manager.notify(NOTIFICATION_ID, notification)
     }
 
     private fun startAsForeground() {

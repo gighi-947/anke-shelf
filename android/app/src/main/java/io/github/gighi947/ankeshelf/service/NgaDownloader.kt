@@ -166,7 +166,7 @@ class NgaDownloader(
         if (!NativeBookWriter.isNativeDir(nativeDir)) {
             throw NgaHttpException("仅支持更新 NGA 下载的原生书")
         }
-        val folderName = nativeDir.parentFile.name
+        val folderName = nativeDir.parentFile?.name ?: ""
         return updateFolder(folderName, params.tid, params.authorId, params)
     }
 
@@ -189,17 +189,13 @@ class NgaDownloader(
             userAgent = cfg.ua,
             baseUrl = cfg.baseUrl,
         )
-        val startPage = state.max_page
+        val startPage = state.max_page.coerceAtLeast(1)
         progress("pages", startPage, startPage, "正在检查更新…")
-        val first = client.fetchPageFull(tid, startPage.coerceAtLeast(1), authorId)
+        val first = client.fetchPageFull(tid, startPage, authorId)
         if (first.code != 0) {
             throw NgaHttpException("NGA 返回代码不为 0：${first.code} ${first.msg}")
         }
         val totalPage = first.totalPage.coerceAtLeast(1)
-        if (totalPage <= startPage) {
-            progress("done", totalPage, totalPage, "已是最新")
-            return 0
-        }
         val newFloors = mutableListOf<NativeFloor>()
         newFloors.addAll(first.floors)
         var lastPage = totalPage
@@ -247,7 +243,7 @@ class NgaDownloader(
         } catch (_: Exception) {
             return null
         }
-        val folderName = nativeDir.parentFile.name
+        val folderName = nativeDir.parentFile?.name ?: ""
         val state = try {
             loadState(folderName, meta.tid, meta.author_id)
         } catch (_: Exception) {

@@ -6,8 +6,8 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,7 +43,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -56,7 +55,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +68,8 @@ import io.github.gighi947.ankeshelf.service.NgaDownloadService
 import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.BookUi
 import io.github.gighi947.ankeshelf.service.safeExportName
+import io.github.gighi947.ankeshelf.ui.components.ActionIcon
+import io.github.gighi947.ankeshelf.ui.components.BookManagementOverlay
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +88,8 @@ fun BookshelfScreen(
     onImport: (Uri) -> Unit,
     onOpenDownload: () -> Unit,
     onOpenGuide: () -> Unit,
+    onRename: (BookRecord, String) -> Unit,
+    onDelete: (BookRecord) -> Unit,
     onOpen: (BookRecord) -> Unit,
     shelfView: String,
     onShelfViewChange: (String) -> Unit,
@@ -116,6 +118,7 @@ fun BookshelfScreen(
     }
     var sortMenu by remember { mutableStateOf(false) }
     var importMenu by remember { mutableStateOf(false) }
+    var manageBook by remember { mutableStateOf<BookRecord?>(null) }
     val sortedBooks = remember(books, sort) {
         when (sort) {
             "added" -> books.sortedByDescending { it.record.added_at }
@@ -283,6 +286,7 @@ fun BookshelfScreen(
                             ui = ui,
                             coversDir = coversDir,
                             onClick = { onOpen(ui.record) },
+                            onLongPress = { manageBook = it },
                             onUpdate = { rec ->
                                 val intent = Intent(context, NgaDownloadService::class.java).apply {
                                     action = NgaDownloadService.ACTION_START
@@ -320,6 +324,7 @@ fun BookshelfScreen(
                             context = context,
                             container = container,
                             onClick = { onOpen(ui.record) },
+                            onLongPress = { manageBook = it },
                             onExportEpub = { rec ->
                                 pendingExport = rec to "epub"
                                 epubLauncher.launch(safeExportName(rec.title) + ".epub")
@@ -333,14 +338,22 @@ fun BookshelfScreen(
                 }
             }
         }
+        BookManagementOverlay(
+            manageBook = manageBook,
+            onDismiss = { manageBook = null },
+            onRename = onRename,
+            onDelete = onDelete,
+        )
     }
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun BookListRow(
     ui: BookUi,
     coversDir: File,
     onClick: () -> Unit,
+    onLongPress: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
     onExportEpub: (BookRecord) -> Unit,
     onExportMd: (BookRecord) -> Unit,
@@ -350,7 +363,7 @@ private fun BookListRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = { onLongPress(ui.record) })
             .padding(vertical = AnkeSpacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -380,7 +393,7 @@ private fun BookListRow(
             Text(
                 ui.record.title,
                 style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
@@ -399,10 +412,10 @@ private fun BookListRow(
             )
         }
         if (ui.record.nga_tid > 0) {
-            CoverAction(Icons.Filled.Refresh, "更新") { onUpdate(ui.record) }
+            ActionIcon(Icons.Filled.Refresh, "更新") { onUpdate(ui.record) }
         }
         Box {
-            CoverAction(Icons.Filled.IosShare, "导出") { exportMenu = true }
+            ActionIcon(Icons.Filled.IosShare, "导出") { exportMenu = true }
             DropdownMenu(
                 expanded = exportMenu,
                 onDismissRequest = { exportMenu = false },
@@ -429,12 +442,14 @@ private fun BookListRow(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun BookCard(
     ui: BookUi,
     coversDir: File,
     context: Context,
     container: AppContainer,
     onClick: () -> Unit,
+    onLongPress: (BookRecord) -> Unit,
     onExportEpub: (BookRecord) -> Unit,
     onExportMd: (BookRecord) -> Unit,
 ) {
@@ -443,7 +458,7 @@ private fun BookCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = { onLongPress(ui.record) }),
     ) {
         Box(
             modifier = Modifier
@@ -473,7 +488,7 @@ private fun BookCard(
                 horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs),
             ) {
                 if (ui.record.nga_tid > 0) {
-                    CoverAction(Icons.Filled.Refresh, "更新") {
+                    ActionIcon(Icons.Filled.Refresh, "更新") {
                         val intent = Intent(context, NgaDownloadService::class.java).apply {
                             action = NgaDownloadService.ACTION_START
                             putExtra("action", "update")
@@ -484,7 +499,7 @@ private fun BookCard(
                     }
                 }
                 Box {
-                    CoverAction(Icons.Filled.IosShare, "导出") { exportMenu = true }
+                    ActionIcon(Icons.Filled.IosShare, "导出") { exportMenu = true }
                     DropdownMenu(
                         expanded = exportMenu,
                         onDismissRequest = { exportMenu = false },
@@ -512,7 +527,7 @@ private fun BookCard(
         Text(
             ui.record.title,
             style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = AnkeSpacing.xs),
         )
@@ -528,27 +543,6 @@ private fun BookCard(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
         )
-    }
-}
-
-@Composable
-private fun CoverAction(icon: ImageVector, desc: String, onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier
-            .size(28.dp)
-            .clickable(onClick = onClick),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-        shadowElevation = 2.dp,
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                icon,
-                contentDescription = desc,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 

@@ -413,6 +413,12 @@ object NativeBookWriter {
         )
     }
 
+    /** 重命名书籍显示标题（书架与导出共用；不改 tid/章节/进度）。 */
+    fun renameTitle(nativeDir: File, newTitle: String) {
+        val meta = loadMeta(nativeDir)
+        saveMeta(nativeDir, meta.copy(title = newTitle))
+    }
+
     // ---------- 分组（与桌面 _group_floors/_group_floors_by_toc 对齐） ----------
 
     private fun groupFloors(valid: List<NativeFloor>, perChapter: Int): List<List<NativeFloor>> {

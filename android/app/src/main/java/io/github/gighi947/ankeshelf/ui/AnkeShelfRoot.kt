@@ -1,6 +1,8 @@
 package io.github.gighi947.ankeshelf.ui
 
 import android.app.Activity
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
@@ -109,9 +111,25 @@ fun AnkeShelfRoot(container: AppContainer) {
                 (stage == "done" || stage == "error" || stage == "cancelled")
             ) {
                 refresh++
+                val msg = when (stage) {
+                    "error" -> "NGA 任务失败：${NgaServiceStatus.error}"
+                    "cancelled" -> "NGA 任务已取消"
+                    else -> NgaServiceStatus.detail.ifBlank { "NGA 任务完成" }
+                }
+                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
             }
             lastServiceStage = stage
             delay(1000)
+        }
+    }
+
+    // 系统返回/侧滑返回：按当前页面回到上一级，避免从子页面直接退出应用。
+    // 阅读器内由 ReaderScreen 自己的 BackHandler 处理（返回书架）。
+    BackHandler(enabled = routeName != "shelf" && routeName != "reader") {
+        when (routeName) {
+            "download", "search", "settings" -> routeName = "shelf"
+            "stats" -> routeName = "settings"
+            "guide" -> routeName = guideReturn
         }
     }
 
@@ -204,6 +222,14 @@ fun AnkeShelfRoot(container: AppContainer) {
                                     onOpenGuide = {
                                         guideReturn = "shelf"
                                         routeName = "guide"
+                                    },
+                                    onRename = { rec, newTitle ->
+                                        container.repository.renameBook(rec, newTitle)
+                                        refresh++
+                                    },
+                                    onDelete = { rec ->
+                                        container.repository.removeBook(rec)
+                                        refresh++
                                     },
                                     onShelfViewChange = { view ->
                                         container.settings.update(SettingsPatch(shelf_view = view))

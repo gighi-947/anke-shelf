@@ -8,6 +8,7 @@ import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.EpubBook
 import io.github.gighi947.ankeshelf.data.EpubError
 import io.github.gighi947.ankeshelf.data.NativeBook
+import io.github.gighi947.ankeshelf.data.NativeBookWriter
 import io.github.gighi947.ankeshelf.data.ProgressEntry
 import io.github.gighi947.ankeshelf.data.ProgressStore
 import io.github.gighi947.ankeshelf.data.StatsStore
@@ -209,6 +210,20 @@ class BookRepository(
         progress.set(bookId, chapterIndex, textOffset)
     }
 
+    /** 重命名书籍显示标题：书架记录 + 原生书 meta.json（EPUB 仅书架记录）。 */
+    fun renameBook(rec: BookRecord, newTitle: String): BookRecord? {
+        val title = newTitle.trim()
+        if (title.isEmpty() || title == rec.title) return rec
+        val updated = rec.copy(title = title)
+        shelf.upsert(updated)
+        shelf.save()
+        val f = File(rec.path)
+        if (f.isDirectory) {
+            runCatching { NativeBookWriter.renameTitle(f, title) }
+        }
+        return updated
+    }
+
     fun progressOf(bookId: String): ProgressEntry? = progress.get(bookId)
 
     fun removeBook(rec: BookRecord) {
@@ -216,7 +231,17 @@ class BookRepository(
         shelf.save()
         progress.remove(rec.id)
         try {
-            File(rec.path).delete()
+            val f = File(rec.path)
+            if (f.isDirectory) {
+                // 原生书：删除整个帖子目录（含 book/ 与 download.json 断点）。
+                f.deleteRecursively()
+                f.parentFile?.let { File(it, "download.json").delete() }
+            } else {
+                f.delete()
+            }
+            rec.cover_rel?.let { rel ->
+                File(appPaths.coversDir, rel.substringAfterLast('/')).delete()
+            }
         } catch (_: Exception) {
         }
     }
