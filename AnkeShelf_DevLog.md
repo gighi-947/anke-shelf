@@ -894,3 +894,17 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 用户 EPUB（`android/*.epub`）加入 .gitignore，不入库。
 - 验证：解析器 5 条测试 + 全量单测 + `assembleDebug` 通过。
 - 提交：`6b38680`。
+
+### 9.40 原生阅读器排版完全对齐桌面参考截图（2026-08-08）
+
+- 用户提供三张桌面端目标效果截图（浅/深主题楼层卡片、楼头、引用、骰子），并结合桌面 `ngapost2md-python/ngapost2md/epub.py` 与 `web/js/reader.js` 的**精确 CSS 语义**逐项对齐，不再依赖近似值。
+- **楼层卡片**：桌面 `.nga-floor` 无背景色（透明，仅 1px 边框 + 4px 强调色左条 + 2px 圆角），reader.js 覆盖为 padding 10px 12px、margin 10px 0；安卓端同步改为透明底、12/10 内边距、10dp 块间距。
+- **楼头**：`0楼` 强调色加粗、其余元数据 muted 灰；补充 ` · pid:N`；分隔线改为 1px **圆点虚线**（DottedDivider，桌面 `border-bottom:1px dotted`），颜色用边框色。
+- **引用块**：左条改为**边框色**（桌面 `.nga-quote{border-left:3px solid border}`，之前误用强调色），底色 quoteBg、8/12 内边距、正文 0.95em、quote-author muted；分页模式引用不再退化成纯文本，带底色 + 左条 + 外边距。
+- **追评**：按 reader.js `!important` 覆盖去掉左缩进；头行 muted 0.8em、正文 0.92em；解析器排除 comment-head 混入正文（修复头文本重复显示）。
+- **骰子**：金色随主题切换（浅色 `#B8860B` / 深色 `#D9B45B`，桌面 dice 值），加粗并留 6px 上下边距。
+- **分页碎片化边框重构**：不再对每行整框 `border(1dp)`（会出双重横线），改为按片断绘制边线（cardTop/cardBottom 控制上下边，左右边始终连续），跨页时上一页封口、下一页补顶，卡片边框在楼层内部连续不断裂。
+- **HTML 实体解码**：`&#39; &amp; &lt; &gt; &nbsp; &#x...;` 等正确解码（修复 `It's MyGo` 显示成 `It&#39;s MyGo`）；属性值同步解码。
+- **其他**：楼层头时间解析去掉尾部多余分隔符（消除 `时间 · · pid`）；新增 2 条单测（实体解码、追评头不混入正文），解析器测试总数 7 条。
+- 验证：模拟器实测——滚动与分页模式均确认蓝色卡片条/彩色字/引用底/虚线分隔；像素分析确认分页页有主题蓝（#60A8D8 簇）与大量彩色字；全量单测 + `assembleDebug` 通过。
+- 提交：`b788e21`。
