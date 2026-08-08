@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,10 +53,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
@@ -138,6 +141,7 @@ fun ReaderScreen(
         mutableIntStateOf(initialChapter.coerceIn(0, session.chapters.lastIndex.coerceAtLeast(0)))
     }
     var barsVisible by remember { mutableStateOf(true) }
+    var barsHeld by remember { mutableStateOf(false) }
     var showToc by remember { mutableStateOf(false) }
     var pageInfo by remember { mutableStateOf(PageInfo()) }
     var scrollRatio by remember { mutableFloatStateOf(0f) }
@@ -232,10 +236,21 @@ fun ReaderScreen(
 
     // 自动隐藏：页面加载完成后再计时，栏显示 3 秒后收起（目录打开时暂停计时），
     // 避免字体/排版加载过程中栏和安全区突然变化。
-    LaunchedEffect(barsVisible, showToc, pageReady.value) {
-        if (barsVisible && !showToc && pageReady.value) {
+    // 点中间唤出后保持显示；滚动/翻页一定距离后自动收起。
+    fun hideBars() {
+        barsVisible = false
+        barsHeld = false
+    }
+
+    fun toggleBars() {
+        barsVisible = !barsVisible
+        barsHeld = barsVisible
+    }
+
+    LaunchedEffect(barsVisible, barsHeld, showToc, pageReady.value) {
+        if (barsVisible && !barsHeld && !showToc && pageReady.value) {
             delay(3000)
-            barsVisible = false
+            hideBars()
         }
     }
 
@@ -289,6 +304,8 @@ fun ReaderScreen(
                     onProgress(idx, offset)
                 } else {
                     val ratio = value.coerceIn(0.0, 1.0)
+                    // 滚动模式下滑动一段距离（节流回调触发）后收起手动唤出的控制条。
+                    if (!pagedRef.value && barsHeld) hideBars()
                     scrollRatio = ratio.toFloat()
                     val offset = (ratio * lenRef.intValue).roundToInt().coerceIn(0, lenRef.intValue)
                     onProgress(idx, offset)
@@ -423,7 +440,7 @@ fun ReaderScreen(
                             view.evaluateJavascript(
                                 """(function(){
                                    var last=0;
-                                   window.addEventListener('scroll',function(){
+                                    window.addEventListener('scroll',function(){
                                      var now=Date.now(); if(now-last<1200) return; last=now;
                                      var r=window.scrollY/Math.max(1,document.body.scrollHeight-window.innerHeight);
                                      try{AnkeReaderBridge.saveProgress($chapterIndex,r,false);}catch(e){}
@@ -454,20 +471,20 @@ fun ReaderScreen(
                                 when {
                                     isSwipe -> {
                                         flipPage(if (dx < 0) 1 else -1)
-                                        barsVisible = false
+                                        hideBars()
                                     }
                                     isTap -> {
                                         val w = width
                                         when {
                                             pagedRef.value && ev.x < w / 3f -> {
                                                 flipPage(-1)
-                                                barsVisible = false
+                                                hideBars()
                                             }
                                             pagedRef.value && ev.x > 2 * w / 3f -> {
                                                 flipPage(1)
-                                                barsVisible = false
+                                                hideBars()
                                             }
-                                            ev.x >= w / 3f && ev.x <= 2 * w / 3f -> barsVisible = !barsVisible
+                                            ev.x >= w / 3f && ev.x <= 2 * w / 3f -> toggleBars()
                                             // 滚动模式下侧边点击不换章（防误触），换章走底部按钮。
                                             else -> Unit
                                         }
@@ -510,12 +527,31 @@ fun ReaderScreen(
                     saveNow(webViewRef.value)
                     onBack()
                 }) { Text("← 返回") }
-                Text(
-                    text = session.chapterTitle(chapterIndex),
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f),
-                )
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // 章节标题左侧小竖条：比主题色稍深，增强层次。
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .height(18.dp)
+                            .background(
+                                lerp(MaterialTheme.colorScheme.primary, ComposeColor.Black, 0.18f),
+                                RoundedCornerShape(1.5.dp),
+                            ),
+                    )
+                    Text(
+                        text = session.chapterTitle(chapterIndex),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
                 TextButton(onClick = { showToc = !showToc }) { Text("目录") }
             }
         }

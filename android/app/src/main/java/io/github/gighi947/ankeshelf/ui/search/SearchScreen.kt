@@ -76,6 +76,7 @@ import io.github.gighi947.ankeshelf.data.SearchIndex
 import io.github.gighi947.ankeshelf.data.SearchResponse
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookUi
+import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -167,15 +168,7 @@ fun SearchScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "全文检索",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                        ),
-                    )
-                },
+                title = { PageHeaderTitle("全文检索") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")

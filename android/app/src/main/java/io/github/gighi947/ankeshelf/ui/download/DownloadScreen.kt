@@ -44,6 +44,7 @@ import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.NgaProgress
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.service.safeExportName
+import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -105,13 +106,7 @@ fun DownloadScreen(
             .statusBarsPadding()
             .padding(16.dp),
     ) {
-        Text(
-            "NGA 下载",
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            ),
-        )
+        PageHeaderTitle("NGA 下载")
 
         Text(
             "登录配置（仅存本机）",

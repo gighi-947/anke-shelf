@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.service.BookUi
+import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -62,15 +63,7 @@ fun BookshelfScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "安科书架",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                        ),
-                    )
-                },
+                title = { PageHeaderTitle("安科书架") },
                 actions = {
                     TextButton(onClick = launchPicker) { Text("导入") }
                     TextButton(onClick = onSettings) { Text("设置") }

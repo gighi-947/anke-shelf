@@ -91,6 +91,7 @@ import io.github.gighi947.ankeshelf.data.Settings
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.ui.theme.PALETTES
+import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.ReaderPalette
 import io.github.gighi947.ankeshelf.ui.theme.effectivePalette
 import io.github.gighi947.ankeshelf.ui.theme.formatDuration
@@ -342,13 +343,7 @@ fun SettingsScreen(
 /** 页头标题：加粗 + 主题色（底部 Tab 初始页统一风格）。 */
 @Composable
 private fun AppBarTitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleLarge.copy(
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-        ),
-    )
+    PageHeaderTitle(text)
 }
 
 /** 手机一级菜单：设置分组列表（类似系统设置）。 */

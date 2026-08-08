@@ -57,6 +57,7 @@ import io.github.gighi947.ankeshelf.data.EnrichedStats
 import io.github.gighi947.ankeshelf.data.DayEntry
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookUi
+import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.formatDate
 import io.github.gighi947.ankeshelf.ui.theme.formatDuration
 import java.time.LocalDate
@@ -87,15 +88,7 @@ fun StatsScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "阅读统计",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                        ),
-                    )
-                },
+                title = { PageHeaderTitle("阅读统计") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
