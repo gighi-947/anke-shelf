@@ -65,33 +65,31 @@
 
   function geometry(fw, fh, s) {
     var dual = isDual(s.paged, s.dualPage, s.autoDual, fw, fh);
-    // flow/epub.js 列几何 + 右缘安全余量：
-    // 右 padding 用较小值 PR（约 gap/3），列宽 = 内容可用宽（不拉伸），
-    // 下一列起点 = M + colW + G = fw + (G - PR)，比视口右缘多出约 19px，
-    // 亚像素/物理像素舍入也不会漏出下一页内容。
-    var cw = fw;
+    // Equal left/right padding P keeps the text block horizontally centered:
+    // P = min(margin, gap - 8). With P <= gap - 8, after flipping pages the
+    // left edge shows the column gap (empty) instead of the previous column
+    // tail, and the next column starts about 8px past the right viewport edge.
     var M = clamp(s.margin || 40, 8, 160);
     var G = clamp(s.gap || 28, 8, 120);
-    var PR = Math.max(4, Math.round(G / 3));
+    var P = Math.max(4, Math.min(M, G - 8));
     var colW = dual
-      ? Math.max(120, (cw - M - PR - G) / 2)
-      : Math.max(120, cw - M - PR);
-    // 双页后列宽过窄时回退单页（极端狭长屏幕保护）
+      ? Math.max(120, (fw - 2 * P - G) / 2)
+      : Math.max(120, fw - 2 * P);
+    // Fall back to single page when dual columns get too narrow.
     if (dual && colW < 300) {
       dual = false;
-      colW = Math.max(120, cw - M - PR);
+      colW = Math.max(120, fw - 2 * P);
     }
     return {
       dual: dual,
       colW: colW,
       advance: colW + G,
-      margin: M,
-      paddingRight: PR,
+      margin: P,
+      paddingRight: P,
       gap: G,
-      contentWidth: cw,
+      contentWidth: fw,
     };
   }
-
   function pages(scrollWidth, g, hasSpacer) {
     // 容器左 padding = margin、右 padding = paddingRight：
     // scrollWidth = margin + n*colW + (n-1)*gap + paddingRight

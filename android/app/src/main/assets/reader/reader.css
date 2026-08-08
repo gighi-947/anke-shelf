@@ -94,10 +94,9 @@ body.paged {
 
 body.paged #paged-scroll {
     height: 100%;
-    /* 左 padding = 边距，右 padding = 列间距，使内容可用宽恰好等于目标列宽：
-       单页列宽 = fw - M - G，双页列宽 = (fw - M - 2G)/2，
-       浏览器不会拉伸/钳制列宽（flow/epub.js 列几何），下一列起点
-       恰好落在视口右边界，无泄漏也无逐屏偏移。 */
+    /* JS geometry: equal left/right padding P centers the text block;
+       P <= gap - 8 keeps the left edge empty after flipping and the
+       next column about 8px past the right viewport edge. */
     padding-left: var(--reader-margin);
     padding-right: var(--reader-pr, 8px);
     padding-top: var(--reader-top-inset, 0px);
