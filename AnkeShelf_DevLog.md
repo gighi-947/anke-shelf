@@ -877,3 +877,11 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 新增解析器单测（楼层/引用/骰子/表格/图片/追评/红蓝颜色），验证通过。
 - 验证：全量单测 + `assembleDebug` 通过。
 - 提交：`d062a51`。
+
+### 9.38 原生阅读器：class 容错 + 章节 CSS 类颜色解析（2026-08-08）
+
+- **class 匹配容错**：`class="nga-floor "`、多类名、`floor-head` 等带空白/换行的写法现在都能识别（之前精确字符串相等，稍有空格整个楼层就退化成纯文本，是“排版没改善”的候选根因）。
+- **CSS 类颜色**：解析章节自带 `<style>` 中的 `.red{color:#ff0000}` 等规则，`<span class="red">` 不再丢色（NGA EPUB 常见写法）；与内联 style、`color` 属性三级优先级一致。
+- **解析器单测扩充到 3 条**：楼层/引用/骰子/表格/图片/追评 + 红蓝内联颜色；带空格 class 楼层；CSS 类颜色映射。
+- 验证：全量单测 + `assembleDebug` 通过。
+- 提交：`582f8be`。
