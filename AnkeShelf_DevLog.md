@@ -923,3 +923,55 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
   4. `savedOffset` 在书架刷新后会重建（可能读到旧值）并改变 `initialOffset`；恢复锚点改为 `remember(chapterIndex, session.id)` 每章只取一次。
 - **验证**：模拟器端到端——阅读中 `touch shelf.json` 触发书架刷新，阅读位置不变（前后内容行范围完全一致）；最新构建实机截图确认链接编号为蓝色、删除线为灰色 + 删除线、左蓝条正常；全量单测 + `assembleDebug` 通过。
 - 提交：`1133592`。
+
+### 9.42 混合架构重构：WebView 渲染内核 + Compose 外壳（2026-08-09）
+
+背景：原生 Kotlin 渲染器（9.33–9.41）在排版完整度上与旧 WebView 版差距明显（楼层卡片、引用、骰子、删除线、链接色等），反复“像素级对齐”成本高且仍不达预期；用户确认“重写浏览器”不可行后提出：能否保留全部视觉效果的同时，把 WebView 框架削减到最小，并让 Kotlin 与 WebView 做衔接。
+
+结论与取舍：
+- **保留 WebView 作为唯一渲染内核**（浏览器排版引擎是 NGA 复杂 HTML/CSS 视觉保真的唯一可行载体）；Compose 外壳接管 UI、控制条、目录、图片查看/保存、进度持久化。
+- **JS 从旧 `reader.js`（41KB）精简为 `reader-lite.js`（24KB）**：删除 lightbox、选区/标注、图片单击上报、对照导出等壳层功能；保留分页几何（P=min(margin,gap-8)、advance=colW+gap、双页补偶数列）、TextPos text_offset 映射、主题/字号/安全区、换章滚动、`forceEagerImages`、长表格页内滚动、图片 load 重排、节流进度上报。
+- **桥协议收敛为最小集合**：JS 上报 `onReady / saveProgress(chapterIndex, offset) / pageChanged(chapterIndex, page, total, offset) / requestChapter / openImage / log`；Kotlin 下发 `init / applyTheme / applyTypography / setMode / setInsets / gotoOffset / flipPage / openImageAt`。
+- **图片统一走 `shouldInterceptRequest`**：EPUB 走 `file:///android_epub/<bookId>/<章目录>/` 按章读压缩包；NGA 在线图走 OkHttp + Referer/Cookie/UA 防盗链；本地嵌入图走 `file:///android_images/`。
+- **代码迁移**：`ReaderHtml.kt` 切到 reader-lite.js；`NativeReaderScreen` 正文换成 `WebViewChapterView`（单例复用、换章不重建）；`ReaderModel.kt` 把楼层正文/引用“连续内联内容合并成段”逻辑提取为共用的 `convertInlineContent`（原生渲染器保留为回退与对照）；测试同步改为 reader-lite 断言并新增合并逻辑用例。
+- **历史交互修复对照**（换掉 WebView 前踩过的坑，9.20 等条目）：长按图片预览并清选区；点中间唤出控制条保持显示、滚动/翻页自动收起；顶/底栏背景与文字改用阅读器主题色（深色下不再黑字）；换章前先保存旧章 offset（9.32 语义）。
+- 验证：`reader-lite.js` 语法检查、单测、`assembleDebug` 通过；已装真机待用户反馈。
+
+### 9.43 进度保存实现整体删除重写（桌面端 + 开源阅读器对照研究，2026-08-09）
+
+用户要求：把进度保存实现全部删掉，先参考桌面端方案，再上 GitHub 看优秀开源阅读器（翻页与滚动都要，尤其滚动）。结论先行：视觉渲染保持混合架构（WebView 内核 + Compose 外壳）不动，**进度持久化整体重写为 Kotlin 侧单一入口 `ChapterProgressTracker`**，JS 只负责上报，不再在两端各存一份状态。
+
+#### 研究结论
+
+- **桌面端（本仓库 `web/js/reader.js` + `app/shelf.py`）**：
+  - 唯一坐标是章内折叠纯文本 `text_offset`（`TextPos` 逐字符 DOM↔offset 映射）；
+  - 滚动模式 scroll 事件 500ms **debounce** 后保存；分页每翻一页立即 `saveProgress`；
+  - `loadChapter` 换章前先同步取旧页 `currentOffset()` 并上报旧章；
+  - `seekToOffset` 跳转后立即保存；`ProgressStore` v2 `{chapter_index, text_offset, updated_at}`，每次上报同步 `shelf.touch()` 维护“最近阅读”。
+- **epub.js**（flow 本地源码）：滚动监听 `MANAGERS.SCROLLED → reportLocation()`，翻页/显示后 `relocated`；用 CFI + Locations（百分比↔位置）锚定，持久化的是“位置”而非滚动像素。
+- **Readest**（GitHub `useProgressAutoSave.ts`，经 jsDelivr 拉取）：独立高频 `readerProgressStore`；`lastSavedLocationRef` 与磁盘位置相同则跳过保存（防旧数据覆盖新数据）；打开书先快照磁盘位置，**初始 relocate 不算用户改动、不覆盖**；防抖 1s + 再延时 500ms；卸载时 flush。
+- **Legado**（Ecalose/legado master 稀疏克隆）：进度字段 `Book.durChapterIndex/durChapterPos`（章内字符位置，与 text_offset 同语义）；`setPageIndex()`（滚动模式翻页也走它）→ `durChapterPos = getReadLength(index)` → `saveRead(true)`；换章 → `saveRead()`；`onPause` → `saveRead()`；写库走后台 executor，不阻塞 UI。
+
+#### 旧实现的问题清单（本次删除的根因）
+
+1. **换章保存竞态**：旧 JS 桥用“当前章节号”当唯一真源，`idx != chapter()` 直接丢弃旧章上报——换章前 `evaluateJavascript` 异步保存旧章时，`chapterRef` 已先被改成新章，旧章 offset 被丢弃（“几十秒内跳章节进度不变”主因）。
+2. **退出保存丢失**：`DisposableEffect.onDispose` 先 `evaluateJavascript` 保存，随后立即 `removeJavascriptInterface + destroy()`，异步回调根本来不及送达（“阅读进度并未保留”）。
+3. **桥线程违规**：`@JavascriptInterface` 跑在 WebView 后台线程，旧 LiteBridge 直接在里面写 Compose state（`lastOffset` 等），应 post 到主线程（老 `ReaderBridge` 有 Handler，重写时丢了）。
+4. **滚动保存节流而非防抖**：500ms throttle 在连续滚动中频繁整文件写盘；且“退出前只保存 lastOffset”用的是过期值，会拿旧值覆盖新进度。
+5. **只有初始章恢复**：`remember(chapterIndex, session.id)` 只对 `initialChapter` 返回 `savedOffset`，会话内跳章再回来永远回章首。
+6. **pageChanged 不带章节号**：旧页延迟事件可能记到新章头上。
+7. **主线程写盘**：`BookRepository.saveProgress` 里 `shelf.touch()` 同步整文件写，高频上报时卡 UI（滚动惯性“一顿一顿”候选根因之一）。
+
+#### 新实现
+
+- **`ChapterProgressTracker`（新，JVM 可测）**：按章维护 `lastKnown`（内存最新）与 `saved`（已落盘）双 map；滚动/页面上报 500ms debounce 落盘（Readest 去重思想：与 saved 相同直接跳过）；翻页立即落盘；换章/退出/退后台立即 flush；恢复优先内存、其次磁盘（桌面 loadChapter 语义 + 会话内按章记忆）；相同 (chapter, offset) 去重。
+- **JS `reader-lite.js`**：滚动改 500ms debounce（与桌面一致）；`pageChanged` 上报携带 `chapterIndex`；比值回退删除（只信 DOM 采样 offset，采样失败不误存 0）；`pagehide` 仅上报有效 offset；滚动恢复采样点修正为 `scrollY - (18 + topInset + 8)`，与采样点严格对齐。
+- **`WebViewChapterView`**：桥回调全部 post 主线程；旧章事件按索引转发（不再丢弃）；换章前先 `evaluateJavascript` 取旧页精确 offset（后台线程 CountDownLatch，最多等 300ms，等价桌面 loadChapter 同步存旧章）再加载新章；`onDispose` 取最终 offset → 上报 → flush → 延迟 200ms 再 destroy。
+- **`NativeReaderScreen`**：进度全部走 tracker；恢复锚点 `tracker.restoreOffsetFor(chapter)`；BackHandler/返回按钮/目录跳转都 flush；新增 Lifecycle ON_STOP flush（Legado onPause 语义）；删除旧 `lastOffset`/`onProgress` 参数。
+- **`BookRepository.saveProgress`**：`progress.set` 同步更新内存（自带后台落盘），`shelf.touch` 移到仓库后台单线程，主线程零磁盘 I/O。
+
+#### 验证
+
+- 新增 `ChapterProgressTrackerTest` 6 条（恢复优先内存/防抖去重/翻页立即/换章即存/flush 取消 pending/零值忽略）；全量单测 91 通过、1 跳过（NGA 网络用例），`assembleDebug` 通过。
+- 编译清理：新增 `lifecycle-runtime-compose` 依赖替换弃用 `LocalLifecycleOwner`；ValueCallback 冗余转换警告消除。
+- 待真机验证：滚动暂停后立即退出/换章的位置准确性、分页翻页即时进度、深色主题下退出再进恢复点。
