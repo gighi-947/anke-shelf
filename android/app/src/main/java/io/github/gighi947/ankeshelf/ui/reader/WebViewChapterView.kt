@@ -118,6 +118,7 @@ fun WebViewChapterView(
         )
     }
     val themeRef = remember { mutableStateOf(theme) }
+    val initialOffsetRef = rememberUpdatedState(initialOffset)
     val callbacksRef = rememberUpdatedState(callbacks)
     val sessionRef = rememberUpdatedState(session)
     val containerRef = rememberUpdatedState(container)
@@ -331,7 +332,7 @@ fun WebViewChapterView(
                         val t = themeRef.value
                         view.evaluateJavascript(
                             "AnkeReader.init({chapterIndex:${chapterRef.intValue},paged:${pagedRef.value}," +
-                                "offset:$initialOffset,margin:${s.marginPx},gap:${s.gapPx}," +
+                                "offset:${initialOffsetRef.value},margin:${s.marginPx},gap:${s.gapPx}," +
                                 "pageWidth:${s.pageWidth},fontSize:${s.fontSize}," +
                                 "lineHeight:${s.lineHeight},dualPage:${s.dualPage}," +
                                 "autoDual:${s.autoDual}," +

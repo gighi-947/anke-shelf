@@ -758,9 +758,9 @@
         if (state.wasSwitch) {
           var o = 0;
           try { o = currentOffset(); } catch (e) { /* ignore */ }
-          if (o > 0) {
-            try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
-          }
+          // 章首采样可能落在首楼卡片 padding 上返回 0；此时也应把“已换到本章”
+          // 落库（offset=1 即章首），否则退出重进会回到上一章。
+          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o > 0 ? o : 1, true); } catch (e) { /* ignore */ }
         }
       } else {
         if (state.restoreOffset > 0) restoreScroll(state.restoreOffset);

@@ -136,7 +136,9 @@ fun NativeReaderScreen(
         )
     }
     val restoreOffset = remember(chapterIndex, session.id) {
-        progressTracker.restoreOffsetFor(chapterIndex)
+        // desktop loadChapter(i, 0): only the initial open/search jump restores an
+        // offset; in-session chapter navigation always starts at the chapter head.
+        if (chapterIndex == initialChapter) progressTracker.restoreOffsetFor(chapterIndex) else 0
     }
     val activity = androidx.activity.compose.LocalActivity.current
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()

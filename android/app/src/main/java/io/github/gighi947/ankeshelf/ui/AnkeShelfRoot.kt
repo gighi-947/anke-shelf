@@ -149,7 +149,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                     NativeReaderScreen(
                         session = session,
                         initialChapter = chapter,
-                        savedOffset = savedProgress?.text_offset ?: 0,
+                        savedOffset = jumpOffset ?: (savedProgress?.text_offset ?: 0),
                         container = container,
                         readerSettings = container.settings.getAll(),
                         onSettingsPatch = { patch ->
