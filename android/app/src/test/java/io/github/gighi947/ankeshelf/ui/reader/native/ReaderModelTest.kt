@@ -102,6 +102,30 @@ class ReaderModelTest {
         assertTrue("真实章节应有引用", floors.any { f -> f.body.any { it is ReaderBlock.Quote } })
     }
 
+    @Test
+    fun decodesHtmlEntitiesInTextAndAttrs() {
+        val doc = ReaderHtmlModel.parse(
+            """<p>It&#39;s &amp; &lt;tag&gt; &#x4E2D;&#25991;&nbsp;end</p>
+               <img src="https://img.nga.cn/a.jpg?x=1&amp;y=2" alt="图"/>""",
+        )
+        val para = doc.blocks.filterIsInstance<ReaderBlock.Paragraph>().first()
+        val text = para.spans.joinToString("") { it.text }
+        assertEquals("It's & <tag> 中文 end", text.trim())
+        val img = doc.blocks.filterIsInstance<ReaderBlock.Image>().firstOrNull()
+        assertEquals("https://img.nga.cn/a.jpg?x=1&y=2", img?.src)
+    }
+
+    @Test
+    fun commentHeadNotDuplicatedInBodySpans() {
+        val doc = ReaderHtmlModel.parse(sample)
+        val comment = doc.blocks.filterIsInstance<ReaderBlock.Comment>().first()
+        assertEquals(1, comment.lou)
+        assertTrue("追评头带用户名", comment.username.contains("路人"))
+        val body = comment.spans.joinToString("") { it.text }
+        assertEquals("追评文字", body)
+        assertTrue("正文不含头文本", !body.contains("1楼"))
+    }
+
     private fun countImages(blocks: List<ReaderBlock>): Int = blocks.sumOf { countImages(it) }
 
     private fun countImages(b: ReaderBlock): Int = when (b) {

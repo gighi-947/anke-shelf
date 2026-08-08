@@ -18,16 +18,17 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +46,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -113,8 +116,42 @@ object NativeFonts {
 }
 
 private val ReaderThemeColors.bgColor: Color get() = parseHtmlColor(background) ?: Color.White
-private val ReaderThemeColors.fgColor: Color get() = parseHtmlColor(text) ?: Color(0xFF201A15)
-private val ReaderThemeColors.accentColor: Color get() = parseHtmlColor(accent) ?: Color(0xFF2E86AB)
+private val ReaderThemeColors.fgColor: Color
+    get() = parseHtmlColor(text) ?: Color(red = 0x20, green = 0x1A, blue = 0x15)
+private val ReaderThemeColors.accentColor: Color
+    get() = parseHtmlColor(accent) ?: Color(red = 0x2E, green = 0x86, blue = 0xAB)
+
+/** 桌面 NGA 楼层/引用/追评配色（浅色/深色两套，来自原生书 CSS）。 */
+private data class CardPalette(
+    val border: Color,
+    val head: Color,
+    val quoteBg: Color,
+    val commentBg: Color,
+    val dice: Color,
+)
+
+private fun cardPalette(theme: ReaderThemeColors): CardPalette {
+    val light = (parseHtmlColor(theme.background)?.let { bg ->
+        0.2126f * bg.red + 0.7152f * bg.green + 0.0722f * bg.blue
+    } ?: 1f) > 0.5f
+    return if (light) {
+        CardPalette(
+            border = Color(224 / 255f, 224 / 255f, 224 / 255f),
+            head = Color(136 / 255f, 136 / 255f, 136 / 255f),
+            quoteBg = Color(247 / 255f, 247 / 255f, 247 / 255f),
+            commentBg = Color(250 / 255f, 250 / 255f, 250 / 255f),
+            dice = Color(red = 0xB8, green = 0x86, blue = 0x0B),
+        )
+    } else {
+        CardPalette(
+            border = Color(58 / 255f, 58 / 255f, 58 / 255f),
+            head = Color(138 / 255f, 138 / 255f, 138 / 255f),
+            quoteBg = Color(42 / 255f, 42 / 255f, 42 / 255f),
+            commentBg = Color(38 / 255f, 38 / 255f, 38 / 255f),
+            dice = Color(red = 0xD9, green = 0xB4, blue = 0x5B),
+        )
+    }
+}
 
 /** 新版 TextStyle 拆成 spanStyle + paragraphStyle（spanStyle 属性 internal），
  *  这里自己持有两份，派生样式时合并。 */
@@ -178,9 +215,12 @@ fun NativeChapterView(
     }
     val highlightColors = remember {
         mapOf(
-            "yellow" to Color(0x66FDD835), "green" to Color(0x6666BB6A),
-            "blue" to Color(0x6642A5F5), "pink" to Color(0x66EC407A),
-            "purple" to Color(0x66AB47BC), "cyan" to Color(0x6626C6DA),
+            "yellow" to Color(red = 0xFD, green = 0xD8, blue = 0x35, alpha = 0x66),
+            "green" to Color(red = 0x66, green = 0xBB, blue = 0x6A, alpha = 0x66),
+            "blue" to Color(red = 0x42, green = 0xA5, blue = 0xF5, alpha = 0x66),
+            "pink" to Color(red = 0xEC, green = 0x40, blue = 0x7A, alpha = 0x66),
+            "purple" to Color(red = 0xAB, green = 0x47, blue = 0xBC, alpha = 0x66),
+            "cyan" to Color(red = 0x26, green = 0xC6, blue = 0xDA, alpha = 0x66),
         )
     }
 
@@ -302,7 +342,7 @@ private fun NativeScrollView(
                     imageBytes = imageBytes,
                     onImageLongPress = callbacks.onImageLongPress,
                 )
-                if (bi < doc.blocks.lastIndex) Spacer(theme)
+                if (bi < doc.blocks.lastIndex) BlockSpacing(doc.blocks[bi], doc.blocks[bi + 1])
             }
             // 滚动模式底部换章按钮（对齐桌面 chapter-nav-row）。
             Row(
@@ -319,8 +359,17 @@ private fun NativeScrollView(
 }
 
 @Composable
-private fun Spacer(theme: ReaderThemeColors) {
-    Box(Modifier.fillMaxWidth().height(4.dp))
+private fun BlockSpacing(prev: ReaderBlock, next: ReaderBlock) {
+    val h = when {
+        prev is ReaderBlock.Floor || next is ReaderBlock.Floor -> 10.dp
+        prev is ReaderBlock.Quote || next is ReaderBlock.Quote -> 10.dp
+        prev is ReaderBlock.Comment || next is ReaderBlock.Comment -> 10.dp
+        prev is ReaderBlock.Table || next is ReaderBlock.Table -> 10.dp
+        prev is ReaderBlock.Image || next is ReaderBlock.Image -> 8.dp
+        prev is ReaderBlock.Blank || next is ReaderBlock.Blank -> 8.dp
+        else -> 0.dp
+    }
+    Spacer(Modifier.height(h))
 }
 
 /* ---------------- 分页模式 ---------------- */
@@ -331,12 +380,26 @@ private class Frag {
     var heightPx: Int = 0
     var image: String? = null
     var table: ReaderBlock.Table? = null
-    var floorCard: Boolean = false
+    /** 带 1px 边框的卡片（楼层/追评）：cardTop/cardBottom 控制上下边线，跨页时只画段落边界。 */
+    var card: Boolean = false
+    var cardBg: Color? = null
+    var cardTop: Boolean = false
+    var cardBottom: Boolean = false
+    /** 左侧装饰条（楼层 4dp 强调色；引用 3dp 边框色）。 */
+    var leftBar: Color? = null
+    var leftBarWidthDp: Int = 4
+    /** 引用块底色/左条（单独成组时使用）。 */
+    var quoteBg: Color? = null
+    var quoteBar: Color? = null
     var head: String? = null
     var headColor: Color? = null
+    var headDivider: Boolean = true
+    var padStartPx: Int = 0
+    var padEndPx: Int = 0
     var topPad: Int = 0
     var bottomPad: Int = 0
-    var cardColor: Color? = null
+    var marginTopPx: Int = 0
+    var marginBottomPx: Int = 0
     var borderColor: Color? = null
     var accentColor: Color? = null
     var plainStart: Int = -1
@@ -434,6 +497,10 @@ private fun NativePagedView(
                     textColor = theme.fgColor,
                     mutedColor = theme.fgColor.copy(alpha = 0.7f),
                     accentColor = theme.accentColor,
+                    cardBorder = cardPalette(theme).border,
+                    quoteBg = cardPalette(theme).quoteBg,
+                    commentBg = cardPalette(theme).commentBg,
+                    diceColor = cardPalette(theme).dice,
                 )
                 pages = result
                 if (result.isNotEmpty()) {
@@ -503,6 +570,10 @@ private fun paginate(
     textColor: Color,
     mutedColor: Color,
     accentColor: Color,
+    cardBorder: Color,
+    quoteBg: Color,
+    commentBg: Color,
+    diceColor: Color,
 ): List<NativePage> {
     val g = PagedLayout.geometry(
         fw = fwPx, fh = fhPx,
@@ -527,12 +598,19 @@ private fun paginate(
         while (page.columns.size <= colIndex) page.columns.add(mutableListOf())
     }
 
+    var lastCardFrag: Frag? = null
+    var nextCardTop = false
+
     fun addFrag(f: Frag) {
         ensureCols()
-        if (used > 0 && used + f.heightPx > pageH) {
+        val totalH = f.heightPx + f.marginTopPx + f.marginBottomPx
+        if (used > 0 && used + totalH > pageH) {
+            // 跨列/跨页前封口当前卡片段落，下一页第一片断补顶边线（对齐桌面 break-inside:auto）。
+            lastCardFrag?.cardBottom = true
             if (colIndex < colCount - 1) {
                 colIndex++
                 used = 0
+                nextCardTop = true
                 ensureCols()
             } else {
                 pages.add(page)
@@ -544,12 +622,18 @@ private fun paginate(
                 page.startOffset = plainCursor
                 colIndex = 0
                 used = 0
+                nextCardTop = true
                 ensureCols()
             }
         }
         if (f.heightPx > pageH) f.heightPx = pageH
+        if (f.card && nextCardTop) {
+            f.cardTop = true
+            nextCardTop = false
+        }
         page.columns[colIndex].add(f)
-        used += f.heightPx
+        if (f.card) lastCardFrag = f else lastCardFrag = null
+        used += totalH
     }
 
     fun measureLines(ann: AnnotatedString, style: TextStyle, heightPx: Int): List<Frag> {
@@ -603,27 +687,60 @@ private fun paginate(
             }
         }
 
-    fun pushTextBlock(block: ReaderBlock, blockIdx: Int, plainStart: Int, padTop: Int, padBottom: Int, card: Boolean, border: Color?, accent: Color?, bg: Color?) {
+    fun pushTextBlock(
+        block: ReaderBlock,
+        blockIdx: Int,
+        plainStart: Int,
+        padTop: Int,
+        padBottom: Int,
+        card: Boolean,
+        border: Color?,
+        accent: Color?,
+        bg: Color?,
+        fontScale: Float = 1f,
+        quote: Boolean = false,
+        quoteBar: Color? = null,
+        padStart: Int = 0,
+        padEnd: Int = 0,
+        marginTop: Int = 0,
+        marginBottom: Int = 0,
+    ): List<Frag> {
+        val scaled = SpanStyle(fontSize = (baseStyle.fontSize * fontScale).sp)
         val ann = when (block) {
-            is ReaderBlock.Paragraph -> spansAnn(block.spans, baseStyle.style(), textColor)
-            is ReaderBlock.Heading -> spansAnn(block.spans, baseStyle.style(SpanStyle(fontWeight = FontWeight.Bold, fontSize = (baseStyle.fontSize * 1.1f).sp)), textColor)
-            is ReaderBlock.Dice -> buildAnnotatedString { append(AnnotatedString(block.text, SpanStyle(color = Color(0xFFB8860B), fontWeight = FontWeight.Bold))) }
+            is ReaderBlock.Paragraph -> spansAnn(block.spans, baseStyle.style(scaled), textColor)
+            is ReaderBlock.Heading -> spansAnn(block.spans, baseStyle.style(scaled.merge(SpanStyle(fontWeight = FontWeight.Bold, fontSize = (baseStyle.fontSize * fontScale * 1.1f).sp))), textColor)
+            is ReaderBlock.Dice -> buildAnnotatedString {
+                append(
+                    AnnotatedString(
+                        block.text,
+                        SpanStyle(color = diceColor, fontWeight = FontWeight.Bold, fontSize = scaled.fontSize),
+                    ),
+                )
+            }
             is ReaderBlock.Comment -> spansAnn(block.spans, baseStyle.style(SpanStyle(fontSize = (baseStyle.fontSize * 0.92f).sp)), textColor)
             else -> buildAnnotatedString { append(blockText(block)) }
         }
         val lhPx = baseStyle.fontSize * lineHeight.toFloat() * density.density
-        val lines = measureLines(ann, baseStyle.style(), lhPx.roundToInt())
-        if (lines.isEmpty()) return
+        val lines = measureLines(ann, baseStyle.style(scaled), lhPx.roundToInt())
+        if (lines.isEmpty()) return emptyList()
         lines.forEachIndexed { i, frag ->
             frag.plainStart = plainStart
-            frag.floorCard = card
+            frag.card = card
             frag.borderColor = border
             frag.accentColor = accent
-            frag.cardColor = bg
+            frag.cardBg = bg
+            frag.leftBar = accent
+            frag.quoteBg = if (quote) quoteBg else null
+            frag.quoteBar = if (quote) quoteBar else null
+            frag.padStartPx = padStart
+            frag.padEndPx = padEnd
             frag.topPad = if (i == 0) padTop else 0
             frag.bottomPad = if (i == lines.lastIndex) padBottom else 0
+            frag.marginTopPx = if (i == 0) marginTop else 0
+            frag.marginBottomPx = if (i == lines.lastIndex) marginBottom else 0
             addFrag(frag)
         }
+        return lines
     }
 
     doc.blocks.forEachIndexed { bi, block ->
@@ -633,21 +750,23 @@ private fun paginate(
         when (block) {
             is ReaderBlock.Floor -> {
                 // 楼层卡片：头部一行 + 正文块；跨页时每片断都带卡片边框（对齐桌面 break-inside:auto）。
-                val border = accentColor.copy(alpha = 0.25f)
+                val border = cardBorder
                 val headFrag = Frag()
                 headFrag.head = "${block.lou}楼 · ${block.likes}赞 · ${block.username}(${block.userId}) · ${block.time}"
                 headFrag.headColor = mutedColor
-                headFrag.heightPx = (16 * density.density).roundToInt()
-                headFrag.floorCard = true
+                headFrag.heightPx = (24 * density.density).roundToInt()
+                headFrag.card = true
                 headFrag.borderColor = border
                 headFrag.accentColor = accentColor
-                headFrag.cardColor = Color.Transparent
-                headFrag.topPad = (12 * density.density).roundToInt()
+                headFrag.cardBg = null
+                headFrag.leftBar = accentColor
+                headFrag.cardTop = true
+                headFrag.topPad = (10 * density.density).roundToInt()
+                headFrag.marginTopPx = (10 * density.density).roundToInt()
                 headFrag.plainStart = plainCursor
                 addFrag(headFrag)
-                used += (6 * density.density).roundToInt()
+                headFrag.head = "${block.lou}\u697c \u00b7 ${block.likes}\u8d5e \u00b7 ${block.username}(${block.userId}) \u00b7 ${block.time} \u00b7 pid:${block.pid}"
                 if (block.body.isEmpty()) {
-                    used += (12 * density.density).roundToInt()
                 } else {
                     block.body.forEach { sub ->
                         when (sub) {
@@ -656,38 +775,91 @@ private fun paginate(
                             is ReaderBlock.Quote -> {
                                 val inner = mutableListOf<ReaderBlock>()
                                 inner.addAll(sub.body)
-                                val pad = (6 * density.density).roundToInt()
-                                pushTextBlock(ReaderBlock.Paragraph(inner.flatMap { it.spansOrEmpty() }), bi, plainCursor, pad, pad, false, null, null, textColor.copy(alpha = 0.05f))
+                                val pad = (8 * density.density).roundToInt()
+                                val m = (10 * density.density).roundToInt()
+                                pushTextBlock(
+                                    ReaderBlock.Paragraph(inner.flatMap { it.spansOrEmpty() }),
+                                    bi, plainCursor, pad, pad,
+                                    card = true, border = border, accent = accentColor, bg = null,
+                                    fontScale = 0.95f, quote = true, quoteBar = border,
+                                    marginTop = m, marginBottom = m,
+                                )
                             }
                             is ReaderBlock.Image -> {
                                 val f = Frag()
                                 f.image = sub.src
                                 f.heightPx = minOf((220 * density.density).roundToInt(), (pageH * 0.6f).roundToInt())
-                                f.floorCard = true
+                                f.card = true
                                 f.borderColor = border
                                 f.accentColor = accentColor
+                                f.cardBg = null
                                 addFrag(f)
                             }
                             is ReaderBlock.Table -> {
                                 val f = Frag()
                                 f.table = sub
                                 f.heightPx = (minOf(sub.rows.size * 30, 260) * density.density).roundToInt()
-                                f.floorCard = true
+                                f.card = true
                                 f.borderColor = border
                                 f.accentColor = accentColor
+                                f.cardBg = null
                                 addFrag(f)
                             }
                             else -> Unit
                         }
                     }
-                    used += (12 * density.density).roundToInt()
                 }
+                lastCardFrag?.cardBottom = true
+                lastCardFrag?.bottomPad = (10 * density.density).roundToInt()
             }
-            is ReaderBlock.Paragraph, is ReaderBlock.Heading, is ReaderBlock.Dice, is ReaderBlock.Comment ->
+            is ReaderBlock.Comment -> {
+                // 追评卡片：commentBg + 1px 边框 + 8/10 内边距 + 10px 外边距，头行 muted。
+                val pad = (8 * density.density).roundToInt()
+                val m = (10 * density.density).roundToInt()
+                val headFrag = Frag()
+                headFrag.head = buildString {
+                    if (block.lou > 0) append("${block.lou}\u697c")
+                    if (block.username.isNotBlank()) {
+                        if (block.lou > 0) append(' ')
+                        append(block.username)
+                    }
+                }
+                headFrag.headColor = mutedColor
+                headFrag.heightPx = (14 * density.density).roundToInt()
+                headFrag.card = true
+                headFrag.cardBg = commentBg
+                headFrag.borderColor = cardBorder
+                headFrag.cardTop = true
+                headFrag.padStartPx = (10 * density.density).roundToInt()
+                headFrag.padEndPx = (10 * density.density).roundToInt()
+                headFrag.topPad = pad
+                headFrag.marginTopPx = m
+                headFrag.headDivider = false
+                headFrag.plainStart = plainCursor
+                addFrag(headFrag)
+                pushTextBlock(
+                    block, bi, plainCursor, 0, 0,
+                    card = true, border = cardBorder, accent = null, bg = commentBg,
+                    padStart = (10 * density.density).roundToInt(),
+                    padEnd = (10 * density.density).roundToInt(),
+                )
+                lastCardFrag?.cardBottom = true
+                lastCardFrag?.bottomPad = pad
+            }
+            is ReaderBlock.Paragraph, is ReaderBlock.Heading, is ReaderBlock.Dice ->
                 pushTextBlock(block, bi, plainCursor, 0, 0, false, null, null, null)
             is ReaderBlock.Quote -> {
-                val pad = (10 * density.density).roundToInt()
-                pushTextBlock(ReaderBlock.Paragraph(block.body.flatMap { it.spansOrEmpty() }), bi, plainCursor, pad, pad, false, null, null, textColor.copy(alpha = 0.05f))
+                val pad = (8 * density.density).roundToInt()
+                val m = (10 * density.density).roundToInt()
+                pushTextBlock(
+                    ReaderBlock.Paragraph(block.body.flatMap { it.spansOrEmpty() }),
+                    bi, plainCursor, pad, pad,
+                    card = false, border = null, accent = null, bg = quoteBg,
+                    fontScale = 0.95f, quote = true, quoteBar = cardBorder,
+                    padStart = (12 * density.density).roundToInt(),
+                    padEnd = (12 * density.density).roundToInt(),
+                    marginTop = m, marginBottom = m,
+                )
             }
             is ReaderBlock.Image -> {
                 val f = Frag()
@@ -777,62 +949,199 @@ private fun RenderFrag(
             }
             frag.table != null -> NativeTable(frag.table!!, theme, baseStyle, Modifier.height(frag.heightPx.dp))
             frag.head != null -> {
-                Text(
-                    frag.head!!,
-                    style = baseStyle.style(SpanStyle(
-                        fontSize = (baseStyle.fontSize * 0.82f).sp,
-                        color = frag.headColor ?: theme.fgColor.copy(alpha = 0.7f),
-                    )),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                HorizontalDivider(
-                    color = theme.fgColor.copy(alpha = 0.15f),
-                    modifier = Modifier.padding(top = 3.dp, bottom = 5.dp),
-                )
+                if (frag.accentColor != null) {
+                    FloorHead(
+                        head = frag.head!!,
+                        baseStyle = baseStyle,
+                        accent = frag.accentColor!!,
+                        muted = frag.headColor ?: theme.fgColor.copy(alpha = 0.7f),
+                    )
+                } else {
+                    Text(
+                        frag.head!!,
+                        style = baseStyle.style(SpanStyle(
+                            fontSize = (baseStyle.fontSize * 0.8f).sp,
+                            color = frag.headColor ?: theme.fgColor.copy(alpha = 0.7f),
+                        )),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (frag.headDivider) {
+                    DottedDivider(
+                        color = frag.borderColor ?: theme.fgColor.copy(alpha = 0.3f),
+                        modifier = Modifier.padding(top = 3.dp, bottom = 5.dp),
+                    )
+                }
             }
             frag.ann != null -> {
-                val ann = applyHighlights(frag.ann!!, frag.plainStart, highlights, highlightColors)
-                Text(
-                    text = ann,
-                    style = frag.style ?: baseStyle.style(),
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip,
-                )
+                val line: @Composable () -> Unit = {
+                    val ann = applyHighlights(frag.ann!!, frag.plainStart, highlights, highlightColors)
+                    Text(
+                        text = ann,
+                        style = frag.style ?: baseStyle.style(),
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip,
+                    )
+                }
+                if (frag.quoteBg != null && frag.card) {
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                        Box(
+                            Modifier
+                                .width(3.dp)
+                                .fillMaxHeight()
+                                .background(frag.quoteBar ?: Color.Transparent),
+                        )
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .background(frag.quoteBg!!)
+                                .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                        ) {
+                            line()
+                        }
+                    }
+                } else {
+                    line()
+                }
             }
         }
     }
-    if (frag.floorCard) {
-        // 楼层卡片碎片：每片断都带边框 + 左侧主题色条（对齐桌面 break-inside:auto 的碎片化边框）。
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .border(1.dp, frag.borderColor ?: Color.Transparent, MaterialTheme.shapes.small),
-        ) {
-            Box(
-                Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(frag.accentColor ?: Color.Transparent),
-            )
-            Column(
-                Modifier
-                    .weight(1f)
-                    .padding(
-                        start = 10.dp,
-                        end = 10.dp,
-                        top = frag.topPad.dp,
-                        bottom = frag.bottomPad.dp,
-                    ),
-            ) {
-                content()
+    Column(Modifier.fillMaxWidth()) {
+        if (frag.marginTopPx > 0) Spacer(Modifier.height(frag.marginTopPx.dp))
+        when {
+            frag.card -> {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min)
+                        .background(frag.cardBg ?: Color.Transparent)
+                        .drawBehind {
+                            val bc = frag.borderColor ?: return@drawBehind
+                            val stroke = 1.dp.toPx()
+                            if (frag.cardTop) {
+                                drawLine(bc, Offset(0f, 0f), Offset(size.width, 0f), stroke)
+                            }
+                            if (frag.cardBottom) {
+                                drawLine(bc, Offset(size.width, size.height), Offset(0f, size.height), stroke)
+                            }
+                            drawLine(bc, Offset(0f, 0f), Offset(0f, size.height), stroke)
+                            drawLine(bc, Offset(size.width, 0f), Offset(size.width, size.height), stroke)
+                        },
+                ) {
+                    if (frag.leftBar != null) {
+                        Box(
+                            Modifier
+                                .width(frag.leftBarWidthDp.dp)
+                                .fillMaxHeight()
+                                .background(frag.leftBar!!),
+                        )
+                    }
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .padding(
+                                start = if (frag.padStartPx > 0) frag.padStartPx.dp else 12.dp,
+                                end = if (frag.padEndPx > 0) frag.padEndPx.dp else 12.dp,
+                                top = frag.topPad.dp,
+                                bottom = frag.bottomPad.dp,
+                            ),
+                    ) {
+                        content()
+                    }
+                }
             }
+            frag.quoteBg != null -> {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                ) {
+                    Box(
+                        Modifier
+                            .width(3.dp)
+                            .fillMaxHeight()
+                            .background(frag.quoteBar ?: Color.Transparent),
+                    )
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .background(frag.quoteBg!!)
+                            .padding(
+                                start = if (frag.padStartPx > 0) frag.padStartPx.dp else 12.dp,
+                                end = if (frag.padEndPx > 0) frag.padEndPx.dp else 12.dp,
+                                top = frag.topPad.dp,
+                                bottom = frag.bottomPad.dp,
+                            ),
+                    ) {
+                        content()
+                    }
+                }
+            }
+            else -> content()
+        }
+        if (frag.marginBottomPx > 0) Spacer(Modifier.height(frag.marginBottomPx.dp))
+    }
+}
+
+@Composable
+private fun FloorHead(
+    head: String,
+    baseStyle: ReaderTextStyle,
+    accent: Color,
+    muted: Color,
+) {
+    val idx = head.indexOf("楼 · ")
+    if (idx > 0) {
+        Row(Modifier.fillMaxWidth()) {
+            Text(
+                head.substring(0, idx + 1),
+                style = baseStyle.style(SpanStyle(
+                    fontSize = (baseStyle.fontSize * 0.82f).sp,
+                    color = accent,
+                    fontWeight = FontWeight.Bold,
+                )),
+            )
+            Text(
+                head.substring(idx + 1),
+                style = baseStyle.style(SpanStyle(
+                    fontSize = (baseStyle.fontSize * 0.82f).sp,
+                    color = muted,
+                )),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     } else {
-        content()
+        Text(
+            head,
+            style = baseStyle.style(SpanStyle(fontSize = (baseStyle.fontSize * 0.82f).sp, color = muted)),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
+}
+
+/** 桌面 .floor-head 的 1px dotted 分隔线（小圆点）。 */
+@Composable
+private fun DottedDivider(color: Color, modifier: Modifier = Modifier) {
+    Spacer(
+        modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .drawBehind {
+                val stroke = 1.dp.toPx()
+                val step = 6.dp.toPx()
+                val dot = 2.dp.toPx()
+                val y = size.height / 2f
+                var x = 0f
+                while (x < size.width) {
+                    drawLine(color, Offset(x, y), Offset(minOf(x + dot, size.width), y), stroke)
+                    x += step
+                }
+            },
+    )
 }
 
 @Composable
@@ -848,35 +1157,33 @@ private fun NativeBlock(
 ) {
     when (block) {
         is ReaderBlock.Floor -> {
+            val pal = cardPalette(theme)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Min)
-                    .background(theme.bgColor),
+                    .background(Color.Transparent),
             ) {
                 Box(
                     Modifier
                         .width(4.dp)
                         .fillMaxHeight()
-                        .background(theme.accentColor.copy(alpha = 0.35f)),
+                        .background(theme.accentColor),
                 )
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .border(1.dp, theme.accentColor.copy(alpha = 0.25f), MaterialTheme.shapes.small)
+                        .border(1.dp, pal.border, RoundedCornerShape(2.dp))
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                 ) {
-                    Text(
-                        "${block.lou}楼 · ${block.likes}赞 · ${block.username}(${block.userId}) · ${block.time}",
-                        style = baseStyle.style(SpanStyle(
-                            fontSize = (baseStyle.fontSize * 0.82f).sp,
-                            color = theme.fgColor.copy(alpha = 0.7f),
-                        )),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    FloorHead(
+                        head = "${block.lou}楼 · ${block.likes}赞 · ${block.username}(${block.userId}) · ${block.time} · pid:${block.pid}",
+                        baseStyle = baseStyle,
+                        accent = theme.accentColor,
+                        muted = pal.head,
                     )
-                    HorizontalDivider(
-                        color = theme.fgColor.copy(alpha = 0.15f),
+                    DottedDivider(
+                        color = pal.border,
                         modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
                     )
                     block.body.forEach { sub ->
@@ -902,38 +1209,54 @@ private fun NativeBlock(
                 Modifier
                     .width(3.dp)
                     .fillMaxHeight()
-                    .background(theme.accentColor.copy(alpha = 0.45f)),
+                    .background(cardPalette(theme).border),
             )
             Column(
                 Modifier
                     .weight(1f)
-                    .background(theme.bgColor.copy(alpha = 0.5f))
-                    .padding(start = 10.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
+                    .background(cardPalette(theme).quoteBg)
+                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
             ) {
                 if (block.title.isNotBlank()) {
-                    Text(block.title, style = baseStyle.style(SpanStyle(fontWeight = FontWeight.Medium, fontSize = (baseStyle.fontSize * 0.9f).sp)))
+                    Text(
+                        block.title,
+                        style = baseStyle.style(SpanStyle(
+                            fontSize = (baseStyle.fontSize * 0.9f).sp,
+                            color = cardPalette(theme).head,
+                        )),
+                    )
                 }
-                block.body.forEach { NativeBlock(it, theme, baseStyle, scrollMode, highlights, highlightColors, imageBytes, onImageLongPress) }
+                val quoteStyle = ReaderTextStyle(
+                    span = baseStyle.span.copy(fontSize = (baseStyle.fontSize * 0.95f).sp),
+                    para = baseStyle.para,
+                )
+                block.body.forEach { NativeBlock(it, theme, quoteStyle, scrollMode, highlights, highlightColors, imageBytes, onImageLongPress) }
             }
         }
         is ReaderBlock.Dice -> Text(
             block.text,
-            style = baseStyle.style(SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFFB8860B))),
+            style = baseStyle.style(SpanStyle(fontWeight = FontWeight.Bold, color = cardPalette(theme).dice)),
+            modifier = Modifier.padding(vertical = 6.dp),
         )
         is ReaderBlock.Comment -> Column(
             Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp)
-                .border(1.dp, theme.accentColor.copy(alpha = 0.2f), MaterialTheme.shapes.small)
-                .background(theme.bgColor.copy(alpha = 0.5f))
-                .padding(8.dp),
+                .border(1.dp, cardPalette(theme).border, RoundedCornerShape(2.dp))
+                .background(cardPalette(theme).commentBg)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
         ) {
             if (block.lou > 0 || block.username.isNotBlank()) {
                 Text(
-                    "${if (block.lou > 0) "${block.lou}楼 · " else ""}${block.username}",
+                    buildString {
+                        if (block.lou > 0) append("${block.lou}楼")
+                        if (block.username.isNotBlank()) {
+                            if (block.lou > 0) append(' ')
+                            append(block.username)
+                        }
+                    },
                     style = baseStyle.style(SpanStyle(
                         fontSize = (baseStyle.fontSize * 0.8f).sp,
-                        color = theme.fgColor.copy(alpha = 0.7f),
+                        color = cardPalette(theme).head,
                     )),
                     modifier = Modifier.padding(bottom = 2.dp),
                 )
@@ -942,7 +1265,7 @@ private fun NativeBlock(
                 block.spans.joinToString("") { it.text },
                 style = baseStyle.style(SpanStyle(
                     fontSize = (baseStyle.fontSize * 0.92f).sp,
-                    color = theme.fgColor.copy(alpha = 0.9f),
+                    color = theme.fgColor,
                 )),
             )
         }
@@ -975,7 +1298,7 @@ private fun NativeTextBlock(
             )
         }
     }
-    Text(text = ann, style = style, modifier = Modifier.padding(vertical = 6.dp))
+    Text(text = ann, style = style, modifier = Modifier.padding(vertical = 4.dp))
 }
 
 @Composable
@@ -1084,12 +1407,27 @@ private fun parseHtmlColor(raw: String?): Color? {
         val hex = s.removePrefix("#")
         return when (hex.length) {
             3 -> Color(
-                red = hex[0].digitToIntOrNull(16)?.let { it * 17 } ?: 255,
-                green = hex[1].digitToIntOrNull(16)?.let { it * 17 } ?: 255,
-                blue = hex[2].digitToIntOrNull(16)?.let { it * 17 } ?: 255,
+                red = (hex[0].digitToIntOrNull(16)?.let { it * 17 } ?: 255) / 255f,
+                green = (hex[1].digitToIntOrNull(16)?.let { it * 17 } ?: 255) / 255f,
+                blue = (hex[2].digitToIntOrNull(16)?.let { it * 17 } ?: 255) / 255f,
             )
-            6 -> runCatching { Color(("FF" + hex).toLong(16)) }.getOrNull()
-            8 -> runCatching { Color(hex.toLong(16)) }.getOrNull()
+            6 -> runCatching {
+                val v = hex.toLong(16)
+                Color(
+                    red = ((v shr 16) and 0xFF).toInt() / 255f,
+                    green = ((v shr 8) and 0xFF).toInt() / 255f,
+                    blue = (v and 0xFF).toInt() / 255f,
+                )
+            }.getOrNull()
+            8 -> runCatching {
+                val v = hex.toLong(16)
+                Color(
+                    red = ((v shr 16) and 0xFF).toInt() / 255f,
+                    green = ((v shr 8) and 0xFF).toInt() / 255f,
+                    blue = (v and 0xFF).toInt() / 255f,
+                    alpha = ((v shr 24) and 0xFF).toInt() / 255f,
+                )
+            }.getOrNull()
             else -> null
         }
     }
@@ -1097,7 +1435,7 @@ private fun parseHtmlColor(raw: String?): Color? {
         val parts = s.removePrefix("rgb(").removeSuffix(")")
             .split(",").map { it.trim().toIntOrNull() ?: return null }
         if (parts.size >= 3) {
-            return Color(red = parts[0], green = parts[1], blue = parts[2])
+            return Color(red = parts[0] / 255f, green = parts[1] / 255f, blue = parts[2] / 255f)
         }
     }
     return namedColor(s)
@@ -1120,4 +1458,11 @@ private val NAMED_COLORS = mapOf(
 )
 
 private fun namedColor(name: String): Color? =
-    NAMED_COLORS[name.lowercase()]?.let { Color(it) }
+    NAMED_COLORS[name.lowercase()]?.let { v ->
+        val c = v.toInt()
+        Color(
+            red = ((c shr 16) and 0xFF) / 255f,
+            green = ((c shr 8) and 0xFF) / 255f,
+            blue = (c and 0xFF) / 255f,
+        )
+    }

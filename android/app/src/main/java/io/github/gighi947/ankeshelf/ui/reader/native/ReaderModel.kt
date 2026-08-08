@@ -145,19 +145,25 @@ object ReaderHtmlModel {
                         likes = Regex("(\\d+)\\s*赞").find(headText)?.groupValues?.get(1)?.toIntOrNull() ?: 0,
                         username = Regex("([^()\\s]+)\\s*\\((\\d+)\\)").find(headText)?.groupValues?.get(1).orEmpty(),
                         userId = Regex("([^()\\s]+)\\s*\\((\\d+)\\)").find(headText)?.groupValues?.get(2)?.toLongOrNull() ?: 0L,
-                        time = headText.substringAfterLast(")").substringBefore("pid").trim().removePrefix("·").trim(),
+                        time = headText.substringAfterLast(")").substringBefore("pid")
+                            .trim().removePrefix("·").trim().removeSuffix("·").trim(),
                         pid = node.attr("id")?.removePrefix("pid")?.toLongOrNull() ?: 0L,
                         body = bodyBlocks,
                     )
                     out.add(floor)
                     plain.append(' ').append(bodyPlain.toString().trim())
                     for (c in comments) {
-                        val spans = spansOf(c.children, mutableListOf(), classColors = classColors)
+                        val headNode = c.findClass("comment-head")
+                        val spans = spansOf(
+                            c.children.filter { it !== headNode },
+                            mutableListOf(),
+                            classColors = classColors,
+                        )
                         out.add(
                             ReaderBlock.Comment(
                                 spans = spans,
-                                lou = c.findClass("comment-head")?.textAll?.substringBefore("楼")?.trim()?.toIntOrNull() ?: 0,
-                                username = c.findClass("comment-head")?.textAll?.substringAfter("楼")?.trim().orEmpty(),
+                                lou = headNode?.textAll?.substringBefore("楼")?.trim()?.toIntOrNull() ?: 0,
+                                username = headNode?.textAll?.substringAfter("楼")?.trim().orEmpty(),
                             ),
                         )
                         plain.append(' ').append(spans.joinToString("") { it.text })
@@ -176,8 +182,19 @@ object ReaderHtmlModel {
                     plain.append(' ').append(t)
                 }
                 node.hasClass("nga-comment") -> {
-                    val spans = spansOf(node.children, mutableListOf(), classColors = classColors)
-                    out.add(ReaderBlock.Comment(spans, 0, ""))
+                    val headNode = node.findClass("comment-head")
+                    val spans = spansOf(
+                        node.children.filter { it !== headNode },
+                        mutableListOf(),
+                        classColors = classColors,
+                    )
+                    out.add(
+                        ReaderBlock.Comment(
+                            spans = spans,
+                            lou = headNode?.textAll?.substringBefore("楼")?.trim()?.toIntOrNull() ?: 0,
+                            username = headNode?.textAll?.substringAfter("楼")?.trim().orEmpty(),
+                        ),
+                    )
                     plain.append(' ').append(spans.joinToString("") { it.text })
                 }
                 node.hasClass("nga-table-scroll") || node.hasClass("collapse_content") || node.hasClass("foldBox") ->
@@ -383,7 +400,7 @@ object ReaderHtmlModel {
             val text = StringBuilder()
             fun flushText() {
                 if (text.isNotEmpty()) {
-                    stack.last().children.add(Node("#text").apply { this.text = text.toString() })
+                    stack.last().children.add(Node("#text").apply { this.text = decodeEntities(text.toString()) })
                     text.setLength(0)
                 }
             }
@@ -426,7 +443,7 @@ object ReaderHtmlModel {
                 val attrRe = Regex("""([a-zA-Z_:][a-zA-Z0-9_.:-]*)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)""")
                 for (m in attrRe.findAll(raw)) {
                     attrs[m.groupValues[1].lowercase()] =
-                        m.groupValues[2].trim('"', '\'')
+                        decodeEntities(m.groupValues[2].trim('"', '\''))
                 }
                 if (raw.endsWith("/") || tagName in VOID_TAGS) {
                     flushText()
@@ -444,5 +461,49 @@ object ReaderHtmlModel {
             flushText()
             return root
         }
+    }
+
+    /** 解码常见 HTML 实体（&#39; &amp; &lt; 等），避免正文残留原始实体。 */
+    private fun decodeEntities(s: String): String {
+        if (!s.contains('&')) return s
+        val out = StringBuilder(s.length)
+        var i = 0
+        while (i < s.length) {
+            val amp = s.indexOf('&', i)
+            if (amp < 0) {
+                out.append(s, i, s.length)
+                break
+            }
+            out.append(s, i, amp)
+            val semi = s.indexOf(';', amp)
+            if (semi < 0 || semi - amp > 14) {
+                out.append('&')
+                i = amp + 1
+                continue
+            }
+            val name = s.substring(amp + 1, semi)
+            val decoded: String? = when (name) {
+                "amp" -> "&"
+                "lt" -> "<"
+                "gt" -> ">"
+                "quot" -> "\""
+                "apos", "#39" -> "'"
+                "nbsp" -> " "
+                else -> null
+            }
+            if (decoded != null) {
+                out.append(decoded)
+            } else if (name.startsWith("#x")) {
+                val cp = name.substring(2).toIntOrNull(16)
+                if (cp != null && cp > 0) out.appendCodePoint(cp) else out.append('&').append(name).append(';')
+            } else if (name.startsWith("#")) {
+                val cp = name.substring(1).toIntOrNull()
+                if (cp != null && cp > 0) out.appendCodePoint(cp) else out.append('&').append(name).append(';')
+            } else {
+                out.append('&').append(name).append(';')
+            }
+            i = semi + 1
+        }
+        return out.toString()
     }
 }
