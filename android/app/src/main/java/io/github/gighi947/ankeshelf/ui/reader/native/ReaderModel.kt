@@ -1,0 +1,393 @@
+package io.github.gighi947.ankeshelf.ui.reader.native
+
+/**
+ * 原生阅读器的块模型：把清洗后的章节 XHTML 解析成楼层/段落/引用/骰子/表格/图片，
+ * 文本保留为 span（颜色/粗斜体），并维护章内折叠纯文本偏移（与桌面 TextPos 同口径：
+ * 相邻文本块间一个空格、空白折叠、首尾 trim）。
+ */
+
+sealed class ReaderBlock {
+    /** NGA 楼层卡片：头部（楼号/赞/用户名/时间）+ 正文块。 */
+    data class Floor(
+        val lou: Int,
+        val likes: Int,
+        val username: String,
+        val userId: Long,
+        val time: String,
+        val pid: Long,
+        val body: List<ReaderBlock>,
+    ) : ReaderBlock()
+
+    /** 普通段落（EPUB 内容同样走这里）。 */
+    data class Paragraph(val spans: List<ReaderSpan>) : ReaderBlock()
+
+    data class Heading(val spans: List<ReaderSpan>) : ReaderBlock()
+
+    /** 引用块（quote）：左边条 + 底色，可嵌套块。 */
+    data class Quote(val body: List<ReaderBlock>, val title: String = "") : ReaderBlock()
+
+    /** NGA 骰子：金色加粗一行。 */
+    data class Dice(val text: String) : ReaderBlock()
+
+    data class TableRow(val cells: List<List<ReaderSpan>>)
+
+    data class Table(val rows: List<TableRow>) : ReaderBlock()
+
+    data class Image(val src: String, val alt: String = "") : ReaderBlock()
+
+    /** 楼层追评。 */
+    data class Comment(val spans: List<ReaderSpan>, val lou: Int, val username: String) : ReaderBlock()
+
+    /** 空行占位。 */
+    data class Blank(val ratio: Float = 1f) : ReaderBlock()
+}
+
+data class ReaderSpan(
+    val text: String,
+    val color: String? = null,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val link: String? = null,
+)
+
+data class ReaderDoc(
+    val blocks: List<ReaderBlock>,
+    /** 折叠纯文本（text_offset 基准，与桌面 TextPos.text 同口径）。 */
+    val plainText: String,
+    /** 每个块在 plainText 中的起始偏移（最后一个为总长）。 */
+    val blockOffsets: List<Int>,
+)
+
+/** 解析清洗后的章节 body → 块模型。 */
+object ReaderHtmlModel {
+
+    fun parse(body: String): ReaderDoc {
+        val root = Tokenizer(body).parse()
+        val blocks = mutableListOf<ReaderBlock>()
+        val plain = StringBuilder()
+        val offsets = mutableListOf<Int>()
+        offsets.add(0)
+        for (child in root.children) {
+            convert(child, blocks, plain, 0)
+            offsets.add(plain.length)
+        }
+        val text = plain.toString().replace(Regex("\\s+"), " ").trim()
+        return ReaderDoc(blocks = blocks, plainText = text, blockOffsets = offsets)
+    }
+
+    private fun convert(
+        node: Node,
+        out: MutableList<ReaderBlock>,
+        plain: StringBuilder,
+        depth: Int,
+    ) {
+        if (depth > 24) return
+        when (node.tag) {
+            "div" -> when (node.className) {
+                "nga-floor" -> {
+                    val head = node.findClass("floor-head")
+                    val bodyNode = node.findClass("floor-body")
+                    val comments = node.children.filter { it.className == "nga-comment" }
+                    val bodyBlocks = mutableListOf<ReaderBlock>()
+                    val bodyPlain = StringBuilder()
+                    if (bodyNode != null) {
+                        for (c in bodyNode.children) {
+                            convert(c, bodyBlocks, bodyPlain, depth + 1)
+                        }
+                    }
+                    val floor = ReaderBlock.Floor(
+                        lou = head?.textAll?.substringBefore("楼")?.trim()?.toIntOrNull() ?: 0,
+                        likes = head?.textAll?.substringAfter("·")?.substringBefore("赞")?.trim()?.toIntOrNull() ?: 0,
+                        username = head?.textAll?.substringAfter("· ")?.substringBefore("(")?.trim().orEmpty(),
+                        userId = head?.textAll?.substringAfter("(")?.substringBefore(")")?.trim()?.toLongOrNull() ?: 0L,
+                        time = head?.textAll?.substringAfterLast(")")?.substringBefore("pid")?.trim().orEmpty(),
+                        pid = node.attr("id")?.removePrefix("pid")?.toLongOrNull() ?: 0L,
+                        body = bodyBlocks,
+                    )
+                    out.add(floor)
+                    plain.append(' ').append(bodyPlain.toString().trim())
+                    for (c in comments) {
+                        val spans = spansOf(c.children, mutableListOf())
+                        out.add(
+                            ReaderBlock.Comment(
+                                spans = spans,
+                                lou = c.findClass("comment-head")?.textAll?.substringBefore("楼")?.trim()?.toIntOrNull() ?: 0,
+                                username = c.findClass("comment-head")?.textAll?.substringAfter("楼")?.trim().orEmpty(),
+                            ),
+                        )
+                        plain.append(' ').append(spans.joinToString("") { it.text })
+                    }
+                }
+                "nga-quote" -> {
+                    val inner = mutableListOf<ReaderBlock>()
+                    val innerPlain = StringBuilder()
+                    for (c in node.children) convert(c, inner, innerPlain, depth + 1)
+                    out.add(ReaderBlock.Quote(inner))
+                    plain.append(' ').append(innerPlain)
+                }
+                "nga-dice" -> {
+                    val t = node.textAll
+                    out.add(ReaderBlock.Dice(t))
+                    plain.append(' ').append(t)
+                }
+                "nga-comment" -> {
+                    val spans = spansOf(node.children, mutableListOf())
+                    out.add(ReaderBlock.Comment(spans, 0, ""))
+                    plain.append(' ').append(spans.joinToString("") { it.text })
+                }
+                "nga-table-scroll" -> convertChildren(node, out, plain, depth)
+                "collapse_content" -> convertChildren(node, out, plain, depth)
+                "foldBox" -> convertChildren(node, out, plain, depth)
+                else -> {
+                    val text = node.textAll
+                    if (text.isBlank()) {
+                        convertChildren(node, out, plain, depth)
+                    } else {
+                        out.add(ReaderBlock.Paragraph(spansOf(node.children, mutableListOf())))
+                        plain.append(' ').append(text)
+                    }
+                }
+            }
+            "p" -> {
+                val spans = spansOf(node.children, mutableListOf())
+                if (spans.isNotEmpty()) out.add(ReaderBlock.Paragraph(spans))
+                plain.append(' ').append(spans.joinToString("") { it.text })
+            }
+            "h1", "h2", "h3", "h4" -> {
+                val spans = spansOf(node.children, mutableListOf())
+                if (spans.isNotEmpty()) out.add(ReaderBlock.Heading(spans))
+                plain.append(' ').append(spans.joinToString("") { it.text })
+            }
+            "blockquote" -> {
+                val inner = mutableListOf<ReaderBlock>()
+                val innerPlain = StringBuilder()
+                for (c in node.children) convert(c, inner, innerPlain, depth + 1)
+                out.add(ReaderBlock.Quote(inner))
+                plain.append(' ').append(innerPlain)
+            }
+            "table" -> {
+                val rows = mutableListOf<ReaderBlock.TableRow>()
+                var tbodySeen = false
+                for (tr in node.children.filter { it.tag == "tr" || it.tag == "tbody" }) {
+                    if (tr.tag == "tbody") {
+                        tbodySeen = true
+                        for (row in tr.children.filter { it.tag == "tr" }) {
+                            rows.add(tableRow(row))
+                        }
+                    } else {
+                        rows.add(tableRow(tr))
+                    }
+                }
+                if (rows.isNotEmpty()) {
+                    out.add(ReaderBlock.Table(rows))
+                    for (row in rows) {
+                        for (cell in row.cells) {
+                            plain.append(' ').append(cell.joinToString("") { it.text })
+                        }
+                    }
+                }
+            }
+            "img" -> {
+                val src = node.attr("src").orEmpty()
+                if (src.isNotBlank()) {
+                    out.add(ReaderBlock.Image(src, node.attr("alt").orEmpty()))
+                    plain.append(' ').append(node.attr("alt").orEmpty())
+                }
+            }
+            "br" -> plain.append(' ')
+            "hr" -> plain.append(' ')
+            "details" -> {
+                val summary = node.children.firstOrNull { it.tag == "summary" }?.textAll.orEmpty()
+                val inner = mutableListOf<ReaderBlock>()
+                val innerPlain = StringBuilder()
+                for (c in node.children.filter { it.tag != "summary" }) {
+                    convert(c, inner, innerPlain, depth + 1)
+                }
+                out.add(ReaderBlock.Quote(inner, title = summary))
+                plain.append(' ').append(summary).append(' ').append(innerPlain)
+            }
+            "a", "b", "i", "span", "strong", "em", "u", "font", "del", "s", "sub", "sup", "code", "pre" ->
+                convertChildren(node, out, plain, depth)
+            "ul", "ol", "li" -> convertChildren(node, out, plain, depth)
+            "script", "style", "head", "iframe", "object", "embed", "base", "form", "meta" -> Unit
+            "#text" -> {
+                if (node.text.isNotBlank()) {
+                    out.add(ReaderBlock.Paragraph(listOf(ReaderSpan(node.text))))
+                    plain.append(' ').append(node.text)
+                }
+            }
+            else -> convertChildren(node, out, plain, depth)
+        }
+    }
+
+    private fun convertChildren(
+        node: Node,
+        out: MutableList<ReaderBlock>,
+        plain: StringBuilder,
+        depth: Int,
+    ) {
+        for (c in node.children) convert(c, out, plain, depth + 1)
+    }
+
+    private fun tableRow(tr: Node): ReaderBlock.TableRow {
+        val cells = tr.children.filter { it.tag == "td" || it.tag == "th" }
+            .map { spansOf(it.children, mutableListOf()) }
+        return ReaderBlock.TableRow(cells)
+    }
+
+    /** 内联内容 → span 列表（继承粗/斜/颜色）。 */
+    private fun spansOf(
+        nodes: List<Node>,
+        out: MutableList<ReaderSpan>,
+        bold: Boolean = false,
+        italic: Boolean = false,
+        color: String? = null,
+        link: String? = null,
+    ): MutableList<ReaderSpan> {
+        for (n in nodes) {
+            when (n.tag) {
+                "br" -> out.add(ReaderSpan("\n", bold = bold, italic = italic, color = color, link = link))
+                "img" -> {
+                    val alt = n.attr("alt").orEmpty()
+                    if (alt.isNotBlank()) {
+                        out.add(ReaderSpan(alt, bold = bold, italic = italic, color = color, link = link))
+                    }
+                }
+                "b", "strong" -> spansOf(n.children, out, bold = true, italic = italic, color = color, link = link)
+                "i", "em" -> spansOf(n.children, out, bold = bold, italic = true, color = color, link = link)
+                "u" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)
+                "del", "s" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)
+                "a" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = n.attr("href"))
+                "span", "font" -> {
+                    val c = parseColor(n.attr("style")) ?: color
+                    spansOf(n.children, out, bold = bold, italic = italic, color = c, link = link)
+                }
+                "code", "pre", "sub", "sup" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)
+                "#text" -> {
+                    if (n.text.isNotEmpty()) {
+                        out.add(ReaderSpan(n.text, color = color, bold = bold, italic = italic, link = link))
+                    }
+                }
+                else -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link)
+            }
+        }
+        return out
+    }
+
+    /** 从内联 style 里取 color：#xxx / rgb() / 命名色。 */
+    private fun parseColor(style: String?): String? {
+        if (style.isNullOrBlank()) return null
+        val m = Regex("color\\s*:\\s*([^;]+)").find(style) ?: return null
+        return m.groupValues[1].trim()
+    }
+
+    private class Node(
+        val tag: String,
+        val attrs: MutableMap<String, String> = mutableMapOf(),
+        val children: MutableList<Node> = mutableListOf(),
+        var text: String = "",
+    ) {
+        val className: String
+            get() = attrs["class"].orEmpty()
+
+        fun attr(name: String): String? = attrs[name]
+
+        fun findClass(cls: String): Node? {
+            if (className == cls) return this
+            for (c in children) {
+                c.findClass(cls)?.let { return it }
+            }
+            return null
+        }
+
+        /** 后代文本（含自身）。 */
+        val textAll: String
+            get() {
+                if (children.isEmpty()) return text
+                val sb = StringBuilder()
+                fun walk(n: Node) {
+                    if (n.children.isEmpty()) sb.append(n.text)
+                    else n.children.forEach { walk(it) }
+                }
+                walk(this)
+                return sb.toString()
+            }
+    }
+
+    private val VOID_TAGS = setOf("br", "img", "hr", "meta", "link", "input", "source", "col")
+    private val AUTO_CLOSE = setOf("p", "li", "tr", "td", "th", "h1", "h2", "h3", "h4", "dt", "dd")
+
+    /** 轻量 HTML 分词器 → DOM 树（容忍 NGA/EPUB 常见脏标签）。 */
+    private class Tokenizer(private val html: String) {
+        fun parse(): Node {
+            val root = Node("#root")
+            val stack = ArrayDeque<Node>()
+            stack.addLast(root)
+            var i = 0
+            val n = html.length
+            val text = StringBuilder()
+            fun flushText() {
+                if (text.isNotEmpty()) {
+                    stack.last().children.add(Node("#text").apply { this.text = text.toString() })
+                    text.setLength(0)
+                }
+            }
+            while (i < n) {
+                val lt = html.indexOf('<', i)
+                if (lt < 0) {
+                    text.append(html.substring(i))
+                    break
+                }
+                if (lt > i) text.append(html.substring(i, lt))
+                val gt = html.indexOf('>', lt + 1)
+                if (gt < 0) {
+                    text.append(html.substring(lt))
+                    break
+                }
+                val raw = html.substring(lt + 1, gt).trim()
+                i = gt + 1
+                if (raw.startsWith("!--")) {
+                    val end = html.indexOf("-->", gt + 1)
+                    i = if (end < 0) n else end + 3
+                    continue
+                }
+                if (raw.startsWith("!")) continue
+                if (raw.startsWith("/")) {
+                    val name = raw.substring(1).substringBefore(' ').substringBefore('\t').lowercase()
+                    flushText()
+                    if (stack.size > 1) {
+                        // 从栈里找到同名节点并弹出（容忍未闭合标签）。
+                        var idx = stack.size - 1
+                        while (idx > 0 && stack[idx].tag != name) idx--
+                        if (idx > 0) {
+                            while (stack.size > idx) stack.removeLast()
+                        }
+                    }
+                    continue
+                }
+                val tagName = raw.substringBefore(' ').substringBefore('\t').lowercase()
+                if (tagName.isEmpty()) continue
+                val attrs = mutableMapOf<String, String>()
+                val attrRe = Regex("""([a-zA-Z_:][a-zA-Z0-9_.:-]*)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)""")
+                for (m in attrRe.findAll(raw)) {
+                    attrs[m.groupValues[1].lowercase()] =
+                        m.groupValues[2].trim('"', '\'')
+                }
+                if (raw.endsWith("/") || tagName in VOID_TAGS) {
+                    flushText()
+                    stack.last().children.add(Node(tagName, attrs))
+                    continue
+                }
+                flushText()
+                val node = Node(tagName, attrs)
+                stack.last().children.add(node)
+                if (tagName in AUTO_CLOSE && stack.last().tag == tagName) {
+                    // 不自动闭合：保持嵌套，由结束标签处理。
+                }
+                stack.addLast(node)
+            }
+            flushText()
+            return root
+        }
+    }
+}

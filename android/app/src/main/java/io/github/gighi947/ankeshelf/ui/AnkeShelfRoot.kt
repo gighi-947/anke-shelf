@@ -47,7 +47,7 @@ import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.ui.download.DownloadScreen
-import io.github.gighi947.ankeshelf.ui.reader.ReaderScreen
+import io.github.gighi947.ankeshelf.ui.reader.native.NativeReaderScreen
 import io.github.gighi947.ankeshelf.ui.search.SearchScreen
 import io.github.gighi947.ankeshelf.ui.settings.GuideScreen
 import io.github.gighi947.ankeshelf.ui.settings.SettingsScreen
@@ -146,11 +146,10 @@ fun AnkeShelfRoot(container: AppContainer) {
         ) { isReader ->
             if (isReader) {
                 if (session != null) {
-                    ReaderScreen(
+                    NativeReaderScreen(
                         session = session,
                         initialChapter = chapter,
                         savedOffset = savedProgress?.text_offset ?: 0,
-                        jumpOffset = jumpOffset,
                         annotations = container.annotations,
                         container = container,
                         readerSettings = container.settings.getAll(),
