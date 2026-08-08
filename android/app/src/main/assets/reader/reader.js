@@ -543,6 +543,21 @@
     }
   }
 
+  /** 离开分页模式时清掉 prepare() 写入的内联高度/列宽，恢复普通文档流，
+   *  否则正文会按视口高度固定盒子并溢出，把底部换章按钮压进正文中间。 */
+  function clearPagedLayout() {
+    var el = scrollEl();
+    document.documentElement.style.height = '';
+    document.body.style.height = '';
+    document.body.style.minHeight = '';
+    if (el) {
+      el.style.height = '';
+      el.style.maxWidth = '';
+      var spacer = document.getElementById('__dual_spacer__');
+      if (spacer) spacer.remove();
+    }
+  }
+
   function setMode(paged) {
     if (!document.body) return;
     var el = scrollEl();
@@ -566,6 +581,7 @@
           }
         }
       } else {
+        clearPagedLayout();
         if (offset > 0) {
           restoreScroll(offset);
         } else if (wasScrolled) {
@@ -745,7 +761,15 @@
   }
 
   /* ---------------- 图片点击放大查看器 ---------------- */
-  var imageViewerState = { open: false, scale: 1, panX: 0, panY: 0, lastTapAt: 0 };
+  var imageViewerState = {
+    open: false,
+    scale: 1,
+    panX: 0,
+    panY: 0,
+    lastTapAt: 0,
+    src: '',
+    fallbackDone: false,
+  };
 
   function imageViewerEl() {
     return document.getElementById('image-lightbox');
@@ -870,9 +894,13 @@
     save.type = 'button';
     save.textContent = '\u4fdd\u5b58';
     save.addEventListener('click', function () {
-      var imgEl = document.getElementById('lightbox-img');
-      if (!imgEl || !imgEl.src) return;
-      try { AnkeReaderBridge.saveImage(imgEl.src); } catch (e) { /* ignore */ }
+      var src = imageViewerState.src;
+      if (!src) {
+        var imgEl = document.getElementById('lightbox-img');
+        if (imgEl && imgEl.src) src = imgEl.src;
+      }
+      if (!src) return;
+      try { AnkeReaderBridge.saveImage(src); } catch (e) { /* ignore */ }
     });
     var hint = document.createElement('div');
     hint.className = 'lightbox-hint';
@@ -889,6 +917,15 @@
     if (sel) sel.removeAllRanges();
     var ov = ensureImageViewer();
     var img = document.getElementById('lightbox-img');
+    imageViewerState.src = src;
+    imageViewerState.fallbackDone = false;
+    // 预览加载失败时经桥用 OkHttp 兜底（与保存同一请求链路），
+    // 避免 WebView 直连被防盗链拦截时放大预览空白。
+    img.onerror = function () {
+      if (imageViewerState.fallbackDone || !imageViewerState.src) return;
+      imageViewerState.fallbackDone = true;
+      try { AnkeReaderBridge.loadImage(imageViewerState.src); } catch (e) { /* ignore */ }
+    };
     img.src = src;
     imageViewerState.scale = 1;
     imageViewerState.panX = 0;
@@ -897,6 +934,13 @@
     ov.classList.add('open');
     imageViewerState.open = true;
     try { AnkeReaderBridge.setImageLightbox(true); } catch (e) { /* ignore */ }
+  }
+
+  function setLightboxImage(dataUrl) {
+    var img = document.getElementById('lightbox-img');
+    if (!img || !dataUrl) return;
+    img.onerror = null;
+    img.src = dataUrl;
   }
 
   function openImageAt(x, y) {
@@ -1015,6 +1059,7 @@
     openImage: openImageViewer,
     openImageAt: openImageAt,
     closeImage: closeImageViewer,
+    setLightboxImage: setLightboxImage,
     onViewerTap: onViewerTap,
     isImageOpen: function () { return imageViewerState.open; },
     applyAnnotations: applyAnnotations,

@@ -189,6 +189,9 @@ object NgaFormatHtml {
         var url = normalizeImageUrl(urlRaw)
         if (url.startsWith("./")) {
             url = "https://img.nga.178.com/attachments/" + url.substring(2)
+        } else if (url.startsWith("//")) {
+            // file:// 壳下协议相对 URL 会解析成 file://img...，统一补 https。
+            url = "https:" + url
         }
         return "<img class=\"nga-img\" src=\"${imgSrc(url)}\"/>"
     }

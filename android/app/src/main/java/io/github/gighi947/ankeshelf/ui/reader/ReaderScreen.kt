@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.util.Base64
 import android.util.Log
 import android.view.MotionEvent
 import android.widget.Toast
@@ -156,6 +157,7 @@ class ReaderBridge(
     private val onRequestChapter: (Int) -> Unit,
     private val onImageLightbox: (Boolean) -> Unit,
     private val onSaveImageCb: (String) -> Unit,
+    private val onLoadImageCb: (String) -> Unit,
     private val onSelectionCb: (Int, Int, Int, String) -> Unit,
     private val onHighlightTapCb: (String) -> Unit,
     private val onLog: (String) -> Unit,
@@ -186,6 +188,11 @@ class ReaderBridge(
     @JavascriptInterface
     fun saveImage(src: String) {
         main.post { onSaveImageCb(src) }
+    }
+
+    @JavascriptInterface
+    fun loadImage(src: String) {
+        main.post { onLoadImageCb(src) }
     }
 
     @JavascriptInterface
@@ -426,6 +433,27 @@ fun ReaderScreen(
         saveLauncher.launch(if (clean.contains('.')) clean else "$clean.jpg")
     }
 
+    /** 查看器预览兜底：WebView 直连失败时用与保存相同的 OkHttp 链路取图，
+     *  base64 data URL 回填到 lightbox（保留原 URL 供保存使用）。 */
+    fun loadLightboxImage(src: String) {
+        if (src.isBlank()) return
+        scope.launch {
+            val bytes = fetchImageBytes(src) ?: return@launch
+            val path = src.substringBefore('?').substringBefore('#')
+            val mime = when {
+                path.endsWith(".png", ignoreCase = true) -> "image/png"
+                path.endsWith(".gif", ignoreCase = true) -> "image/gif"
+                path.endsWith(".webp", ignoreCase = true) -> "image/webp"
+                else -> "image/jpeg"
+            }
+            val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+            webViewRef.value?.evaluateJavascript(
+                "AnkeReader.setLightboxImage('data:$mime;base64,$b64');",
+                null,
+            )
+        }
+    }
+
     LaunchedEffect(barsVisible, barsHeld, showToc, pageReady.value) {
         if (barsVisible && !barsHeld && !showToc && pageReady.value) {
             delay(3000)
@@ -496,6 +524,7 @@ fun ReaderScreen(
             onRequestChapter = { delta -> changeChapter(delta) },
             onImageLightbox = { open -> imageViewerOpen = open },
             onSaveImageCb = { src -> requestSaveImage(src) },
+            onLoadImageCb = { src -> loadLightboxImage(src) },
             onSelectionCb = { idx, start, end, text ->
                 if (idx == chapterIndex) {
                     pendingSelection = PendingSelection(start, end, text)
@@ -612,8 +641,16 @@ fun ReaderScreen(
                                     return WebResourceResponse(mime, null, FileInputStream(f))
                                 }
                             }
-                            // NGA 图床防盗链：补 Referer/Cookie/UA 后由 OkHttp 代理（DNS 可达时有效）。
-                            if (url.contains("img.nga.cn", ignoreCase = true)) {
+                            // NGA 图床防盗链：补 Referer/Cookie/UA 后由 OkHttp 代理
+                            // （覆盖 img.nga.cn / img*.nga.178.com / ngabbs.com，DNS 可达时有效）。
+                            if (
+                                url.startsWith("http") &&
+                                (
+                                    url.contains("img.nga.cn", ignoreCase = true) ||
+                                        url.contains("nga.178.com", ignoreCase = true) ||
+                                        url.contains("ngabbs.com", ignoreCase = true)
+                                    )
+                            ) {
                                 return runCatching {
                                     val cfg = container.ngaConfig.load()
                                     val req = Request.Builder()
