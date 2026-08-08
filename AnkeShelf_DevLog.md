@@ -996,3 +996,30 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 
 - 全量单测 + `assembleDebug` 通过；修复版已安装真机。
 - 待真机确认：悬浮底栏/目录/滚动底部按钮换章不闪退；换章后进度随退出/跳转正常落盘（多次连续换章后退出再进，恢复点应为最后阅读位置）。
+
+### 9.45 进度“段落/页码级”保存与恢复根因修复（真机探针定位，2026-08-09）
+
+用户反馈：进度仍不能精确到段落，翻页模式连页码都记不住，退出重进永远回章节首。本轮用 adb + 真机探针（`[probe]/[goto]/[report]` 日志 + progress.json 实盘对照）逐项定位，共五个根因：
+
+#### 根因
+
+1. **滚动模式采样用了文档坐标**：`caretRangeFromPoint` 需要视口坐标（0..viewH），旧代码写 `y = window.scrollY + 18 + topInset + 8`。滚动超过约 600px 后 y 就超出视口（探针实证 `scrollY=6267 → y=6401 > vh=780 → null`），保存被跳过；只有刚进书/刚换章（scrollY≈0）能采到一次章节首（offset=16），这就是“永远只记到章节首”的直接原因。
+2. **分页 gotoOffset 忘加 scrollLeft**：`rect.left` 是视口坐标，容器横向滚动后内容已左移 `scrollLeft`。列公式少加 `el.scrollLeft`，导致“恢复一次后再次重排”时把锚点算到上一页，来回振荡（探针实证 `rectLeft 749/sl=0 → page2`，`rectLeft 53/sl=696 → page0`，两者其实同列）。
+3. **恢复/重排事件也会保存**：`report()` 无条件 `saveProgress`，而字体/图片加载期间多列布局反复进入中间态（同一 offset 在列 0 与列 3 之间跳），中间态的临时页码被写回 progress.json，污染下一次恢复目标（`841→454→…` 恶性循环）。
+4. **Kotlin `onPageChanged` 也落盘**：JS 端即使不调 `saveProgress`，`pageChanged` 到 Kotlin 仍走 `onPageTurn` 立即持久化，等于恢复路径的“后门”，继续污染。
+5. **150/600ms `refresh()` 抢跑**：字体未加载完成时 `prepare()` 会把多列布局打回中间态并清零 scrollLeft，`gotoOffset` 算错页，出现“恢复瞬间闪回章首”再跳回。
+
+#### 修复
+
+- **滚动采样**：`y = max(8, 18 + topInset + 8)`，固定视口深度，与 `restoreScroll` 的恢复锚点（`-18-topInset-8`）严格对应，滚动到任意位置都能采到正文。
+- **列公式**：`col = round((rect.left + el.scrollLeft - er.left - P) / advance)`，恢复幂等、不再振荡。
+- **保存只发生在用户动作**：`report(doSave)` 拆分——用户翻页 `report(true)` 才 `saveProgress`；恢复/重排/模式切换/init 均 `report(false)` 只更新 UI。滚动模式沿用防抖保存；换章后新章落库走 `wasSwitch`（JS init 参数，由 Kotlin 判断本次加载是否换章）。
+- **`pageChanged` 桥改纯 UI 事件**：去掉 offset 参数，Kotlin 只更新页码指示、不落盘；分页进度保存统一走 `saveProgress`（500ms 防抖 + 退出 flush）。
+- **稳定锚点 `anchorOffset`**：只在用户翻页/滚动/切模式时更新；`onResize`/`refresh` 一律恢复到锚点，不再取“当前页顶采样”（多重重排会逐页漂移）。
+- **布局稳定门 `layoutReady()`**：字体 + 全部图片就绪后才做最终定位（`tryRestoreAfterSettle`，8 秒兜底）；移除 150/600ms 抢跑刷新，改 2s 兜底。
+
+#### 真机验证（adb 全程驱动）
+
+- 滚动模式：`scrollY 973→1529→2083→2629` 分别采到 `390/589/349/884`，progress.json 实时更新；重进恢复到 390 所在段落。
+- 分页模式：翻页 `page1..6` 分别保存 `315/454/709/841/1023/1252`；退出重进 `tracker store=param=1252`，稳定恢复到含 1252 的页（字体/图片重排后不再振荡、不再闪回章首）。
+- progress.json 全程未被中间态污染；单测 91 通过 / 1 跳过；`assembleDebug` 通过。
