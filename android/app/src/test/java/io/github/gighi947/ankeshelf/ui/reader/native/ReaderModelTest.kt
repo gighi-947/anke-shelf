@@ -126,6 +126,20 @@ class ReaderModelTest {
         assertTrue("正文不含头文本", !body.contains("1楼"))
     }
 
+    @Test
+    fun linksAndStrikeThroughArePreserved() {
+        val doc = ReaderHtmlModel.parse(
+            """<p>跳转 <a href="#pid123">#123</a> 与 <del> 旧内容 </del><s>另一个</s></p>""",
+        )
+        val spans = doc.blocks.filterIsInstance<ReaderBlock.Paragraph>().first().spans
+        val link = spans.firstOrNull { it.link != null }
+        assertTrue("链接应保留 href", link != null && link.link == "#pid123")
+        val del = spans.filter { it.text.contains("旧内容") }.firstOrNull()
+        assertTrue("del 应标记删除线", del != null && del.strike && del.muted)
+        val s = spans.firstOrNull { it.text.contains("另一个") }
+        assertTrue("s 应标记删除线", s != null && s.strike && s.muted)
+    }
+
     private fun countImages(blocks: List<ReaderBlock>): Int = blocks.sumOf { countImages(it) }
 
     private fun countImages(b: ReaderBlock): Int = when (b) {

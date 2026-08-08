@@ -1,6 +1,7 @@
 package io.github.gighi947.ankeshelf.ui.reader.native
 
 import android.graphics.Typeface
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -61,6 +62,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
@@ -286,12 +288,13 @@ private fun NativeScrollView(
     callbacks: NativeReaderCallbacks,
     modifier: Modifier,
 ) {
-    val scroll = rememberScrollState()
+    // 按章节持有独立滚动状态：换章时归零，而不是沿用上一章的滚动位置。
+    val scroll = remember(doc) { ScrollState(0) }
     val density = LocalDensity.current
     val len = doc.plainText.length.coerceAtLeast(1)
     val maxWidth = with(density) { (46f * pageWidth.toFloat() * fontSize).sp.toDp() }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(doc, initialOffset) {
         // 首帧布局后再恢复（maxValue 才有效），对齐桌面 scrollToOffset。
         delay(50)
         val ratio = initialOffset.toFloat() / len
@@ -299,7 +302,7 @@ private fun NativeScrollView(
         scroll.scrollTo(target)
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(doc) {
         snapshotFlow { scroll.value }
             .debounce(450)
             .collect { v ->
@@ -444,6 +447,8 @@ private fun NativePagedView(
     val scope = rememberCoroutineScope()
     var pages by remember { mutableStateOf<List<NativePage>?>(null) }
     var currentPage by remember { mutableIntStateOf(0) }
+    // 当前阅读锚点：尺寸变化/重新分页时按最近一页恢复，而不是跳回 initialOffset（章节首）。
+    var restoreOffset by remember(doc) { mutableIntStateOf(initialOffset) }
     val pagerState = rememberPagerState(initialPage = 0) { pages?.size ?: 1 }
     // 用视图实际宽高分页（分页几何与桌面一致）。
     val viewSize = remember { mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
@@ -495,7 +500,7 @@ private fun NativePagedView(
                     bottomInsetPx = bottomInsetPx,
                     density = density,
                     textColor = theme.fgColor,
-                    mutedColor = theme.fgColor.copy(alpha = 0.7f),
+                    mutedColor = cardPalette(theme).head,
                     accentColor = theme.accentColor,
                     cardBorder = cardPalette(theme).border,
                     quoteBg = cardPalette(theme).quoteBg,
@@ -504,7 +509,7 @@ private fun NativePagedView(
                 )
                 pages = result
                 if (result.isNotEmpty()) {
-                    var idx = result.indexOfLast { it.startOffset <= initialOffset }
+                    var idx = result.indexOfLast { it.startOffset <= restoreOffset }
                     if (idx < 0) idx = 0
                     currentPage = idx
                     // 等 pager 页数同步后再定位，避免 pageCount 仍为旧值导致越界崩溃。
@@ -543,6 +548,7 @@ private fun NativePagedView(
                     val idx = pagerState.currentPage
                     val p = pageList.getOrNull(idx) ?: return@LaunchedEffect
                     currentPage = idx
+                    restoreOffset = p.startOffset
                     callbacks.onPageChanged(idx, pageList.size, p.startOffset)
                     callbacks.onProgress(p.startOffset)
                 }
@@ -674,14 +680,21 @@ private fun paginate(
         return sb.toString()
     }
 
-    fun spansAnn(spans: List<ReaderSpan>, base: TextStyle, defaultColor: Color): AnnotatedString =
+    fun spansAnn(
+        spans: List<ReaderSpan>,
+        base: TextStyle,
+        defaultColor: Color,
+        accentColor: Color,
+        mutedColor: Color,
+    ): AnnotatedString =
         buildAnnotatedString {
             for (s in spans) {
-                val c = parseHtmlColor(s.color) ?: defaultColor
+                val c = spanColor(s, defaultColor, accentColor, mutedColor)
                 val style = SpanStyle(
                     color = c,
                     fontWeight = if (s.bold) FontWeight.Bold else null,
                     fontStyle = if (s.italic) FontStyle.Italic else null,
+                    textDecoration = if (s.strike) TextDecoration.LineThrough else null,
                 )
                 append(AnnotatedString(s.text, style))
             }
@@ -707,8 +720,14 @@ private fun paginate(
     ): List<Frag> {
         val scaled = SpanStyle(fontSize = (baseStyle.fontSize * fontScale).sp)
         val ann = when (block) {
-            is ReaderBlock.Paragraph -> spansAnn(block.spans, baseStyle.style(scaled), textColor)
-            is ReaderBlock.Heading -> spansAnn(block.spans, baseStyle.style(scaled.merge(SpanStyle(fontWeight = FontWeight.Bold, fontSize = (baseStyle.fontSize * fontScale * 1.1f).sp))), textColor)
+            is ReaderBlock.Paragraph -> spansAnn(block.spans, baseStyle.style(scaled), textColor, accentColor, mutedColor)
+            is ReaderBlock.Heading -> spansAnn(
+                block.spans,
+                baseStyle.style(scaled.merge(SpanStyle(fontWeight = FontWeight.Bold, fontSize = (baseStyle.fontSize * fontScale * 1.1f).sp))),
+                textColor,
+                accentColor,
+                mutedColor,
+            )
             is ReaderBlock.Dice -> buildAnnotatedString {
                 append(
                     AnnotatedString(
@@ -717,7 +736,13 @@ private fun paginate(
                     ),
                 )
             }
-            is ReaderBlock.Comment -> spansAnn(block.spans, baseStyle.style(SpanStyle(fontSize = (baseStyle.fontSize * 0.92f).sp)), textColor)
+            is ReaderBlock.Comment -> spansAnn(
+                block.spans,
+                baseStyle.style(SpanStyle(fontSize = (baseStyle.fontSize * 0.92f).sp)),
+                textColor,
+                accentColor,
+                mutedColor,
+            )
             else -> buildAnnotatedString { append(blockText(block)) }
         }
         val lhPx = baseStyle.fontSize * lineHeight.toFloat() * density.density
@@ -1285,7 +1310,7 @@ private fun NativeTextBlock(
 ) {
     val ann = buildAnnotatedString {
         for (s in spans) {
-            val c = parseHtmlColor(s.color) ?: theme.fgColor
+            val c = spanColor(s, theme.fgColor, theme.accentColor, cardPalette(theme).head)
             append(
                 AnnotatedString(
                     s.text,
@@ -1293,6 +1318,7 @@ private fun NativeTextBlock(
                         color = c,
                         fontWeight = if (s.bold) FontWeight.Bold else null,
                         fontStyle = if (s.italic) FontStyle.Italic else null,
+                        textDecoration = if (s.strike) TextDecoration.LineThrough else null,
                     ),
                 ),
             )
@@ -1466,3 +1492,10 @@ private fun namedColor(name: String): Color? =
             blue = (c and 0xFF) / 255f,
         )
     }
+
+/** 桌面语义：链接无显式色时用强调色；del/s 无显式色时用 muted（删除线另加）。 */
+private fun spanColor(s: ReaderSpan, fallback: Color, accent: Color, muted: Color): Color = when {
+    s.muted && s.color == null -> muted
+    s.link != null && s.color == null -> accent
+    else -> parseHtmlColor(s.color) ?: fallback
+}

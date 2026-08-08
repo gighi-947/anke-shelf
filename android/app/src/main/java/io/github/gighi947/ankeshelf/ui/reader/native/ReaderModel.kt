@@ -47,6 +47,9 @@ data class ReaderSpan(
     val color: String? = null,
     val bold: Boolean = false,
     val italic: Boolean = false,
+    /** <del>/<s>：桌面 CSS del{color:muted}，默认灰色 + 删除线（显式颜色优先）。 */
+    val strike: Boolean = false,
+    val muted: Boolean = false,
     val link: String? = null,
 )
 
@@ -303,39 +306,49 @@ object ReaderHtmlModel {
         out: MutableList<ReaderSpan>,
         bold: Boolean = false,
         italic: Boolean = false,
+        strike: Boolean = false,
+        muted: Boolean = false,
         color: String? = null,
         link: String? = null,
         classColors: Map<String, String> = emptyMap(),
     ): MutableList<ReaderSpan> {
         for (n in nodes) {
             when (n.tag) {
-                "br" -> out.add(ReaderSpan("\n", bold = bold, italic = italic, color = color, link = link))
+                "br" -> out.add(ReaderSpan("\n", bold = bold, italic = italic, strike = strike, muted = muted, color = color, link = link))
                 "img" -> {
                     val alt = n.attr("alt").orEmpty()
                     if (alt.isNotBlank()) {
-                        out.add(ReaderSpan(alt, bold = bold, italic = italic, color = color, link = link))
+                        out.add(ReaderSpan(alt, bold = bold, italic = italic, strike = strike, muted = muted, color = color, link = link))
                     }
                 }
-                "b", "strong" -> spansOf(n.children, out, bold = true, italic = italic, color = color, link = link, classColors = classColors)
-                "i", "em" -> spansOf(n.children, out, bold = bold, italic = true, color = color, link = link, classColors = classColors)
-                "u" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, classColors = classColors)
-                "del", "s" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, classColors = classColors)
-                "a" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = n.attr("href"), classColors = classColors)
+                "b", "strong" -> spansOf(n.children, out, bold = true, italic = italic, strike = strike, muted = muted, color = color, link = link, classColors = classColors)
+                "i", "em" -> spansOf(n.children, out, bold = bold, italic = true, strike = strike, muted = muted, color = color, link = link, classColors = classColors)
+                "u" -> spansOf(n.children, out, bold = bold, italic = italic, strike = strike, muted = muted, color = color, link = link, classColors = classColors)
+                "del", "s" -> spansOf(
+                    n.children, out,
+                    bold = bold, italic = italic,
+                    color = color,
+                    link = link,
+                    strike = true,
+                    muted = true,
+                    classColors = classColors,
+                )
+                "a" -> spansOf(n.children, out, bold = bold, italic = italic, strike = strike, muted = muted, color = color, link = n.attr("href"), classColors = classColors)
                 "span", "font" -> {
                     val cls = n.attr("class")?.trim()
                     val c = parseColor(n.attr("style"))
                         ?: cls?.let { classColors[it] }
                         ?: n.attr("color")
                         ?: color
-                    spansOf(n.children, out, bold = bold, italic = italic, color = c, link = link, classColors = classColors)
+                    spansOf(n.children, out, bold = bold, italic = italic, color = c, link = link, strike = strike, muted = muted, classColors = classColors)
                 }
-                "code", "pre", "sub", "sup" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, classColors = classColors)
+                "code", "pre", "sub", "sup" -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, strike = strike, muted = muted, classColors = classColors)
                 "#text" -> {
                     if (n.text.isNotEmpty()) {
-                        out.add(ReaderSpan(n.text, color = color, bold = bold, italic = italic, link = link))
+                        out.add(ReaderSpan(n.text, color = color, bold = bold, italic = italic, strike = strike, muted = muted, link = link))
                     }
                 }
-                else -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, classColors = classColors)
+                else -> spansOf(n.children, out, bold = bold, italic = italic, color = color, link = link, strike = strike, muted = muted, classColors = classColors)
             }
         }
         return out

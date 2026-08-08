@@ -119,6 +119,11 @@ fun NativeReaderScreen(
     var pendingSaveUrl by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // 恢复锚点每章只取一次：书架刷新等外部变化会重建 savedOffset（可能读到旧值），
+    // 不能让它在阅读中途变化并把滚动/分页位置拉回章节首。
+    val restoreOffset = remember(chapterIndex, session.id) {
+        if (chapterIndex == initialChapter) savedOffset else 0
+    }
     val activity = androidx.activity.compose.LocalActivity.current
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
     val theme = remember(readerSettings, systemDark) { readerTheme(readerSettings, systemDark) }
@@ -146,8 +151,9 @@ fun NativeReaderScreen(
         cutoutBottom * 3 / 8
     }
 
-    // 章节解析放后台。
-    LaunchedEffect(chapterIndex, session) {
+    // 章节解析放后台。只用 chapterIndex + session.id 做键：书架刷新等外部状态变化
+    // 可能重建 session 对象（同一本书），不能因此把阅读器重置回章节首。
+    LaunchedEffect(chapterIndex, session.id) {
         doc = null
         val d = withContext(Dispatchers.Default) {
             runCatching {
@@ -271,7 +277,7 @@ fun NativeReaderScreen(
                 autoDual = readerSettings.auto_dual != false,
                 topInsetPx = topInsetPx,
                 bottomInsetPx = 0,
-                initialOffset = if (chapterIndex == initialChapter) savedOffset else 0,
+                initialOffset = restoreOffset,
                 highlights = highlights,
                 imageBytes = ::imageBytes,
                 customFont = readerSettings.custom_font,
