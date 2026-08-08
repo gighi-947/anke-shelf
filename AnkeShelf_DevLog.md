@@ -727,3 +727,17 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **权衡**：未启用 `content-visibility`（屏外尺寸估算会破坏滚动进度保存/恢复），作为后续方向记录。
 - 验证：`node --check reader.js`；单测 70 条通过（新增懒加载注入 3 条、进度 flush 适配）；`assembleDebug` 通过。
 - 提交：`ec8a01a`。
+
+### 9.24 提交前全面代码审查与精简（2026-08-08）
+
+- **拆分**：`ReaderBridge`（含 `PageInfo`）与 `ReaderBottomBar`（含主题循环）从 `ReaderScreen.kt` 拆出，阅读器文件约 1220 → 约 1020 行，职责更单一。
+- **去重**：新增 `service/NgaHttp.kt` 的 `Request.Builder.ngaHeaders()`，阅读器图片代理、保存/兜底下载、`NgaClient` 请求统一使用（Referer/Cookie/UA 三处重复消除）。
+- **删死代码**：
+  - `NgaClient` 移除生产未用的旧摘要接口（`NgaPageSummary`/`fetchPage`/`parseResponse` 等），测试改用 `parsePageFull`/`fetchPageFull` 覆盖同一 fixture；
+  - `reader.js` 移除从未调用的 `markPosition`/`restorePosition` 及 `openImage`/`isImageOpen`/`measure` 等未使用导出；
+  - 删除无引用且乱码的 M0 占位页 `assets/reader/reader.html`。
+- **路径常量**：`AppPaths.logsDir`；崩溃日志、清空数据、字体目录不再硬编码 `"AnkeShelf"`。
+- **警告清理**：无意义安全调用、恒假空判断、弃用 `LibraryBooks` 图标（AutoMirrored）、测试可空 ClassLoader。
+- 完整审查记录见 [docs/ANDROID_CODE_REVIEW.md](docs/ANDROID_CODE_REVIEW.md)。
+- 验证：`node --check reader.js`；单测全部通过；`assembleDebug` 成功且无新增警告。
+- 提交：`ae98f8d`。
