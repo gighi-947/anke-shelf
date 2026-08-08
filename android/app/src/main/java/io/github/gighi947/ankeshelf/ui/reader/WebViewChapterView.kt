@@ -54,7 +54,7 @@ import okhttp3.Request
 data class WebViewReaderCallbacks(
     val onReady: () -> Unit = {},
     val onProgress: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
-    val onPageChanged: (chapter: Int, page: Int, total: Int, offset: Int) -> Unit = { _, _, _, _ -> },
+    val onPageChanged: (chapter: Int, page: Int, total: Int) -> Unit = { _, _, _ -> },
     val onImageTap: (String) -> Unit = {},
     val onTapZone: (String) -> Unit = {},
     val onRequestChapter: (Int) -> Unit = {},
@@ -101,6 +101,7 @@ fun WebViewChapterView(
     val pageReady = remember { mutableStateOf(false) }
     val loadSeq = remember { mutableIntStateOf(0) }
     val chapterRef = remember { mutableIntStateOf(chapterIndex) }
+    val loadWasSwitch = remember { mutableStateOf(false) }
     val pagedRef = remember { mutableStateOf(paged) }
     val insetRef = remember { mutableIntStateOf(topInsetPx) }
     val settingsRef = remember {
@@ -126,6 +127,7 @@ fun WebViewChapterView(
         val web = webViewRef.value
         val old = chapterRef.intValue
         if (web != null && old != chapterIndex) {
+            loadWasSwitch.value = true
             // Desktop loadChapter: capture the old chapter's exact offset before
             // the new page replaces it. Run the latch off the main thread so the
             // evaluateJavascript callback (main thread) can complete. The WebView
@@ -150,6 +152,7 @@ fun WebViewChapterView(
             callbacksRef.value.onChapterSwitch(old, chapterIndex)
         }
         chapterRef.intValue = chapterIndex
+        if (old == chapterIndex) loadWasSwitch.value = false
         pageReady.value = false
         loadSeq.intValue++
         web ?: return@LaunchedEffect
@@ -332,6 +335,7 @@ fun WebViewChapterView(
                                 "pageWidth:${s.pageWidth},fontSize:${s.fontSize}," +
                                 "lineHeight:${s.lineHeight},dualPage:${s.dualPage}," +
                                 "autoDual:${s.autoDual}," +
+                                "wasSwitch:${loadWasSwitch.value}," +
                                 "topInset:${insetRef.intValue},bottomInset:0," +
                                 "theme:{bg:'${t.background}',fg:'${t.text}',primary:'${t.accent}'}});",
                             null,
@@ -467,9 +471,9 @@ private class LiteBridge(
     }
 
     @JavascriptInterface
-    fun pageChanged(idx: Int, page: Int, total: Int, offset: Int) {
+    fun pageChanged(idx: Int, page: Int, total: Int) {
         if (page < 0 || total <= 0) return
-        main.post { callbacks().onPageChanged(idx, page, total, offset.coerceAtLeast(0)) }
+        main.post { callbacks().onPageChanged(idx, page, total) }
     }
 
     @JavascriptInterface

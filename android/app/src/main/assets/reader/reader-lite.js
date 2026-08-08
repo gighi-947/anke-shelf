@@ -25,6 +25,8 @@
     textCtx: null,
     restoreOffset: 0,
     restorePending: false,
+    anchorOffset: 0,
+    wasSwitch: false,
   };
 
   function log(msg) {
@@ -349,7 +351,8 @@
       return;
     }
     gotoPage(skipToContent(m.current + (dir > 0 ? 1 : -1), dir));
-    report();
+    report(true);
+    try { state.anchorOffset = currentOffset(); } catch (e) { /* keep old anchor */ }
   }
 
   function currentOffset() {
@@ -365,7 +368,9 @@
       x = Math.max(2, Math.min(window.innerWidth / 2, window.innerWidth - 2));
       // 正文顶部内边距 = 18px + topInset（异形屏安全区），采样点必须越过它，
       // 否则 caretRangeFromPoint 落在空白处返回 null -> offset=0（进度漂移根因）。
-      y = window.scrollY + 18 + (state.topInset || 0) + 8;
+      // caretRangeFromPoint needs viewport coords (0..viewH), not document coords.
+      // Depth matches restoreScroll anchor (-18-topInset-8) for a stable round trip.
+      y = Math.max(8, 18 + (state.topInset || 0) + 8);
     }
     var off = TextPos.currentOffsetFromPoint(ctx, x, y);
     return off === null ? 0 : off;
@@ -414,19 +419,23 @@
     var er = el.getBoundingClientRect();
     var m = measure();
     var P = Math.max(4, Math.min(state.margin || 40, (state.gap || 28) - 8));
-    var col = Math.max(0, Math.round((rect.left - er.left - P) / m.advance));
+    // rect.left 是视口坐标；容器横向滚动后内容已左移 scrollLeft，
+    // 必须加回 scrollLeft 转成内容坐标，否则恢复一次后再次重排会逐页倒退/振荡。
+    var col = Math.max(0, Math.round((rect.left + el.scrollLeft - er.left - P) / m.advance));
     var page = Math.floor(col / m.step);
     return gotoPage(page);
   }
 
-  function report() {
+  // doSave=true 只在用户翻页时传；重排/恢复/模式切换只更新 UI，不写进度，
+  // 避免把中间布局的临时页码污染已保存的锚点（进度漂移根因）。
+  function report(doSave) {
     if (!state.paged) return;
     var m = measure();
     var off = currentOffset();
-    if (state.restorePending && off > 0) state.restorePending = false;
+    if (state.restorePending && off > 0 && doSave) state.restorePending = false;
     try {
-      AnkeReaderBridge.pageChanged(state.chapterIndex, m.current, m.total, off);
-      if (off > 0) AnkeReaderBridge.saveProgress(state.chapterIndex, off, true);
+      AnkeReaderBridge.pageChanged(state.chapterIndex, m.current, m.total);
+      if (off > 0 && doSave) AnkeReaderBridge.saveProgress(state.chapterIndex, off, true);
     } catch (e) { /* ignore */ }
   }
 
@@ -531,6 +540,7 @@
     var el = scrollEl();
     var wasScrolled = !!el && (state.paged ? el.scrollLeft > 1 : window.scrollY > 1);
     var offset = currentOffset();
+    if (offset > 0) state.anchorOffset = offset;
     state.paged = !!paged && !state.huge;
     document.body.classList.toggle('paged', state.paged);
     if (state.paged) forceEagerImages();
@@ -555,23 +565,56 @@
           window.scrollTo(0, r * Math.max(1, document.body.scrollHeight - window.innerHeight));
         }
       }
-      report();
+      report(false);
     });
   }
 
   var resizeTimer = null;
   var resizeOffset = 0;
   var resizeScrolled = false;
+  var settleTimer = null;
+
+  function layoutReady() {
+    if (document.fonts && document.fonts.status === 'loading') return false;
+    var imgs = document.images;
+    for (var i = 0; i < imgs.length; i++) {
+      if (!imgs[i].complete) return false;
+    }
+    return true;
+  }
+
+  // 字体/图片加载期间多列布局会反复进入中间态（同一 offset 在不同列之间跳），
+  // 只在全部就绪后做最终定位；8 秒兜底（网络卡死时也要能恢复）。
+  function tryRestoreAfterSettle(offset, deadline) {
+    if (settleTimer) clearTimeout(settleTimer);
+    var t = deadline || (Date.now() + 8000);
+    settleTimer = setTimeout(function () {
+      if (!layoutReady() && Date.now() < t) {
+        tryRestoreAfterSettle(offset, t);
+        return;
+      }
+      prepare();
+      normalizeTallTables();
+      if (offset > 0) gotoOffset(offset);
+      report(false);
+    }, 200);
+  }
 
   function onResize() {
     if (!state.paged) return;
     var el = scrollEl();
     var wasScrolled = !!el && el.scrollLeft > 1;
-    var offset = currentOffset();
+    // 重排锚点必须是稳定值（用户翻页/滚动时更新的 anchorOffset），
+    // 不能取“当前页顶采样”——多次重排时页顶会逐页漂移，越恢复越靠前。
+    var offset = state.anchorOffset > 0 ? state.anchorOffset : currentOffset();
     if (offset > 0 && resizeOffset === 0) resizeOffset = offset;
     if (wasScrolled) resizeScrolled = true;
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
+      if (!layoutReady()) {
+        tryRestoreAfterSettle(resizeOffset > 0 ? resizeOffset : state.restoreOffset, 0);
+        return;
+      }
       prepare();
       normalizeTallTables();
       if (resizeOffset > 0) {
@@ -587,7 +630,7 @@
       }
       resizeOffset = 0;
       resizeScrolled = false;
-      report();
+      report(false);
     }, 300);
   }
 
@@ -605,11 +648,16 @@
       if (state.restorePending) restoreScroll(state.restoreOffset);
       return;
     }
+    // 字体/图片未就绪时重排会把多列布局打回中间态，gotoOffset 会算出错误页
+    // （恢复瞬间闪回章首）；全部就绪后 onResize 会按锚点精确定位，
+    // 这里只在就绪后做最终兜底重排。
+    if (!layoutReady()) return;
     prepare();
     requestAnimationFrame(function () {
       normalizeTallTables();
-      if (state.restorePending) gotoOffset(state.restoreOffset);
-      report();
+      var off = state.restorePending ? state.restoreOffset : state.anchorOffset;
+      if (off > 0) gotoOffset(off);
+      report(false);
     });
   }
 
@@ -625,7 +673,9 @@
     state.topInset = Math.max(0, opts.topInset || 0);
     state.bottomInset = Math.max(0, opts.bottomInset || 0);
     state.restoreOffset = Math.max(0, opts.offset || 0);
+    state.anchorOffset = state.restoreOffset;
     state.restorePending = state.restoreOffset > 0;
+    state.wasSwitch = !!opts.wasSwitch;
     if (!document.body) return;
     state.huge = (document.body.textContent || '').length > MAX_PAGED_TEXT;
     state.paged = !!opts.paged && !state.huge;
@@ -639,6 +689,7 @@
         var o = 0;
         try { o = currentOffset(); } catch (e) { /* ignore */ }
         if (o > 0) {
+          state.anchorOffset = o;
           try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
         }
       }, 0);
@@ -684,6 +735,7 @@
         var o = 0;
         try { o = currentOffset(); } catch (e) { /* ignore */ }
         if (o > 0) {
+          state.anchorOffset = o;
           try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
         }
       }, 500);
@@ -701,15 +753,28 @@
         normalizeTallTables();
         if (state.restoreOffset > 0) gotoOffset(state.restoreOffset);
         else gotoPage(0);
+        // 换章后立即把新章位置落库（桌面 loadChapter 语义；首次打开不写，
+        // 避免中间布局污染已保存的锚点）。
+        if (state.wasSwitch) {
+          var o = 0;
+          try { o = currentOffset(); } catch (e) { /* ignore */ }
+          if (o > 0) {
+            try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
+          }
+        }
       } else {
         if (state.restoreOffset > 0) restoreScroll(state.restoreOffset);
       }
-      report();
+      if (state.paged && !layoutReady()) {
+        tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.anchorOffset, 0);
+      }
+      report(false);
       try { AnkeReaderBridge.onReady(); } catch (e) { /* ignore */ }
     };
     requestAnimationFrame(finish);
-    setTimeout(refresh, 150);
-    setTimeout(refresh, 600);
+    // 最终兜底：字体加载完成后 onResize 已负责定位；此定时器仅在
+    // 字体加载失败/无 resize 事件时兜底一次。
+    setTimeout(refresh, 2000);
   }
 
   /* long-press image hit test: returns "true" when an image is under (x,y) */

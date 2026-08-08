@@ -306,8 +306,9 @@ fun NativeReaderScreen(
                             }
                         }
                     },
-                    onPageChanged = { ch, page, total, offset ->
-                        progressTracker.onPageTurn(ch, offset)
+                    onPageChanged = { ch, page, total ->
+                        // 纯 UI 事件：页码指示；进度落盘只走 onProgress（JS 端仅在
+                        // 用户翻页时上报），恢复/重排的中间页不会污染已保存进度。
                         if (ch == chapterIndex) pageInfo = page to total
                     },
                     onChapterSwitch = { from, to -> progressTracker.onChapterSwitch(from, to) },
