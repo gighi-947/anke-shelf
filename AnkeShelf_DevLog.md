@@ -628,4 +628,4 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **界面字号**：设置 → 外观 → 界面新增「界面字号」滑块（0.85–1.25，步进 0.05）；新增设置字段 `ui_font_scale`（默认 1.0）；`AnkeShelfTheme` 通过 `LocalDensity.fontScale` 在系统缩放之上叠加应用内倍率，阅读器 WebView（CSS px）不受影响。
 - **书架列表视图**：对齐桌面 `shelf_view` 设置，书架顶栏新增网格/列表切换图标；列表行 = 封面缩略图 + 书名/作者/进度；切换持久化到 settings.json。
 - 验证（模拟器）：设置一级菜单 5 组且无辅助；界面字号 1.25 下文字明显放大；列表视图切换后布局正确、`shelf_view:"list"` 落库。
-- 提交：见后续记录。
+- 提交：`41b6fa8`。
