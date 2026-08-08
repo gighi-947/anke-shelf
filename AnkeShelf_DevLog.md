@@ -806,3 +806,15 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
   4. 超大章判断改用 `textContent` 粗估；滚动模式 `TextPos.build` 延后到首帧之后，恢复先用比例兜底、坐标就绪后按 DOM 锚点重定位。
 - 验证：`node --check reader.js`；单测全部通过（ReaderHtml 断言同步为绝对资源路径）；`assembleDebug` 成功。
 - 提交：`f92a40b`。
+
+### 9.32 进度实现复刻桌面端 + 内置阅读字体修复（2026-08-08）
+
+- **进度**：
+  - `ProgressStore.set` 改为桌面式“每次保存立即落盘”：更新内存后立即提交到串行后台线程写盘（桌面是 Python 后台线程同步写，语义一致），去掉 1.5s 防抖窗口；
+  - 滚动保存节流 1200ms → 500ms（对齐桌面 scroll 500ms debounce）；
+  - 换章竞态修复：bridge 上报以“当前章节”为唯一真源，旧页面延迟到达的上报直接丢弃；`saveNow` 改为让 JS 返回 text_offset，按调用时捕获的章节直接写入内存并落盘（对齐桌面 loadChapter 换章前先存旧章）；
+  - 打开/换到新章后立即保存新章位置（滚动模式原本没有 report 保存，补齐桌面 loadChapter/seekToOffset 语义）；退出/退后台仍 flush。
+- **内置字体**：LXGW 字体文件一直在 `assets/fonts/`，但 `@font-face` 用相对路径 `../fonts/`，EPUB 章节换成 `file:///android_epub/` base 后解析失败；改为绝对 `file:///android_asset/fonts/LXGWWenKai-Regular.ttf`。
+- **排版对齐桌面 OVERRIDE**：body 字体/字号/行高/默认文字色加 `!important` 压过章节自带样式（桌面 BASE/NGA_OVERRIDE 语义；显式彩色字体保留）。
+- 验证：`node --check reader.js`；单测全部通过；`assembleDebug` 成功。
+- 提交：`c37f881`。
