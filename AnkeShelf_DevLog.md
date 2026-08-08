@@ -680,3 +680,14 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 核查通过：权限最小化、allowBackup=false、Service exported=false + dataSync 类型、NGA 仅 https、凭据仅存私有目录、git 历史无敏感文件、CI 无密钥、EPUB 解压无越界、调试开关仅 debug。
 - 提醒：`D:\Codex\project1\.local\archive\` 下存在含真实 NGA uid/cid 的本地存档（被 gitignore 覆盖、未入库），建议清理。
 - 提交：`340843d`。
+
+### 9.20 下载入口、图片查看器防误触、书架下载后刷新根因修复（2026-08-08）
+
+- **下载入口**：空书架新增「从 NGA 下载」按钮（与「导入 EPUB」并列）；书架右上角「+」改为菜单：导入 EPUB / 从 NGA 下载。
+- **图片显示与查看器**：
+  - 图片代理：`shouldInterceptRequest` 对 img.nga.cn 用 OkHttp 补 Referer（https://bbs.nga.cn/）、Cookie（uid/cid）、UA 后返回，规避防盗链（模拟器 DNS 无法解析 img.nga.cn，需真机验证）；
+  - 长按进入预览时清除系统文本选区，避免选中提示文字；
+  - 单击图片不再退出（防误触），双击缩放、点空白/提示/×/系统返回键关闭。
+- **下载后书架刷新（根因修复）**：NgaDownloadService 原先创建独立 `Shelf` 实例（内存与 UI 不同步），改为与 UI 共享 `AnkeShelfApp.container`；Root 再叠加 shelf.json mtime 轮询（变化则 `shelf.load()` + 刷新），双保险。
+- 验证（模拟器）：空书架双按钮、右上角导入菜单；编译与单测通过。
+- 提交：见后续记录。

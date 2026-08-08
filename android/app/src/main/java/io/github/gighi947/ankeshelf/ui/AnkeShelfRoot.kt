@@ -79,6 +79,7 @@ fun AnkeShelfRoot(container: AppContainer) {
     var refresh by remember { mutableIntStateOf(0) }
     var settingsTick by remember { mutableIntStateOf(0) }
     var lastServiceStage by remember { mutableStateOf("") }
+    var lastShelfMtime by remember { mutableStateOf(0L) }
     val context = LocalContext.current
     val activity = LocalActivity.current
 
@@ -92,9 +93,16 @@ fun AnkeShelfRoot(container: AppContainer) {
     }
     val statsGlobal = remember(refresh, settingsTick) { container.stats.getGlobal() }
 
-    // 下载服务状态变化（完成/失败/取消）后自动刷新书架，避免下载完看不到新书。
+    // 下载服务状态变化 / 书架文件变化后自动刷新书架，避免下载完看不到新书。
     LaunchedEffect(Unit) {
         while (isActive) {
+            val shelfFile = container.appPaths.shelfFile
+            val mtime = if (shelfFile.exists()) shelfFile.lastModified() else 0L
+            if (lastShelfMtime != 0L && mtime != lastShelfMtime) {
+                container.shelf.load()
+                refresh++
+            }
+            lastShelfMtime = mtime
             val stage = NgaServiceStatus.snapshot().stage
             if (lastServiceStage != stage &&
                 (stage == "done" || stage == "error" || stage == "cancelled")
@@ -125,6 +133,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                         savedOffset = savedProgress?.text_offset ?: 0,
                         jumpOffset = jumpOffset,
                         annotations = container.annotations,
+                        container = container,
                         readerSettings = container.settings.getAll(),
                         onProgress = { idx, offset ->
                             container.repository.saveProgress(session.id, idx, offset)
@@ -190,6 +199,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                                     coversDir = container.appPaths.coversDir,
                                     container = container,
                                     shelfView = container.settings.getAll().shelf_view,
+                                    onOpenDownload = { routeName = "download" },
                                     onShelfViewChange = { view ->
                                         container.settings.update(SettingsPatch(shelf_view = view))
                                         settingsTick++

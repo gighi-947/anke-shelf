@@ -836,27 +836,26 @@
   }
 
   // 由 Kotlin 触摸层驱动：单击关闭、300ms 内双击缩放，避免 DOM click 被手势吞掉。
-  var viewerTapTimer = null;
-  function onViewerTap() {
+  function onViewerTap(x, y) {
+    var img = document.getElementById('lightbox-img');
+    if (!img) return;
+    var el = document.elementFromPoint(x, y);
+    var onImage = el === img || (el && img.contains ? img.contains(el) : false);
+    if (!onImage) {
+      imageViewerState.lastTapAt = 0;
+      closeImageViewer();
+      return;
+    }
     var now = Date.now();
     if (now - imageViewerState.lastTapAt <= 300) {
       imageViewerState.lastTapAt = 0;
-      clearTimeout(viewerTapTimer);
-      viewerTapTimer = null;
-      var img = document.getElementById('lightbox-img');
-      if (img) {
-        imageViewerState.scale = imageViewerState.scale === 1 ? 2 : 1;
-        imageViewerState.panX = 0;
-        imageViewerState.panY = 0;
-        applyImageViewerTransform(img);
-      }
+      imageViewerState.scale = imageViewerState.scale === 1 ? 2 : 1;
+      imageViewerState.panX = 0;
+      imageViewerState.panY = 0;
+      applyImageViewerTransform(img);
       return;
     }
     imageViewerState.lastTapAt = now;
-    viewerTapTimer = setTimeout(function () {
-      viewerTapTimer = null;
-      closeImageViewer();
-    }, 300);
   }
 
   function ensureImageViewer() {
@@ -883,6 +882,8 @@
 
   function openImageViewer(src) {
     if (!src) return;
+    var sel = window.getSelection ? window.getSelection() : null;
+    if (sel) sel.removeAllRanges();
     var ov = ensureImageViewer();
     var img = document.getElementById('lightbox-img');
     img.src = src;

@@ -38,6 +38,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -81,6 +82,7 @@ fun BookshelfScreen(
     coversDir: File,
     container: AppContainer,
     onImport: (Uri) -> Unit,
+    onOpenDownload: () -> Unit,
     onOpen: (BookRecord) -> Unit,
     shelfView: String,
     onShelfViewChange: (String) -> Unit,
@@ -108,6 +110,7 @@ fun BookshelfScreen(
         launcher.launch(arrayOf("application/epub+zip", "application/octet-stream"))
     }
     var sortMenu by remember { mutableStateOf(false) }
+    var importMenu by remember { mutableStateOf(false) }
     val sortedBooks = remember(books, sort) {
         when (sort) {
             "added" -> books.sortedByDescending { it.record.added_at }
@@ -157,8 +160,29 @@ fun BookshelfScreen(
                             },
                         )
                     }
-                    IconButton(onClick = launchPicker) {
-                        Icon(Icons.Filled.Add, contentDescription = "\u5bfc\u5165 EPUB")
+                    Box {
+                        IconButton(onClick = { importMenu = true }) {
+                            Icon(Icons.Filled.Add, contentDescription = "\u5bfc\u5165")
+                        }
+                        DropdownMenu(
+                            expanded = importMenu,
+                            onDismissRequest = { importMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("\u5bfc\u5165 EPUB") },
+                                onClick = {
+                                    importMenu = false
+                                    launchPicker()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("\u4ece NGA \u4e0b\u8f7d") },
+                                onClick = {
+                                    importMenu = false
+                                    onOpenDownload()
+                                },
+                            )
+                        }
                     }
                 },
             )
@@ -180,7 +204,14 @@ fun BookshelfScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = AnkeSpacing.sm, bottom = AnkeSpacing.lg),
                 )
-                Button(shape = MaterialTheme.shapes.small, onClick = launchPicker) { Text("导入 EPUB") }
+                Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
+                    Button(shape = MaterialTheme.shapes.small, onClick = launchPicker) {
+                        Text("导入 EPUB")
+                    }
+                    OutlinedButton(shape = MaterialTheme.shapes.small, onClick = onOpenDownload) {
+                        Text("从 NGA 下载")
+                    }
+                }
             }
         } else {
             if (shelfView == "list") {

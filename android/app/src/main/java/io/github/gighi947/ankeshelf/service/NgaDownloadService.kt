@@ -12,6 +12,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import io.github.gighi947.ankeshelf.MainActivity
+import io.github.gighi947.ankeshelf.AnkeShelfApp
 import io.github.gighi947.ankeshelf.R
 import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.data.NgaConfig
@@ -99,11 +100,13 @@ class NgaDownloadService : Service() {
     }
 
     private suspend fun runTask(params: NgaDownloadParams, bookId: String, action: String) {
-        val appPaths = AppPaths(File(filesDir, AppPaths.APP_DIR_NAME)).also { it.ensure() }
-        val shelf = Shelf(appPaths.shelfFile, appPaths.coversDir).also { it.load() }
-        val progress = ProgressStore(appPaths.progressFile).also { it.load() }
-        val repository = BookRepository(appPaths, shelf, progress)
-        val downloader = NgaDownloader(appPaths, repository, NgaConfig(appPaths.ngaConfigFile))
+        // 与 UI 共享同一 AppContainer 的 Shelf/仓库，下载完成后书架内存立即更新。
+        val container = (application as AnkeShelfApp).container
+        val downloader = NgaDownloader(
+            container.appPaths,
+            container.repository,
+            container.ngaConfig,
+        )
         this.downloader = downloader
         NgaServiceStatus.running = true
         NgaServiceStatus.error = ""

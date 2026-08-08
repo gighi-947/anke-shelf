@@ -19,6 +19,7 @@ import io.github.gighi947.ankeshelf.data.nowIso
 import java.io.Closeable
 import java.io.File
 import kotlin.math.roundToInt
+import okhttp3.OkHttpClient
 
 /** 手动 DI 容器：数据目录 + 书架/进度/设置 + 仓库。 */
 class AppContainer(context: Context) {
@@ -31,6 +32,8 @@ class AppContainer(context: Context) {
     val stats = StatsStore(appPaths.statisticsFile)
     val annotations = AnnotationStore(appPaths.annotationsFile)
     val repository = BookRepository(appPaths, shelf, progress)
+    /** 图片代理用：给 img.nga.cn 补 Referer/Cookie，规避防盗链。 */
+    val okHttp = OkHttpClient()
 
     init {
         shelf.load()

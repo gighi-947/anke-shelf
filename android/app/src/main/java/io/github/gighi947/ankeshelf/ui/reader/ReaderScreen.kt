@@ -93,12 +93,14 @@ import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.BookSession
+import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.readerTheme
 import java.io.File
 import java.io.FileInputStream
 import java.net.URLDecoder
+import okhttp3.Request
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
@@ -194,6 +196,7 @@ fun ReaderScreen(
     savedOffset: Int,
     jumpOffset: Int? = null,
     annotations: AnnotationStore,
+    container: AppContainer,
     readerSettings: SettingsData,
     onProgress: (chapterIndex: Int, textOffset: Int) -> Unit,
     onSettingsPatch: (SettingsPatch) -> Unit,
@@ -479,6 +482,7 @@ fun ReaderScreen(
             factory = { ctx ->
                 WebView(ctx).apply {
                     val fontsDir = File(ctx.filesDir, "AnkeShelf/fonts")
+                    val density = resources.displayMetrics.density
                     if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
                     settings.javaScriptEnabled = true
                     settings.setAllowFileAccess(false)
@@ -513,6 +517,40 @@ fun ReaderScreen(
                                     }
                                     return WebResourceResponse(mime, null, FileInputStream(f))
                                 }
+                            }
+                            // NGA 图床防盗链：补 Referer/Cookie/UA 后由 OkHttp 代理（DNS 可达时有效）。
+                            if (url.contains("img.nga.cn", ignoreCase = true)) {
+                                return runCatching {
+                                    val cfg = container.ngaConfig.load()
+                                    val req = Request.Builder()
+                                        .url(url)
+                                        .header("Referer", "https://bbs.nga.cn/")
+                                        .header("User-Agent", cfg.ua.ifBlank { NgaConfig.DEFAULT_UA })
+                                        .apply {
+                                            if (cfg.uid.isNotBlank() && cfg.cid.isNotBlank()) {
+                                                header(
+                                                    "Cookie",
+                                                    "ngaPassportUid=${cfg.uid}; ngaPassportCid=${cfg.cid}",
+                                                )
+                                            }
+                                        }
+                                        .build()
+                                    val resp = container.okHttp.newCall(req).execute()
+                                    if (!resp.isSuccessful) {
+                                        resp.close()
+                                        null
+                                    } else {
+                                        val mime = resp.header("Content-Type")?.substringBefore(";")
+                                            ?: "image/jpeg"
+                                        val body = resp.body
+                                        if (body == null) {
+                                            resp.close()
+                                            null
+                                        } else {
+                                            WebResourceResponse(mime, null, body.byteStream())
+                                        }
+                                    }
+                                }.getOrNull()
                             }
                             return super.shouldInterceptRequest(view, request)
                         }
@@ -588,7 +626,6 @@ fun ReaderScreen(
                                 downY = ev.y
                                 val x = ev.x
                                 val y = ev.y
-                                val density = resources.displayMetrics.density
                                 val task = Runnable {
                                     longPressTask = null
                                     // 长按约 450ms：命中图片则打开查看器并取消系统长按；文字长按放行给文本选择。
@@ -628,8 +665,11 @@ fun ReaderScreen(
                                         hideBars()
                                     }
                                     isTap && imageViewerOpen -> {
-                                        // 单击关闭 / 双击缩放（JS 判定），避免 DOM click 被手势吞掉。
-                                        evaluateJavascript("AnkeReader.onViewerTap();", null)
+                                        // 单击图片不退出、双击缩放、点空白关闭（JS 判定），避免误触。
+                                        evaluateJavascript(
+                                            "AnkeReader.onViewerTap(${ev.x / density},${ev.y / density});",
+                                            null,
+                                        )
                                     }
                                     isTap -> {
                                         val w = width
