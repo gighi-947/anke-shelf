@@ -50,6 +50,18 @@ class ProgressTest {
     }
 
     @Test
+    fun `set persists via debounced flush`() {
+        val file = File(Files.createTempDirectory("progress").toFile(), "progress.json")
+        val store = ProgressStore(file)
+        store.set("a".repeat(32), 2, 777)
+        // 后台防抖 1.5s 后落盘，无需手动 flush。
+        Thread.sleep(2200)
+        val reloaded = ProgressStore(file).also { it.load() }
+        assertEquals(2, reloaded.get("a".repeat(32))!!.chapter_index)
+        assertEquals(777, reloaded.get("a".repeat(32))!!.text_offset)
+    }
+
+    @Test
     fun `migrate`() {
         val keep = ProgressStore.migrate(
             mapOf("chapter_index" to 2, "text_offset" to 500),

@@ -245,8 +245,13 @@ fun AnkeShelfRoot(container: AppContainer) {
                                         refresh++
                                     },
                                     onOpen = { rec ->
+                                        // 书架打开：恢复上次阅读章节（text_offset 由
+                                        // savedProgress 一并传给阅读器，同一章内续读）。
+                                        val p = container.repository.progressOf(rec.id)
                                         bookId = rec.id
-                                        chapter = 0
+                                        chapter = p?.chapter_index
+                                            ?.coerceIn(0, (rec.chapter_count - 1).coerceAtLeast(0))
+                                            ?: 0
                                         jumpOffset = null
                                         routeName = "reader"
                                     },

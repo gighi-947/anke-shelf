@@ -17,4 +17,10 @@ class MainActivity : ComponentActivity() {
             AnkeShelfRoot(container)
         }
     }
+
+    // 按 Home 退到后台也立即落盘进度（防抖窗口内的最后一次位置不丢）。
+    override fun onStop() {
+        super.onStop()
+        container.progress.flush()
+    }
 }

@@ -208,6 +208,9 @@ class BookRepository(
 
     fun saveProgress(bookId: String, chapterIndex: Int, textOffset: Int) {
         progress.set(bookId, chapterIndex, textOffset)
+        // 对齐桌面 api.save_progress：每次上报同步更新“最近阅读”（60s 节流落盘），
+        // 书架按最近阅读排序依赖该字段。
+        shelf.touch(bookId)
     }
 
     /** 重命名书籍显示标题：书架记录 + 原生书 meta.json（EPUB 仅书架记录）。 */
