@@ -38,9 +38,18 @@ import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.NgaConfigPatch
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.NgaDownloadService
+import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.NgaProgress
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
+import io.github.gighi947.ankeshelf.service.safeExportName
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** NGA 下载页（M3）：配置 + 下载表单 + 进度/取消 + 增量更新入口。 */
 @Composable
@@ -298,6 +307,77 @@ fun DownloadScreen(
                     )
                 }
             }
+        }
+
+        NgaBooksExportSection(container = container, onChanged = onChanged)
+    }
+}
+
+/** 已下载 NGA 书列表与导出（EPUB / Markdown，SAF 自选位置）。 */
+@Composable
+private fun NgaBooksExportSection(
+    container: AppContainer,
+    onChanged: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var tick by remember { mutableIntStateOf(0) }
+    val books = remember(tick) {
+        container.shelf.listBooks().filter { it.nga_tid > 0 }
+    }
+    if (books.isEmpty()) return
+
+    Text(
+        "已下载 NGA 书",
+        style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.padding(top = 16.dp),
+    )
+    books.forEach { book ->
+        val nativeDir = java.io.File(book.path)
+        val epubLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("application/epub+zip"),
+        ) { uri ->
+            uri?.let {
+                val meta = NgaExport.metaOf(nativeDir) ?: return@let
+                val bytes = NgaExport.epubBytes(nativeDir, meta)
+                scope.launch(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(it)?.use { os -> os.write(bytes) }
+                }
+            }
+        }
+        val mdLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("text/markdown"),
+        ) { uri ->
+            uri?.let {
+                val meta = NgaExport.metaOf(nativeDir) ?: return@let
+                val text = NgaExport.markdownText(nativeDir, meta)
+                scope.launch(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(it)?.use { os ->
+                        os.write(text.toByteArray(Charsets.UTF_8))
+                    }
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = book.title,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = {
+                val meta = NgaExport.metaOf(nativeDir) ?: return@TextButton
+                epubLauncher.launch(safeExportName(meta.title) + ".epub")
+            }) { Text("EPUB") }
+            TextButton(onClick = {
+                val meta = NgaExport.metaOf(nativeDir) ?: return@TextButton
+                mdLauncher.launch(safeExportName(meta.title) + ".md")
+            }) { Text("MD") }
         }
     }
 }

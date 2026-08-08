@@ -146,10 +146,10 @@ object NgaFormatHtml {
         c = c.replace("[/quote]", "</blockquote>")
 
         c = RE_DEL_GRAY.replace(c, "<del>")
-        c = RE_B.replace(c, "<b>$1</b>")
-        c = RE_I.replace(c, "<i>$1</i>")
-        c = RE_URL.replace(c, "<a href=\"$1\">$2</a>")
-        c = RE_URL_PLAIN.replace(c, "<a href=\"$1\">$1</a>")
+        c = RE_B.replace(c, "<b>\$1</b>")
+        c = RE_I.replace(c, "<i>\$1</i>")
+        c = RE_URL.replace(c, "<a href=\"\$1\">\$2</a>")
+        c = RE_URL_PLAIN.replace(c, "<a href=\"\$1\">\$1</a>")
         c = RE_COLOR.replace(c) { m ->
             val color = m.groupValues[1].trim()
             if (!RE_COLOR_OK.matches(color)) {
