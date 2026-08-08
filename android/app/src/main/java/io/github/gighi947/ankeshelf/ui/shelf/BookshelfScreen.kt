@@ -192,7 +192,28 @@ fun BookshelfScreen(
                         .padding(padding),
                 ) {
                     lazyItems(sortedBooks, key = { it.record.id }) { ui ->
-                        BookListRow(ui, coversDir, onClick = { onOpen(ui.record) })
+                        BookListRow(
+                            ui = ui,
+                            coversDir = coversDir,
+                            onClick = { onOpen(ui.record) },
+                            onUpdate = { rec ->
+                                val intent = Intent(context, NgaDownloadService::class.java).apply {
+                                    action = NgaDownloadService.ACTION_START
+                                    putExtra("action", "update")
+                                    putExtra("bookId", rec.id)
+                                    putExtra("tid", rec.nga_tid.toLong())
+                                }
+                                ContextCompat.startForegroundService(context, intent)
+                            },
+                            onExportEpub = { rec ->
+                                pendingExport = rec to "epub"
+                                epubLauncher.launch(safeExportName(rec.title) + ".epub")
+                            },
+                            onExportMd = { rec ->
+                                pendingExport = rec to "md"
+                                mdLauncher.launch(safeExportName(rec.title) + ".md")
+                            },
+                        )
                     }
                 }
             } else {
@@ -229,8 +250,16 @@ fun BookshelfScreen(
 }
 
 @Composable
-private fun BookListRow(ui: BookUi, coversDir: File, onClick: () -> Unit) {
+private fun BookListRow(
+    ui: BookUi,
+    coversDir: File,
+    onClick: () -> Unit,
+    onUpdate: (BookRecord) -> Unit,
+    onExportEpub: (BookRecord) -> Unit,
+    onExportMd: (BookRecord) -> Unit,
+) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
+    var exportMenu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -281,6 +310,33 @@ private fun BookListRow(ui: BookUi, coversDir: File, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = AnkeSpacing.xxs),
             )
+        }
+        if (ui.record.nga_tid > 0) {
+            CoverAction(Icons.Filled.Refresh, "更新") { onUpdate(ui.record) }
+        }
+        Box {
+            CoverAction(Icons.Filled.IosShare, "导出") { exportMenu = true }
+            DropdownMenu(
+                expanded = exportMenu,
+                onDismissRequest = { exportMenu = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text("导出 EPUB") },
+                    onClick = {
+                        exportMenu = false
+                        onExportEpub(ui.record)
+                    },
+                )
+                if (ui.record.nga_tid > 0) {
+                    DropdownMenuItem(
+                        text = { Text("导出 Markdown") },
+                        onClick = {
+                            exportMenu = false
+                            onExportMd(ui.record)
+                        },
+                    )
+                }
+            }
         }
     }
 }

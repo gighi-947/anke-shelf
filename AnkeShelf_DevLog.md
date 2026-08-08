@@ -668,5 +668,6 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
   - 系统返回键关闭、点空白/×关闭保留；
   - 移除 DOM touch 的 preventDefault（CSS `touch-action:none` 已防滚动），平移/捏合不受影响。
 - **封面更新/导出按钮**：网格书架封面右上角悬浮圆形图标（28dp 按钮 + 16dp 图标，surface 92% 底）：NGA 书显示「更新」「导出」，EPUB 书显示「导出」；导出菜单支持 EPUB / Markdown（NGA 书），EPUB 书导出原文件副本（SAF）。
+- **列表视图同款入口**：列表行不在封面上叠按钮，改在行尾放同样的 28dp 圆形「更新」「导出」图标（EPUB 书只有「导出」），与网格封面一致。
 - 验证：模拟器网格书架封面按钮出现（content-desc 更新/导出）；编译与单测通过；查看器触摸修复与下载刷新逻辑已实现（模拟器网络/无图章节限制下未端到端复测）。
 - 提交：见后续记录。
