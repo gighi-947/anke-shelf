@@ -1111,3 +1111,28 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 翻 3 页：progress.json 依次 page=13/14/15，offset 1574→1587→1599；退出重进最终稳定 gotoPage(15)。
 - 已知剩余边缘：个别场景恢复页与保存页相差 ±1 页（晚到重排/空白页跳过判定），幅度已从“落后很多”收敛到一页内，继续跟踪。
 - 单测 91 通过 / 1 跳过；`assembleDebug` 通过。诊断日志按用户要求保留。
+
+### 9.50 阅读模式隔离重构：分页/滚动采样与恢复彻底分家（2026-08-09）
+
+用户指出两种翻页模式代码没有做好隔离，之前反复出现“改一边坏另一边”。逐函数审查 `reader-lite.js` 后确认：
+
+#### 审查发现的耦合点
+
+1. **`anchorOffset` 单一字段被两模式共用**：分页语义=页顶采样、滚动语义=视口中线采样，命名与使用都含糊，任何一处更新都会影响另一模式的恢复决策。
+2. **`currentOffset/offsetAtPoint/gotoOffset` 都在函数内部 `if (state.paged)` 分支**：语义交错，历史 bug（滚动采样用了文档坐标、分页 gotoOffset 漏加 scrollLeft）都源于这种写法。
+3. **Kotlin 触摸分区用“设置值”判断模式**：JS 侧超大章会静默回退滚动（`state.paged=false`），但 Kotlin 仍按设置值做左/右翻页分区，模式不一致时触摸行为错乱。
+
+#### 隔离重构
+
+- **锚点拆分**：`pagedAnchor + pagedAnchorPage + pagedAnchorTotal`（分页）与 `scrollAnchor`（滚动）完全独立；`setMode` 切换时用 text_offset 交接并同时更新两套锚点。
+- **采样拆分**：`currentOffsetPaged()`（页顶+整页扫描）与 `currentOffsetScroll()`（视口中线+120px 扫描），统一走 `scanForText`（跳过图片）；`currentOffset()` 只做分发。
+- **恢复拆分**：`restorePagedAnchor(offset)`（页码一致直接翻页，否则按 offset 定位）与 `restoreScrollOffset(offset)`（中线锚点）；`gotoOffset` 变回纯分页定位器。
+- **实际模式回传**：JS 在 `init/setMode` 时 `AnkeReaderBridge.onMode(state.paged)`，Kotlin 触摸分区改用 JS 实际模式。
+- 事件处理器入口守卫复查：`flipPage/report/onResize/prepare/measure/gotoPage` 仅分页可用；滚动保存仅滚动模式；`restorePagedAnchor` 内部自守卫。
+
+#### 真机验证（隔离后的两条链路各自闭环）
+
+- 滚动：滚动保存 offset 109→278（page 保持 -1）→ 重进恢复章节中间段落，无遮罩；
+- 滚动→分页交接 → 翻 3 页保存 page_index=3 → 退出重进/杀进程重开均显示“第 4 / 112 页”（**progress.json 存 0 基 `m.current`，UI 显示 1 基，3 存 4 显为精确一致**，此前报告的“±1 页”是读数口径错误，非缺陷）；
+- 分页→滚动交接按 text_offset 继续。
+- 单测 91 通过 / 1 跳过；`assembleDebug` 通过。
