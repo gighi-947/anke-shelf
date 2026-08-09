@@ -1158,6 +1158,28 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 移动端真正的问题不是“环境差”，而是**我们把同步模型套到异步环境，并为性能/体验引入缓存层（防抖、去重、内存 map）放大了复杂度**；桌面端零缓存反而可靠。
 - 方法论：跨层状态（JS 渲染层 ↔ Kotlin 持久层）先写“谁在什么时机写、谁能覆盖谁”的写入清单，再动代码；第一天就该有“滚动/翻页 → 退出 → 重进 → 必须一致”的回归脚本。
 
+### 9.56 热更新可选参数：对齐桌面“更新帖子”面板（2026-08-09）
+
+用户反馈：热更新时无法像桌面端那样可选格式。
+
+#### 桌面端对照
+
+- v1.1.0 起桌面“更新帖子”面板（`web/js/nga_download.js` buildUpdateSection）可选：只看楼主 uid、主题（浅/深）、图片模式（在线/嵌入/不含）、每章楼层数、目录楼 pid；默认回填上次设置（`nga_update_defaults`），仅对新增楼层生效。
+
+#### 安卓端差距
+
+- “已下载”页更新按钮此前直接启动（只传 bookId/tid），底层虽会回填最近设置，但用户无法在更新时临时选择格式参数。
+
+#### 实现
+
+- 已下载页（列表/网格）更新按钮改为弹出 `UpdateParamsDialog`：预填 `NgaDownloader.defaultsFor`（最近一次下载/更新设置），字段 = 只看楼主 uid、主题（浅/深 FilterChip）、图片模式（在线/内嵌/无图 FilterChip）、每章楼层数；附说明“仅对本次新增楼层生效”。
+- 确认后 `startLibraryUpdate` 携带 authorId/theme/perChapter/imageMode 启动前台服务；服务端优先使用传入参数，未传才回填（原有逻辑兼容）。
+- UI 规范核对（docs/ANDROID_DESIGN_TOKENS.md）：对话框 `AnkeRadius.large`(16dp)、输入框 medium(12dp)、按钮 small(8dp)、FilterChip pill、间距 AnkeSpacing、颜色全部走 colorScheme；顺手把同文件“删除书籍”对话框统一为 large。
+
+#### 验证
+
+- 单测 91 通过 / 1 跳过；`assembleDebug` 通过；已装真机。待真机确认：更新对话框预填值正确、修改参数后更新仅影响新增楼层。
+
 ### 9.47 换章加载遮罩 + 滚动模式章内定位稳定性（2026-08-09）
 
 用户反馈两点：跳转/排版未完成时操作会把位置拉回章节首；滚动模式章内定位又失效、默认回章节首。
