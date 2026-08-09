@@ -1541,6 +1541,37 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 
 - 纯文档改动，不涉及代码；待提交推送。
 
+### 9.67 补充 Compose UI 测试（root / screen / drawer，2026-08-10）
+
+用户提出测试覆盖需求：Android UI 测试此前仅 3 个仪器测试
+（ReaderPagedCrossTest），需补充 Compose UI 测试（root/screen/drawer）。
+
+#### 改动
+
+- **AppContainer 支持注入数据目录**：新增 `dataDir` 参数（默认
+  `filesDir/AnkeShelf` 不变）；UI 测试用 cacheDir 下唯一临时目录构造容器，
+  完全不触碰真机/应用真实书架与设置数据。
+- **新增 3 个仪器测试文件（androidTest/ui/）**：
+  - `RootNavigationTest`（root）：默认书架页 + 空书架状态（“书架为空 /
+    导入 EPUB / 从 NGA 下载”）；底部四 Tab 切换（书架 → 下载 → 搜索 →
+    设置 → 回书架）。
+  - `DownloadScreenTest`（screen + drawer/二级详情）：一级三入口
+    （登录配置 / 下载·更新 / 已下载）；点“登录配置”进二级（ngaPassportUid /
+    ngaPassportCid 输入框），返回键回一级。
+  - `SettingsScreenTest`（screen + drawer/二级详情）：一级六项
+    （外观/阅读/操作/统计/数据/帮助）；“外观”二级含“主题”并可返回；
+    “阅读”二级含“正文字体”。
+- 编译注意：Compose 2026.05 BOM 的 ui-test 顶层无 `assertExists`，
+  改用 `assertIsDisplayed`；`AnkeShelfTheme` 需传 `settings: SettingsData`。
+
+#### 验证
+
+- `compileDebugAndroidTestKotlin` 通过；`testDebugUnitTest` 86 过/1 跳 +
+  `assembleDebug` 通过（AppContainer 改动无回归）。
+- **未执行仪器测试**：真机当前未连接（模拟器已删除）；待连接后跑
+  `gradlew connectedDebugAndroidTest`（可先只跑新增三类的
+  `-Pandroid.testInstrumentationRunnerArguments.class=...`）。
+
 ---
 
 ## 10. Windows 端开发日志（2026-08-09 起）

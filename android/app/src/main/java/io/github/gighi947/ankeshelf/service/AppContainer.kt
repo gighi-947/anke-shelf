@@ -24,9 +24,13 @@ import kotlin.math.roundToInt
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 
-/** 手动 DI 容器：数据目录 + 书架/进度/设置 + 仓库。 */
-class AppContainer(context: Context) {
-    val appPaths: AppPaths = AppPaths(File(context.filesDir, AppPaths.APP_DIR_NAME)).also { it.ensure() }
+/** 手动 DI 容器：数据目录 + 书架/进度/设置 + 仓库。
+ *  [dataDir] 可注入（UI 测试用临时目录隔离，不触碰真实用户数据）；默认应用私有目录。 */
+class AppContainer(
+    context: Context,
+    dataDir: File = File(context.filesDir, AppPaths.APP_DIR_NAME),
+) {
+    val appPaths: AppPaths = AppPaths(dataDir).also { it.ensure() }
     val shelf = Shelf(appPaths.shelfFile, appPaths.coversDir)
     val progress = ProgressStore(appPaths.progressFile)
     val settings = io.github.gighi947.ankeshelf.data.Settings(appPaths.settingsFile)
