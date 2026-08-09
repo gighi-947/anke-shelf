@@ -639,7 +639,7 @@ private fun PaletteCard(palette: ReaderPalette, active: Boolean, onClick: () -> 
         color = if (active) primary.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(modifier = Modifier.padding(AnkeSpacing.md)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs)) {
                 Dot(hexColor(palette.bg) ?: Color.Gray)
                 Dot(hexColor(palette.text) ?: Color.Gray)
                 Dot(hexColor(palette.primary) ?: Color.Gray)
@@ -698,7 +698,7 @@ private fun ColorPickerSheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = AnkeSpacing.xl)
                 .padding(bottom = AnkeSpacing.xxl),
     ) {
         Text("选择颜色", style = MaterialTheme.typography.titleMedium)
