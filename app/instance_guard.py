@@ -7,6 +7,15 @@ import time
 from pathlib import Path
 
 
+def _safe_print(message: str) -> None:
+    """打印启动诊断信息，stdout 无法编码（如英文 Windows 的 cp1252）时降级为可编码字符。"""
+    try:
+        print(message, flush=True)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+        print(message.encode(enc, "replace").decode(enc, "replace"), flush=True)
+
+
 def _instance_lock_file() -> Path:
     from .paths import data_dir
 
@@ -32,7 +41,7 @@ def cleanup_stale_instance() -> None:
             ).stdout
             proc_name = Path(sys.executable).name.lower()
             if f'"{pid}"' in out and proc_name in out.lower():
-                print(f"检测到上次未正常退出的安科书架进程（PID {pid}），正在清理…")
+                _safe_print(f"检测到上次未正常退出的安科书架进程（PID {pid}），正在清理…")
                 os.kill(pid, signal.SIGTERM)
                 time.sleep(1.0)
         except (OSError, subprocess.SubprocessError):

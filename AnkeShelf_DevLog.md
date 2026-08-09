@@ -1566,3 +1566,16 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   `Build complete!`、生成 `AnkeShelf-v1.2.0.zip`（44,738,303 字节）。
 - **待办/注意**：尚未推送（按纪律需用户明确授权）；推送后观察 GitHub Actions 首次运行；
   后续可考虑 README 加 CI badge（本轮未做，避免范围外改动）。
+
+### 10.2 Windows CI 首次运行失败修复：instance_guard 中文 print 在 cp1252 下崩溃（2026-08-09）
+
+- **现象**：Windows CI（GitHub Actions `windows-latest`，英文环境）在 Unit tests 步骤失败；
+  `test_kills_stale_python` 触发 `UnicodeEncodeError: 'charmap' codec can't encode characters`。
+- **根因**：`app/instance_guard.py` 启动清理残留进程时直接 `print(中文诊断)`；
+  本机中文控制台（cp936）正常，CI 英文环境 stdout 为 cp1252，无法编码中文直接抛异常。
+- **修复**：新增 `_safe_print()`——正常打印；stdout 编码不支持时用
+  `encode(enc, "replace").decode(enc, "replace")` 降级为可编码字符，不崩溃。
+- **验证**：`PYTHONIOENCODING=cp1252 python -m unittest tests.test_main_guard`
+  修复前复现同款 `UnicodeEncodeError`（红）→ 修复后 4/4 OK（绿）；
+  全量 `python -m unittest discover tests` 174 项 OK。
+- **待办**：推送后重跑 Windows CI，确认包含 PyInstaller 打包在内的全链路绿。
