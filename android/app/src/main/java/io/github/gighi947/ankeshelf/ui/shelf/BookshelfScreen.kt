@@ -64,12 +64,13 @@ import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.service.AppContainer
-import io.github.gighi947.ankeshelf.service.NgaDownloadService
 import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.BookUi
 import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.ui.components.ActionIcon
 import io.github.gighi947.ankeshelf.ui.components.BookManagementOverlay
+import io.github.gighi947.ankeshelf.ui.components.NgaUpdateDialog
+import io.github.gighi947.ankeshelf.ui.components.launchNgaUpdate
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import kotlinx.coroutines.Dispatchers
@@ -119,6 +120,7 @@ fun BookshelfScreen(
     var sortMenu by remember { mutableStateOf(false) }
     var importMenu by remember { mutableStateOf(false) }
     var manageBook by remember { mutableStateOf<BookRecord?>(null) }
+    var updateTarget by remember { mutableStateOf<BookRecord?>(null) }
     val sortedBooks = remember(books, sort) {
         when (sort) {
             "added" -> books.sortedByDescending { it.record.added_at }
@@ -287,15 +289,7 @@ fun BookshelfScreen(
                             coversDir = coversDir,
                             onClick = { onOpen(ui.record) },
                             onLongPress = { manageBook = it },
-                            onUpdate = { rec ->
-                                val intent = Intent(context, NgaDownloadService::class.java).apply {
-                                    action = NgaDownloadService.ACTION_START
-                                    putExtra("action", "update")
-                                    putExtra("bookId", rec.id)
-                                    putExtra("tid", rec.nga_tid.toLong())
-                                }
-                                ContextCompat.startForegroundService(context, intent)
-                            },
+                            onUpdate = { updateTarget = it },
                             onExportEpub = { rec ->
                                 pendingExport = rec to "epub"
                                 epubLauncher.launch(safeExportName(rec.title) + ".epub")
@@ -325,6 +319,7 @@ fun BookshelfScreen(
                             container = container,
                             onClick = { onOpen(ui.record) },
                             onLongPress = { manageBook = it },
+                            onUpdate = { updateTarget = it },
                             onExportEpub = { rec ->
                                 pendingExport = rec to "epub"
                                 epubLauncher.launch(safeExportName(rec.title) + ".epub")
@@ -344,6 +339,18 @@ fun BookshelfScreen(
             onRename = onRename,
             onDelete = onDelete,
         )
+
+        updateTarget?.let { book ->
+            NgaUpdateDialog(
+                book = book,
+                container = container,
+                onDismiss = { updateTarget = null },
+                onConfirm = { params ->
+                    updateTarget = null
+                    launchNgaUpdate(context, book, params)
+                },
+            )
+        }
     }
 }
 
@@ -450,6 +457,7 @@ private fun BookCard(
     container: AppContainer,
     onClick: () -> Unit,
     onLongPress: (BookRecord) -> Unit,
+    onUpdate: (BookRecord) -> Unit,
     onExportEpub: (BookRecord) -> Unit,
     onExportMd: (BookRecord) -> Unit,
 ) {
@@ -488,15 +496,7 @@ private fun BookCard(
                 horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs),
             ) {
                 if (ui.record.nga_tid > 0) {
-                    ActionIcon(Icons.Filled.Refresh, "更新") {
-                        val intent = Intent(context, NgaDownloadService::class.java).apply {
-                            action = NgaDownloadService.ACTION_START
-                            putExtra("action", "update")
-                            putExtra("bookId", ui.record.id)
-                            putExtra("tid", ui.record.nga_tid.toLong())
-                        }
-                        ContextCompat.startForegroundService(context, intent)
-                    }
+                    ActionIcon(Icons.Filled.Refresh, "更新") { onUpdate(ui.record) }
                 }
                 Box {
                     ActionIcon(Icons.Filled.IosShare, "导出") { exportMenu = true }
