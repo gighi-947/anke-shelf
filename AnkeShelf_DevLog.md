@@ -1540,3 +1540,29 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 #### 验证
 
 - 纯文档改动，不涉及代码；待提交推送。
+
+---
+
+## 10. Windows 端开发日志（2026-08-09 起）
+
+> 本节约 9.x（安卓端日志）之后新增，用于记录 Windows 端与双端工程改动；
+> 记录格式沿用 9.x（日期 + 提交 + 现象/结论）。
+
+### 10.1 Windows GitHub Actions CI：unittest + PyInstaller 打包（2026-08-09）
+
+- **背景**：CI 覆盖此前仅 Android（`.github/workflows/android.yml`），Windows 端无 CI；
+  用户提出补齐 Windows 端 GitHub Actions（unittest + 打包）。
+- **改动**：新增 `.github/workflows/windows.yml`：
+  - 触发：push / pull_request，路径过滤仅限 Windows 相关（`app/**`、`web/**`、
+    `ngapost2md-python/**`、`tests/**`、`requirements.txt`、`ankeshelf.spec`、
+    `run_app.py`、本工作流文件）；另有 `workflow_dispatch` 手动触发。
+  - 运行环境：`windows-latest` + Python 3.12（与发行包内置运行时一致）+ pip cache。
+  - 步骤：`pip install -r requirements.txt` → `node --check web/js/*.js`
+    （pwsh 循环逐文件）→ `python -m unittest discover tests`（174 项）→
+    PyInstaller 目录版打包 → 复制 README/LICENSE/OFL/使用说明 到 `dist\AnkeShelf` →
+    按 `app.__version__` 压成 `AnkeShelf-vX.Y.Z.zip` → `upload-artifact@v5` 上传。
+  - 边界：不扩大 android.yml 的触发范围；Windows 工作流只响应 Windows 相关路径。
+- **验证**：本机按 CI 步骤全量跑通——JS 语法检查 OK、174 项单测 OK、
+  `Build complete!`、生成 `AnkeShelf-v1.2.0.zip`（44,738,303 字节）。
+- **待办/注意**：尚未推送（按纪律需用户明确授权）；推送后观察 GitHub Actions 首次运行；
+  后续可考虑 README 加 CI badge（本轮未做，避免范围外改动）。

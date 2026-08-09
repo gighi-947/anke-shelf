@@ -1,0 +1,67 @@
+name: Windows CI
+
+on:
+  push:
+    paths:
+      - 'app/**'
+      - 'web/**'
+      - 'ngapost2md-python/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - 'ankeshelf.spec'
+      - 'run_app.py'
+      - '.github/workflows/windows.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'web/**'
+      - 'ngapost2md-python/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - 'ankeshelf.spec'
+      - 'run_app.py'
+      - '.github/workflows/windows.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate frontend JS syntax
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem web/js -Filter *.js | ForEach-Object {
+            node --check $_.FullName
+            if ($LASTEXITCODE -ne 0) { $failed = $true }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Unit tests
+        run: python -m unittest discover tests
+
+      - name: Build Windows package (PyInstaller)
+        run: python -m PyInstaller --noconfirm --clean ankeshelf.spec
+
+      - name: Bundle docs and create directory release zip
+        shell: pwsh
+        run: |
+          Copy-Item -LiteralPath README.md, LICENSE, web/fonts/OFL.txt, 使用说明.txt -Destination dist\AnkeShelf -Force
+          $ver = python -c "import app; print(app.__version__)"
+          Compress-Archive -Path dist\AnkeShelf -DestinationPath "dist\AnkeShelf-v$ver.zip" -CompressionLevel Optimal -Force
+          Write-Output "package=AnkeShelf-v$ver.zip"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ankeshelf-windows-package
+          path: dist/AnkeShelf-v*.zip
