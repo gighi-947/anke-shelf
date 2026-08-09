@@ -11,7 +11,7 @@ import java.io.File
 class NativeBookTest {
 
     private fun resourceDir(rel: String): File {
-        val url = checkNotNull(javaClass.classLoader.getResource(rel)) { "missing resource: $rel" }
+        val url = checkNotNull(javaClass.classLoader!!.getResource(rel)) { "missing resource: $rel" }
         return File(url.toURI())
     }
 

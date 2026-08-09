@@ -7,7 +7,7 @@
 
 - 安卓独立版本线：`0.1.0 → 0.2.0 → 0.3.0 → 1.0.0`。
 - 唯一版本定义位置：`android/app/build.gradle.kts`（`versionName` / `versionCode`）。
-  `versionCode` 每次发布递增 1（当前：versionCode=1，versionName=0.1.0-debug）。
+  `versionCode` 每次发布递增 1（当前：versionCode=1，versionName=1.0.0）。
 - 里程碑与当前进度（2026-08-08）：
 
 | 版本 | 内容 | 状态 |
@@ -15,7 +15,7 @@
 | v0.1.0 | M2 阅读 MVP（SAF 导入/滚动分页/进度/主题） | 已完成（未发布） |
 | v0.2.0 | M3 NGA 下载/热更新/导出 | 已完成（未发布） |
 | v0.3.0 | M4 UI/搜索/标注/统计/图片/字体 | 已完成（未发布） |
-| v1.0.0 | 功能对齐 Windows v1.2.0（M4 验收通过） | 首个正式发布候选 |
+| v1.0.0 | 功能对齐 Windows v1.2.0（M4 验收通过） | **已发布（android-v1.0.0，2026-08-09）** |
 
 > 因 v0.1.0–v0.3.0 均未发布，首个 Release 建议直接 `android-v1.0.0`
 > （versionCode=1，versionName=1.0.0），避免无意义的占位版本。
@@ -116,3 +116,9 @@
   `curl`/`Invoke-RestMethod` 直连 `uploads.github.com`（与桌面 SOP 相同教训）。
 - 资产名保持纯 ASCII；模拟器测试数据（含真实 NGA 凭据）只存在于设备应用私有目录，
   不会进入 APK。
+
+## 7. 发布记录
+
+| 版本 | 标签 | 日期 | 资产 | SHA256 |
+| --- | --- | --- | --- | --- |
+| v1.0.0 | `android-v1.0.0` | 2026-08-09 | `AnkeShelf-v1.0.0-android.apk`（16.4MB） | `3F1B212FD6CD966B4FF47599A782C155468F2E31B216CAA5A4961028C4FF7475` |

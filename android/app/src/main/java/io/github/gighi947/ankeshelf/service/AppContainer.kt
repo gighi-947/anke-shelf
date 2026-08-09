@@ -226,11 +226,12 @@ class BookRepository(
         textOffset: Int,
         pageIndex: Int = -1,
         pageTotal: Int = -1,
+        scrollRatio: Double = -1.0,
     ) {
         // 对齐桌面 api.save_progress：更新进度并同步“最近阅读”（60s 节流落盘）。
         // progress.set 同步更新内存并自行排队落盘（write 已在后台线程）；
         // shelf.touch 的整文件写入放到本仓库后台线程，主线程不做磁盘 I/O。
-        progress.set(bookId, chapterIndex, textOffset, pageIndex, pageTotal)
+        progress.set(bookId, chapterIndex, textOffset, pageIndex, pageTotal, scrollRatio)
         io.execute { shelf.touch(bookId) }
     }
 

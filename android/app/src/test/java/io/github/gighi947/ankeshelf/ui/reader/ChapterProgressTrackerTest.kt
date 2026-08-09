@@ -9,17 +9,26 @@ class ChapterProgressTrackerTest {
 
     private class FakeStore {
         val entries = mutableMapOf<String, ProgressEntry>()
-        val persisted = mutableListOf<Array<Int>>()
+        val persisted = mutableListOf<Persisted>()
+
+        data class Persisted(
+            val chapter: Int,
+            val offset: Int,
+            val page: Int,
+            val total: Int,
+            val ratio: Double,
+        )
 
         fun restore(bookId: String): ProgressEntry? = entries[bookId]
 
-        fun persist(bookId: String, chapter: Int, offset: Int, page: Int, total: Int) {
-            persisted += arrayOf(chapter, offset, page, total)
+        fun persist(bookId: String, chapter: Int, offset: Int, page: Int, total: Int, ratio: Double) {
+            persisted += Persisted(chapter, offset, page, total, ratio)
             entries[bookId] = ProgressEntry(
                 chapter_index = chapter,
                 text_offset = offset,
                 page_index = page,
                 page_total = total,
+                scroll_ratio = ratio,
                 updated_at = "t",
             )
         }
@@ -57,7 +66,7 @@ class ChapterProgressTrackerTest {
         val t = tracker(store)
         t.onOffset(0, 100)
         Thread.sleep(700)
-        assertTrue(store.persisted.any { it[0] == 0 && it[1] == 100 })
+        assertTrue(store.persisted.any { it.chapter == 0 && it.offset == 100 && it.ratio == -1.0 })
         val afterFirst = store.persisted.size
 
         t.onOffset(0, 100)
@@ -66,7 +75,7 @@ class ChapterProgressTrackerTest {
 
         t.onOffset(0, 200)
         Thread.sleep(700)
-        assertTrue(store.persisted.any { it[0] == 0 && it[1] == 200 })
+        assertTrue(store.persisted.any { it.chapter == 0 && it.offset == 200 })
     }
 
     @Test
@@ -74,7 +83,7 @@ class ChapterProgressTrackerTest {
         val store = FakeStore()
         val t = tracker(store)
         t.onPageTurn(3, 777)
-        assertTrue(store.persisted.any { it[0] == 3 && it[1] == 777 })
+        assertTrue(store.persisted.any { it.chapter == 3 && it.offset == 777 })
     }
 
     @Test
@@ -83,7 +92,7 @@ class ChapterProgressTrackerTest {
         val t = tracker(store)
         t.onOffset(0, 111)
         t.onChapterSwitch(0, 1)
-        assertTrue(store.persisted.any { it[0] == 0 && it[1] == 111 })
+        assertTrue(store.persisted.any { it.chapter == 0 && it.offset == 111 })
     }
 
     @Test
@@ -94,9 +103,9 @@ class ChapterProgressTrackerTest {
         t.onOffset(3, 300)
         t.onOffset(1, 100)
         t.flush()
-        assertTrue(store.persisted.any { it[0] == 0 && it[1] == 999 })
-        assertTrue(store.persisted.any { it[0] == 3 && it[1] == 300 })
-        assertTrue(store.persisted.any { it[0] == 1 && it[1] == 100 })
+        assertTrue(store.persisted.any { it.chapter == 0 && it.offset == 999 })
+        assertTrue(store.persisted.any { it.chapter == 3 && it.offset == 300 })
+        assertTrue(store.persisted.any { it.chapter == 1 && it.offset == 100 })
 
         val afterFlush = store.persisted.size
         Thread.sleep(700)
@@ -111,5 +120,50 @@ class ChapterProgressTrackerTest {
         t.onPageTurn(0, -5)
         t.flush()
         assertTrue(store.persisted.isEmpty())
+    }
+
+    @Test
+    fun `scroll ratio persists and restores for image-only viewport`() {
+        val store = FakeStore()
+        val t = tracker(store)
+        t.onOffset(0, 500, ratio = 0.5)
+        t.flush()
+        assertEquals(0.5, store.entries["book"]?.scroll_ratio ?: -2.0, 0.001)
+
+        // 新 tracker 从持久化条目恢复比例锚点。
+        val t2 = tracker(store, initialChapter = 0, initialOffset = 500)
+        assertEquals(0.5, t2.restoreRatioFor(0), 0.001)
+        assertEquals(500, t2.restoreOffsetFor(0))
+    }
+
+    @Test
+    fun `same offset with different ratio must persist again`() {
+        val store = FakeStore()
+        val t = tracker(store)
+        t.onOffset(0, 100, ratio = -1.0)
+        t.flush()
+        val afterText = store.persisted.size
+
+        // 文本锚点 → 全图页：offset 恰好相同但比例不同，必须重新落盘。
+        t.onOffset(0, 100, ratio = 0.4)
+        t.flush()
+        assertTrue(store.persisted.size > afterText)
+        assertTrue(store.persisted.any { it.chapter == 0 && it.offset == 100 && it.ratio == 0.4 })
+        assertEquals(0.4, t.restoreRatioFor(0), 0.001)
+    }
+
+    @Test
+    fun `scroll ratio clears when text anchor becomes available`() {
+        val store = FakeStore()
+        val t = tracker(store)
+        t.onOffset(0, 300, ratio = 0.7)
+        t.flush()
+        assertEquals(0.7, t.restoreRatioFor(0), 0.001)
+
+        // 滚动到有文本的位置：比例锚点清除，恢复走 text_offset。
+        t.onOffset(0, 320, ratio = -1.0)
+        t.flush()
+        assertEquals(-1.0, t.restoreRatioFor(0), 0.001)
+        assertTrue(store.persisted.any { it.chapter == 0 && it.offset == 320 && it.ratio == -1.0 })
     }
 }

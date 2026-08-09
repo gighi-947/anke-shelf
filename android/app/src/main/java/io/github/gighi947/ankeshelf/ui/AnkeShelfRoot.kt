@@ -71,7 +71,7 @@ private val TABS = listOf(
     TabSpec("settings", "设置", Icons.Filled.Settings, Icons.Outlined.Settings),
 )
 
-/** 应用外壳（M4）：M3 底部导航 + 五页路由；阅读器全屏沉浸。 */
+/** 应用外壳：底部导航（书架/下载/搜索/设置）+ 阅读器全屏沉浸。 */
 @Composable
 fun AnkeShelfRoot(container: AppContainer) {
     var routeName by rememberSaveable { mutableStateOf("shelf") }
@@ -130,7 +130,7 @@ fun AnkeShelfRoot(container: AppContainer) {
     }
 
     // 系统返回/侧滑返回：按当前页面回到上一级，避免从子页面直接退出应用。
-    // 阅读器内由 ReaderScreen 自己的 BackHandler 处理（返回书架）。
+    // 阅读器内由 NativeReaderScreen 自己的 BackHandler 处理（返回书架）。
     BackHandler(enabled = routeName != "shelf" && routeName != "reader") {
         when (routeName) {
             "download", "search", "settings" -> routeName = "shelf"

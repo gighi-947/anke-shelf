@@ -64,7 +64,7 @@ fun sanitizeReaderBody(body: String): String {
 }
 
 /**
- * 组装阅读器页面（自建 HTML 壳，引用 assets/reader/reader.css + reader.js）。
+ * 组装阅读器页面（自建 HTML 壳，引用 assets/reader/reader.css + reader-lite.js）。
  *
  * 主题/字号/行距/边距先以内联 CSS 变量给出初始值（避免首帧白闪），
  * 之后由 Kotlin 经 JS 桥 applyTheme / applyTypography 实时更新，不重载页面。

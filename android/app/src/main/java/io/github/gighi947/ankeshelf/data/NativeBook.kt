@@ -116,6 +116,7 @@ data class NativeMeta(
     val updated_time: String = "",
 )
 
+@OptIn(ExperimentalSerializationApi::class)
 private val NATIVE_META_JSON = Json {
     prettyPrint = true
     prettyPrintIndent = "  "
@@ -123,6 +124,7 @@ private val NATIVE_META_JSON = Json {
     ignoreUnknownKeys = true
 }
 
+@OptIn(ExperimentalSerializationApi::class)
 private val NATIVE_FLOORS_JSON = Json {
     prettyPrint = true
     prettyPrintIndent = " "

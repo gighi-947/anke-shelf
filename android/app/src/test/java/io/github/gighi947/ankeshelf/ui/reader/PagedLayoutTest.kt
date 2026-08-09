@@ -33,17 +33,18 @@ class PagedLayoutTest {
     }
 
     @Test
-    fun geometryUsesFullViewportWidthWithNoRightLeak() {
-        // 宽屏横屏双页：内容宽 = 视口宽；下一列起点恰好落在视口右边界
+    fun geometryUsesSymmetricPaddingWithNoRightLeak() {
+        // 宽屏横屏双页：内容宽 = 视口宽；P = min(margin, gap-8)，左右对称
         val g = PagedLayout.geometry(
             fw = 2400, fh = 1080, paged = true, dualPage = false, autoDual = true,
             margin = 40, gap = 28, pageWidth = 1.0, fontSize = 18,
         )
         assertEquals(2400, g.contentWidth)
         assertTrue(g.dual)
-        assertEquals(9, g.paddingRight)
-        assertEquals(1161.5, g.colW, 0.001) // (2400 - 40 - 9 - 28) / 2
-        assertEquals(1189.5, g.advance, 0.001)
+        assertEquals(20, g.margin)
+        assertEquals(20, g.paddingRight)
+        assertEquals(1166.0, g.colW, 0.001) // (2400 - 2*20 - 28) / 2
+        assertEquals(1194.0, g.advance, 0.001)
     }
 
     @Test
@@ -52,10 +53,11 @@ class PagedLayoutTest {
             fw = 360, fh = 800, paged = true, dualPage = true, autoDual = true,
             margin = 40, gap = 28, pageWidth = 1.0, fontSize = 18,
         )
-        // 强制双页但列宽 (360-40-28)/2=146 过窄 -> 回退单页
+        // 强制双页但列宽 (360-2*20-28)/2=146 过窄 -> 回退单页
         assertEquals(360, g.contentWidth)
         assertFalse(g.dual)
-        assertEquals(311.0, g.colW, 0.001) // 360 - 40 - 9
+        assertEquals(20, g.margin)
+        assertEquals(320.0, g.colW, 0.001) // 360 - 2*20
     }
 
     @Test

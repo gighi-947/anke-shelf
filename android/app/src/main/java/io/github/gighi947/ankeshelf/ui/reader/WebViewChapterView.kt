@@ -52,6 +52,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import org.json.JSONObject
 
 /**
  * Hybrid reader callbacks. Progress events carry the reporting chapter index so
@@ -61,9 +62,10 @@ import okhttp3.Request
 data class WebViewReaderCallbacks(
     val onReady: () -> Unit = {},
     val onMode: (paged: Boolean) -> Unit = {},
-    val onProgress: (chapter: Int, offset: Int, page: Int, total: Int) -> Unit = { _, _, _, _ -> },
-    val onProgressKeepPage: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
-    val onProgressNow: (chapter: Int, offset: Int, page: Int, total: Int) -> Unit = { _, _, _, _ -> },
+    val onProgress: (chapter: Int, offset: Int, page: Int, total: Int, ratio: Double) -> Unit = { _, _, _, _, _ -> },
+    val onProgressKeepPage: (chapter: Int, offset: Int, ratio: Double) -> Unit = { _, _, _ -> },
+    val onProgressNow: (chapter: Int, offset: Int, page: Int, total: Int, ratio: Double) -> Unit = { _, _, _, _, _ -> },
+    val onScrollMoved: () -> Unit = {},
     val onPageChanged: (chapter: Int, page: Int, total: Int) -> Unit = { _, _, _ -> },
     val onImageTap: (String) -> Unit = {},
     val onTapZone: (String) -> Unit = {},
@@ -101,6 +103,7 @@ fun WebViewChapterView(
     initialOffset: Int,
     initialPage: Int = -1,
     initialTotal: Int = -1,
+    initialRatio: Double = -1.0,
     session: BookSession,
     container: AppContainer,
     callbacks: WebViewReaderCallbacks,
@@ -132,6 +135,7 @@ fun WebViewChapterView(
     }
     val themeRef = remember { mutableStateOf(theme) }
     val initialOffsetRef = rememberUpdatedState(initialOffset)
+    val initialRatioRef = rememberUpdatedState(initialRatio)
     val callbacksRef = rememberUpdatedState(callbacks)
     val sessionRef = rememberUpdatedState(session)
     val containerRef = rememberUpdatedState(container)
@@ -151,19 +155,22 @@ fun WebViewChapterView(
                 val captured = withContext(Dispatchers.Default) {
                     val latch = CountDownLatch(1)
                     var value = 0
+                    var ratio = -1.0
                     web.post {
                         web.evaluateJavascript(
-                            "(function(){try{return AnkeReader.currentOffset();}catch(e){return 0;}})()",
+                            "(function(){try{return AnkeReader.currentScrollState();}catch(e){return {o:0,r:-1,p:false};}})()",
                             ValueCallback { v ->
-                                value = v?.toDoubleOrNull()?.toInt() ?: 0
+                                val st = runCatching { JSONObject(v ?: "{}") }.getOrNull()
+                                value = st?.optInt("o", 0) ?: 0
+                                ratio = st?.optDouble("r", -1.0) ?: -1.0
                                 latch.countDown()
                             },
                         )
                     }
-                    if (latch.await(300, TimeUnit.MILLISECONDS)) value else 0
+                    if (latch.await(300, TimeUnit.MILLISECONDS)) value to ratio else 0 to -1.0
                 }
                 // 换章前刷新旧章 offset：保留该章已保存的页码，不能被 -1 清掉。
-                if (captured > 0) callbacksRef.value.onProgressKeepPage(old, captured)
+                if (captured.first > 0) callbacksRef.value.onProgressKeepPage(old, captured.first, captured.second)
             }
             callbacksRef.value.onChapterSwitch(old, chapterIndex)
         }
@@ -359,6 +366,7 @@ fun WebViewChapterView(
                         view.evaluateJavascript(
                             "AnkeReader.init({chapterIndex:${chapterRef.intValue},paged:${pagedRef.value}," +
                                 "offset:${initialOffsetRef.value},margin:${s.marginPx},gap:${s.gapPx}," +
+                                "scrollRatio:${initialRatioRef.value}," +
                                 "pageWidth:${s.pageWidth},fontSize:${s.fontSize}," +
                                 "lineHeight:${s.lineHeight},dualPage:${s.dualPage}," +
                                 "autoDual:${s.autoDual}," +
@@ -477,13 +485,19 @@ fun WebViewChapterView(
                     // 分页模式返回 -1：退出保存直接 flush 已保存的锚点（翻页即时落盘），
                     // 不能用“当前页顶采样”覆盖——字体/图片重排后页顶会比锚点靠前，
                     // 每次退出都把进度往回拉（9.48 漂移根因）。滚动模式才需要取即时值。
-                    "(function(){try{return state.paged ? -1 : AnkeReader.currentOffset();}catch(e){return 0;}})()",
+                    "(function(){try{return AnkeReader.currentScrollState();}catch(e){return {o:0,r:-1,p:false};}})()",
                     ValueCallback { v ->
-                        val o = v?.toDoubleOrNull()?.toInt() ?: 0
-                        Log.d("AnkeShelf", "dispose query o=$o settled=${settled.value} paged=${pagedRef.value}")
+                        val st = runCatching { JSONObject(v ?: "{}") }.getOrNull()
+                        val o = st?.optInt("o", 0) ?: 0
+                        val r = st?.optDouble("r", -1.0) ?: -1.0
+                        val isPaged = st?.optBoolean("p", false) ?: false
+                        Log.d("AnkeShelf", "dispose query o=$o r=$r paged=$isPaged settled=${settled.value} cfgPaged=${pagedRef.value}")
                         // 加载/排版未稳定（遮罩期间）退出的查询值不可信，
                         // 保留已保存的锚点，不覆盖进度。
-                        if (o > 0 && settled.value) callbacksRef.value.onProgress(idx, o, -1, -1)
+                        // 分页模式忽略 o（flush 已保存锚点，9.48）；滚动模式才采用 o/r。
+                        if (!isPaged && o > 0 && settled.value) {
+                            callbacksRef.value.onProgress(idx, o, -1, -1, r)
+                        }
                         callbacksRef.value.onFlush()
                     },
                 )
@@ -528,19 +542,24 @@ private class LiteBridge(
     }
 
     @JavascriptInterface
-    fun saveProgress(idx: Int, value: Double, isOffset: Boolean, page: Int, total: Int) {
+    fun saveProgress(idx: Int, value: Double, isOffset: Boolean, page: Int, total: Int, ratio: Double) {
         if (!isOffset) return
         val offset = value.toInt()
         if (offset <= 0) return
-        main.post { callbacks().onProgress(idx, offset, page, total) }
+        main.post { callbacks().onProgress(idx, offset, page, total, ratio) }
     }
 
     @JavascriptInterface
-    fun saveProgressNow(idx: Int, value: Double, isOffset: Boolean, page: Int, total: Int) {
+    fun saveProgressNow(idx: Int, value: Double, isOffset: Boolean, page: Int, total: Int, ratio: Double) {
         if (!isOffset) return
         val offset = value.toInt()
         if (offset <= 0) return
-        main.post { callbacks().onProgressNow(idx, offset, page, total) }
+        main.post { callbacks().onProgressNow(idx, offset, page, total, ratio) }
+    }
+
+    @JavascriptInterface
+    fun onScrollMoved() {
+        main.post { callbacks().onScrollMoved() }
     }
 
     @JavascriptInterface

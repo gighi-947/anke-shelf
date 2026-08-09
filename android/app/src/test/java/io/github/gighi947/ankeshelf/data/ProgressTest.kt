@@ -50,6 +50,20 @@ class ProgressTest {
     }
 
     @Test
+    fun `scroll ratio roundtrip and clamp`() {
+        val store = ProgressStore(File(Files.createTempDirectory("progress").toFile(), "progress.json"))
+        store.set("a".repeat(32), 1, 200, scrollRatio = 0.5)
+        store.flush()
+        store.load()
+        assertEquals(0.5, store.get("a".repeat(32))!!.scroll_ratio, 0.001)
+
+        store.set("a".repeat(32), 1, 210, scrollRatio = 1.5)
+        assertEquals(1.0, store.get("a".repeat(32))!!.scroll_ratio, 0.001)
+        store.set("a".repeat(32), 1, 220, scrollRatio = -3.0)
+        assertEquals(-1.0, store.get("a".repeat(32))!!.scroll_ratio, 0.001)
+    }
+
+    @Test
     fun `set persists immediately via background write`() {
         val file = File(Files.createTempDirectory("progress").toFile(), "progress.json")
         val store = ProgressStore(file)

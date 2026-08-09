@@ -495,7 +495,7 @@ private fun AppearancePanel(
                     val selected = if (mode == "system") {
                         data.theme_mode == "system"
                     } else {
-                        (data.theme_mode ?: data.theme) == mode
+                        data.theme_mode == mode
                     }
                     SegmentedButton(
                         selected = selected,

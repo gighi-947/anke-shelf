@@ -6,18 +6,17 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * 分页几何（纯函数，与 assets/reader/reader.js 的 PagedMath 逐项对照）。
+ * 分页几何（纯函数，与 assets/reader/reader-lite.js 的 geometry 逐项对照）。
  *
  * 双页模式自动判定规则（Android 专用）：
  * - 强制双页（dual_page）：任何屏幕都双页；
  * - 自动双页（auto_dual，默认）：仅横屏且宽度 >= 800px；
  *   宽高比 < 1.2（过方）或 > 2.6（超宽屏）不自动双页；
  *   双页后单列宽 < 300px 时回退单页（保护狭长屏幕）。
- * - 列宽按 flow/epub.js 几何计算：左 padding = M、右 padding = PR（约 gap/3），
- *   单页 colW = fw - M - PR，双页 colW = (fw - M - PR - G) / 2（可为小数），
- *   内容可用宽恰好等于目标列宽，浏览器不会拉伸/钳制列宽；
- *   下一列起点 = M + colW + G = fw + (G - PR)，比视口右缘多出约 19px 安全余量，
- *   亚像素/物理像素舍入也不会漏出下一页内容。
+ * - 列宽按 reader-lite.js 几何计算：左右对称 padding P = min(margin, gap - 8)
+ *   （P <= gap - 8 保证翻页后左缘落在列间隙而非上一列尾部），
+ *   单页 colW = fw - 2P，双页 colW = (fw - 2P - G) / 2（可为小数）；
+ *   内容可用宽恰好等于目标列宽，浏览器不会拉伸/钳制列宽。
  */
 object PagedLayout {
 
@@ -69,34 +68,33 @@ object PagedLayout {
         fontSize: Int,
     ): Geometry {
         var dual = isDual(paged, dualPage, autoDual, fw, fh)
-        // 分页容器占满视口宽，列宽按防漏公式计算（见类注释）。
-        val cw = fw
+        // 分页容器占满视口宽；左右对称 padding P，与 reader-lite.js 一致。
         val m = clamp(margin, 8, 160)
         val g = clamp(gap, 8, 120)
-        val pr = max(4, (g / 3.0).roundToInt())
+        val p = max(4, min(m, g - 8))
         var colW = if (dual) {
-            max(120.0, (cw - m - pr - g) / 2.0)
+            max(120.0, (fw - 2 * p - g) / 2.0)
         } else {
-            max(120.0, (cw - m - pr).toDouble())
+            max(120.0, (fw - 2 * p).toDouble())
         }
         if (dual && colW < MIN_DUAL_COL) {
             dual = false
-            colW = max(120.0, (cw - m - pr).toDouble())
+            colW = max(120.0, (fw - 2 * p).toDouble())
         }
         return Geometry(
             dual = dual,
             colW = colW,
             advance = colW + g,
-            margin = m,
-            paddingRight = pr,
+            margin = p,
+            paddingRight = p,
             gap = g,
-            contentWidth = cw,
+            contentWidth = fw,
         )
     }
 
     /** 列数 -> 总页数（双页时一屏两列），返回 (total, step)。
      *  容器左 padding = margin、右 padding = paddingRight：
-     *  scrollWidth = margin + n*colW + (n-1)*gap + paddingRight，与 reader.js 一致。 */
+     *  scrollWidth = margin + n*colW + (n-1)*gap + paddingRight，与 reader-lite.js 一致。 */
     fun pages(scrollWidth: Int, g: Geometry, hasSpacer: Boolean): Pair<Int, Int> {
         var cols = max(
             1,

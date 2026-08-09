@@ -40,6 +40,8 @@ data class ProgressEntry(
     val text_offset: Int = 0,
     val page_index: Int = -1,
     val page_total: Int = -1,
+    /** 滚动模式专用：-1 = text_offset 文本锚点；0..1 = 退出时屏幕中部全为图片的滚动比例兜底。 */
+    val scroll_ratio: Double = -1.0,
     val updated_at: String = "",
 )
 
@@ -184,11 +186,18 @@ class ProgressStore(private val progressFile: File) {
 
     fun get(bookId: String): ProgressEntry? = lock.withLock { data[bookId] }
 
-    fun set(bookId: String, chapterIndex: Int, textOffset: Int, pageIndex: Int = -1, pageTotal: Int = -1) {
+    fun set(
+        bookId: String,
+        chapterIndex: Int,
+        textOffset: Int,
+        pageIndex: Int = -1,
+        pageTotal: Int = -1,
+        scrollRatio: Double = -1.0,
+    ) {
         runCatching {
             android.util.Log.d(
                 "AnkeShelf",
-                "progress.set ch=$chapterIndex off=$textOffset page=$pageIndex/$pageTotal",
+                "progress.set ch=$chapterIndex off=$textOffset page=$pageIndex/$pageTotal ratio=$scrollRatio",
             )
         }
         val entry = ProgressEntry(
@@ -196,6 +205,7 @@ class ProgressStore(private val progressFile: File) {
             text_offset = maxOf(0, textOffset),
             page_index = pageIndex,
             page_total = pageTotal,
+            scroll_ratio = scrollRatio.coerceIn(-1.0, 1.0),
             updated_at = nowIso(),
         )
         lock.withLock { data[bookId] = entry }

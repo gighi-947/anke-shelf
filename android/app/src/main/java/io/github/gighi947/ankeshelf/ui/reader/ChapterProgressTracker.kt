@@ -25,13 +25,22 @@ class ChapterProgressTracker(
     initialChapter: Int,
     initialOffset: Int,
     private val restoreFrom: (String) -> ProgressEntry?,
-    private val persist: (bookId: String, chapterIndex: Int, textOffset: Int, pageIndex: Int, pageTotal: Int) -> Unit,
+    private val persist: (
+        bookId: String,
+        chapterIndex: Int,
+        textOffset: Int,
+        pageIndex: Int,
+        pageTotal: Int,
+        scrollRatio: Double,
+    ) -> Unit,
 ) {
     private val lock = Any()
     private val lastKnown = mutableMapOf<Int, Int>()
+    private val lastRatio = mutableMapOf<Int, Double>()
     private val lastPage = mutableMapOf<Int, Int>()
     private val lastTotal = mutableMapOf<Int, Int>()
     private val saved = mutableMapOf<Int, Int>()
+    private val savedRatio = mutableMapOf<Int, Double>()
     private val pending = mutableMapOf<Int, ScheduledFuture<*>>()
     private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "progress-debounce").apply { isDaemon = true }
@@ -52,12 +61,16 @@ class ChapterProgressTracker(
             stored?.let { p ->
                 if (p.chapter_index >= 0 && p.text_offset > 0) {
                     lastKnown[p.chapter_index] = p.text_offset
+                    if (p.scroll_ratio in 0.0..1.0) {
+                        lastRatio[p.chapter_index] = p.scroll_ratio
+                    }
                     if (p.page_index >= 0) lastPage[p.chapter_index] = p.page_index
                     if (p.page_total > 0) lastTotal[p.chapter_index] = p.page_total
                 }
             }
             if (initialOffset > 0) lastKnown[initialChapter] = initialOffset
             saved.putAll(lastKnown)
+            lastRatio.forEach { (ch, r) -> savedRatio[ch] = r }
         }
     }
 
@@ -66,17 +79,23 @@ class ChapterProgressTracker(
         (lastKnown[chapter] ?: 0).coerceAtLeast(0)
     }
 
+    /** 某章滚动模式比例锚点：-1 = 文本锚点；0..1 = 全图页按比例恢复。 */
+    fun restoreRatioFor(chapter: Int): Double = synchronized(lock) {
+        lastRatio[chapter] ?: -1.0
+    }
+
     fun restorePageFor(chapter: Int): Int = synchronized(lock) { lastPage[chapter] ?: -1 }
 
     fun restoreTotalFor(chapter: Int): Int = synchronized(lock) { lastTotal[chapter] ?: -1 }
 
     /** 滚动/页面上报：更新内存，500ms 防抖落盘（对齐桌面 scroll debounce）。 */
-    fun onOffset(chapter: Int, offset: Int, page: Int = -1, total: Int = -1) {
+    fun onOffset(chapter: Int, offset: Int, page: Int = -1, total: Int = -1, ratio: Double = -1.0) {
         if (closed || offset <= 0) return
         val shouldSchedule = synchronized(lock) {
             lastKnown[chapter] = offset
+            applyRatioInfo(chapter, ratio)
             applyPageInfo(chapter, page, total)
-            saved[chapter] != offset
+            saved[chapter] != offset || savedRatio[chapter] != lastRatio[chapter]
         }
         if (!shouldSchedule) return
         pending.remove(chapter)?.cancel(false)
@@ -84,11 +103,12 @@ class ChapterProgressTracker(
     }
 
     /** 换章前刷新旧章 offset：不动页码（该章页码由翻页事件维护）。 */
-    fun onOffsetKeepPage(chapter: Int, offset: Int) {
+    fun onOffsetKeepPage(chapter: Int, offset: Int, ratio: Double = -1.0) {
         if (closed || offset <= 0) return
         val shouldSchedule = synchronized(lock) {
             lastKnown[chapter] = offset
-            saved[chapter] != offset
+            applyRatioInfo(chapter, ratio)
+            saved[chapter] != offset || savedRatio[chapter] != lastRatio[chapter]
         }
         if (!shouldSchedule) return
         pending.remove(chapter)?.cancel(false)
@@ -96,10 +116,11 @@ class ChapterProgressTracker(
     }
 
     /** 翻页事件：立即落盘（对齐桌面 onPageTurned -> saveProgress），携带页码供精确恢复。 */
-    fun onPageTurn(chapter: Int, offset: Int, page: Int = -1, total: Int = -1) {
+    fun onPageTurn(chapter: Int, offset: Int, page: Int = -1, total: Int = -1, ratio: Double = -1.0) {
         if (closed || offset <= 0) return
         synchronized(lock) {
             lastKnown[chapter] = offset
+            applyRatioInfo(chapter, ratio)
             applyPageInfo(chapter, page, total)
         }
         persist(chapter)
@@ -109,6 +130,11 @@ class ChapterProgressTracker(
     private fun applyPageInfo(chapter: Int, page: Int, total: Int) {
         if (page >= 0) lastPage[chapter] = page else lastPage.remove(chapter)
         if (total > 0) lastTotal[chapter] = total else lastTotal.remove(chapter)
+    }
+
+    /** 模式隔离：滚动比例只属于滚动模式；ratio<0 时清除，避免残留污染后续恢复。 */
+    private fun applyRatioInfo(chapter: Int, ratio: Double) {
+        if (ratio in 0.0..1.0) lastRatio[chapter] = ratio else lastRatio.remove(chapter)
     }
 
     /** 换章：立即落盘旧章，避免异步 JS 事件在新页加载后被丢弃。 */
@@ -136,12 +162,15 @@ class ChapterProgressTracker(
         if (closed) return
         val offset = synchronized(lock) {
             val o = lastKnown[chapter] ?: return
-            if (o <= 0 || saved[chapter] == o) return
+            val r = lastRatio[chapter] ?: -1.0
+            if (o <= 0 || (saved[chapter] == o && savedRatio[chapter] == r)) return
             saved[chapter] = o
+            savedRatio[chapter] = r
             o
         }
         val page = synchronized(lock) { lastPage[chapter] ?: -1 }
         val total = synchronized(lock) { lastTotal[chapter] ?: -1 }
-        persist(bookId, chapter, offset, page, total)
+        val ratio = synchronized(lock) { lastRatio[chapter] ?: -1.0 }
+        persist(bookId, chapter, offset, page, total, ratio)
     }
 }

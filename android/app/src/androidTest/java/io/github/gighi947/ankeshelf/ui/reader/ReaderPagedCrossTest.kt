@@ -16,8 +16,9 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * JS（assets/reader/reader.js）与 Kotlin（PagedLayout / TextExtractor）跨端对照：
- * 在同一 WebView 中执行 PagedMath 与 TextPos，逐字段比对，防止双实现漂移。
+ * JS（assets/reader/reader-lite.js，当前实际渲染内核）与 Kotlin（PagedLayout / TextExtractor）
+ * 跨端对照：在同一 WebView 中执行 AnkeReader.geometry / buildText，逐字段比对，
+ * 防止双实现漂移。
  */
 @RunWith(AndroidJUnit4::class)
 class ReaderPagedCrossTest {
@@ -67,7 +68,7 @@ class ReaderPagedCrossTest {
     fun pagedMathGeometryMatchesKotlin() {
         val web = newReaderWebView(
             "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
-                "<script src='reader.js'></script></head><body></body></html>",
+                "<script src='reader-lite.js'></script></head><body></body></html>",
         )
         val cases = listOf(
             Triple(2400, 1080, """{paged:true,dualPage:false,autoDual:true,margin:40,gap:28,pageWidth:1.0,fontSize:18}"""),
@@ -78,7 +79,7 @@ class ReaderPagedCrossTest {
             Triple(900, 900, """{paged:true,dualPage:true,autoDual:true,margin:40,gap:28,pageWidth:1.0,fontSize:18}"""),
         )
         for ((fw, fh, s) in cases) {
-            val json = evaluateJs(web, "PagedMath.geometry($fw,$fh,$s);")
+            val json = evaluateJs(web, "AnkeReader.geometry($fw,$fh,$s);")
             val j = JSONObject(json ?: "{}")
             val input = parseInput(s)
             val expect = PagedLayout.geometry(
@@ -100,10 +101,10 @@ class ReaderPagedCrossTest {
     fun shouldAutoDualMatchesKotlin() {
         val web = newReaderWebView(
             "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
-                "<script src='reader.js'></script></head><body></body></html>",
+                "<script src='reader-lite.js'></script></head><body></body></html>",
         )
         for ((fw, fh) in listOf(2400 to 1080, 1280 to 720, 1024 to 768, 800 to 700, 900 to 900, 2400 to 600, 700 to 600)) {
-            val jsVal = evaluateJs(web, "PagedMath.shouldAutoDual($fw,$fh);")
+            val jsVal = evaluateJs(web, "AnkeReader.shouldAutoDual($fw,$fh);")
             assertEquals(
                 "shouldAutoDual mismatch at $fw x $fh",
                 PagedLayout.shouldAutoDual(fw, fh),
@@ -117,9 +118,9 @@ class ReaderPagedCrossTest {
         val body = "<div><p>Hello <b>world</b></p><p>第二段　测试</p><script>skip()</script><style>.x{}</style></div>"
         val web = newReaderWebView(
             "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
-                "<script src='reader.js'></script></head><body>$body</body></html>",
+                "<script src='reader-lite.js'></script></head><body>$body</body></html>",
         )
-        val jsText = evaluateJs(web, "TextPos.build(document).text;")
+        val jsText = evaluateJs(web, "AnkeReader.buildText(document).text;")
         val decoded = JSONTokener(jsText ?: "null").nextValue() as String
         assertEquals(TextExtractor.extractDomText(body), decoded)
     }

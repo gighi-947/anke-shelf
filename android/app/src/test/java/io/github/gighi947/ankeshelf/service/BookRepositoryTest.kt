@@ -21,7 +21,7 @@ class BookRepositoryTest {
             val progress = ProgressStore(paths.progressFile)
             val repo = BookRepository(paths, shelf, progress)
 
-            val sampleUrl = checkNotNull(javaClass.classLoader.getResource("samples/sample_nav3.epub"))
+            val sampleUrl = checkNotNull(javaClass.classLoader!!.getResource("samples/sample_nav3.epub"))
             val copy = File(tmp, "sample_nav3.epub")
             File(sampleUrl.toURI()).copyTo(copy)
 

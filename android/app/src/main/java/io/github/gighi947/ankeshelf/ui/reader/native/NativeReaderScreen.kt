@@ -96,8 +96,9 @@ private fun themeColor(hex: String, fallback: Color): Color =
     runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(fallback)
 
 /**
- * 原生（Compose）阅读页：替代 WebView 渲染。NGA 楼层/引用/骰子/表格/颜色、
- * 主题、安全区、进度（text_offset）、目录、图片查看/保存均为原生实现。
+ * 阅读页：Compose 外壳 + 安卓专用 WebView 渲染内核（reader-lite.js）。
+ * 主题、安全区、进度（text_offset）、目录、图片查看/保存由 Compose 层实现，
+ * 正文渲染/分页/楼层样式由 WebView 内核负责。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -134,8 +135,8 @@ fun NativeReaderScreen(
             initialChapter = initialChapter,
             initialOffset = savedOffset,
             restoreFrom = { container.progress.get(it) },
-            persist = { id, idx, offset, page, total ->
-                container.repository.saveProgress(id, idx, offset, page, total)
+            persist = { id, idx, offset, page, total, ratio ->
+                container.repository.saveProgress(id, idx, offset, page, total, ratio)
             },
         )
     }
@@ -149,6 +150,9 @@ fun NativeReaderScreen(
     }
     val restoreTotal = remember(chapterIndex, session.id) {
         if (chapterIndex == initialChapter) progressTracker.restoreTotalFor(chapterIndex) else -1
+    }
+    val restoreRatio = remember(chapterIndex, session.id) {
+        if (chapterIndex == initialChapter) progressTracker.restoreRatioFor(chapterIndex) else -1.0
     }
     val activity = androidx.activity.compose.LocalActivity.current
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -302,30 +306,39 @@ fun NativeReaderScreen(
                 initialOffset = restoreOffset,
                 initialPage = restorePage,
                 initialTotal = restoreTotal,
+                // 滚动比例只属于滚动模式：分页模式打开时强制 -1（跨模式隔离，
+                // 全图页的滚动比例不能参与分页文本定位，避免“上次全图退出→本次分页打开”错位）。
+                initialRatio = if (!readerSettings.pagination) restoreRatio else -1.0,
                 session = session,
                 container = container,
                 callbacks = WebViewReaderCallbacks(
-                    onProgress = { ch, offset, page, total ->
-                        progressTracker.onOffset(ch, offset, page, total)
+                    onProgress = { ch, offset, page, total, ratio ->
+                        progressTracker.onOffset(ch, offset, page, total, ratio)
                         if (ch == chapterIndex) {
-                            // 滚动一段距离后收起手动唤出的控制条（对齐 WebView 时代行为）。
-                            if (!readerSettings.pagination && barsHeld) {
-                                barsHeld = false
-                                barsVisible = false
-                            }
-                            scrollRatio = if (html.second > 0) {
+                            // UI 百分比：全图页直接用 JS 滚动比例，文本页用 text_offset 比例。
+                            scrollRatio = if (ratio in 0.0..1.0) {
+                                ratio.toFloat()
+                            } else if (html.second > 0) {
                                 offset.toFloat() / html.second
                             } else {
                                 0f
                             }
                         }
                     },
-                    onProgressKeepPage = { ch, offset ->
-                        progressTracker.onOffsetKeepPage(ch, offset)
+                    onProgressKeepPage = { ch, offset, ratio ->
+                        progressTracker.onOffsetKeepPage(ch, offset, ratio)
                     },
-                    onProgressNow = { ch, offset, page, total ->
+                    onProgressNow = { ch, offset, page, total, ratio ->
                         // 翻页/换章立即落盘（不等待 500ms 防抖），退出时进度不落后。
-                        progressTracker.onPageTurn(ch, offset, page, total)
+                        progressTracker.onPageTurn(ch, offset, page, total, ratio)
+                    },
+                    // 唤出浮动栏后发生新的滚动才自动收起（滚动事件发生时即时通知，
+                    // 不等防抖保存回调，避免唤出前的迟到滚动把刚唤出的控制条误收）。
+                    onScrollMoved = {
+                        if (!readerSettings.pagination && barsHeld) {
+                            barsHeld = false
+                            barsVisible = false
+                        }
                     },
                     onPageChanged = { ch, page, total ->
                         // 纯 UI 事件：页码指示；进度落盘只走 onProgress（JS 端仅在

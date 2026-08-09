@@ -31,6 +31,10 @@
     pagedAnchorPage: -1,
     pagedAnchorTotal: -1,
     scrollAnchor: 0,
+    // 滚动模式专属：-1 = 文本锚点可用；0..1 = 当前屏全为图片时按滚动比例兜底。
+    // 分页模式永不写入（模式隔离，见 9.50）。
+    scrollRatio: -1,
+    restoreRatio: -1,
     wasSwitch: false,
     settled: false,
     userMoved: false,
@@ -64,10 +68,11 @@
     return shouldAutoDual(fw, fh);
   }
 
-  function geometry(fw, fh) {
-    var dual = isDual(state.paged, state.dualPage, state.autoDual, fw, fh);
-    var M = clamp(state.margin || 40, 8, 160);
-    var G = clamp(state.gap || 28, 8, 120);
+  function geometry(fw, fh, s) {
+    var st = s || state;
+    var dual = isDual(st.paged, st.dualPage, st.autoDual, fw, fh);
+    var M = clamp(st.margin || 40, 8, 160);
+    var G = clamp(st.gap || 28, 8, 120);
     var P = Math.max(4, Math.min(M, G - 8));
     var colW = dual
       ? Math.max(120, (fw - 2 * P - G) / 2)
@@ -83,6 +88,7 @@
       margin: P,
       paddingRight: P,
       gap: G,
+      contentWidth: fw,
     };
   }
 
@@ -393,16 +399,31 @@
     var x = Math.max(2, Math.min(window.innerWidth / 2, window.innerWidth - 2));
     var y = sampleOffsetY();
     var off = offsetAtPointScroll(ctx, x, y);
-    if (off !== null) return off;
+    if (off !== null) {
+      state.scrollRatio = -1;
+      return off;
+    }
     // 图片占满采样区（全屏大图停在屏幕中部）：文本锚点不可得，
     // 用滚动比例兜底，保证退出/防抖仍能保存，避免“自动回退到上一次进度”。
     var len = ctx.text.length;
     if (len <= 0) return 0;
     var max = Math.max(1, document.body.scrollHeight - window.innerHeight);
     var ratio = window.scrollY / max;
+    state.scrollRatio = clamp(ratio, 0, 1);
     var out = Math.round(clamp(ratio, 0, 1) * len);
     try { log('[ratio-fallback] scrollY=' + Math.round(window.scrollY) + ' off=' + out); } catch (e) { /* ignore */ }
     return out;
+  }
+
+  // Kotlin 换章/退出查询：一次取回“offset + 滚动比例 + 实际模式”，避免两次
+  // evaluateJavascript 之间滚动状态变化导致 offset/ratio 不配对（9.53 异步写入可溯源）。
+  // p=true 表示分页：Kotlin dispose 必须忽略 o（9.48：分页退出只 flush 已保存锚点，
+  // 不能用页顶采样覆盖）；滚动模式 p=false 才采用 o/r。
+  function currentScrollState() {
+    var o = 0;
+    try { o = currentOffset(); } catch (e) { /* ignore */ }
+    var r = state.paged ? -1 : state.scrollRatio;
+    return { o: o, r: r, p: state.paged };
   }
 
   function currentOffset() {
@@ -441,8 +462,20 @@
   }
 
   // 滚动模式恢复：把锚点行顶放到视口中线（scrollAnchorY），与 currentOffsetScroll 对应。
-  function restoreScrollOffset(offset) {
+  function restoreScrollOffset(offset, ratio) {
     var ctx = state.textCtx;
+    var r = (ratio === undefined || ratio === null) ? -1 : ratio;
+    if (r >= 0 && r <= 1) {
+      // 保存的是滚动比例（退出时屏幕中部全为图片）：按比例恢复滚动位置，
+      // 不能把“文本比例”当文本锚点定位——图片占据的高度会破坏线性映射。
+      var len = ctx ? ctx.text.length : 0;
+      if (len > 0) {
+        window.scrollTo(0, r * Math.max(1, document.body.scrollHeight - window.innerHeight));
+        try { log('[restore:ratio] r=' + r + ' scrollY=' + Math.round(window.scrollY)); } catch (e) { /* ignore */ }
+        state.restorePending = false;
+        return;
+      }
+    }
     if (!ctx || offset <= 0) {
       window.scrollTo(0, 0);
       return;
@@ -528,7 +561,8 @@
       // 翻页保存立即落盘（saveProgressNow），避免“进度缓存赶不上操作”。
       if (off > 0 && doSave) {
         log('[save:flip] ch=' + state.chapterIndex + ' off=' + off + ' page=' + m.current + '/' + m.total);
-        AnkeReaderBridge.saveProgressNow(state.chapterIndex, off, true, m.current, m.total);
+      // 分页模式显式 ratio=-1：滚动比例字段只属于滚动模式（模式隔离）。
+      AnkeReaderBridge.saveProgressNow(state.chapterIndex, off, true, m.current, m.total, -1);
       }
     } catch (e) { /* ignore */ }
   }
@@ -724,7 +758,7 @@
         normalizeTallTables();
         restorePagedAnchor(offset);
       } else if (offset > 0) {
-        restoreScrollOffset(offset);
+        restoreScrollOffset(offset, state.restoreRatio);
         // 滚动模式：字体就绪后的最终位置才是真位置，重采样并落盘，
         // 避免“切换模式后滚动段落记录错位”。
         var so = 0;
@@ -733,7 +767,7 @@
           try { log('[settle-save] so=' + so); } catch (e) { /* ignore */ }
           state.scrollAnchor = so;
           // 滚动保存显式 page=-1：清除追踪器里残留的分页页码（模式隔离）。
-          try { AnkeReaderBridge.saveProgress(state.chapterIndex, so, true, -1, -1); } catch (e) { /* ignore */ }
+          try { AnkeReaderBridge.saveProgress(state.chapterIndex, so, true, -1, -1, state.scrollRatio); } catch (e) { /* ignore */ }
         }
       }
       report(false);
@@ -784,7 +818,7 @@
   function refresh() {
     if (!state.paged) {
       if (state.restorePending) {
-        restoreScrollOffset(state.restoreOffset);
+        restoreScrollOffset(state.restoreOffset, state.restoreRatio);
         markSettled();
       } else {
         markSettled();
@@ -817,6 +851,8 @@
     state.topInset = Math.max(0, opts.topInset || 0);
     state.bottomInset = Math.max(0, opts.bottomInset || 0);
     state.restoreOffset = Math.max(0, opts.offset || 0);
+    state.restoreRatio = (opts.scrollRatio === undefined || opts.scrollRatio === null) ? -1 : opts.scrollRatio;
+    state.scrollRatio = -1;
     state.pagedAnchor = state.restoreOffset;
     state.scrollAnchor = state.restoreOffset;
     state.restorePending = state.restoreOffset > 0;
@@ -834,13 +870,15 @@
       state.textCtx = null;
       setTimeout(function () {
         state.textCtx = TextPos.build(document);
-        if (state.restorePending && state.restoreOffset > 0) restoreScrollOffset(state.restoreOffset);
+        if (state.restorePending && state.restoreOffset > 0) {
+          restoreScrollOffset(state.restoreOffset, state.restoreRatio);
+        }
         var o = 0;
         try { o = currentOffset(); } catch (e) { /* ignore */ }
         if (o > 0) {
           log('[save:scroll] ch=' + state.chapterIndex + ' off=' + o);
           state.scrollAnchor = o;
-          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true, -1, -1); } catch (e) { /* ignore */ }
+          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true, -1, -1, state.scrollRatio); } catch (e) { /* ignore */ }
         }
         if (!layoutReady()) {
           tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.scrollAnchor, 0);
@@ -883,10 +921,19 @@
     window.addEventListener('resize', function () { onResize(); });
     // debounced scroll progress (scroll mode, same as desktop reader.js 500ms)
     var scrollTimer = null;
+    var lastScrollNotify = 0;
     window.addEventListener('scroll', function () {
       // 分页模式的保存只走翻页 saveProgressNow；字体/图片重排引发的
       // window 滚动事件绝不能当成滚动进度保存（会把正确偏移覆盖成页顶采样）。
       if (state.paged) return;
+      // 滚动发生即通知 Compose 外壳（250ms 节流）：唤出浮动栏后的“新滚动”才允许
+      // 自动收起；不能等 500ms 防抖保存回调——那可能是唤出前滚动的迟到事件，
+      // 会把刚唤出的控制条误收（9.59）。
+      var now = Date.now();
+      if (now - lastScrollNotify > 250) {
+        lastScrollNotify = now;
+        try { AnkeReaderBridge.onScrollMoved(); } catch (e) { /* ignore */ }
+      }
       if (scrollTimer) clearTimeout(scrollTimer);
       scrollTimer = setTimeout(function () {
         scrollTimer = null;
@@ -895,7 +942,7 @@
         if (o > 0) {
           state.userMoved = true;
           state.scrollAnchor = o;
-          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true, -1, -1); } catch (e) { /* ignore */ }
+          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true, -1, -1, state.scrollRatio); } catch (e) { /* ignore */ }
         }
       }, 500);
     });
@@ -915,10 +962,11 @@
           // 章首采样可能落在首楼卡片 padding 上返回 0；此时也应把“已换到本章”
           // 落库（offset=1 即章首），否则退出重进会回到上一章。
           log('[save:switch] ch=' + state.chapterIndex + ' off=' + (o > 0 ? o : 1));
-          try { AnkeReaderBridge.saveProgressNow(state.chapterIndex, o > 0 ? o : 1, true); } catch (e) { /* ignore */ }
+          // 分页换章落库：显式 page=-1,total=-1,ratio=-1，绝不携带滚动比例。
+          try { AnkeReaderBridge.saveProgressNow(state.chapterIndex, o > 0 ? o : 1, true, -1, -1, -1); } catch (e) { /* ignore */ }
         }
       } else {
-        if (state.restoreOffset > 0) restoreScrollOffset(state.restoreOffset);
+        if (state.restoreOffset > 0) restoreScrollOffset(state.restoreOffset, state.restoreRatio);
       }
       if (!layoutReady()) {
         tryRestoreAfterSettle(
@@ -958,9 +1006,13 @@
     setMode: setMode,
     flipPage: flipPage,
     currentOffset: currentOffset,
+    currentScrollState: currentScrollState,
     onResize: onResize,
     setInsets: setInsets,
     gotoOffset: gotoOffset,
     openImageAt: openImageAt,
+    geometry: geometry,
+    shouldAutoDual: shouldAutoDual,
+    buildText: TextPos.build,
   };
 })();
