@@ -393,7 +393,16 @@
     var x = Math.max(2, Math.min(window.innerWidth / 2, window.innerWidth - 2));
     var y = sampleOffsetY();
     var off = offsetAtPointScroll(ctx, x, y);
-    return off === null ? 0 : off;
+    if (off !== null) return off;
+    // 图片占满采样区（全屏大图停在屏幕中部）：文本锚点不可得，
+    // 用滚动比例兜底，保证退出/防抖仍能保存，避免“自动回退到上一次进度”。
+    var len = ctx.text.length;
+    if (len <= 0) return 0;
+    var max = Math.max(1, document.body.scrollHeight - window.innerHeight);
+    var ratio = window.scrollY / max;
+    var out = Math.round(clamp(ratio, 0, 1) * len);
+    try { log('[ratio-fallback] scrollY=' + Math.round(window.scrollY) + ' off=' + out); } catch (e) { /* ignore */ }
+    return out;
   }
 
   function currentOffset() {
@@ -426,7 +435,9 @@
   }
 
   function offsetAtPointScroll(ctx, x, y) {
-    return scanForText(ctx, x, y, Math.min(Math.max(y + 24, Math.round(viewH() - 30)), y + 120));
+    // 扫描整页而不是只扫采样点下方 120px：屏幕中部是图片时，
+    // 下方还有文本也能找到（图片只占一部分屏幕的常见场景）。
+    return scanForText(ctx, x, y, Math.max(y + 24, Math.round(viewH() - 30)));
   }
 
   // 滚动模式恢复：把锚点行顶放到视口中线（scrollAnchorY），与 currentOffsetScroll 对应。
@@ -697,6 +708,13 @@
     if (settleTimer) clearTimeout(settleTimer);
     var t = deadline || (Date.now() + 8000);
     settleTimer = setTimeout(function () {
+      try { log('[settle] userMoved=' + state.userMoved + ' ready=' + layoutReady()); } catch (e) { /* ignore */ }
+      if (state.userMoved) {
+        // 用户已滚动/翻页：位置由用户掌控，settle 链只标记就绪，
+        // 绝不能用初始 offset 把阅读位置拉回/覆盖（9.54 根因）。
+        markSettled();
+        return;
+      }
       if (!layoutReady() && Date.now() < t) {
         tryRestoreAfterSettle(offset, t);
         return;
@@ -712,6 +730,7 @@
         var so = 0;
         try { so = currentOffsetScroll(); } catch (e) { /* ignore */ }
         if (so > 0) {
+          try { log('[settle-save] so=' + so); } catch (e) { /* ignore */ }
           state.scrollAnchor = so;
           // 滚动保存显式 page=-1：清除追踪器里残留的分页页码（模式隔离）。
           try { AnkeReaderBridge.saveProgress(state.chapterIndex, so, true, -1, -1); } catch (e) { /* ignore */ }
@@ -874,6 +893,7 @@
         var o = 0;
         try { o = currentOffset(); } catch (e) { /* ignore */ }
         if (o > 0) {
+          state.userMoved = true;
           state.scrollAnchor = o;
           try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true, -1, -1); } catch (e) { /* ignore */ }
         }
