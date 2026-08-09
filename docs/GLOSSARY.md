@@ -1,0 +1,87 @@
+# 术语表（Glossary）
+
+> 共享语言：领域词与代码概念的一一映射。Agent 与开发者统一使用本表词汇，
+> 不造同义词。未收录的新词请先查代码/DevLog，再决定是否补录。
+
+## 1. 领域术语（阅读场景）
+
+| 术语 | 含义 | 代码/文件对应 |
+| --- | --- | --- |
+| 安科 | NGA 等揭示板上的互动创作（读者投票/掷骰影响剧情） | 产品定位，无专门代码 |
+| 安价 | 读者指定选项/决定剧情走向 | 同上 |
+| 楼层 / 楼 | NGA 帖子里的单条回复；0 楼=主楼 | Windows `app/native_book.py`；Android `data/NativeBook.kt`（`NativeFloor.lou`） |
+| 只看楼主 | 只下载/显示指定 uid 作者的楼层 | 下载参数 `authorId/uid`（Windows `nga_download.js`、Android `NgaUpdateDialog`） |
+| 引用（楼中楼） | 回复里嵌套引用其他楼层 | `NativeFloor.comments` / Windows floors.json comments |
+| 骰子 | 帖内掷骰排版块（NGA 特色） | NGA 排版还原，渲染层（reader-lite.js / paged.js） |
+| tid | NGA 帖子 ID | 下载参数；`BookRecord.nga_tid` |
+| pid | NGA 楼层/回复 ID | `NativeFloor.pid`、搜索/标注引用 |
+| 热更新 / 增量更新 | 只拉新增楼层追加，不重下旧内容 | Windows `app/native_book.py`；Android `NgaDownloader`（append 模式） |
+| 原生书 | NGA 帖子的运行时容器（meta+floors+chapters） | Windows `app/native_book.py`；Android `data/NativeBook.kt` |
+| 每章楼层数 | 按多少楼切一章 | 下载参数 `per_chapter`；`NativeMeta.per_chapter` |
+| 目录楼 | 帖内目录楼层 pid（可仅索引/兼分章） | Windows 下载参数；`NativeMeta.toc/toc_mode` |
+| 图片模式 | 在线 / 内嵌 / 无图 | `image_mode`（NativeMeta、下载参数） |
+| 主题（下载） | 浅色 / 深色 | `NativeMeta.theme`（仅影响下载转换） |
+| 阅读主题 | 深色 / 浅色 / 羊皮纸 | 设置 `theme`；Android `ui/theme/Theme.kt` |
+| Cookie | ngaPassportUid / ngaPassportCid | Windows `app/nga_config.py`；Android `data/NgaConfig.kt`（本机私有） |
+
+## 2. 数据与进度概念
+
+| 术语 | 含义 | 代码对应 |
+| --- | --- | --- |
+| text_offset | 章内折叠纯文本字符偏移（唯一坐标，0 基） | Windows `app/text.py` / `web/js/textpos.js`；Android `data/Text.kt` / reader-lite.js `TextPos` |
+| TextPos | DOM↔纯文本逐字符映射 | 同上；跨端对照测试 `ReaderPagedCrossTest` |
+| scroll_ratio | 滚动模式整屏图片时的滚动比例锚点（0..1；-1=文本锚点） | Android `ProgressEntry.scroll_ratio`；reader-lite.js `state.scrollRatio` |
+| page_index / page_total | 分页模式页码/总页数（0 基；-1=无） | Android `ProgressEntry` 扩展字段 |
+| ProgressEntry / ProgressStore | 进度条目 / 进度存储（原子写） | Windows `app/shelf.py`；Android `data/Shelf.kt` |
+| BookRecord / ShelfFile | 书架记录 / 书架文件 | 两端 `shelf.json` 同构 |
+| settings_version | 设置迁移版本（只增不删） | `app/settings.py`；Android `data/Settings.kt` |
+| 原子写 | 临时文件 + rename，避免半写状态 | `app/storage.py`；Android `data/Storage.kt` |
+
+## 3. Android 代码组件
+
+| 术语 | 含义 |
+| --- | --- |
+| AppContainer | 手动 DI 容器（`service/AppContainer.kt`） |
+| AnkeShelfRoot | 四 Tab 路由外壳（书架/下载/搜索/设置） |
+| NativeReaderScreen | 阅读页 Compose 外壳（目录/控制条/图片/主题） |
+| WebViewChapterView | WebView 渲染内核宿主（桥/换章捕获/dispose 查询） |
+| reader-lite.js | 安卓现役渲染桥（分页几何/TextPos/滚动比例/事件上报） |
+| PagedLayout | Kotlin 侧分页几何（与 reader-lite.js 对照，防漂移） |
+| ChapterProgressTracker | 进度保存唯一入口（内存双 map + 防抖/立即/flush） |
+| NgaDownloader / NgaDownloadService | 下载逻辑 / 前台服务 |
+| NgaClient / NgaHttp | OkHttp 客户端 / 统一 NGA 请求头（Referer/Cookie/UA） |
+| NgaFormatHtml / NgaSmileMap | NGA HTML 清洗 / 表情与匿名映射 |
+| EpubExporter / NgaExport | EPUB 自写导出 / 导出编排（EPUB/Markdown + SAF） |
+| SearchIndex / SearchScreen | 惰性内存索引 / 搜索页 |
+| Annotations.kt | 高亮/笔记/书签存储 |
+| Stats.kt / StatsScreen | 阅读统计存储 / 页面 |
+| SettingsScreen / GuideScreen | 设置六 Tab / 内置使用说明 |
+| NgaUpdateDialog | 更新参数公共弹窗（书架+已下载共用） |
+| AnkeSpacing / AnkeRadius / ankeshelfColors | 设计令牌（间距/圆角/颜色） |
+| DisciplineTest | 纪律测试（UI 令牌/模式隔离/CI 配置/契约） |
+
+## 4. Windows 代码组件
+
+| 术语 | 含义 |
+| --- | --- |
+| server.py / api.py | 本地 HTTP 服务与 API 路由 |
+| bridge.js | 前端 Bridge 调用封装 |
+| reader.js / paged.js / textpos.js | 阅读内核 / 分页几何 / 坐标映射 |
+| nga_service.py / ngapost2md-python | NGA 下载服务 / 下载转换内核 |
+| native_book.py | 原生书容器（meta/floors/chapters） |
+| export_service.py | EPUB 导出 |
+| search.py / fullsearch.js | 全文搜索（后端索引 / 前端页） |
+| annotations.py / stats.py / settings.py | 标注 / 统计 / 设置存储 |
+
+## 5. 工程与流程
+
+| 术语 | 含义 |
+| --- | --- |
+| AGENTS.md | 开发规则入口（进场先读） |
+| CODEBASE_MAP.md | 双端链路阅读地图 |
+| DATA_CONTRACT.md | 双端 JSON 数据契约 |
+| AnkeShelf_DevLog.md | 跨平台变更流水（9.x 节） |
+| VERSIONING.md | 安卓版本/签名/发布 SOP |
+| android-vX.Y.Z | 安卓独立版本线（Windows 用 vX.Y.Z） |
+| check-release.ps1 | 发布前凭据扫描 |
+| 纪律测试 | DisciplineTest（结构性边界检查） |

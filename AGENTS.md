@@ -4,7 +4,8 @@
 > [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)（变更流水，最新编号在顶部/末尾）、
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（Windows）、
 > [docs/ANDROID_ARCHITECTURE.md](docs/ANDROID_ARCHITECTURE.md)（Android）、
-> [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md)（双端链路入口与阅读顺序）。
+> [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md)（双端链路入口与阅读顺序）、
+> [docs/GLOSSARY.md](docs/GLOSSARY.md)（术语表：领域词 ↔ 代码概念）。
 
 ## 1. 双端边界（最高优先级）
 
@@ -59,6 +60,16 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   发现无关死代码时报告，不删除。双端共享文件（README/docs/DevLog/契约）尤其如此。
 - **目标驱动**：每个任务先写“成功标准 + 验证方式”，再动手；
   进度类改动必须跑“滚动/翻页 → 退出 → 重进”回归。
+- **修复先写复现测试**：修 bug 先写能复现它的失败测试（红），再修复到通过（绿），
+  并保留为回归测试；禁止“改完再补测试”或只靠肉眼验证。
+- **调试五步循环**（对照 9.53/9.54 十轮教训）：
+  ① 复现（能稳定复现才算开始）→ ② 最小化（缩小到最小触发条件）→
+  ③ 假设（先写“谁在什么时机写、谁能覆盖谁”的写入清单再猜）→
+  ④ 插桩/日志验证假设（诊断日志保留到发行前）→ ⑤ 修复 + 回归测试；
+  每一步未通过不得进入下一步。
+- **共享语言**：术语不确定时先查 [docs/GLOSSARY.md](docs/GLOSSARY.md)，
+  不要自造同义词；领域词（楼层/引用/骰子/只看楼主）与代码概念
+  （text_offset/scroll_ratio/原生书）一一对应。
 - **Diff 影响检查**：改动涉及共享文件或数据契约字段时，先列出受影响端
   （Windows / Android / CI / 文档），逐项核对后再提交。
 

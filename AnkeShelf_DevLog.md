@@ -1515,3 +1515,28 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 #### 验证
 
 - 纯文档改动，不涉及代码；未跑构建（无影响）。待提交推送。
+
+### 9.66 借鉴 mattpocock/skills：共享语言与调试方法论（2026-08-09）
+
+用户提供 [mattpocock/skills](https://github.com/mattpocock/skills) 参考。
+该仓库以四个失败模式组织可组合 skill：需求对齐（grill）、共享语言
+（CONTEXT.md/ADR）、反馈环（tdd/diagnosing-bugs）、防屎山（架构体检）。
+
+#### 落地内容
+
+- **新增 docs/GLOSSARY.md（共享语言/术语表）**：
+  领域术语（安科/安价/楼层/只看楼主/引用/骰子/tid/pid/热更新/原生书/图片模式/
+  Cookie）↔ 代码概念（text_offset/TextPos/scroll_ratio/ProgressEntry/
+  reader-lite.js/ChapterProgressTracker/NgaDownloader 等）↔ 双端文件，
+  五节：领域术语、数据与进度概念、Android 组件、Windows 组件、工程与流程。
+  Agent 与开发者统一词汇，禁止自造同义词。
+- **AGENTS.md 工作方式节补充三条**：
+  - 修复先写复现测试（红→绿→保留回归），禁止改完再补测试；
+  - 调试五步循环：复现 → 最小化 → 假设（先写“谁在什么时机写、谁能覆盖谁”）
+    → 插桩验证 → 修复+回归；每步未通过不得进入下一步；
+  - 共享语言：术语不确定先查 GLOSSARY.md。
+- 进场先读列表加入 GLOSSARY.md。
+
+#### 验证
+
+- 纯文档改动，不涉及代码；待提交推送。
