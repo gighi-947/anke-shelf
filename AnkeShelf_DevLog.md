@@ -1589,6 +1589,27 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 - `proguard-rules.pro` 保留 `androidx.tracing.Trace` keep（正式包支持
   仪器测试的兜底，无害）。
 
+### 9.68 正式 Logo 确定与集成（2026-08-10）
+
+用户经多轮提示词迭代（骰子 + 书、克制配色、三点阵、书页骰子结果、
+贴页排版），最终确定即梦生成的一版为正式 logo：打开的米白书页 +
+蓝灰底座 + 中央金色圆角方块带三点骰子阵，无文字、无外部水印。
+
+#### 集成
+
+- 原图归档为 [docs/logo/ankeshelf-logo.png](docs/logo/ankeshelf-logo.png)
+  （1024x1024，PNG）。
+- Android 图标：从原图生成 mipmap-mdpi..xxxhdpi 的
+  `ic_launcher.png` / `ic_launcher_round.png`（48/72/96/144/192px），
+  替换原占位矢量图标；删除 `mipmap-anydpi-v26/` 两个自适应 XML 与
+  `drawable/ic_launcher_foreground.xml`，清理 `colors.xml` 中不再使用的
+  `ic_launcher_background`；Manifest 引用不变。
+- README 顶部加入居中 logo。
+
+#### 验证
+
+- `assembleDebug` 通过；图标资源随包生效。
+
 ---
 
 ## 10. Windows 端开发日志（2026-08-09 起）

@@ -1,5 +1,9 @@
 # 安科书架（AnkeShelf）
 
+<p align="center">
+  <img src="docs/logo/ankeshelf-logo.png" alt="安科书架 AnkeShelf" width="160" />
+</p>
+
 面向 NGA 安科读者的跨平台阅读器：**把 NGA 帖子下载到本地 → 转换为 EPUB /
 原生书 → 原汁原味还原安科排版 → 舒适阅读与追更**。支持 Windows 桌面端与
 Android 手机端，两端共享同一套数据契约（书架 / 进度 / 标注 / 设置 / 统计），
