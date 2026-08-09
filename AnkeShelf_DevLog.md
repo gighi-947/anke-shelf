@@ -1578,4 +1578,6 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 - **验证**：`PYTHONIOENCODING=cp1252 python -m unittest tests.test_main_guard`
   修复前复现同款 `UnicodeEncodeError`（红）→ 修复后 4/4 OK（绿）；
   全量 `python -m unittest discover tests` 174 项 OK。
-- **待办**：推送后重跑 Windows CI，确认包含 PyInstaller 打包在内的全链路绿。
+- **验证（已完成）**：推送后 Windows CI 重跑 **success**（15:48 UTC，
+  含 unittest 174 项 + PyInstaller 目录版打包 + 目录版 zip 上传）；
+  `android/m1-data-layer` 已快进同步至 `5fcbd97`，与 main 一致。
