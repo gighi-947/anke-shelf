@@ -24,7 +24,9 @@ android {
             val props = Properties()
             val f = rootProject.file("keystore.properties")
             if (f.exists()) f.inputStream().use { props.load(it) }
-            storeFile = rootProject.file(props.getProperty("storeFile"))
+            // CI/无签名环境不生成 release 签名配置：keystore.properties 不入库，
+            // 缺失时留空（debug 构建不受影响，release 构建会提示缺少签名文件）。
+            storeFile = props.getProperty("storeFile")?.let { rootProject.file(it) }
             storePassword = props.getProperty("storePassword")
             keyAlias = props.getProperty("keyAlias")
             keyPassword = props.getProperty("keyPassword")
