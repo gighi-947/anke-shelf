@@ -1,10 +1,8 @@
-// GitHub Actions 的 runner 在海外：阿里云镜像偶发 502，直接走官方仓库；
-// 本机（中国大陆）继续阿里云镜像优先。
-val isCI = System.getenv("GITHUB_ACTIONS") == "true"
-
 pluginManagement {
     repositories {
-        if (isCI) {
+        // GitHub Actions 的 runner 在海外：阿里云镜像偶发 502，直接走官方仓库；
+        // 本机（中国大陆）继续阿里云镜像优先。
+        if (System.getenv("GITHUB_ACTIONS") == "true") {
             google()
             mavenCentral()
             gradlePluginPortal()
@@ -29,7 +27,7 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        if (isCI) {
+        if (System.getenv("GITHUB_ACTIONS") == "true") {
             google()
             mavenCentral()
         } else {
