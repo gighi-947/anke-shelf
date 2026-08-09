@@ -1488,3 +1488,30 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   NgaClientTest 1 条网络用例跳过（有明确原因）；ReaderPagedCrossTest 在
   androidTest（需模拟器），CI 以 JVM 纪律测试 + node --check 兜底 JS 侧。
 - 本地单测 86 通过 / 1 跳过；`assembleDebug` 通过；待 CI 绿后提交完成。
+
+### 9.65 借鉴 Karpathy 准则与代码库地图（2026-08-09）
+
+用户提供两个参考仓库：
+[Understand-Anything](https://github.com/Egonex-AI/Understand-Anything)
+（代码库知识图谱 / diff 影响分析 / onboarding 导览）与
+[andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
+（Think First / Simplicity / Surgical / Goal-Driven 四原则）。
+
+#### 落地内容
+
+- **AGENTS.md 新增“5. 工作方式”**：Karpathy 四原则 + Diff 影响检查。
+  - 先想后写：显式假设、困惑就提问（对照 9.53 进度十轮教训）；
+  - 简单优先：不建一次性抽象，删死代码先确认引用（对照 9.57）；
+  - 外科手术式改动：只动任务涉及的代码，不顺手改相邻内容，
+    双端共享文件（README/docs/DevLog/契约）尤其严格；
+  - 目标驱动：任务先写成功标准 + 验证方式；
+  - Diff 影响检查：动共享文件或契约字段时列出受影响端逐项核对。
+- **新增 docs/CODEBASE_MAP.md**：双端核心链路阅读地图——应用启动、
+  NGA 下载/热更新、书架与进度、EPUB 解析导出、阅读渲染、进度保持、
+  全文搜索、标注、统计、设置主题、测试验证入口；每条链路列两端入口文件
+  与关键职责，并标注“进场阅读顺序”与渲染双实现一致性的红线。
+- 后续小节编号顺延（数据契约→6、测试纪律→7、常用命令→8）。
+
+#### 验证
+
+- 纯文档改动，不涉及代码；未跑构建（无影响）。待提交推送。

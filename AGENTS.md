@@ -3,7 +3,8 @@
 > 本文件是所有开发会话的**进场入口**。改动前先读本节；详细背景见
 > [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)（变更流水，最新编号在顶部/末尾）、
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（Windows）、
-> [docs/ANDROID_ARCHITECTURE.md](docs/ANDROID_ARCHITECTURE.md)（Android）。
+> [docs/ANDROID_ARCHITECTURE.md](docs/ANDROID_ARCHITECTURE.md)（Android）、
+> [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md)（双端链路入口与阅读顺序）。
 
 ## 1. 双端边界（最高优先级）
 
@@ -48,7 +49,20 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   NGA 显式彩色字与一次性图表细节除外。
 - 组件新增圆角/大间距一律引用令牌，不新增一次性值。
 
-## 5. 数据契约（docs/DATA_CONTRACT.md）
+## 5. 工作方式（Karpathy 四原则 + Diff 影响检查）
+
+- **先想后写**：不确定就显式说假设并提问，不要默默选一个解释往下跑；
+  发现更简单方案或矛盾时直接指出（本项目的进度保持教训 9.53 就是反面教材）。
+- **简单优先**：只做被要求的，不建一次性抽象/投机配置；能少写就少写，
+  删死代码要确认引用（参考 9.57 架构精简）。
+- **外科手术式改动**：只动任务涉及的代码；不顺手“改进”相邻代码/注释；
+  发现无关死代码时报告，不删除。双端共享文件（README/docs/DevLog/契约）尤其如此。
+- **目标驱动**：每个任务先写“成功标准 + 验证方式”，再动手；
+  进度类改动必须跑“滚动/翻页 → 退出 → 重进”回归。
+- **Diff 影响检查**：改动涉及共享文件或数据契约字段时，先列出受影响端
+  （Windows / Android / CI / 文档），逐项核对后再提交。
+
+## 6. 数据契约（docs/DATA_CONTRACT.md）
 
 - 两端 JSON schema 同构：shelf / progress / settings / annotations / statistics /
   原生书 meta+floors+chapters；原子写（临时文件 + rename）。
@@ -56,7 +70,7 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
 - 进度条目：`text_offset` 为正坐标；`page_index/page_total/scroll_ratio` 为
   安卓扩展（缺省 -1），Windows 端忽略未知字段。
 
-## 6. 测试纪律
+## 7. 测试纪律
 
 - 单测必须守真实合同：跨端对照测试加载现役 `reader-lite.js`（不是退役副本）。
 - 禁止假绿：不写只验证 mock/非空/happy path 的用例；不跳过关键路径。
@@ -64,7 +78,7 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   改动相关代码后必须保持通过。
 - 发布前跑 `android/scripts/check-release.ps1`（凭据扫描）。
 
-## 7. 常用命令
+## 8. 常用命令
 
 ```bat
 cd android
