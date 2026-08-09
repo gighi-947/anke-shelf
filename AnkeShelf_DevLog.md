@@ -1448,3 +1448,43 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 
 最终：main 与 android/m1-data-layer 两个分支的 Android CI 均 **success**
 （单测 + assembleDebug + 上传 debug 产物）。
+
+### 9.64 Harness Engineering 落地：规则入口 / 数据契约 / 纪律测试（2026-08-09）
+
+参照《From Vibe Coding to Harness Engineering》复盘，按“规则入口 → 数据契约 →
+纪律测试 → 测试防假绿审计”落地：
+
+#### AGENTS.md（开发规则入口）
+
+- 新增根目录 [AGENTS.md](AGENTS.md)：进场先读页，汇总双端边界、提交纪律、
+  进度保持铁律（模式隔离/写入清单/采样语义/回归必测）、UI 令牌、数据契约、
+  测试纪律与常用命令，避免新会话翻 1400 行日志才找到约束。
+
+#### docs/DATA_CONTRACT.md（双端数据契约）
+
+- 新增 [DATA_CONTRACT.md](docs/DATA_CONTRACT.md)：shelf / progress / settings /
+  annotations / statistics / 原生书 meta+floors+chapters 全字段表；
+  明确 `page_index/page_total/scroll_ratio` 为安卓扩展（缺省 -1）与兼容规则；
+  新增字段四步流程（向后兼容默认值 + 更新文档 + 对端忽略未知字段 + 坐标一致）。
+
+#### DisciplineTest.kt（纪律测试，JVM 单测 5 条）
+
+- **UI 令牌**：非 theme 组件禁止 `RoundedCornerShape` ≥8dp（必须走 AnkeRadius）；
+  padding/spacedBy 禁止魔法间距（必须走 AnkeSpacing）。
+- **阅读器模式隔离**：分页 `saveProgressNow` 必须显式 `ratio=-1`；滚动防抖保存
+  必须携带 `state.scrollRatio`；reader-lite.js 必须保留跨端对照导出
+  （currentScrollState/geometry/shouldAutoDual/buildText）。
+- **CI 配置**：android.yml 仅 `android/**` 触发、不得用弃用 @v4 动作、
+  必须 setup-java@v5 与 JS 语法检查。
+- **数据契约**：ProgressEntry 扩展字段缺省 -1/-1.0 防回归。
+- 首跑抓出两处真实违规并修正：SettingsScreen 颜色选择器 `padding(horizontal=20.dp)`
+  → `AnkeSpacing.xl`；色板预览 `spacedBy(3.dp)` → `AnkeSpacing.xs`。
+
+#### CI 强化与测试审计
+
+- `actions/checkout` / `upload-artifact` 升 v5（避开 Node20 弃用）；新增
+  `node --check` 校验 reader-lite.js 语法。
+- 审计现有 19 个测试文件：全部含有效断言（6~43 个/文件），无空断言；仅
+  NgaClientTest 1 条网络用例跳过（有明确原因）；ReaderPagedCrossTest 在
+  androidTest（需模拟器），CI 以 JVM 纪律测试 + node --check 兜底 JS 侧。
+- 本地单测 86 通过 / 1 跳过；`assembleDebug` 通过；待 CI 绿后提交完成。
