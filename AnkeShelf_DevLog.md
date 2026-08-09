@@ -1172,8 +1172,9 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 
 #### 实现
 
-- 已下载页（列表/网格）更新按钮改为弹出 `UpdateParamsDialog`：预填 `NgaDownloader.defaultsFor`（最近一次下载/更新设置），字段 = 只看楼主 uid、主题（浅/深 FilterChip）、图片模式（在线/内嵌/无图 FilterChip）、每章楼层数；附说明“仅对本次新增楼层生效”。
-- 确认后 `startLibraryUpdate` 携带 authorId/theme/perChapter/imageMode 启动前台服务；服务端优先使用传入参数，未传才回填（原有逻辑兼容）。
+- 抽取公共组件 `ui/components/NgaUpdateDialog.kt`（`NgaUpdateDialog` + `launchNgaUpdate`），**书架封面/列表与“已下载”页共用**，消除重复。
+- 已下载页与书架页（列表行、网格封面）的更新按钮统一改为弹出参数对话框：预填 `NgaDownloader.defaultsFor`（最近一次下载/更新设置），字段 = 只看楼主 uid、主题（浅/深 FilterChip）、图片模式（在线/内嵌/无图 FilterChip）、每章楼层数；附说明“仅对本次新增楼层生效”。
+- 确认后 `launchNgaUpdate` 携带 authorId/theme/perChapter/imageMode 启动前台服务；服务端优先使用传入参数，未传才回填（原有逻辑兼容）。
 - UI 规范核对（docs/ANDROID_DESIGN_TOKENS.md）：对话框 `AnkeRadius.large`(16dp)、输入框 medium(12dp)、按钮 small(8dp)、FilterChip pill、间距 AnkeSpacing、颜色全部走 colorScheme；顺手把同文件“删除书籍”对话框统一为 large。
 
 #### 验证
