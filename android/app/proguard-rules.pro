@@ -14,3 +14,6 @@
 
 # jsoup
 -dontwarn org.jsoup.**
+
+# 仪器测试（AndroidJUnitRunner 在 app 进程引用）；正式包保留以便测试与发布同签名运行
+-keep class androidx.tracing.Trace { *; }

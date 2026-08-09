@@ -1568,9 +1568,26 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 
 - `compileDebugAndroidTestKotlin` 通过；`testDebugUnitTest` 86 过/1 跳 +
   `assembleDebug` 通过（AppContainer 改动无回归）。
-- **未执行仪器测试**：真机当前未连接（模拟器已删除）；待连接后跑
-  `gradlew connectedDebugAndroidTest`（可先只跑新增三类的
-  `-Pandroid.testInstrumentationRunnerArguments.class=...`）。
+- **真机执行 7/7 通过**（华为 ELE-AL00，`am instrument` 跑三个新测试类，
+  OK (7 tests)）。
+
+#### 真机执行要点（签名与 R8 三连坑）
+
+- 真机已装正式签名 v1.0.0，`connectedDebugAndroidTest` 直接
+  `INSTALL_FAILED_UPDATE_INCOMPATIBLE`；Android 10+ 还要求测试包与目标
+  同签名。
+- 尝试 `testBuildType=release`：release androidTest 触发 R8，先缺
+  `javax.lang.model.element.Modifier`（加 `-dontwarn` 解决），随后缺
+  `androidx.tracing.Trace`（运行器在 app 进程引用，release app 裁剪，
+  proguard 加 keep 解决），再缺 `kotlin.LazyKt`（逐个 keep 不可持续）。
+- **最终方案（临时，非入库）**：debug 构建类型临时挂 release 签名
+  （无 R8，运行器依赖完整）→ 构建 debug app + debug androidTest →
+  用 apksigner 以 release 密钥重签测试 APK → 覆盖安装（签名一致不丢数据）
+  → `am instrument` 运行。跑完恢复 build.gradle.kts。
+- `ui-test.manifest` 必须保持 `debugImplementation`（测试 Activity 合并进
+  app 包；误放 androidTestImplementation 会导致 Intent 解析到测试包）。
+- `proguard-rules.pro` 保留 `androidx.tracing.Trace` keep（正式包支持
+  仪器测试的兜底，无害）。
 
 ---
 
