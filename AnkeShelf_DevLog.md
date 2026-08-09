@@ -1610,6 +1610,30 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 
 - `assembleDebug` 通过；图标资源随包生效。
 
+### 9.69 带新 Logo 的 Release 重新打包与资产替换（2026-08-10）
+
+用户要求：重新打包带新 Logo 的 release 并提交；并反馈 main 分支 README
+没有新 logo。
+
+#### README 核对（实为缓存）
+
+- 远程 main（41e208c）的 README 已包含
+  `<img src="docs/logo/ankeshelf-logo.png">`，`docs/logo/ankeshelf-logo.png`
+  （761,633 字节）也在远程；GitHub 页面缓存/图片 CDN 未刷新导致误判，
+  刷新即可。
+
+#### Release 重新打包
+
+- `assembleRelease` 重新构建（含新 logo 位图，AAPT2 压缩为
+  `res/9w.png` 等密度图标，160/240/320/480/640 齐全）。
+- 新包 `dist/AnkeShelf-v1.0.0-android.apk`：16,525,920 字节，
+  versionName 1.0.0 / versionCode 1；SHA256
+  `7451250B7F4F28AFC7B1CDF82B51A79A88E80A70862B92B7DE3FED41191C80C9`；
+  凭据扫描 PASS。
+- 替换 GitHub Release `android-v1.0.0` 资产：删除旧 APK
+  （16,393,764 字节）→ 上传新 APK（16,525,920 字节）→ REST API 核验一致；
+  Release 说明 SHA256 同步更新。
+
 ---
 
 ## 10. Windows 端开发日志（2026-08-09 起）
