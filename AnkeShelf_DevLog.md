@@ -1634,6 +1634,20 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   （16,393,764 字节）→ 上传新 APK（16,525,920 字节）→ REST API 核验一致；
   Release 说明 SHA256 同步更新。
 
+### 9.70 Logo 源图更正（换无水印版）并重新发布（2026-08-10）
+
+用户更正：上一版即梦原图实际带水印，更换为无水印版（1731x1731，
+视觉模型与像素扫描双重确认右下角无“即梦AI”标记，仅书封边缘阴影）。
+
+#### 重新集成
+
+- 从无水印原图重新生成五个密度 mipmap（ic_launcher / round）与
+  `docs/logo/ankeshelf-logo.png`（1024，894,171 字节）。
+- `assembleRelease` 重新打包：`dist/AnkeShelf-v1.0.0-android.apk`
+  16,538,184 字节，SHA256 `5CD70CA0…D52F4D0`，凭据扫描 PASS。
+- 替换 GitHub Release 资产（删除 16,525,920 字节旧包 → 上传新包 →
+  REST API 核验 16,538,184 字节一致）；Release 说明 SHA256 同步。
+
 ---
 
 ## 10. Windows 端开发日志（2026-08-09 起）
