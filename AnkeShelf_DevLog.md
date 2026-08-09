@@ -1412,3 +1412,19 @@ Compose 外壳（书架/下载/搜索/设置/统计 + 阅读页 UI）→ `WebVie
 - `git push`（当前分支 `android/m1-data-layer` 未推送）与打标签 `android-v1.0.0`；
 - `gh release create android-v1.0.0 ...`（本机 gh CLI 配置访问受限，需先修复或改用
   REST API 直连）；Release 标题「安科书架 Android v1.0.0」。
+
+### 9.62 安卓 v1.0.0 发布完成（2026-08-09）
+
+- **gh 修复**：沙箱权限导致 `gh` 读不到配置；提权后确认 gh 2.97.0 已登录
+  `gighi-947`。推送因 token 缺少 `workflow` scope 被拒，`gh auth refresh -s workflow`
+  设备码授权完成（浏览器未自动弹出，用户手动打开 `github.com/login/device`
+  输入一次性代码；oauth 轮询曾因网络抖动超时一次，重试成功）。
+- **网络排查**：桌面端当时就是直连 `git push origin main --tags`（DevLog 5.3 SOP），
+  无代理；本次直连间歇性被重置（ls-remote 可过、push 偶发 `Recv failure`），
+  重试后成功，未引入代理。
+- **推送**：`android/m1-data-layer` 分支 + `android-backup-20260809`、
+  `android-v1.0.0` 标签已推送 GitHub。
+- **Release**：`gh release create android-v1.0.0` 成功，
+  标题「安科书架 Android v1.0.0」，说明文件 UTF-8 直读（无 PowerShell 管道转码），
+  资产 `AnkeShelf-v1.0.0-android.apk`（16,393,764 字节）经 REST API 核验与本地一致。
+- Release 地址：https://github.com/gighi-947/anke-shelf/releases/tag/android-v1.0.0
