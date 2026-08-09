@@ -1272,3 +1272,143 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 滚动→分页交接 → 翻 3 页保存 page_index=3 → 退出重进/杀进程重开均显示“第 4 / 112 页”（**progress.json 存 0 基 `m.current`，UI 显示 1 基，3 存 4 显为精确一致**，此前报告的“±1 页”是读数口径错误，非缺陷）；
 - 分页→滚动交接按 text_offset 继续。
 - 单测 91 通过 / 1 跳过；`assembleDebug` 通过。
+
+### 9.57 提交前全面架构梳理与精简（2026-08-09）
+
+用户要求：正式提交前做一次大规模全面架构分析和梳理，然后精简优化；构建出的 APK 先不要装手机。
+
+#### 盘点结论：阅读器存在三套历史实现
+
+逐文件核对引用后确认，仓库里同时存在三条阅读渲染路径，只有一条在跑：
+
+1. **当前主线（使用中）**：`WebViewChapterView.kt`（WebView 渲染内核）+ `NativeReaderScreen.kt`（Compose 外壳）+ `assets/reader/reader-lite.js`（36KB 精简桥）+ `ReaderHtml.kt`。
+2. **旧 Kotlin 原生渲染器（死代码）**：`ui/reader/native/NativeChapterView.kt`（1501 行）整文件无任何外部引用，只被自身测试间接覆盖。
+3. **旧 WebView 完整阅读器（死代码）**：`ReaderScreen.kt`（1121 行）+ `ReaderBridge.kt` + `ReaderBottomBar.kt`，`AnkeShelfRoot` 只 import 新版 `NativeReaderScreen`，旧三件套无引用；配套 `ReaderModel.kt`（533 行）仅被 `ReaderModelTest.kt` 引用。
+
+另发现两个结构性隐患：
+
+- **Kotlin/JS 分页几何漂移**：Kotlin `PagedLayout` 用“左 padding=margin、右 padding=gap/3”的非对称公式；而 JS 两侧（旧 reader.js 与现役 reader-lite.js）都用左右对称 `P=min(margin, gap-8)`。跨端对照测试 `ReaderPagedCrossTest` 却加载已退役的 `reader.js` 测 `PagedMath`——测试保护的实现不是当前渲染内核，且与 Kotlin 算法不一致（若运行必然失败）。
+- **跨端测试与现役 JS 脱节**：`reader.js`（41KB）仅被该对照测试引用，主代码从 `ReaderHtml.kt` 起已全部切到 `reader-lite.js`。
+
+#### 精简与修复
+
+- **归档删除死代码**（先移入 `.local/archive/20260809-dead-code/` 再删，可恢复）：`NativeChapterView.kt`、`ReaderScreen.kt`、`ReaderBridge.kt`、`ReaderBottomBar.kt`、`ReaderModel.kt`、`ReaderModelTest.kt`、`assets/reader/reader.js`。净删除约 4748 行。
+- **统一分页几何**：`PagedLayout.geometry` 改为与 reader-lite.js 完全一致的左右对称 `P=min(margin, gap-8)` 公式，并同步更新 `PagedLayoutTest` 期望值。
+- **跨端测试改测现役 JS**：`ReaderPagedCrossTest` 改加载 `reader-lite.js`；`reader-lite.js` 的 `geometry(fw,fh,s)` 支持外部注入参数、返回值补 `contentWidth`，并导出 `geometry/shouldAutoDual/buildText` 供 Kotlin 侧对照调用。
+- **移除未使用依赖**：`androidx-navigation-compose`（路由实际是自管理 `rememberSaveable`，无 NavHost）、`ui-tooling-preview`（无任何 `@Preview`）。
+- **清理编译警告**：`NativeBook.kt` 两处 Json 配置加 `@OptIn(ExperimentalSerializationApi)`；Search/Stats 的 `menuAnchor()` 改为新 API（`ExposedDropdownMenuAnchorType.PrimaryNotEditable`）；Settings 删掉对非空字段的多余 Elvis；两处测试 `classLoader` 加 `!!`。
+- **过时注释统一**：ReaderHtml/NativeReaderScreen/AnkeShelfRoot 中“reader.js”“替代 WebView 渲染”“五页路由”等描述改为当前架构（WebView 内核 + Compose 外壳 + 四 Tab）。
+
+#### 验证
+
+- 单测 **77 通过 / 1 跳过**（`assembleDebug` 通过）。测试数比 9.50 的“91 过/1 跳”少，差额来自删除死代码配套的 `ReaderModelTest`（9 个用例，测的 `ReaderModel` 已确认无引用），非回归。
+- 校验 APK 内 `assets/reader/reader-lite.js`：含 `geometry/shouldAutoDual/buildText` 导出与 `contentWidth`，无旧 `reader.js` 引用（Gradle 资产增量正常，无 UP-TO-DATE 误判）。
+- 按用户要求 APK 未安装到手机；产物位于 `android/app/build/outputs/apk/debug/app-debug.apk`。
+
+#### 当前架构一条主线
+
+Compose 外壳（书架/下载/搜索/设置/统计 + 阅读页 UI）→ `WebViewChapterView` 渲染内核（reader-lite.js：分页/滚动/楼层样式/text_offset）→ `ChapterProgressTracker` 进度落盘；公共组件（NgaUpdateDialog/ActionIcon/BookManagementOverlay）供书架与已下载页复用；Kotlin `PagedLayout` 作为 JS 几何的对照参考实现，由跨端测试持续保护。
+
+### 9.58 滚动“整页都是图片”进度失效修复 + 滚动比例锚点（2026-08-09）
+
+用户反馈：滚动阅读时如果当前屏幕都是图片，进度保持会直接失效；要求如实说明“退出时应尽量让文字保持在屏幕正中间（即进度采样位置）”，重写使用指南，并强调与分页模式做好隔离、先参考开发日志。
+
+#### 日志对照（避免重蹈覆辙）
+
+- 9.43：曾删除比例回退，只信 DOM 采样 offset；
+- 9.54：图片停在屏幕中部退出回退时，加了“保存端”滚动比例兜底，但**恢复端仍是文本锚点定位**；
+- 本轮真凶：保存的是“文本比例”`round(ratio * len)`，恢复却按文本点定位——图片占据的高度破坏“文本比例↔滚动比例”的线性映射，全屏图片页退出后重进必然错位，感知为“进度失效”。
+
+#### 修复：滚动比例成为一等锚点（滚动模式专属）
+
+- `ProgressEntry` 新增 `scroll_ratio: Double = -1.0`（-1 = text_offset 文本锚点；0..1 = 全图页滚动比例；旧数据/桌面数据缺省 -1，向后兼容）。
+- JS `reader-lite.js`：
+  - `state.scrollRatio` 只在 `currentOffsetScroll()` 维护：采样到文本 → -1；全屏无文本 → 实际滚动比例；
+  - 新增 `AnkeReader.currentScrollState()`，一次返回 `{o, r, p}`（offset / ratio / 实际模式），供 Kotlin 换章与退出查询，避免两次 evaluateJavascript 之间状态漂移；
+  - `restoreScrollOffset(offset, ratio)`：ratio∈[0,1] 时按滚动比例恢复，否则按文本锚点定位；恢复链路（init/settle/refresh/finish）统一携带 `restoreRatio`；
+  - 分页保存显式 `ratio=-1`（翻页 `saveProgressNow`、换章落库），分页路径绝不读写滚动比例。
+- Kotlin：
+  - `ChapterProgressTracker` 新增 `lastRatio / restoreRatioFor`，保存去重改为 “offset 与 ratio 都相同才跳过”（offset 相同但比例不同必须重新落盘）；
+  - `WebViewChapterView` 换章捕获与 dispose 查询改用 `currentScrollState()`：分页（p=true）时 dispose 忽略 o（保留 9.48 的 flush 语义），滚动（p=false）才采用 o/r；
+  - `WebViewChapterView` 桥 `saveProgress/saveProgressNow` 增加第 6 参 ratio，JS 全部调用点已统一 6 参（避免 JSInterface 缺参异常）。
+- 模式隔离清单（对照 9.50/9.53）：滚动比例字段只有滚动模式读写；分页模式永远传 -1；分页恢复（restorePagedAnchor/gotoOffset）不碰 ratio；`setMode` 从分页切滚动用文本锚点交接（ratio=-1），不用持久化的 restoreRatio；`page_index/page_total` 仍只属于分页。
+
+#### 使用指南重写（assets/guide/usage.txt）
+
+- 新增“四、进度保存（请务必了解）”章节，如实说明：分页按页码+段落记录；滚动以屏幕正中间的正文文字为锚点，退出前尽量让文字停在屏幕中间；当前屏全是图片时按滚动比例近似记录，重进会回到附近区域而非章节开头；加载未稳定时退出可能保留上一次位置。
+- 同步更新图片长按放大/保存、下载参数、返回键、主题等章节描述。
+
+#### 验证
+
+- 单测 **81 通过 / 1 跳过**（新增：tracker 滚动比例保存/恢复、offset 相同 ratio 不同必须落盘、比例清除；ProgressStore ratio 往返与 clamp）。
+- `assembleDebug` + `compileDebugAndroidTestKotlin` 通过；解包校验 APK：reader-lite.js 含 `currentScrollState` 导出、滚动 6 参保存、分页显式 -1；usage.txt 含“屏幕正中间 / 滚动比例”说明。
+- 未安装手机；待真机回归：全屏图片页滚动 → 退出 → 重进位置一致性；图片页 ↔ 文本页 ↔ 分页模式交叉切换；连续重进 3 次一致。
+
+### 9.59 滚动条未消失时唤出浮动栏被强制收起（2026-08-09）
+
+用户反馈：滚动模式右侧滚动条还在显示时，点屏幕中间唤出顶/底浮动栏，会被强制收起。
+
+#### 根因
+
+- 收起逻辑放在 `onProgress`（滚动 500ms 防抖保存回调）里：`!pagination && barsHeld → 收起`。
+- 防抖定时器由“唤出前的滚动”启动，用户停止滚动后立刻唤出时，定时器尚未到期；唤出（barsHeld=true）后防抖回调才到达，把刚唤出的控制条误收。
+- 滚动条仍在显示恰好是“滚动刚停止、防抖未触发”的窗口，与现象吻合。
+
+#### 修复（滚动发生即通知，而不是防抖保存时判定）
+
+- JS `reader-lite.js`：滚动事件（滚动模式，250ms 节流）即时调用新桥 `AnkeReaderBridge.onScrollMoved()`；防抖保存只负责进度，不再承担 UI 收起职责。
+- Kotlin：`WebViewReaderCallbacks` 新增 `onScrollMoved`；`NativeReaderScreen` 中“唤出后发生新滚动才自动收起”（`!pagination && barsHeld → 收起”），删除 `onProgress` 里的旧收起逻辑。
+- 语义恢复为“点中间唤出默认保持，滚动/翻页一段距离后自动收起”：唤出前的迟到滚动事件不会再误收控制条；唤出后真正开始滚动仍会即时收起（250ms 节流，性能无感）。
+
+#### 验证
+
+- 单测全绿、`assembleDebug` 通过；解包校验 APK 内 JS 含 `onScrollMoved` 与 250ms 节流。
+- 已安装真机；待确认：滚动停止后滚动条显示期间唤出浮动栏保持不收起；唤出后滚动立即收起；分页模式不受影响（JS 侧滚动事件分页直接 return）。
+
+### 9.60 项目文件夹整理（2026-08-09）
+
+用户要求整理项目文件夹。盘点后处理如下（全部可恢复/归档，未动任何源码与跟踪文件）：
+
+- **JVM 崩溃日志**（根目录 `hs_err_pid14100.log`/`replay_pid14100.log`、`android/` 下 `hs_err_pid7772.log`/`replay_pid7772.log`，共约 12MB）→ 移入 `.local/archive/crash-logs/`。
+- **调试截图**（`android/screenshots/`，35.8MB，此前为未跟踪目录）→ 移入 `.local/archive/screenshots/`，`git status` 不再显示该未跟踪目录。
+- **测试书籍**（`android/` 根目录的 MYGO/HBR 导出 EPUB，6.2MB）→ 移入 `.local/archive/test-books/`（保留测试素材，不再占用 android 根目录；`.gitignore` 的 `android/*.epub` 规则保留以防将来再放）。
+- **重复压缩包** `.local/flow-ref.zip`（与已解压的 `.local/flow-ref/flow-main/` 内容重复，可从 GitHub 重新获取）→ 删除。
+
+未动：`dist/`（发布产物 AnkeShelf-v1.2.0.zip）、`build/`（PyInstaller 中间产物）、`.tools/`（Android SDK 等工具链）、`.local/` 其余参考源码（flow/legado 对照参考）、`backup/`（APK 备份）。如需进一步释放空间，可再评估删除 `build/` 与历史构建归档 `.local/archive/build/`。
+
+### 9.61 安卓 v1.0.0 发布准备（2026-08-09）
+
+用户要求：确定版本号、重写整个 README、准备发布，并提供 9 张实机演示截图。
+
+#### 版本号
+
+- 按 `android/VERSIONING.md` 既定版本线，首个 Release 直接 **`android-v1.0.0`**：
+  `versionCode=1`、`versionName=1.0.0`（`build.gradle.kts`，唯一版本定义位置）。
+
+#### 实机截图与 README 重写
+
+- 9 张实机截图经视觉模型逐张识别归档（书架 / NGA 下载入口 / 下载参数 / 更新弹窗 /
+  全文检索 / 设置 / 阅读深色 / 阅读浅色 / NGA 公告帖），复制到
+  `docs/screenshots/android/`（两张阅读页大图压缩为 JPG，其余 PNG）。
+- `README.md` 整体重写为双端结构：平台与版本一览（Windows v1.2.0 / Android v1.0.0）、
+  分平台特性、双端截图、安装与 Cookie 配置、测试、架构、版本与发布、致谢与许可证；
+  保留原有桌面端全部信息与开源致谢。
+
+#### 签名与 Release 构建
+
+- 首次生成正式签名密钥 `android/keystore/ankeshelf-release.jks`（RSA 2048，
+  有效期 3650 天），密码写入 `android/keystore.properties`（两者均不入库，
+  `.gitignore` 已忽略）；`build.gradle.kts` 启用 release `signingConfig`。
+- `assembleRelease`（R8 minify + shrinkResources + lintVital）构建成功：
+  `app-release.apk` 16,393,764 字节，`versionName=1.0.0`、`versionCode=1`、
+  minSdk 26 / targetSdk 36、应用名「安科书架」。
+- 发布安全检查 `check-release.ps1`：**PASS**（无凭据 / config.ini / keystore /
+  local.properties 泄漏）；SHA256
+  `3F1B212FD6CD966B4FF47599A782C155468F2E31B216CAA5A4961028C4FF7475`。
+- 资产按 SOP 命名复制为 `dist/AnkeShelf-v1.0.0-android.apk`。
+
+#### 待用户授权步骤（未执行）
+
+- `git push`（当前分支 `android/m1-data-layer` 未推送）与打标签 `android-v1.0.0`；
+- `gh release create android-v1.0.0 ...`（本机 gh CLI 配置访问受限，需先修复或改用
+  REST API 直连）；Release 标题「安科书架 Android v1.0.0」。
