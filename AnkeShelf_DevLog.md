@@ -1045,6 +1045,30 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - 打开书（恢复历史进度）→ 点下一章 → 新章显示“第 1 / N 页”，正文为该章首楼；progress.json 更新为新章 offset=1；退出重进恢复新章第 1 页。
 - 单测 91 通过 / 1 跳过；`assembleDebug` 通过。
 
+### 9.51 滚动模式“段落记录不对”根因：书架 savedOffset 用 record 实例做 key 永不刷新（2026-08-09）
+
+用户反馈滚动模式（尤其滚动/翻页来回切换后）段落记录不准，要求多次测试并对比 offset。连续 3 轮滚动→退出→重进对照：
+
+#### 根因
+
+- **`AnkeShelfRoot.savedProgress = remember(record)` 用 `record` 对象实例做 key**：书架 map 里的 `BookRecord` 是稳定实例，`refresh++` 后 `books/record` 虽重算但 record 身份不变，`remember` 不重算 → 重进阅读器时 `savedOffset` 一直是旧值（实测 store=3069，param=2963；store=3225，param=3146），进度“看起来没恢复”。
+- 恢复数学本身一直是精确的（探针：`target=3562 → sampled=3562`）。
+
+#### 修复
+
+- `savedProgress` 改为 `remember(refresh, record?.id)`：书架每次刷新/退出都重读内存进度，param 与 store 一致。
+- 顺带确认：滚动保存显式 page=-1 后，进度条目页码正确清空；dispose 查询偶尔返回 0 时由 flush（lastKnown）兜底，不影响正确性。
+
+#### 验证（3 轮真机对照）
+
+| 轮次 | 退出前保存 | tracker init（store / param） | 恢复 target → sampled |
+| --- | --- | --- | --- |
+| 1 | 3562 | 3562 / 3562 | 3562 → 3562 |
+| 2 | 3354 | 3354 / 3354 | 3354 → 3362（行内几字符差，段落级） |
+| 3 | 3638 | 3638 / 3638 | 3638 → 3638 |
+
+- 单测 91 通过 / 1 跳过；`assembleDebug` 通过；诊断日志按用户要求保留。
+
 ### 9.47 换章加载遮罩 + 滚动模式章内定位稳定性（2026-08-09）
 
 用户反馈两点：跳转/排版未完成时操作会把位置拉回章节首；滚动模式章内定位又失效、默认回章节首。
