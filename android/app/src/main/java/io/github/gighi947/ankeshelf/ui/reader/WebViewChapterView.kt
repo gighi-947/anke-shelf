@@ -61,7 +61,8 @@ import okhttp3.Request
 data class WebViewReaderCallbacks(
     val onReady: () -> Unit = {},
     val onMode: (paged: Boolean) -> Unit = {},
-    val onProgress: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
+    val onProgress: (chapter: Int, offset: Int, page: Int, total: Int) -> Unit = { _, _, _, _ -> },
+    val onProgressKeepPage: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
     val onProgressNow: (chapter: Int, offset: Int, page: Int, total: Int) -> Unit = { _, _, _, _ -> },
     val onPageChanged: (chapter: Int, page: Int, total: Int) -> Unit = { _, _, _ -> },
     val onImageTap: (String) -> Unit = {},
@@ -161,7 +162,8 @@ fun WebViewChapterView(
                     }
                     if (latch.await(300, TimeUnit.MILLISECONDS)) value else 0
                 }
-                if (captured > 0) callbacksRef.value.onProgress(old, captured)
+                // 换章前刷新旧章 offset：保留该章已保存的页码，不能被 -1 清掉。
+                if (captured > 0) callbacksRef.value.onProgressKeepPage(old, captured)
             }
             callbacksRef.value.onChapterSwitch(old, chapterIndex)
         }
@@ -478,9 +480,10 @@ fun WebViewChapterView(
                     "(function(){try{return state.paged ? -1 : AnkeReader.currentOffset();}catch(e){return 0;}})()",
                     ValueCallback { v ->
                         val o = v?.toDoubleOrNull()?.toInt() ?: 0
+                        Log.d("AnkeShelf", "dispose query o=$o settled=${settled.value} paged=${pagedRef.value}")
                         // 加载/排版未稳定（遮罩期间）退出的查询值不可信，
                         // 保留已保存的锚点，不覆盖进度。
-                        if (o > 0 && settled.value) callbacksRef.value.onProgress(idx, o)
+                        if (o > 0 && settled.value) callbacksRef.value.onProgress(idx, o, -1, -1)
                         callbacksRef.value.onFlush()
                     },
                 )
@@ -525,11 +528,11 @@ private class LiteBridge(
     }
 
     @JavascriptInterface
-    fun saveProgress(idx: Int, value: Double, isOffset: Boolean) {
+    fun saveProgress(idx: Int, value: Double, isOffset: Boolean, page: Int, total: Int) {
         if (!isOffset) return
         val offset = value.toInt()
         if (offset <= 0) return
-        main.post { callbacks().onProgress(idx, offset) }
+        main.post { callbacks().onProgress(idx, offset, page, total) }
     }
 
     @JavascriptInterface

@@ -91,8 +91,14 @@ fun AnkeShelfRoot(container: AppContainer) {
         bookId?.let { id -> books.find { it.record.id == id }?.record }
     }
     val session = remember(record) { record?.let { container.repository.openSession(it) } }
-    val savedProgress = remember(record) {
-        record?.let { container.repository.progressOf(it.id) }
+    // 不能用 record 对象做 key：书架 map 里 record 是稳定实例，refresh++ 后
+    // remember 不会重算，导致重进阅读器时读到旧的 savedOffset（进度落后）。
+    val savedProgress = remember(refresh, record?.id) {
+        record?.let {
+            val p = container.repository.progressOf(it.id)
+            runCatching { android.util.Log.d("AnkeShelf", "shelf read off=${p?.text_offset} page=${p?.page_index}") }
+            p
+        }
     }
     val statsGlobal = remember(refresh, settingsTick) { container.stats.getGlobal() }
 

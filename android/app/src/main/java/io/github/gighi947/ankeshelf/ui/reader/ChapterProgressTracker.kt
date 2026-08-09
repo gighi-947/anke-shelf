@@ -41,7 +41,15 @@ class ChapterProgressTracker(
 
     init {
         synchronized(lock) {
-            restoreFrom(bookId)?.let { p ->
+            val stored = restoreFrom(bookId)
+            runCatching {
+                android.util.Log.d(
+                    "AnkeShelf",
+                    "tracker init off=${stored?.text_offset} page=${stored?.page_index} " +
+                        "param off=$initialOffset",
+                )
+            }
+            stored?.let { p ->
                 if (p.chapter_index >= 0 && p.text_offset > 0) {
                     lastKnown[p.chapter_index] = p.text_offset
                     if (p.page_index >= 0) lastPage[p.chapter_index] = p.page_index
@@ -63,7 +71,20 @@ class ChapterProgressTracker(
     fun restoreTotalFor(chapter: Int): Int = synchronized(lock) { lastTotal[chapter] ?: -1 }
 
     /** 滚动/页面上报：更新内存，500ms 防抖落盘（对齐桌面 scroll debounce）。 */
-    fun onOffset(chapter: Int, offset: Int) {
+    fun onOffset(chapter: Int, offset: Int, page: Int = -1, total: Int = -1) {
+        if (closed || offset <= 0) return
+        val shouldSchedule = synchronized(lock) {
+            lastKnown[chapter] = offset
+            applyPageInfo(chapter, page, total)
+            saved[chapter] != offset
+        }
+        if (!shouldSchedule) return
+        pending.remove(chapter)?.cancel(false)
+        pending[chapter] = scheduler.schedule({ persist(chapter) }, 500, TimeUnit.MILLISECONDS)
+    }
+
+    /** 换章前刷新旧章 offset：不动页码（该章页码由翻页事件维护）。 */
+    fun onOffsetKeepPage(chapter: Int, offset: Int) {
         if (closed || offset <= 0) return
         val shouldSchedule = synchronized(lock) {
             lastKnown[chapter] = offset
@@ -79,10 +100,15 @@ class ChapterProgressTracker(
         if (closed || offset <= 0) return
         synchronized(lock) {
             lastKnown[chapter] = offset
-            if (page >= 0) lastPage[chapter] = page
-            if (total > 0) lastTotal[chapter] = total
+            applyPageInfo(chapter, page, total)
         }
         persist(chapter)
+    }
+
+    /** 模式隔离：page<0 表示滚动模式保存，必须清除残留的分页页码。 */
+    private fun applyPageInfo(chapter: Int, page: Int, total: Int) {
+        if (page >= 0) lastPage[chapter] = page else lastPage.remove(chapter)
+        if (total > 0) lastTotal[chapter] = total else lastTotal.remove(chapter)
     }
 
     /** 换章：立即落盘旧章，避免异步 JS 事件在新页加载后被丢弃。 */

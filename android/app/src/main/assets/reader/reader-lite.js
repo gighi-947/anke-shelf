@@ -444,8 +444,16 @@
         range.setStart(point.node, point.charIndex);
         range.collapse(true);
         var rect = range.getBoundingClientRect();
+        try {
+          log('[restore] target=' + offset + ' rectTop=' + Math.round(rect.top) +
+            ' scrollY=' + Math.round(window.scrollY) + ' anchorY=' + Math.round(scrollAnchorY()));
+        } catch (e) { /* ignore */ }
         // align with sampling: the anchor line's top lands at scrollAnchorY (viewport center).
         window.scrollTo(0, Math.max(0, rect.top + window.scrollY - scrollAnchorY()));
+        try {
+          log('[restore] -> scrollY=' + Math.round(window.scrollY) +
+            ' sampled=' + (function () { try { return currentOffsetScroll(); } catch (e) { return -1; } })());
+        } catch (e) { /* ignore */ }
         state.restorePending = false;
         return;
       } catch (e) { /* fall through to ratio */ }
@@ -621,6 +629,11 @@
       state.scrollAnchor = offset;
     }
     state.paged = !!paged && !state.huge;
+    // 模式切换交接：旧模式的页码/锚点作废，避免后续恢复/重排跳回旧位置；
+    // 遮罩重置，等新模式布局稳定后再放行。
+    state.pagedAnchorPage = -1;
+    state.pagedAnchorTotal = -1;
+    state.settled = false;
     try { AnkeReaderBridge.onMode(state.paged); } catch (e) { /* ignore */ }
     document.body.classList.toggle('paged', state.paged);
     if (state.paged) forceEagerImages();
@@ -646,6 +659,11 @@
         }
       }
       report(false);
+      if (!layoutReady()) {
+        tryRestoreAfterSettle(state.paged ? state.pagedAnchor : state.scrollAnchor, 0);
+      } else {
+        setTimeout(markSettled, 100);
+      }
     });
   }
 
@@ -689,6 +707,15 @@
         restorePagedAnchor(offset);
       } else if (offset > 0) {
         restoreScrollOffset(offset);
+        // 滚动模式：字体就绪后的最终位置才是真位置，重采样并落盘，
+        // 避免“切换模式后滚动段落记录错位”。
+        var so = 0;
+        try { so = currentOffsetScroll(); } catch (e) { /* ignore */ }
+        if (so > 0) {
+          state.scrollAnchor = so;
+          // 滚动保存显式 page=-1：清除追踪器里残留的分页页码（模式隔离）。
+          try { AnkeReaderBridge.saveProgress(state.chapterIndex, so, true, -1, -1); } catch (e) { /* ignore */ }
+        }
       }
       report(false);
       markSettled();
@@ -794,7 +821,7 @@
         if (o > 0) {
           log('[save:scroll] ch=' + state.chapterIndex + ' off=' + o);
           state.scrollAnchor = o;
-          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
+          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true, -1, -1); } catch (e) { /* ignore */ }
         }
         if (!layoutReady()) {
           tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.scrollAnchor, 0);
@@ -848,7 +875,7 @@
         try { o = currentOffset(); } catch (e) { /* ignore */ }
         if (o > 0) {
           state.scrollAnchor = o;
-          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
+          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true, -1, -1); } catch (e) { /* ignore */ }
         }
       }, 500);
     });

@@ -305,8 +305,8 @@ fun NativeReaderScreen(
                 session = session,
                 container = container,
                 callbacks = WebViewReaderCallbacks(
-                    onProgress = { ch, offset ->
-                        progressTracker.onOffset(ch, offset)
+                    onProgress = { ch, offset, page, total ->
+                        progressTracker.onOffset(ch, offset, page, total)
                         if (ch == chapterIndex) {
                             // 滚动一段距离后收起手动唤出的控制条（对齐 WebView 时代行为）。
                             if (!readerSettings.pagination && barsHeld) {
@@ -319,6 +319,9 @@ fun NativeReaderScreen(
                                 0f
                             }
                         }
+                    },
+                    onProgressKeepPage = { ch, offset ->
+                        progressTracker.onOffsetKeepPage(ch, offset)
                     },
                     onProgressNow = { ch, offset, page, total ->
                         // 翻页/换章立即落盘（不等待 500ms 防抖），退出时进度不落后。
