@@ -1119,6 +1119,28 @@ $adb='D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe'
 - **Compose 记忆键纪律**：进度类缓存只用“会随数据变化而变化的键”（refresh/数据 id），禁止用“看似稳定实则永不变化”的对象身份。
 - **验收前自查清单**：同一位置连续重进 3 次必须一致；切换模式后再重进必须一致；杀进程重开必须一致；图片页/超大章必须覆盖。
 
+### 9.54 滚动“图片停在屏幕中部退出回退”根因：settle 链缺 userMoved 守卫（2026-08-09）
+
+用户反馈：滚动阅读时如果图片停在屏幕中间的采样位置，退出后不保存进度、自动回退到上一次进度。
+
+#### 根因（探针实证）
+
+- 复现日志：5 次滚动已保存 1288，随后 `progress.set off=872`（打开时的初始值）把新进度覆盖；`dispose query o=0`（屏幕中部是图片，采样 null）。
+- 真正的元凶不是“图片挡采样”，而是 **`tryRestoreAfterSettle` 没有 `userMoved` 守卫**：字体/图片加载慢时，settle 链一直用启动时捕获的初始 offset 重试，用户滚动后仍执行 `restoreScrollOffset(初始值)` + 重采样保存 → 把刚滚到的位置拉回并覆盖。
+- 连带缺陷：滚动 debounce **漏设 `userMoved`**（只有 flipPage 设置），settle 链无从知道用户已滚动。
+
+#### 修复
+
+- `tryRestoreAfterSettle` 回调开头：`if (state.userMoved) { markSettled(); return; }` —— 用户一旦滚动/翻页，settle 链只标记就绪，绝不再恢复/保存。
+- 滚动 debounce 设置 `state.userMoved = true`。
+- 附带增强：滚动采样扫描范围从“中线下方 120px”扩到整页；全屏图片（扫描仍无文本）时用滚动比例兜底，图片区退出/防抖也能保存近似位置。
+
+#### 验证
+
+- 滚动保存 1442 → 退出 → progress 保持 1442（不再回退）→ 重进 `param=store=1442`，restore target=1442，sampled=1441/1442（行内）。
+- 教训（再次踩坑）：中途一次“修复后仍复现”实为旧 APK——`mergeDebugAssets` 被 Gradle 误判 UP-TO-DATE，JS 改动没进包；此后改 JS 一律 `unzip` 校验 APK 内脚本内容再判断。
+- 单测 91 通过 / 1 跳过；`assembleDebug` 通过。
+
 ### 9.47 换章加载遮罩 + 滚动模式章内定位稳定性（2026-08-09）
 
 用户反馈两点：跳转/排版未完成时操作会把位置拉回章节首；滚动模式章内定位又失效、默认回章节首。
