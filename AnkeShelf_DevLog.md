@@ -1428,3 +1428,23 @@ Compose 外壳（书架/下载/搜索/设置/统计 + 阅读页 UI）→ `WebVie
   标题「安科书架 Android v1.0.0」，说明文件 UTF-8 直读（无 PowerShell 管道转码），
   资产 `AnkeShelf-v1.0.0-android.apk`（16,393,764 字节）经 REST API 核验与本地一致。
 - Release 地址：https://github.com/gighi-947/anke-shelf/releases/tag/android-v1.0.0
+
+### 9.63 GitHub Actions Android CI 修复（2026-08-09）
+
+GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
+
+1. **`./gradlew: Permission denied`**：Windows 下 `core.filemode=false`，gradlew 可执行位未入库；
+   `git update-index --chmod=+x android/gradlew` 修复。
+2. **阿里云镜像 502**：settings.gradle.kts 镜像优先，海外 runner 访问 `maven.aliyun.com` 返回 502；
+   按 `GITHUB_ACTIONS` 环境变量切换：CI 直接用 google()/mavenCentral()/gradlePluginPortal()，
+   本机（中国大陆）保持阿里云优先。踩坑：`pluginManagement` 闭包内不可见脚本级 val，
+   需在块内直接 `System.getenv(...)` 判断。
+3. **`Cannot convert 'null' to File`**：`keystore.properties` 不入库，CI 上缺失时
+   `rootProject.file(null)` 配置崩溃；release signingConfig 改为缺文件时留空
+   （debug 构建不受影响，本地无签名文件验证通过）。
+
+顺手升级 `actions/setup-java` v4 → v5（v4 已弃用）。GitHub 直连间歇性断连
+（curl/git 均超时），等待约 1 分钟后恢复，重试推送成功。
+
+最终：main 与 android/m1-data-layer 两个分支的 Android CI 均 **success**
+（单测 + assembleDebug + 上传 debug 产物）。
