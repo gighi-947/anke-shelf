@@ -60,6 +60,7 @@ import okhttp3.Request
  */
 data class WebViewReaderCallbacks(
     val onReady: () -> Unit = {},
+    val onMode: (paged: Boolean) -> Unit = {},
     val onProgress: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
     val onProgressNow: (chapter: Int, offset: Int, page: Int, total: Int) -> Unit = { _, _, _, _ -> },
     val onPageChanged: (chapter: Int, page: Int, total: Int) -> Unit = { _, _, _ -> },
@@ -233,6 +234,7 @@ fun WebViewChapterView(
         LiteBridge(
             callbacks = { callbacksRef.value },
             onSettled = { settled.value = true },
+            onMode = { pagedRef.value = it },
         )
     }
 
@@ -513,6 +515,7 @@ private data class ReaderViewSettings(
 private class LiteBridge(
     private val callbacks: () -> WebViewReaderCallbacks,
     private val onSettled: () -> Unit,
+    private val onMode: (Boolean) -> Unit,
 ) {
     private val main = Handler(Looper.getMainLooper())
 
@@ -561,5 +564,10 @@ private class LiteBridge(
     @JavascriptInterface
     fun onSettled() {
         main.post { onSettled() }
+    }
+
+    @JavascriptInterface
+    fun onMode(paged: Boolean) {
+        main.post { onMode(paged) }
     }
 }

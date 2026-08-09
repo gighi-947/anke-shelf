@@ -25,12 +25,15 @@
     textCtx: null,
     restoreOffset: 0,
     restorePending: false,
-    anchorOffset: 0,
+    // 模式隔离：分页锚点 = 页顶采样（含页码），滚动锚点 = 视口中线采样，
+    // 两种模式绝不共用同一锚点字段，避免“改一边坏另一边”。
+    pagedAnchor: 0,
+    pagedAnchorPage: -1,
+    pagedAnchorTotal: -1,
+    scrollAnchor: 0,
     wasSwitch: false,
     settled: false,
     userMoved: false,
-    restorePage: -1,
-    restoreTotal: -1,
   };
 
   function log(msg) {
@@ -364,26 +367,37 @@
       var mm = measure();
       log('[flip] after cur=' + mm.current + '/' + mm.total + ' sl=' + scrollEl().scrollLeft + ' off=' + o);
     } catch (e) { /* ignore */ }
-    if (o > 0) state.anchorOffset = o;
+    if (o > 0) {
+      state.pagedAnchor = o;
+      state.pagedAnchorPage = mm.current;
+      state.pagedAnchorTotal = mm.total;
+    }
   }
 
-  function currentOffset() {
+  // 分页模式采样：页顶第一个文本行（图片页向下扫描整页），语义 = 页顶锚点。
+  function currentOffsetPaged() {
     var ctx = state.textCtx;
     var el = scrollEl();
     if (!ctx || !el) return 0;
     var er = el.getBoundingClientRect();
-    var x, y;
-    if (state.paged) {
-      x = Math.max(2, Math.min(er.left + state.margin + 2, window.innerWidth - 2));
-      y = Math.max(2, er.top + (state.topInset || 0) + 8);
-    } else {
-      x = Math.max(2, Math.min(window.innerWidth / 2, window.innerWidth - 2));
-      // 视口中线采样：落在正文段落内的概率远高于顶部（顶部常是楼卡 padding/楼头），
-      // 精度从“楼层”提升到“段落/行”；与 restoreScroll 的 scrollAnchorY 严格对应。
-      y = sampleOffsetY();
-    }
-    var off = offsetAtPoint(ctx, x, y);
+    var x = Math.max(2, Math.min(er.left + state.margin + 2, window.innerWidth - 2));
+    var y = Math.max(2, er.top + (state.topInset || 0) + 8);
+    var off = offsetAtPointPaged(ctx, x, y);
     return off === null ? 0 : off;
+  }
+
+  // 滚动模式采样：视口中线（45%），语义 = 当前阅读行，与 restoreScrollOffset 严格对应。
+  function currentOffsetScroll() {
+    var ctx = state.textCtx;
+    if (!ctx) return 0;
+    var x = Math.max(2, Math.min(window.innerWidth / 2, window.innerWidth - 2));
+    var y = sampleOffsetY();
+    var off = offsetAtPointScroll(ctx, x, y);
+    return off === null ? 0 : off;
+  }
+
+  function currentOffset() {
+    return state.paged ? currentOffsetPaged() : currentOffsetScroll();
   }
 
   function sampleOffsetY() {
@@ -394,15 +408,10 @@
     return Math.max(8, sampleOffsetY() - Math.round((state.fontSize * state.lineHeight) / 2));
   }
 
-  // 采样必须落在正文文本上：
-  // - 段落间隙/卡片 padding 会让 caretRangeFromPoint 返回 null 或元素首文本；
-  // - 命中图片时 caretRangeFromPoint 会返回“邻近文本”（可能是别的页的旧锚点，
-  //   例如 NGA 大图跨列时每页都返回同一 offset）——必须跳过图片继续向下找。
-  // 分页模式扫描整页找第一个文本行；滚动模式只扫描采样点下方一小段。
-  function offsetAtPoint(ctx, x, y) {
-    var maxY = state.paged
-      ? Math.max(y + 24, Math.round(viewH() - 30))
-      : Math.min(Math.max(y + 24, Math.round(viewH() - 30)), y + 120);
+  // 采样必须落在正文文本上：段落间隙/padding 会返回 null 或元素首文本；
+  // 命中图片时 caretRangeFromPoint 返回“邻近文本”（NGA 大图跨列时每页同一旧锚点），
+  // 必须跳过图片继续向下找第一个文本行。
+  function scanForText(ctx, x, y, maxY) {
     for (var yy = y; yy <= maxY; yy += 24) {
       var hit = document.elementFromPoint(x, yy);
       if (hit && hit.closest && hit.closest('img,video,audio,svg,canvas,picture')) continue;
@@ -412,7 +421,16 @@
     return null;
   }
 
-  function restoreScroll(offset) {
+  function offsetAtPointPaged(ctx, x, y) {
+    return scanForText(ctx, x, y, Math.max(y + 24, Math.round(viewH() - 30)));
+  }
+
+  function offsetAtPointScroll(ctx, x, y) {
+    return scanForText(ctx, x, y, Math.min(Math.max(y + 24, Math.round(viewH() - 30)), y + 120));
+  }
+
+  // 滚动模式恢复：把锚点行顶放到视口中线（scrollAnchorY），与 currentOffsetScroll 对应。
+  function restoreScrollOffset(offset) {
     var ctx = state.textCtx;
     if (!ctx || offset <= 0) {
       window.scrollTo(0, 0);
@@ -437,11 +455,8 @@
     if (ctx) state.restorePending = false;
   }
 
+  // 分页模式按 text_offset 定位：锚点字符所在列 → 页。
   function gotoOffset(offset) {
-    if (!state.paged) {
-      restoreScroll(offset);
-      return 0;
-    }
     var ctx = state.textCtx;
     if (!ctx) return 0;
     var point = TextPos.plainToPoint(ctx, offset);
@@ -462,19 +477,24 @@
     return gotoPage(page);
   }
 
-  // 恢复优先“页码一致直接翻页”：同章同设置且图片加载状态一致时 total 相同，
-  // 能精确回到保存页（含整页图片的页面）；total 不一致（布局变了）再按 offset 定位。
-  function restoreToSavedPage() {
-    if (!state.paged || state.restorePage < 0 || state.restoreTotal <= 0) return false;
+  // 分页恢复锚点：优先“页码一致直接翻页”（含整页图片的页也能精确恢复）；
+  // total 不一致（布局/图片加载状态变了）再按文本 offset 定位。
+  function restorePagedAnchor(offset) {
     var m = measure();
     try {
-      log('[restore-page] saved=' + state.restorePage + '/' + state.restoreTotal +
+      log('[restore-page] anchorPage=' + state.pagedAnchorPage + '/' + state.pagedAnchorTotal +
         ' now=' + m.current + '/' + m.total);
     } catch (e) { /* ignore */ }
-    if (m.total !== state.restoreTotal) return false;
-    gotoPage(state.restorePage);
-    try { log('[restore-page] goto -> ' + state.restorePage + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
-    return true;
+    if (state.pagedAnchorPage >= 0 && state.pagedAnchorTotal > 0 && m.total === state.pagedAnchorTotal) {
+      gotoPage(state.pagedAnchorPage);
+      try { log('[restore-page] gotoPage -> ' + state.pagedAnchorPage + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
+      return true;
+    }
+    if (offset > 0) {
+      gotoOffset(offset);
+      return true;
+    }
+    return false;
   }
 
   // doSave=true 只在用户翻页时传；重排/恢复/模式切换只更新 UI，不写进度，
@@ -595,8 +615,13 @@
     var el = scrollEl();
     var wasScrolled = !!el && (state.paged ? el.scrollLeft > 1 : window.scrollY > 1);
     var offset = currentOffset();
-    if (offset > 0) state.anchorOffset = offset;
+    if (offset > 0) {
+      // 模式切换是跨模式交接：text_offset 共通，两个模式的锚点都更新为当前值。
+      state.pagedAnchor = offset;
+      state.scrollAnchor = offset;
+    }
     state.paged = !!paged && !state.huge;
+    try { AnkeReaderBridge.onMode(state.paged); } catch (e) { /* ignore */ }
     document.body.classList.toggle('paged', state.paged);
     if (state.paged) forceEagerImages();
     requestAnimationFrame(function () {
@@ -614,7 +639,7 @@
       } else {
         clearPagedLayout();
         if (offset > 0) {
-          restoreScroll(offset);
+          restoreScrollOffset(offset);
         } else if (wasScrolled) {
           var r = window.scrollY / Math.max(1, document.body.scrollHeight - window.innerHeight);
           window.scrollTo(0, r * Math.max(1, document.body.scrollHeight - window.innerHeight));
@@ -661,9 +686,9 @@
       if (state.paged) {
         prepare();
         normalizeTallTables();
-        if (!restoreToSavedPage() && offset > 0) gotoOffset(offset);
+        restorePagedAnchor(offset);
       } else if (offset > 0) {
-        restoreScroll(offset);
+        restoreScrollOffset(offset);
       }
       report(false);
       markSettled();
@@ -674,9 +699,9 @@
     if (!state.paged) return;
     var el = scrollEl();
     var wasScrolled = !!el && el.scrollLeft > 1;
-    // 重排锚点必须是稳定值（用户翻页/滚动时更新的 anchorOffset），
+    // 重排锚点必须是稳定值（用户翻页/滚动时更新的 pagedAnchor），
     // 不能取“当前页顶采样”——多次重排时页顶会逐页漂移，越恢复越靠前。
-    var offset = state.anchorOffset > 0 ? state.anchorOffset : currentOffset();
+    var offset = state.pagedAnchor > 0 ? state.pagedAnchor : currentOffsetPaged();
     if (offset > 0 && resizeOffset === 0) resizeOffset = offset;
     if (wasScrolled) resizeScrolled = true;
     if (resizeTimer) clearTimeout(resizeTimer);
@@ -687,13 +712,8 @@
       }
       prepare();
       normalizeTallTables();
-      if (!state.userMoved && restoreToSavedPage()) {
-        // 恢复期重排：保持保存页（页码一致时精确翻页），不按锚点偏移定位。
-      } else if (resizeOffset > 0) {
-        gotoOffset(resizeOffset);
-      } else if (state.restorePending) {
-        gotoOffset(state.restoreOffset);
-      } else if (resizeScrolled && el) {
+      if (!restorePagedAnchor(resizeOffset > 0 ? resizeOffset : state.restoreOffset)) {
+        // 无页码且 offset<=0：按滚动比例兜底（极少见）。
         var len = (state.textCtx && state.textCtx.text.length) || 0;
         if (len > 0) {
           var ratio = el.scrollLeft / Math.max(1, el.scrollWidth - el.clientWidth);
@@ -718,7 +738,7 @@
   function refresh() {
     if (!state.paged) {
       if (state.restorePending) {
-        restoreScroll(state.restoreOffset);
+        restoreScrollOffset(state.restoreOffset);
         markSettled();
       } else {
         markSettled();
@@ -732,12 +752,8 @@
     prepare();
     requestAnimationFrame(function () {
       normalizeTallTables();
-      var off = state.restorePending ? state.restoreOffset : state.anchorOffset;
-      if (!state.userMoved && restoreToSavedPage()) {
-        // 恢复期兜底重排：保持保存页。
-      } else if (off > 0) {
-        gotoOffset(off);
-      }
+      var off = state.restorePending ? state.restoreOffset : state.pagedAnchor;
+      restorePagedAnchor(off);
       report(false);
       markSettled();
     });
@@ -755,31 +771,33 @@
     state.topInset = Math.max(0, opts.topInset || 0);
     state.bottomInset = Math.max(0, opts.bottomInset || 0);
     state.restoreOffset = Math.max(0, opts.offset || 0);
-    state.anchorOffset = state.restoreOffset;
+    state.pagedAnchor = state.restoreOffset;
+    state.scrollAnchor = state.restoreOffset;
     state.restorePending = state.restoreOffset > 0;
     state.wasSwitch = !!opts.wasSwitch;
     state.settled = false;
-    state.restorePage = (opts.page === undefined || opts.page === null) ? -1 : opts.page;
-    state.restoreTotal = (opts.total === undefined || opts.total === null) ? -1 : opts.total;
+    state.pagedAnchorPage = (opts.page === undefined || opts.page === null) ? -1 : opts.page;
+    state.pagedAnchorTotal = (opts.total === undefined || opts.total === null) ? -1 : opts.total;
     if (!document.body) return;
     state.huge = (document.body.textContent || '').length > MAX_PAGED_TEXT;
     state.paged = !!opts.paged && !state.huge;
+    try { AnkeReaderBridge.onMode(state.paged); } catch (e) { /* ignore */ }
     if (state.paged) {
       state.textCtx = TextPos.build(document);
     } else {
       state.textCtx = null;
       setTimeout(function () {
         state.textCtx = TextPos.build(document);
-        if (state.restorePending && state.restoreOffset > 0) restoreScroll(state.restoreOffset);
+        if (state.restorePending && state.restoreOffset > 0) restoreScrollOffset(state.restoreOffset);
         var o = 0;
         try { o = currentOffset(); } catch (e) { /* ignore */ }
         if (o > 0) {
           log('[save:scroll] ch=' + state.chapterIndex + ' off=' + o);
-          state.anchorOffset = o;
+          state.scrollAnchor = o;
           try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
         }
         if (!layoutReady()) {
-          tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.anchorOffset, 0);
+          tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.scrollAnchor, 0);
         } else {
           markSettled();
         }
@@ -829,7 +847,7 @@
         var o = 0;
         try { o = currentOffset(); } catch (e) { /* ignore */ }
         if (o > 0) {
-          state.anchorOffset = o;
+          state.scrollAnchor = o;
           try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true); } catch (e) { /* ignore */ }
         }
       }, 500);
@@ -841,10 +859,7 @@
       if (state.paged) {
         prepare();
         normalizeTallTables();
-        if (!restoreToSavedPage()) {
-          if (state.restoreOffset > 0) gotoOffset(state.restoreOffset);
-          else gotoPage(0);
-        }
+        if (!restorePagedAnchor(state.restoreOffset)) gotoPage(0);
         // 换章后立即把新章位置落库（桌面 loadChapter 语义；首次打开不写，
         // 避免中间布局污染已保存的锚点）。
         if (state.wasSwitch) {
@@ -856,10 +871,13 @@
           try { AnkeReaderBridge.saveProgressNow(state.chapterIndex, o > 0 ? o : 1, true); } catch (e) { /* ignore */ }
         }
       } else {
-        if (state.restoreOffset > 0) restoreScroll(state.restoreOffset);
+        if (state.restoreOffset > 0) restoreScrollOffset(state.restoreOffset);
       }
       if (!layoutReady()) {
-        tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.anchorOffset, 0);
+        tryRestoreAfterSettle(
+          state.paged ? state.pagedAnchor : state.scrollAnchor,
+          0,
+        );
       } else {
         setTimeout(markSettled, 100);
       }
