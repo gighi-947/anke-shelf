@@ -107,6 +107,12 @@ class ApiServiceTest(unittest.TestCase):
         api = self._make_api(BookManager())
         self.assertEqual(api.get_version(), "1.2.0")
 
+    def test_open_book_error_code(self):
+        api = self._make_api(BookManager())
+        resp = api.open_book("missing-book")
+        self.assertEqual(resp.get("error_code"), "BOOK_NOT_FOUND")
+        self.assertIn("error", resp)
+
     def test_toggle_fullscreen(self):
         calls = []
         api = self._make_api(BookManager(), window_toggle=lambda: calls.append(1))

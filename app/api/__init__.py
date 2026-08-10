@@ -15,6 +15,7 @@ _HANDLERS = (
     ("get_version", system_api.get_version),
     ("open_data_dir", system_api.open_data_dir),
     ("uninstall_and_quit", system_api.uninstall_and_quit),
+    ("export_diagnostics", system_api.export_diagnostics),
     # 书架与书籍
     ("get_shelf", library.get_shelf),
     ("import_books", library.import_books),

@@ -5,6 +5,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from .migrations import run_migrations
 from .storage import atomic_write_json
 
 DEFAULTS: dict[str, Any] = {
@@ -58,6 +59,12 @@ _LEGACY_DEFAULTS = {
     "settings_version": 3,
 }
 
+_SETTINGS_MIGRATIONS = {
+    1: lambda data: {**data, **_LEGACY_DEFAULTS},
+    2: lambda data: {**data, **_LEGACY_DEFAULTS},
+    3: lambda data: {**data, **_LEGACY_DEFAULTS},
+}
+
 
 class Settings:
     """扁平键值设置，update 接受部分补丁，原子写盘。"""
@@ -71,12 +78,14 @@ class Settings:
         try:
             with open(self._file, encoding="utf-8") as f:
                 data = json.load(f)
+            migrated = int(data.get("settings_version", 0) or 0) < 3
+            if migrated:
+                # 旧版设置文件：一次性切到新默认值（滚动阅读 + 内置默认字体）
+                data = run_migrations(data, _SETTINGS_MIGRATIONS, 3, "settings_version")
             for k in DEFAULTS:
                 if k in data and isinstance(data[k], type(DEFAULTS[k])):
                     self._data[k] = data[k]
-            if data.get("settings_version", 0) < 3:
-                # 旧版设置文件：一次性切到新默认值（滚动阅读 + 内置默认字体）
-                self._data.update(_LEGACY_DEFAULTS)
+            if migrated:
                 self.save()
         except (OSError, json.JSONDecodeError, AttributeError):
             pass

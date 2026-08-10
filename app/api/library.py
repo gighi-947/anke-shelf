@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from ..epub import EpubError
+from ..errors import ErrorCode, api_error
 from ..paths import file_mtime
 from ..shelf import BookRecord, ProgressStore
 from .common import (
@@ -73,11 +74,11 @@ def open_book(ctx: ApiContext, book_id: str) -> dict:
         # 重启后 BookManager 为空：按书架记录里的原路径重新注册。
         rec = ctx.shelf.get(book_id)
         if rec is None:
-            return {"error": "书籍未加载，请重新导入"}
+            return api_error(ErrorCode.BOOK_NOT_FOUND, "书籍未加载，请重新导入")
         try:
             book = ctx.books.register(rec.path)
         except (EpubError, OSError) as e:
-            return {"error": f"书籍文件无法读取：{e}"}
+            return api_error(ErrorCode.BOOK_INVALID, f"书籍文件无法读取：{e}")
 
     # mtime 变化 → 重解析（用户可能原地替换了文件）
     rec = ctx.shelf.get(book_id)

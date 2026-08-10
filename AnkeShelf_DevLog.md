@@ -1873,3 +1873,22 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   搜索 revision 1 条）；UI 实机 harness exit=0（92 项 PASS）。
 - **待办**：B6（统一 Migration + 结构化 API 错误码 + 诊断导出/日志）按 review
   顺序推进；TaskManager/ContentSource 仍按计划推迟到第二书源需求出现时。
+
+### 10.11 B6：统一 Migration + 结构化 API 错误码 + 诊断导出（2026-08-10）
+
+- **统一迁移框架**：新增 `app/migrations.py`（`run_migrations`：逐步迁移 +
+  版本校验）；`Settings.load` 的旧版（v<3）迁移改走框架（行为不变：滚动阅读 +
+  内置默认字体 + 落盘），新增 3 条迁移单测。
+- **结构化 API 错误码**：新增 `app/errors.py`（`ErrorCode` + `api_error`，
+  message 不变、新增 `ok/error_code`，向后兼容）；应用到 open_book
+  （BOOK_NOT_FOUND/BOOK_INVALID）、标注/导出/NGA/全屏的“服务不可用”
+  （SERVICE_UNAVAILABLE）、标注不存在/参数非法（ANNOTATION_INVALID）、
+  诊断导出失败（EXPORT_FAILED/STORAGE_ERROR）；新增 error_code 断言测试。
+- **诊断导出**：新增 `app/diagnostics.py`（zip：version.txt + 脱敏 settings.json
+  + logs/*.log；**绝不打包 nga_config.ini / config.ini**）；新增
+  `/api/export_diagnostics`（原生选目录）与设置 → 数据页「导出诊断信息」按钮；
+  新增打包内容与凭据隔离单测。
+- **验证**：Python 全量 **199 项 OK**（+5）；`node --check` OK；
+  UI 实机 harness exit=0（92 项 PASS）。
+- **待办**：B7（TaskManager 抽象 / 统一日志字段）按 review 顺序推进；
+  ContentSource 仍留到第二书源需求。

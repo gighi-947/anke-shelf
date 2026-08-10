@@ -13,6 +13,7 @@
     ['get_version', 'getVersion'],
     ['open_data_dir', 'openDataDir'],
     ['uninstall_and_quit', 'uninstallAndQuit'],
+    ['export_diagnostics', 'exportDiagnostics'],
     ['get_shelf', 'getShelf'],
     ['import_books', 'importBooks'],
     ['remove_book', 'removeBook'],

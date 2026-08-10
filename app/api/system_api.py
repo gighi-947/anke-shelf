@@ -6,6 +6,7 @@ import subprocess
 import time
 
 from .. import __version__
+from ..errors import ErrorCode, api_error
 from ..instance_guard import release_instance_lock
 from ..paths import data_dir
 from .common import ApiContext
@@ -20,13 +21,30 @@ def on_frontend_ready(ctx: ApiContext) -> None:
 def toggle_fullscreen(ctx: ApiContext) -> dict:
     """沉浸式阅读：切换宿主窗口全屏。"""
     if ctx.window_toggle is None:
-        return {"ok": False, "error": "全屏控制不可用"}
+        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "全屏控制不可用")
     try:
         ctx.window_toggle()
         ctx._fullscreen = not getattr(ctx, "_fullscreen", False)
         return {"ok": True}
     except Exception as e:  # noqa: BLE001
-        return {"ok": False, "error": str(e)}
+        return api_error(ErrorCode.SERVICE_UNAVAILABLE, str(e))
+
+
+def export_diagnostics(ctx: ApiContext) -> dict:
+    """导出诊断包（版本/平台/日志/脱敏设置）到用户自选文件夹。"""
+    from pathlib import Path
+
+    from ..diagnostics import build_diagnostics
+    from ..dialogs import pick_folder
+
+    dest = pick_folder("选择诊断包保存文件夹")
+    if not dest:
+        return api_error(ErrorCode.EXPORT_FAILED, "已取消")
+    try:
+        path = build_diagnostics(Path(dest))
+        return {"ok": True, "path": str(path)}
+    except (OSError, ValueError) as e:
+        return api_error(ErrorCode.STORAGE_ERROR, str(e))
 
 
 def log_frontend(ctx: ApiContext, message: str) -> None:

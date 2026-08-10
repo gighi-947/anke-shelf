@@ -629,6 +629,12 @@
       btn('打开数据目录', () => {
         Api.openDataDir().catch((e) => Toast.show('打开失败：' + (e.message || e), true));
       }),
+      btn('导出诊断信息', () => {
+        Api.exportDiagnostics().then((r) => {
+          if (r && r.ok) Toast.show('诊断包已导出：' + r.path);
+          else Toast.show('导出失败：' + ((r && r.error) || '已取消'), true);
+        }).catch((e) => Toast.show('导出失败：' + (e.message || e), true));
+      }),
       btn('卸载并清除数据', uninstallAndClear),
     );
     wrap.appendChild(rowWrap);
