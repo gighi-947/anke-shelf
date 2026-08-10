@@ -1,0 +1,27 @@
+name: Nightly Windows checks
+
+on:
+  schedule:
+    # 北京时间 04:00（UTC 20:00）——性能基准与安全回归，不阻塞普通 PR
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  windows-nightly:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+      - name: Full unit tests (incl. security regression)
+        run: python -m unittest discover tests
+      - name: Performance benchmark
+        run: python -m tests.performance.bench
+      - uses: actions/upload-artifact@v5
+        with:
+          name: windows-performance-baseline
+          path: tests/performance/baseline.json

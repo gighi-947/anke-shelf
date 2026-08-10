@@ -37,6 +37,7 @@
 | build_diagnostics | 诊断包导出（版本/平台/日志/脱敏设置，不含凭据） | `app/diagnostics.py`；设置 → 数据「导出诊断信息」 |
 | TaskManager / TaskStatus | 按 lane 单飞的任务基础设施（NGA 暂未迁移） | `app/tasks.py` |
 | log_event | 统一日志字段（component event key=value） | `app/logutil.py`；nga/search 已接入 |
+| tests/security / bench.py | EPUB 安全回归（CSP/穿越/ZIP 炸弹）与性能基准（baseline.json） | `tests/security/`、`tests/performance/`；nightly CI 执行 |
 | TextPos | DOM↔纯文本逐字符映射 | 同上；跨端对照测试 `ReaderPagedCrossTest` |
 | scroll_ratio | 滚动模式整屏图片时的滚动比例锚点（0..1；-1=文本锚点） | Android `ProgressEntry.scroll_ratio`；reader-lite.js `state.scrollRatio` |
 | page_index / page_total | 分页模式页码/总页数（0 基；-1=无） | Android `ProgressEntry` 扩展字段 |

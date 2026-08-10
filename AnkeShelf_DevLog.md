@@ -1908,3 +1908,23 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 - **待办**：ContentSource / 第二书源抽象仍留到需求出现；review 的
   P0/P1 主要项（契约、领域模型、Api/Reader 拆分、事件/缓存失效、迁移/错误码/
   诊断）已全部落地。
+
+### 10.13 B8：测试补齐——EPUB 安全回归 + ZIP 炸弹防护、性能基准、nightly CI（2026-08-10）
+
+- **EPUB 安全回归**：新增 `tests/security/`（7 条）：最小恶意 EPUB 构造器 +
+  条目数/解压体积超限拒绝、穿越条目仅限 zip 内容（不触宿主 FS）、script 内容
+  文本提取隔离、章节响应 CSP（script-src/object-src 'none'）、服务器穿越请求
+  400/404。
+- **ZIP 炸弹防护**：`app/epub.py` 的 `EpubBook` 新增可配置上限
+  （默认 max_entries=50000、max_total_bytes=8GiB，best-effort），超限抛
+  `EpubError`；正常书不受影响（NGA 嵌入图大书在限内）。
+- **性能基准**：新增 `tests/performance/bench.py`（`python -m
+  tests.performance.bench`），度量章节文本提取、原生书打开读取、搜索索引构建+
+  查询（耗时 + tracemalloc 峰值），输出 `baseline.json`（已提交初值）。
+- **CI 分层**：新增 `.github/workflows/nightly.yml`（UTC 20:00 定时 +
+  workflow_dispatch）：全量单测（含安全回归）+ 性能基准 + 上传 baseline artifact；
+  真实 NGA 网络测试仍不进 PR/nightly。
+- **验证**：Python 全量 **211 项 OK**（+7 安全回归）；UI 实机 harness exit=0
+  （92 项 PASS）；bench 本地生成 baseline.json 成功。
+- **待办**：性能阈值告警（如 TextPos 构建 +60% 发 warning）待积累几轮 nightly
+  数据后再定；安全防护可继续补单 entry 压缩比上限。

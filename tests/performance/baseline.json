@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "fixture": "native-book/basic-nga",
+  "results": {
+    "extract_dom_text": {
+      "0000.xhtml": {
+        "ms": 1.116,
+        "peak_mb": 0.01
+      },
+      "0001.xhtml": {
+        "ms": 1.295,
+        "peak_mb": 0.01
+      },
+      "0002.xhtml": {
+        "ms": 1.076,
+        "peak_mb": 0.0
+      }
+    },
+    "native_book_open_read": {
+      "ms": 3.216,
+      "peak_mb": 0.02
+    },
+    "search_build_and_query": {
+      "ms": 6.976,
+      "peak_mb": 0.02
+    }
+  }
+}

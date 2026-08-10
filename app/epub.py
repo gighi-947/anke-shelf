@@ -143,8 +143,15 @@ def _norm_href(href: str, base_dir: str) -> str:
 class EpubBook:
     """一本已解析的电子书。线程安全只读；多个读者线程可共享。"""
 
-    def __init__(self, path: str):
+    def __init__(
+        self,
+        path: str,
+        max_entries: int = 50000,
+        max_total_bytes: int = 8 * 1024 ** 3,
+    ):
         self.path = os_path = str(path)
+        self._max_entries = max_entries
+        self._max_total_bytes = max_total_bytes
         self.id = hashlib.md5(os_path.encode("utf-8")).hexdigest()
         self.title = ""
         self.author = ""
@@ -171,6 +178,16 @@ class EpubBook:
             raise EpubError(f"损坏的 EPUB 文件：{e}") from e
 
         try:
+            # ZIP 炸弹防护（best-effort）：条目数/总解压体积超限即拒绝
+            infos = self._zip.infolist()
+            if len(infos) > self._max_entries:
+                self.close()
+                raise EpubError("EPUB 条目数超限，疑似 ZIP 炸弹")
+            total_bytes = sum(info.file_size for info in infos)
+            if total_bytes > self._max_total_bytes:
+                self.close()
+                raise EpubError("EPUB 解压体积超限，疑似 ZIP 炸弹")
+
             # 0. 条目名映射（最先建立，供后续所有读取使用）
             self._build_entry_map()
 
