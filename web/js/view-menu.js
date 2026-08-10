@@ -10,7 +10,7 @@
   async function loadFonts(force) {
     if (!force && fontsCache) return fontsCache;
     try {
-      fontsCache = await Bridge.call('get_fonts');
+      fontsCache = await Api.getFonts();
     } catch (e) {
       fontsCache = { fonts: [], global_font: '', book_fonts: {} };
     }
@@ -95,7 +95,7 @@
       const v = sel.value;
       if (v === '__pick__') {
         try {
-          const r = await Bridge.call('pick_font_file');
+          const r = await Api.pickFontFile();
           if (r && r.error) { Toast.show('导入字体失败：' + r.error, true); }
           else if (r && r.key) {
             fontsCache = null;
@@ -124,12 +124,12 @@
     const s = App.state.settings;
     if (id === 'vm-font-global') {
       s.custom_font = value || '';
-      Bridge.call('save_settings', { custom_font: s.custom_font });
+      Api.saveSettings( { custom_font: s.custom_font });
     } else {
       s.book_fonts = s.book_fonts || {};
       if (value) s.book_fonts[App.state.bookId] = value;
       else delete s.book_fonts[App.state.bookId];
-      Bridge.call('save_settings', { book_fonts: s.book_fonts });
+      Api.saveSettings( { book_fonts: s.book_fonts });
     }
     if (window.Reader) Reader.updateOverrides();
   }
@@ -184,7 +184,7 @@
       s.dual_page = v === 'dual';
       if (v === 'auto') s.auto_dual = true;
       else if (v === 'single') s.auto_dual = false;
-      Bridge.call('save_settings', {
+      Api.saveSettings( {
         pagination: s.pagination,
         dual_page: s.dual_page,
         auto_dual: s.auto_dual !== false,
@@ -218,7 +218,7 @@
       if (window.Reader) Reader.setPageWidth(v);
       clearTimeout(saveTimer);
       saveTimer = setTimeout(() => {
-        Bridge.call('save_settings', { page_width: v });
+        Api.saveSettings( { page_width: v });
       }, 250);
     });
     wrap.append(input, val);

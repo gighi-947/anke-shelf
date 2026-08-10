@@ -475,7 +475,7 @@
       full_redownload: check('nga-full'),
     };
     try {
-      const r = await Bridge.call('nga_start_download', params);
+      const r = await Api.ngaStartDownload( params);
       if (!r.ok) {
         Toast.show(r.error || '启动失败', true);
         if (r.error && r.error.indexOf('已有') !== -1) pollDownload();
@@ -489,7 +489,7 @@
   }
 
   function cancelDownload() {
-    Bridge.call('nga_cancel').catch(() => {});
+    Api.ngaCancel().catch(() => {});
     const stage = document.getElementById('nga-progress-stage');
     if (stage) stage.textContent = '正在取消…';
     const start = document.getElementById('nga-start');
@@ -502,7 +502,7 @@
     if (!fireOnDone) {
       // 打开面板时只“接续”正在运行的任务；任务已结束（done/error/cancelled/idle）
       // 仅展示当前状态，避免把上一次的终态再次当作完成事件处理（例如重复跳转阅读器）。
-      Bridge.call('nga_download_status').then((s) => {
+      Api.ngaDownloadStatus().then((s) => {
         setDownloadRunning(s.running);
         renderDownloadStatus(s);
         if (s.running) pollDownload();
@@ -510,7 +510,7 @@
       return;
     }
     downloadPoller.start(
-      () => Bridge.call('nga_download_status'),
+      () => Api.ngaDownloadStatus(),
       (s) => {
         setDownloadRunning(s.running);
         renderDownloadStatus(s);
@@ -600,7 +600,7 @@
 
   async function refreshConfig() {
     try {
-      const cfg = await Bridge.call('nga_get_config');
+      const cfg = await Api.ngaGetConfig();
       setVal('nga-cfg-uid', cfg.uid || '');
       setVal('nga-cfg-cid', cfg.cid || '');
       setVal('nga-cfg-ua', cfg.ua || '');
@@ -609,7 +609,7 @@
 
   async function saveConfig() {
     try {
-      const cfg = await Bridge.call('nga_save_config', {
+      const cfg = await Api.ngaSaveConfig( {
         uid: val('nga-cfg-uid'),
         cid: val('nga-cfg-cid'),
         ua: val('nga-cfg-ua'),
@@ -623,7 +623,7 @@
   async function clearConfig() {
     if (!confirm('确定清除本机已保存的 NGA 登录配置（Cookie/UA）？')) return;
     try {
-      const cfg = await Bridge.call('nga_clear_config');
+      const cfg = await Api.ngaClearConfig();
       setVal('nga-cfg-uid', cfg.uid || '');
       setVal('nga-cfg-cid', cfg.cid || '');
       setVal('nga-cfg-ua', cfg.ua || '');
@@ -660,7 +660,7 @@
     const empty = document.getElementById('dl-export-empty');
     let books = [];
     try {
-      books = (await Bridge.call('get_shelf')).filter((b) => b.nga_tid);
+      books = (await Api.getShelf()).filter((b) => b.nga_tid);
     } catch (e) { /* 保持空 */ }
     fillBookSelect(sel, books, '选择要导出的帖子…');
     const uSel = document.getElementById('dl-update-book');
@@ -680,7 +680,7 @@
   async function loadUpdateDefaults(bookId) {
     if (!bookId) return;
     try {
-      const d = await Bridge.call('nga_update_defaults', bookId);
+      const d = await Api.ngaUpdateDefaults( bookId);
       if (!d || d.error) return;
       setVal('dl-update-authorid', d.author_id || '0');
       setVal('dl-update-theme', d.theme === 'dark' ? 'dark' : 'light');
@@ -697,7 +697,7 @@
       return;
     }
     try {
-      const r = await Bridge.call('export_start', bookId, selectedFmt);
+      const r = await Api.exportStart( bookId, selectedFmt);
       if (!r.ok) {
         Toast.show(r.error || '导出启动失败', true);
         if (r.error && r.error.indexOf('已有') !== -1) pollExport();
@@ -724,7 +724,7 @@
       toc_pid: intVal('dl-update-toc-pid'),
     };
     try {
-      const r = await Bridge.call('nga_update_book', bookId, params);
+      const r = await Api.ngaUpdateBook( bookId, params);
       if (!r.ok) {
         Toast.show(r.error || '更新启动失败', true);
         if (r.error && r.error.indexOf('已有') !== -1) {
@@ -743,7 +743,7 @@
 
   function pollExport() {
     exportPoller.start(
-      () => Bridge.call('export_status'),
+      () => Api.exportStatus(),
       renderExportStatus,
       (s) => {
         if (s.stage === 'done') {
@@ -793,7 +793,7 @@
 
   async function openExportDest() {
     try {
-      const r = await Bridge.call('export_open_dest');
+      const r = await Api.exportOpenDest();
       if (r && r.error) Toast.show('打开失败：' + r.error, true);
     } catch (e) {
       Toast.show('打开失败：' + (e.message || e), true);

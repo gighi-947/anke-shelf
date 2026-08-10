@@ -22,11 +22,11 @@
       this._initialized = true;
       try {
         Icons.inject();
-        Bridge.call('log_frontend', 'init:start').catch(() => {});
+        Api.logFrontend( 'init:start').catch(() => {});
         try {
-          state.settings = await Bridge.call('get_settings');
+          state.settings = await Api.getSettings();
         } catch (e) {
-          Bridge.call('log_frontend', 'init:get_settings_failed: ' + (e.message || e)).catch(() => {});
+          Api.logFrontend( 'init:get_settings_failed: ' + (e.message || e)).catch(() => {});
         }
         Theme.applySettings(state.settings);
         Theme.applyReaderPrefs(state.settings.font_size, state.settings.line_height);
@@ -37,15 +37,15 @@
         this.bindReaderChrome();
         try {
           await Shelf.render();
-          Bridge.call('log_frontend', 'init:shelf_rendered').catch(() => {});
+          Api.logFrontend( 'init:shelf_rendered').catch(() => {});
         } catch (e) {
-          Bridge.call('log_frontend', 'init:shelf_failed: ' + (e.message || e)).catch(() => {});
+          Api.logFrontend( 'init:shelf_failed: ' + (e.message || e)).catch(() => {});
         }
       } catch (e) {
-        Bridge.call('log_frontend', 'init:fatal: ' + (e.message || e)).catch(() => {});
+        Api.logFrontend( 'init:fatal: ' + (e.message || e)).catch(() => {});
       } finally {
         // 无论初始化是否完整，都通知 Python 可以显示窗口（超时保护在桥接层）。
-        Bridge.call('on_frontend_ready').catch(() => {});
+        Api.onFrontendReady().catch(() => {});
       }
     },
 
@@ -112,7 +112,7 @@
       const on = !App.state.settings.bars_pinned;
       App.state.settings.bars_pinned = on;
       this.setBarsPinned(on);
-      Bridge.call('save_settings', { bars_pinned: on });
+      Api.saveSettings( { bars_pinned: on });
     },
 
     /** 沉浸式阅读：切换宿主窗口全屏；进入时收起顶/底栏。 */
@@ -144,7 +144,7 @@
     async _toggleFullscreenBridge() {
       let r = null;
       try {
-        r = await Bridge.call('toggle_fullscreen');
+        r = await Api.toggleFullscreen();
       } catch (e) {
         r = { ok: false, error: e.message || String(e) };
       }
@@ -177,7 +177,7 @@
 
     async showReader(bookId) {
       try {
-        const data = await Bridge.call('open_book', bookId);
+        const data = await Api.openBook( bookId);
         if (data && data.error) {
           Toast.show(data.error, true);
           return;
@@ -226,7 +226,7 @@
         Theme.applySettings(state.settings);
         if (state.view === 'reader' && window.Reader) Reader.updateOverrides();
         this.updateThemeIcons();
-        Bridge.call('save_settings', {
+        Api.saveSettings( {
           theme: state.settings.theme,
           theme_mode: state.settings.theme_mode,
         });

@@ -196,7 +196,7 @@
         Theme.applySettings(s);
         if (window.Reader) Reader.updateOverrides();
         if (window.App) App.updateThemeIcons();
-        Bridge.call('save_settings', { theme: s.theme, theme_mode: mode });
+        Api.saveSettings( { theme: s.theme, theme_mode: mode });
         SettingsPage.sync();
         Toast.show(mode === 'system' ? '已切换为跟随系统主题' : '主题已更新');
       });
@@ -248,7 +248,7 @@
         s.custom_accent = p.accent;
         Theme.applySettings(s);
         if (window.Reader) Reader.updateOverrides();
-        Bridge.call('save_settings', {
+        Api.saveSettings( {
           custom_bg: p.bg, custom_text: p.text,
           custom_primary: p.primary, custom_accent: p.accent,
         });
@@ -265,7 +265,7 @@
       s.custom_accent = '';
       Theme.applySettings(s);
       if (window.Reader) Reader.updateOverrides();
-      Bridge.call('save_settings', {
+      Api.saveSettings( {
         custom_bg: '', custom_text: '',
         custom_primary: '', custom_accent: '',
       });
@@ -312,7 +312,7 @@
       const s = App.state.settings;
       s[key] = input.value;
       apply();
-      Bridge.call('save_settings', { [key]: input.value });
+      Api.saveSettings( { [key]: input.value });
       SettingsPage.sync();
     });
     const swatches = document.createElement('div');
@@ -330,7 +330,7 @@
         st[key] = val;
         input.value = val || '#000000';
         apply();
-        Bridge.call('save_settings', { [key]: val });
+        Api.saveSettings( { [key]: val });
         SettingsPage.sync();
       });
       swatches.appendChild(s);
@@ -340,7 +340,7 @@
       s[key] = '';
       input.value = '#000000';
       apply();
-      Bridge.call('save_settings', { [key]: '' });
+      Api.saveSettings( { [key]: '' });
       SettingsPage.sync();
     });
     const hintEl = document.createElement('span');
@@ -367,7 +367,7 @@
       s.brightness = parseFloat(input.value);
       val.textContent = Math.round(s.brightness * 100) + '%';
       if (window.Assist) Assist.setBrightness(s.brightness);
-      Bridge.call('save_settings', { brightness: s.brightness });
+      Api.saveSettings( { brightness: s.brightness });
     });
     const wrap = document.createElement('div');
     wrap.className = 'settings-control-inline';
@@ -385,7 +385,7 @@
         s.font_size = v;
         Theme.applyReaderPrefs(s.font_size, s.line_height);
         if (window.Reader) Reader.updateOverrides();
-        Bridge.call('save_settings', { font_size: s.font_size });
+        Api.saveSettings( { font_size: s.font_size });
         if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
       },
       (v) => v + 'px')));
@@ -396,7 +396,7 @@
         s.line_height = v / 10;
         Theme.applyReaderPrefs(s.font_size, s.line_height);
         if (window.Reader) Reader.updateOverrides();
-        Bridge.call('save_settings', { line_height: s.line_height });
+        Api.saveSettings( { line_height: s.line_height });
         if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
       },
       (v) => (v / 10).toFixed(1))));
@@ -406,7 +406,7 @@
         const s = App.state.settings;
         s.page_width = v / 100;
         if (window.Reader) Reader.setPageWidth(s.page_width);
-        Bridge.call('save_settings', { page_width: s.page_width });
+        Api.saveSettings( { page_width: s.page_width });
         if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
       },
       (v) => v + '%')));
@@ -461,7 +461,7 @@
       s.dual_page = v === 'dual';
       if (v === 'auto') s.auto_dual = true;
       else if (v === 'single') s.auto_dual = false;
-      Bridge.call('save_settings', {
+      Api.saveSettings( {
         pagination: s.pagination,
         dual_page: s.dual_page,
         auto_dual: s.auto_dual !== false,
@@ -483,7 +483,7 @@
     cb.addEventListener('change', () => {
       App.state.settings.bars_pinned = cb.checked;
       if (window.App) App.setBarsPinned(cb.checked);
-      Bridge.call('save_settings', { bars_pinned: cb.checked });
+      Api.saveSettings( { bars_pinned: cb.checked });
     });
     const span = document.createElement('span');
     span.textContent = '固定显示阅读页顶栏与底栏';
@@ -560,7 +560,7 @@
     reset.addEventListener('click', () => {
       const sc = App.state.settings;
       sc.shortcuts = Object.assign({}, DEFAULT_SHORTCUTS);
-      Bridge.call('save_settings', { shortcuts: sc.shortcuts });
+      Api.saveSettings( { shortcuts: sc.shortcuts });
       document.querySelectorAll('.sp-key-btn').forEach((b) => {
         b.textContent = Util.displayKey(sc.shortcuts[b.dataset.action]);
       });
@@ -590,7 +590,7 @@
       }
       App.state.settings.shortcuts[action] = key;
       btn.textContent = Util.displayKey(key);
-      Bridge.call('save_settings', { shortcuts: App.state.settings.shortcuts });
+      Api.saveSettings( { shortcuts: App.state.settings.shortcuts });
       Toast.show('快捷键已更新');
     };
     document.addEventListener('keydown', done, true);
@@ -627,7 +627,7 @@
     rowWrap.className = 'settings-control-inline';
     rowWrap.append(
       btn('打开数据目录', () => {
-        Bridge.call('open_data_dir').catch((e) => Toast.show('打开失败：' + (e.message || e), true));
+        Api.openDataDir().catch((e) => Toast.show('打开失败：' + (e.message || e), true));
       }),
       btn('卸载并清除数据', uninstallAndClear),
     );
@@ -643,7 +643,7 @@
     if (!confirm('将删除全部用户数据（书架、进度、标注、NGA 配置、统计）并退出程序。\n确认继续？')) return;
     if (!confirm('最后确认：此操作不可恢复。确定清除全部数据？')) return;
     try {
-      Bridge.call('uninstall_and_quit').catch(() => {});
+      Api.uninstallAndQuit().catch(() => {});
     } catch (e) { /* 进程即将退出 */ }
     Toast.show('正在清除全部数据…');
   }
@@ -714,7 +714,7 @@
         if (action) b.textContent = Util.displayKey(s.shortcuts[action]);
       });
     }
-    Bridge.call('get_stats').then((st) => {
+    Api.getStats().then((st) => {
       const span = document.getElementById('sp-stats-summary');
       if (!span) return;
       const secs = (st.global && st.global.total_seconds) || 0;
@@ -727,7 +727,7 @@
       const el = ensureBuilt();
       sync();
       el.classList.remove('hidden');
-      Bridge.call('get_version').then((v) => {
+      Api.getVersion().then((v) => {
         const f = document.getElementById('sp-version');
         if (f) f.textContent = '安科书架 v' + v;
       }).catch(() => {});

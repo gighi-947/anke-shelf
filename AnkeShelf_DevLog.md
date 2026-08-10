@@ -1814,3 +1814,17 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   - 文档同步：ARCHITECTURE / CODEBASE_MAP / GLOSSARY 的 api 引用改为 `app/api/`。
 - **验证**：Python 187 项 OK；UI 实机 harness exit=0（92 项 PASS，无 FAIL）。
 - **待办**：B3b 前端 ApiClient（UI 不再直接调 Bridge.call，收口到 api-client.js）。
+
+### 10.8 B3b：前端 ApiClient（api-client.js，UI 不再直接调 Bridge）（2026-08-10）
+
+- **改动**：
+  - 新增 `web/js/api-client.js`：39 个后端 handler 的 camelCase 客户端
+    （`Api.openBook(...)` / `Api.saveProgress(...)` 等，参数原样透传 Bridge）；
+    index.html 在 bridge.js 之后加载；
+  - 机械迁移 9 个前端文件共 73 处 `Bridge.call('snake', ...)` →
+    `Api.camel(...)`（annotations/app/bookshelf/fullsearch/nga_download/
+    reader/settings/stats/view-menu）；
+  - 迁移脚本首轮漏掉方法名后的逗号（`Api.x(, arg)`），补修正 pass 后
+    `node --check` 全部通过、`Bridge.call` 仅存在于 bridge.js 与 api-client.js。
+- **验证**：`node --check web/js/*.js` OK；UI 实机 harness exit=0（92 项 PASS）。
+- **待办**：B4（拆 reader.js：ReaderSession 先行）按 review 顺序推进。

@@ -324,8 +324,7 @@
       if (q === state.q && state.data && !force) return;
       state.q = q;
       try {
-        const resp = await Bridge.call(
-          'search', App.state.bookId, q,
+        const resp = await Api.search( App.state.bookId, q,
           state.caseSensitive, state.wholeWord, PER_CHAPTER
         );
         if (!resp.ready) {
@@ -389,8 +388,7 @@
         btn.textContent = '加载中…';
         try {
           const last = ch.hits[ch.hits.length - 1];
-          const page = await Bridge.call(
-            'search_more', App.state.bookId, state.q, ch.chapter_index,
+          const page = await Api.searchMore( App.state.bookId, state.q, ch.chapter_index,
             last ? last.offset : -1, state.caseSensitive, state.wholeWord, PER_CHAPTER
           );
           ch.hits.push(...page.hits);

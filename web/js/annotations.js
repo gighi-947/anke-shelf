@@ -25,7 +25,7 @@
   /** 重新拉取本书标注 + 渲染侧栏（外部/桥接改动后同步）。 */
   async function refresh() {
     try {
-      const data = await Bridge.call('get_annotations', App.state.bookId);
+      const data = await Api.getAnnotations( App.state.bookId);
       state.highlights = data.highlights || [];
       state.bookmarks = data.bookmarks || [];
     } catch (e) {
@@ -154,8 +154,7 @@
 
   async function createHighlight(color) {
     if (!pending) return;
-    const r = await Bridge.call(
-      'save_annotation', App.state.bookId, App.state.chapterIndex,
+    const r = await Api.saveAnnotation( App.state.bookId, App.state.chapterIndex,
       pending.start, pending.end, pending.text, color,
     );
     if (r && r.error) { Toast.show(r.error, true); hideToolbar(); return; }
@@ -197,7 +196,7 @@
       del.className = 'btn btn-danger';
       del.textContent = '删除高亮';
       del.addEventListener('click', async () => {
-        await Bridge.call('delete_annotation', App.state.bookId, ann.id);
+        await Api.deleteAnnotation( App.state.bookId, ann.id);
         state.highlights = state.highlights.filter((x) => x.id !== ann.id);
         root.innerHTML = '';
         renderSidebar();
@@ -215,12 +214,11 @@
     save.textContent = '保存';
     save.addEventListener('click', async () => {
       if (ann) {
-        await Bridge.call('update_annotation', App.state.bookId, ann.id, { note: ta.value });
+        await Api.updateAnnotation( App.state.bookId, ann.id, { note: ta.value });
         const h = state.highlights.find((x) => x.id === ann.id);
         if (h) h.note = ta.value;
       } else {
-        await Bridge.call(
-          'save_annotation', App.state.bookId, App.state.chapterIndex,
+        await Api.saveAnnotation( App.state.bookId, App.state.chapterIndex,
           start, end, '', 'yellow', ta.value,
         );
         // 重新拉取以获取新记录
@@ -246,11 +244,11 @@
       (b) => b.chapter_index === chapterIndex && Math.abs(b.offset - offset) < 80,
     );
     if (existing) {
-      await Bridge.call('delete_bookmark', App.state.bookId, existing.id);
+      await Api.deleteBookmark( App.state.bookId, existing.id);
       state.bookmarks = state.bookmarks.filter((b) => b.id !== existing.id);
       Toast.show('已删除书签');
     } else {
-      const r = await Bridge.call('add_bookmark', App.state.bookId, chapterIndex, offset, text);
+      const r = await Api.addBookmark( App.state.bookId, chapterIndex, offset, text);
       if (r && r.error) { Toast.show(r.error, true); return; }
       state.bookmarks.push(r);
       Toast.show('已添加书签');
@@ -287,7 +285,7 @@
       del.textContent = '删除';
       del.addEventListener('click', async (e) => {
         e.stopPropagation();
-        await Bridge.call('delete_bookmark', App.state.bookId, bm.id);
+        await Api.deleteBookmark( App.state.bookId, bm.id);
         state.bookmarks = state.bookmarks.filter((x) => x.id !== bm.id);
         renderBookmarks();
       });
@@ -349,7 +347,7 @@
         del.textContent = '删除';
         del.addEventListener('click', async (e) => {
           e.stopPropagation();
-          await Bridge.call('delete_annotation', App.state.bookId, h.id);
+          await Api.deleteAnnotation( App.state.bookId, h.id);
           state.highlights = state.highlights.filter((x) => x.id !== h.id);
           renderAnnotations();
           Reader.applyMode();
@@ -366,7 +364,7 @@
   }
 
   async function exportDownload() {
-    const md = await Bridge.call('export_annotations', App.state.bookId, 'markdown');
+    const md = await Api.exportAnnotations( App.state.bookId, 'markdown');
     const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

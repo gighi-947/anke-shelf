@@ -313,7 +313,7 @@
       const prevBook = App.state.bookId;
       const prevIndex = App.state.chapterIndex;
       if (prevBook && prevIndex >= 0 && prevIndex !== index) {
-        Bridge.call('save_progress', prevBook, prevIndex, this.currentOffset());
+        Api.saveProgress( prevBook, prevIndex, this.currentOffset());
       }
       App.state.chapterIndex = index;
       App.state.textCtx = null;
@@ -472,7 +472,7 @@
 
     saveProgress() {
       if (!App.state.bookId || App.state.view !== 'reader' || App.state.chapterIndex < 0) return;
-      Bridge.call('save_progress', App.state.bookId, App.state.chapterIndex, this.currentOffset());
+      Api.saveProgress( App.state.bookId, App.state.chapterIndex, this.currentOffset());
     },
 
     onPageTurned() {
@@ -620,7 +620,7 @@
       s.font_size = Math.max(12, Math.min(36, s.font_size + delta));
       Theme.applyReaderPrefs(s.font_size, s.line_height);
       this.updateOverrides();
-      Bridge.call('save_settings', { font_size: s.font_size });
+      Api.saveSettings( { font_size: s.font_size });
       if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
     },
 
@@ -629,7 +629,7 @@
       s.line_height = Math.max(1.2, Math.min(3, +(s.line_height + delta).toFixed(1)));
       Theme.applyReaderPrefs(s.font_size, s.line_height);
       this.updateOverrides();
-      Bridge.call('save_settings', { line_height: s.line_height });
+      Api.saveSettings( { line_height: s.line_height });
       if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
     },
 

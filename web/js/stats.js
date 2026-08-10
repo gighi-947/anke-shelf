@@ -144,7 +144,7 @@
 
     flush() {
       if (!App.state.bookId || this._secs < 1) return;
-      Bridge.call('record_reading', App.state.bookId, Math.round(this._secs), this._pages);
+      Api.recordReading( App.state.bookId, Math.round(this._secs), this._pages);
       this._secs = 0;
       this._pages = 0;
     },
@@ -168,7 +168,7 @@
       let books = [];
       let global = null;
       try {
-        const g = await Bridge.call('get_stats');
+        const g = await Api.getStats();
         books = g.books || [];
         global = g.global || null;
       } catch (e) { /* keep empty */ }
@@ -263,10 +263,10 @@
       let global = null;
       try {
         if (App.state.bookId) {
-          const r = await Bridge.call('get_stats', App.state.bookId);
+          const r = await Api.getStats( App.state.bookId);
           book = r.book || null;
         }
-        const g = await Bridge.call('get_stats');
+        const g = await Api.getStats();
         global = g.global || null;
       } catch (e) { /* keep empty */ }
       panel.innerHTML = '';

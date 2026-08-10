@@ -21,7 +21,7 @@
       const token = ++this._renderToken;
       let books = [];
       try {
-        books = await Bridge.call('get_shelf');
+        books = await Api.getShelf();
       } catch (e) {
         Toast.show('Failed to load shelf: ' + (e.message || e), true);
       }
@@ -283,7 +283,7 @@
         ev.stopPropagation();
         if (!confirm('Remove "' + (book.title || '') + '" from the shelf?\n(The original file is kept.)')) return;
         try {
-          await Bridge.call('remove_book', book.id);
+          await Api.removeBook( book.id);
           Toast.show('Removed');
           this.render();
         } catch (e) {
@@ -346,7 +346,7 @@
 
   async function importBooks() {
     try {
-      const results = await Bridge.call('import_books');
+      const results = await Api.importBooks();
       let ok = 0;
       for (const r of results) {
         if (r.ok) ok++;
@@ -372,7 +372,7 @@
     if (sort) {
       sort.addEventListener('change', () => {
         App.state.settings.shelf_sort = sort.value;
-        Bridge.call('save_settings', { shelf_sort: sort.value });
+        Api.saveSettings( { shelf_sort: sort.value });
         Shelf.render();
       });
     }
@@ -380,7 +380,7 @@
     const listBtn = document.getElementById('shelf-view-list');
     const setView = (v) => {
       App.state.settings.shelf_view = v;
-      Bridge.call('save_settings', { shelf_view: v });
+      Api.saveSettings( { shelf_view: v });
       Shelf.render();
     };
     if (gridBtn) gridBtn.addEventListener('click', () => setView('grid'));

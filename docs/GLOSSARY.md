@@ -67,6 +67,7 @@
 | --- | --- |
 | server.py / api/ | 本地 HTTP 服务与 API 路由（app/api/：registry + 按域 handler） |
 | bridge.js | 前端 Bridge 调用封装 |
+| api-client.js | 前端 API 客户端：UI 统一走 Api.<method>()，不再直接调 Bridge |
 | domain.py / Book Protocol | 轻量领域模型：Position 值对象与书籍统一接口（EpubBook/NativeBook 均满足） | 
 | reader.js / paged.js / textpos.js | 阅读内核 / 分页几何 / 坐标映射 |
 | nga_service.py / ngapost2md-python | NGA 下载服务 / 下载转换内核 |

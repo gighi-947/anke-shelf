@@ -17,7 +17,7 @@
 | 端 | 入口 | 说明 |
 | --- | --- | --- |
 | Windows | `app/main.py` → `app/server.py` → `app/api/` | 本地 HTTP + API 路由（api 包：registry + 按域 handler）；`app/paths.py` 定位数据目录；`app/dpi.py`/`app/fonts.py` 平台适配 |
-| Windows 前端 | `web/index.html` → `web/js/app.js` / `bookshelf.js` / `reader.js` | 单页应用；`bridge.js` 封装 Bridge 调用 |
+| Windows 前端 | `web/index.html` → `web/js/app.js` / `bookshelf.js` / `reader.js` | 单页应用；`api-client.js`（Api.<method>()）→ `bridge.js`（Bridge.call） |
 | Android | `MainActivity.kt` → `AnkeShelfApp.kt` → `ui/AnkeShelfRoot.kt` | 手动 DI（`service/AppContainer.kt`）+ 底部四 Tab 路由 |
 
 ## 2. NGA 下载与热更新链路
