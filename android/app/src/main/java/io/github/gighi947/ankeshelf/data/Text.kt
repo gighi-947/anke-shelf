@@ -12,26 +12,12 @@ package io.github.gighi947.ankeshelf.data
  */
 object TextExtractor {
 
-    private val WS = Regex("\\s+")
+    /** Unicode 空白（对齐 Python \\s / JS \\s 的常用集合，含 NBSP 与 U+2000–U+3000 空白族）。 */
+    private val WS = Regex("[\\s\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]+")
     private val SKIP_TAGS = setOf("script", "style")
 
-    /** HTML 实体（与 Python html.unescape 的常用子集对齐，未知实体原样保留）。 */
-    private val ENTITIES = mapOf(
-        "amp" to "&", "lt" to "<", "gt" to ">", "quot" to "\"", "apos" to "'",
-        "nbsp" to "\u00A0", "copy" to "\u00A9", "reg" to "\u00AE", "trade" to "\u2122",
-        "hellip" to "\u2026", "mdash" to "\u2014", "ndash" to "\u2013",
-        "lsquo" to "\u2018", "rsquo" to "\u2019", "ldquo" to "\u201C", "rdquo" to "\u201D",
-        "laquo" to "\u00AB", "raquo" to "\u00BB", "middot" to "\u00B7",
-        "bull" to "\u2022", "deg" to "\u00B0", "plusmn" to "\u00B1",
-        "times" to "\u00D7", "divide" to "\u00F7", "frac12" to "\u00BD",
-        "frac14" to "\u00BC", "frac34" to "\u00BE", "sup2" to "\u00B2",
-        "sup3" to "\u00B3", "eacute" to "\u00E9", "egrave" to "\u00E8",
-        "agrave" to "\u00E0", "ccedil" to "\u00E7", "uuml" to "\u00FC",
-        "ouml" to "\u00F6", "auml" to "\u00E4", "szlig" to "\u00DF",
-        "alpha" to "\u03B1", "beta" to "\u03B2", "gamma" to "\u03B3",
-        "delta" to "\u03B4", "sigma" to "\u03C3", "pi" to "\u03C0",
-        "infin" to "\u221E", "ne" to "\u2260", "le" to "\u2264", "ge" to "\u2265",
-    )
+    /** HTML 命名实体解码：完整 HTML5 表（Html5Entities.kt），未知实体原样保留。 */
+    private val ENTITIES: Map<String, String> = HTML5_ENTITIES
 
     fun extractDomText(htmlText: String): String {
         if (htmlText.isEmpty()) return ""
@@ -85,10 +71,8 @@ object TextExtractor {
                 htmlText.startsWith("<![CDATA[", i) -> {
                     val end = htmlText.indexOf("]]>", i + 9)
                     if (end < 0) {
-                        appendData(htmlText.substring(i + 9))
                         i = n
                     } else {
-                        appendData(htmlText.substring(i + 9, end))
                         i = end + 3
                     }
                 }

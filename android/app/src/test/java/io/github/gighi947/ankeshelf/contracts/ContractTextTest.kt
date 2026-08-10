@@ -12,9 +12,6 @@ import org.junit.Test
 /** B1 契约：Kotlin TextExtractor 与 contracts/text/text-cases.json 对照。 */
 class ContractTextTest {
 
-    /** 已知分歧用例（B2 统一后翻转为 canonical expected，见 docs/TEXT_NORMALIZATION_SPEC.md）。 */
-    private val knownDivergences = setOf("nbsp", "cdata", "entity_subset", "astral")
-
     private val cases = run {
         val root = Json { ignoreUnknownKeys = true }
             .parseToJsonElement(contractsRoot().resolve("text/text-cases.json").readText(Charsets.UTF_8))
@@ -30,16 +27,7 @@ class ContractTextTest {
             val html = obj.getValue("html").jsonPrimitive.content
             val expected = obj.getValue("expected").jsonPrimitive.content
             val actual = TextExtractor.extractDomText(html)
-            if (id in knownDivergences) {
-                when (id) {
-                    "nbsp" -> assertEquals("a\u00A0\u00A0b", actual) // Kotlin \s 不含 NBSP
-                    "cdata" -> assertEquals("x<y", actual) // Kotlin 输出 CDATA 内容
-                    "entity_subset" -> assertEquals("a&thinsp;b", actual) // 未知实体按字面保留
-                    "astral" -> assertEquals("a👋b", actual) // 文本一致；offset 分歧见 Node/Kotlin 注释
-                }
-            } else {
-                assertEquals("case $id", expected, actual)
-            }
+            assertEquals("case $id", expected, actual)
         }
     }
 
