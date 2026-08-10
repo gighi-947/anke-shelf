@@ -83,3 +83,26 @@ def extract_dom_text(html_text: str) -> str:
     except Exception:
         pass
     return _RE_WS.sub(" ", builder.result()).strip()
+
+
+def utf16_len(text: str) -> int:
+    """纯文本的 UTF-16 code unit 长度（与 DOM/JS 字符串长度一致）。"""
+    return sum(2 if ord(ch) >= 0x10000 else 1 for ch in text)
+
+
+def utf16_index(text: str, cp_index: int) -> int:
+    """码点索引 → UTF-16 code unit 偏移（text_offset 对外语义）。"""
+    return sum(2 if ord(ch) >= 0x10000 else 1 for ch in text[:cp_index])
+
+
+def cp_index_from_utf16(text: str, u16_offset: int) -> int:
+    """UTF-16 code unit 偏移 → 码点索引；落在代理对中间时取该字符起点。"""
+    units = 0
+    for i, ch in enumerate(text):
+        if units == u16_offset:
+            return i
+        w = 2 if ord(ch) >= 0x10000 else 1
+        if units + w > u16_offset:
+            return i
+        units += w
+    return len(text)

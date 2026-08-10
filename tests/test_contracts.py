@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 from app.native_book import NativeBook
-from app.text import extract_dom_text
+from app.text import cp_index_from_utf16, extract_dom_text
 
 PROJECT = Path(__file__).resolve().parent.parent
 CONTRACTS = PROJECT / "contracts"
@@ -32,8 +32,9 @@ class TextCasesTest(unittest.TestCase):
         for c in cases:
             for p in c.get("points", []):
                 with self.subTest(case=c["id"], quote=p["quote"]):
+                    cp = cp_index_from_utf16(c["expected"], p["offset"])
                     self.assertEqual(
-                        c["expected"][p["offset"]:p["offset"] + len(p["quote"])],
+                        c["expected"][cp:cp + len(p["quote"])],
                         p["quote"],
                     )
 

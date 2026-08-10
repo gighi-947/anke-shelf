@@ -589,7 +589,7 @@ def main() -> int:
                   id: c.id, text: ctx.text, offsets: offsets,
                   textOk: ctx.text === c.expected,
                   pointsOk: (c.points || []).every(
-                    (p, pi) => c.id === 'astral' || offsets[pi] === p.offset
+                    (p, pi) => offsets[pi] === p.offset
                   ),
                 });
                 f.remove();
@@ -610,7 +610,7 @@ def main() -> int:
                         f"text {c['id']}: got={r.get('text')!r} expected={c['expected']!r}"
                     )
                 for pi, p in enumerate(c.get('points', [])):
-                    if c['id'] != 'astral' and r.get('offsets', [])[pi:pi + 1] != [p['offset']]:
+                    if r.get('offsets', [])[pi:pi + 1] != [p['offset']]:
                         _contract_failures.append(
                             f"point {c['id']}: got={r.get('offsets')} expected={p['offset']}"
                         )
@@ -623,7 +623,6 @@ def main() -> int:
                 r['offsets'][pi] == p['offset']
                 for r, c in zip(js_cases_result, _cases)
                 for pi, p in enumerate(c.get('points', []))
-                if c['id'] != 'astral'  # 已知分歧：JS UTF-16 vs canonical 码点（B2 统一）
             )
             results['contract_js_astral_utf16'] = bool(js_cases_result) and any(
                 r.get('id') == 'astral' and r.get('offsets') == [3]

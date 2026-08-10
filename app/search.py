@@ -10,13 +10,15 @@
 
 索引文本与 web/js/textpos.js 的 buildPlainText 逐字符对齐（同一折叠规则），
 因此搜索命中的 offset 可直接在 JS 端定位（进度/标注共用同一坐标系）。
+offset/text_len 一律按 UTF-16 code unit 计数（与 DOM/JS 字符串索引一致；
+星形字符占 2 个 code unit），Python 内部仍用码点索引扫描。
 """
 import threading
 import re
 from typing import Optional
 
 from .epub import EpubBook
-from .text import extract_dom_text
+from .text import cp_index_from_utf16, extract_dom_text, utf16_index, utf16_len
 
 
 def _word_re(q: str) -> re.Pattern:
@@ -47,7 +49,7 @@ class SearchService:
             raw = book.chapter_text(i)
             text = extract_dom_text(raw) if raw else ""
             chapters.append({"index": i, "title": book.chapter_title(i), "text": text})
-            total += len(text)
+            total += utf16_len(text)
         with self._lock:
             self._indexes[book.id] = {
                 "chapters": chapters,
@@ -152,7 +154,7 @@ class SearchService:
                 if n >= per_chapter:
                     more = True
                     break
-                hits.append({"offset": pos, "snippet": self._make_snippet(ch["text"], pos, q, snippet_len)})
+                hits.append({"offset": utf16_index(ch["text"], pos), "snippet": self._make_snippet(ch["text"], pos, q, snippet_len)})
                 n += 1
             ch_total = self._count_hits(ch["text"], q, case_sensitive, whole_word)
             total_hits += ch_total
@@ -162,7 +164,7 @@ class SearchService:
                     {
                         "chapter_index": ch["index"],
                         "chapter_title": ch["title"],
-                        "text_len": len(ch["text"]),
+                        "text_len": utf16_len(ch["text"]),
                         "chapter_hits": ch_total,
                         "more": more or ch_total > n,
                         "hits": hits,
@@ -206,7 +208,7 @@ class SearchService:
                 break
         if ch is None:
             return None
-        start = max(0, int(after_offset) + 1)
+        start = cp_index_from_utf16(ch["text"], max(0, int(after_offset) + 1))
         hits = []
         n = 0
         gen = self._iter_hits(ch["text"], q, start, case_sensitive, whole_word)
@@ -216,7 +218,7 @@ class SearchService:
             except StopIteration:
                 more = False
                 break
-            hits.append({"offset": pos, "snippet": self._make_snippet(ch["text"], pos, q, snippet_len)})
+            hits.append({"offset": utf16_index(ch["text"], pos), "snippet": self._make_snippet(ch["text"], pos, q, snippet_len)})
             n += 1
         else:
             # 已取满 per_chapter，再试探一条判断是否还有更多
