@@ -39,10 +39,10 @@ assert.strictEqual(collapsed.text, 'ab');
 assert.strictEqual(collapsed.mapRaw[2], 0, '首字符映射到 plain 0');
 assert.strictEqual(collapsed.ranges.length, 1);
 
-// ---- 已知分歧：星形字符按 UTF-16 code unit 计数（canonical=2，Python 码点） ----
+// ---- 星形字符按 UTF-16 code unit 计数（canonical，与 Python 对外输出一致） ----
 const astral = fold(['a👋b']);
 assert.strictEqual(astral.text, 'a👋b');
-assert.strictEqual(astral.text.indexOf('b'), 3, 'JS 按 UTF-16，emoji 占 2 个 code unit');
+assert.strictEqual(astral.text.indexOf('b'), 3, 'JS 按 UTF-16，emoji 占 2 个 code unit（canonical=3）');
 
 // ---- 契约用例结构自洽性（B1 先暴露漂移，B2 统一） ----
 const casesPath = path.join(__dirname, '..', 'text', 'text-cases.json');
@@ -54,7 +54,6 @@ for (const c of cases) {
   assert.strictEqual(c.expected, c.expected.trim(), `${c.id}: expected 已 trim`);
   assert.ok(!/\s{2,}/.test(c.expected), `${c.id}: expected 无连续空白`);
   for (const p of c.points || []) {
-    if (c.id === 'astral') continue; // 已知分歧：JS 按 UTF-16，单独断言
     assert.strictEqual(
       c.expected.indexOf(p.quote),
       p.offset,
@@ -62,12 +61,5 @@ for (const c of cases) {
     );
   }
 }
-
-const astralCase = cases.find((c) => c.id === 'astral');
-assert.strictEqual(
-  astralCase.expected.indexOf(astralCase.points[0].quote),
-  3,
-  'astral: JS 按 UTF-16，emoji 后 quote 的 offset=3（canonical=2，B2 统一）',
-);
 
 console.log(`textpos contract OK: ${cases.length} cases`);
