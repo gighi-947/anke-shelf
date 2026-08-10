@@ -6,6 +6,7 @@ ZipFile 持有文件句柄，Windows 下必须保证：
 """
 import threading
 
+from .domain import Book
 from .epub import EpubBook
 from .native_book import NativeBook, is_native_dir
 
@@ -16,10 +17,10 @@ class BookManager:
     MAX_CACHE = 4
 
     def __init__(self) -> None:
-        self._books: dict[str, EpubBook] = {}
+        self._books: dict[str, Book] = {}
         self._lock = threading.RLock()
 
-    def register(self, path: str) -> EpubBook:
+    def register(self, path: str) -> Book:
         """解析并注册一本新书。解析失败抛 EpubError，不注册。"""
         if is_native_dir(path):
             book = NativeBook(path).open()
@@ -30,7 +31,7 @@ class BookManager:
             self._evict_locked()
         return book
 
-    def open(self, book_id: str) -> EpubBook:
+    def open(self, book_id: str) -> Book:
         """取已注册的书并提升 LRU 新鲜度。未注册抛 KeyError。"""
         with self._lock:
             book = self._books.pop(book_id, None)

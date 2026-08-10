@@ -12,6 +12,7 @@ from typing import Callable, Optional
 
 from .book_manager import BookManager
 from . import dialogs
+from .domain import Position
 from .epub import EpubError
 from .export_service import ExportService
 from .nga_config import clear_nga_config, load_nga_config, save_nga_config
@@ -354,7 +355,7 @@ class Api:
             to = max(0, int(text_offset))
         except (TypeError, ValueError):
             return
-        self._progress.set(book_id, idx, to)
+        self._progress.set_position(book_id, Position(idx, to))
         self._shelf.touch(book_id, 60.0)
 
     def get_chapter_plaintext(self, book_id: str, chapter_index: int) -> str:

@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from .domain import Position
 from .epub import EpubBook
 from .storage import atomic_write_json, now_iso
 
@@ -197,6 +198,20 @@ class ProgressStore:
                 "updated_at": now_iso(),
             }
         self.save()
+
+    def position(self, book_id: str) -> Optional[Position]:
+        """最近进度 → Position（无记录返回 None）。"""
+        p = self.get(book_id)
+        if not p:
+            return None
+        return Position(
+            chapter_index=int(p.get("chapter_index", 0)),
+            text_offset=int(p.get("text_offset", 0)),
+        )
+
+    def set_position(self, book_id: str, pos: Position) -> None:
+        """以 Position 写入进度（等价 set(chapter_index, text_offset)）。"""
+        self.set(book_id, pos.chapter_index, pos.text_offset)
 
     def remove(self, book_id: str) -> None:
         with self._lock:
