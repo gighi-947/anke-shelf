@@ -1,9 +1,11 @@
 # 安科书架（AnkeShelf）· 跨平台开发日志（AnkeShelf_DevLog）
 
 > 用途：Windows 桌面端与 Android 安卓端跨平台开发的同步日志与交接文档。
-> 最后更新：2026-08-08（桌面 v1.2.0；安卓分支 android/m1-data-layer，M4 进行中）
+> 最后更新：2026-08-10（Windows v1.2.0；Android android-v1.0.0；契约/架构重构 B0–B8 已完成）
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件追加记录**（日期 + 提交 + 现象/结论）。
-> 建议阅读顺序：本文件 → README.md → docs/ARCHITECTURE.md → docs/ANDROID_UI_PLAN.md → docs/NGA_READER_PLAN.md
+> 建议阅读顺序：AGENTS.md → 本文件（先看末尾最新快照与 9.x/10.x 流水）→ README.md
+> → docs/CODEBASE_MAP.md → docs/GLOSSARY.md → 按任务查 docs/DATA_CONTRACT.md /
+> docs/ARCHITECTURE.md / docs/ANDROID_ARCHITECTURE.md。
 
 ---
 
@@ -1928,3 +1930,58 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   （92 项 PASS）；bench 本地生成 baseline.json 成功。
 - **待办**：性能阈值告警（如 TextPos 构建 +60% 发 warning）待积累几轮 nightly
   数据后再定；安全防护可继续补单 entry 压缩比上限。
+
+### 10.14 会话交接快照（2026-08-10，切换 agent 工具前）
+
+> 本节为“更换 agent 工具/对话上下文丢失”时的**最新状态入口**。
+> 新会话按日志头部建议顺序进场后，直接以本节为准核对现状。
+
+#### 当前状态
+
+- HEAD：`f56fb01`（win: B8 测试补齐…），分支 `main`，**已推送 GitHub**，
+  工作树干净（`git status` 无输出）。
+- 版本线：Windows v1.2.0（已发布，资产 AnkeShelf-v1.2.0.zip）；
+  Android android-v1.0.0（已发布，资产 AnkeShelf-v1.0.0-android.apk）。
+- 测试现状：
+  - Windows Python：`python -m unittest discover tests` = **211 项 OK**
+    （含契约、安全、迁移、事件、领域模型）；
+  - JS：`node contracts/tests/textpos.test.js`、`node tests/js/reader-session.test.js`
+    均 OK；
+  - Android JVM：`gradlew testDebugUnitTest` = 90 过 / 1 跳；
+  - UI 实机 harness：`python -m tests.ui.runner` = **92 项 PASS**（需桌面 WebView2）。
+- CI：`windows.yml`（PR：单测+JS 契约+PyInstaller 打包）、`android.yml`（PR）、
+  `nightly.yml`（UTC 20:00：全量单测+性能基准）。
+
+#### 本机环境（Windows 开发机）
+
+- Python：`F:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`
+- Node：`F:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe`
+- Android 构建（见 9.8）：`JAVA_HOME=D:\Android\AndroidStudio\jbr`、
+  `GRADLE_USER_HOME=F:\Users\Administrator\.gradle`、
+  `ANDROID_HOME=D:\Codex\project1\.tools\android-sdk`；Gradle 命令：
+  `android\gradlew.bat -p android testDebugUnitTest assembleDebug`。
+- adb：`D:\Codex\project1\.tools\android-sdk\platform-tools\adb.exe`
+  （需 `HOME/USERPROFILE=F:\Users\Administrator` 等环境，见 9.8）。
+
+#### 本地不入库/勿打包内容
+
+- `.local/archive/`：历史归档，含真实 NGA uid/cid 备份（gitignore 覆盖，勿入库）；
+- `android/keystore/`、`keystore.properties`、`local.properties`：签名与 SDK 配置，勿入库；
+- `ngapost2md-python/config.ini`：本地 NGA 凭据（gitignore，打包只带 .example）；
+- `dist/`、`build/`、`.tools/`：构建产物与工具链，不入库。
+
+#### 待办与延后项
+
+- ContentSource / 第二书源抽象：等真实需求出现再做（review P2）；
+- 性能阈值告警（TextPos 构建 +60% 等）：等 nightly 积累几轮数据；
+- EPUB 单 entry 压缩比上限：可继续补；
+- B4 剩余 reader 拆分（controller/position/chapter-loader）：按“哪里疼拆哪里”推进；
+- NGA 更新帖模板：`docs/nga-post-template.bbcode`（新版本发布时套用）。
+
+#### 纪律提醒（新会话必守）
+
+- 进场先读 AGENTS.md；改动必补记本日志（含日期/提交/现象/结论）；
+- 推送代码/发行版必须用户明确授权；双端共享文件改动先做 Diff 影响检查；
+- 进度类改动必须跑“滚动/翻页 → 退出 → 重进”回归；改 JS 后校验 APK 内脚本；
+- 发布前跑凭据扫描（Windows：检查 dist 无 config.ini/nga_config；Android：
+  `android/scripts/check-release.ps1`）。
