@@ -98,8 +98,8 @@
       "id": "astral",
       "html": "<p>a👋b</p>",
       "expected": "a👋b",
-      "note": "已知分歧：Python 按 Unicode 码点计数（b 的 offset=2）；JS/Kotlin 字符串按 UTF-16 code unit 计数（b 的 offset=3）。B1 跨端测试须暴露并在 B2 统一语义",
-      "points": [ { "quote": "b", "offset": 2 } ]
+      "note": "text_offset 按 UTF-16 code unit 计数（canonical）：b 的 offset=3；Python 搜索等对外输出时做换算",
+      "points": [ { "quote": "b", "offset": 3 } ]
     }
   ]
 }

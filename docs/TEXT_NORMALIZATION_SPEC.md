@@ -27,8 +27,9 @@
    （当前 Kotlin `\s` 为 ASCII-only，NBSP 不折叠，属已知分歧，见 §4。）
 7. **不做 CSS 计算**：`display:none`、`visibility` 等不影响文本提取，内容照常计入。
 8. **不做 Unicode 规范化**：不执行 NFC/NFKC，字符原样保留。
-9. **偏移计数**：默认按“字符”计；星形字符（emoji 等）在 Python 为 1 个码点、
-   JS/Kotlin 为 2 个 UTF-16 code unit，**当前两端偏移不一致**（见 §4）。
+9. **偏移计数**：`text_offset` 按 **UTF-16 code unit** 计数（与 DOM/JS/Kotlin
+   字符串索引一致；emoji 等星形字符占 2 个 code unit）。Python 内部按码点扫描，
+   对外输出（搜索等）统一换算为 UTF-16。
 
 ## 3. 用例与验证
 
@@ -37,18 +38,22 @@
 - B1 起，三端（Python / Windows JS / Android Kotlin+JS）必须逐条通过；
   任一实现与 `expected` 不符即为契约漂移。
 
-## 4. 已知分歧（B1 暴露、B2 统一）
+## 4. 分歧记录（B1 暴露，B2 统一）
 
-| # | 场景 | Python / Windows JS | Android Kotlin（Text.kt） | 计划 |
-|---|------|--------------------|--------------------------|------|
-| 1 | `\s` 与 NBSP | `\s` 含 NBSP，折叠 | `Regex("\\s+")` 仅 ASCII 空白，NBSP 保留 | B2 统一空白定义 |
-| 2 | HTML 命名实体（用例 `entity_subset`：`&thinsp;`） | 完整 HTML 实体表，U+2009 按空白折叠 | 内置约 44 个常用实体子集，`&thinsp;` 按字面保留且不折叠 | B2 统一实体表 |
-| 3 | CDATA | 视为 bogus comment，无文本 | 输出 CDATA 内容 | B2 统一解析语义 |
-| 4 | 星形字符偏移 | Python 按码点；JS 按 UTF-16 code unit | Kotlin 按 UTF-16 code unit | B2 统一 text_offset 计数语义 |
+B1 实机测试暴露的 4 项分歧已在 B2 统一：
 
-> 注意：`reader-lite.js`（Android 阅读内核）的 `TextPos` 遵循 JS 语义，
-> 与 Kotlin `TextExtractor`（搜索）在场景 1/2/3/4 上可能也不一致；
-> B1 测试会同时覆盖 Android 侧两条链路。
+| # | 场景 | 统一方式 |
+|---|------|---------|
+| 1 | `\s` 与 NBSP / Unicode 空白 | Kotlin `Text.kt` 改用 Unicode 空白类（含 NBSP、U+2000–U+3000 空白族），与 Python/JS 折叠一致 |
+| 2 | HTML 命名实体（`&thinsp;` 等） | Kotlin 改用完整 HTML5 实体表（`Html5Entities.kt`，由 Python `html.entities.html5` 机械生成） |
+| 3 | CDATA | Kotlin 与 Python/JS 一致：视为 bogus comment，不产生文本 |
+| 4 | 星形字符偏移 | canonical = UTF-16 code unit；Python 搜索等对外输出统一换算 |
+
+残余边缘（记录在案，暂不处理）：U+FEFF（BOM）在 JS `\s` 中按空白折叠，
+Python/Kotlin 不折叠；如遇到 BOM 应在章节文本入口剔除。
+
+> 注意：`reader-lite.js`（Android 阅读内核）与 Kotlin `TextExtractor`（搜索）
+> 在以上场景均已与 canonical 对齐；新增用例必须同时覆盖两条链路。
 
 ## 5. 变更流程
 

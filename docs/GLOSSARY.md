@@ -29,6 +29,7 @@
 | 术语 | 含义 | 代码对应 |
 | --- | --- | --- |
 | text_offset | 章内折叠纯文本字符偏移（唯一坐标，0 基） | Windows `app/text.py` / `web/js/textpos.js`；Android `data/Text.kt` / reader-lite.js `TextPos` |
+| Position | 阅读位置值对象（chapter_index + text_offset，UTF-16 code unit） | `app/domain.py`；Android 侧对应 ProgressEntry |
 | TextPos | DOM↔纯文本逐字符映射 | 同上；跨端对照测试 `ReaderPagedCrossTest` |
 | scroll_ratio | 滚动模式整屏图片时的滚动比例锚点（0..1；-1=文本锚点） | Android `ProgressEntry.scroll_ratio`；reader-lite.js `state.scrollRatio` |
 | page_index / page_total | 分页模式页码/总页数（0 基；-1=无） | Android `ProgressEntry` 扩展字段 |
@@ -66,6 +67,7 @@
 | --- | --- |
 | server.py / api.py | 本地 HTTP 服务与 API 路由 |
 | bridge.js | 前端 Bridge 调用封装 |
+| domain.py / Book Protocol | 轻量领域模型：Position 值对象与书籍统一接口（EpubBook/NativeBook 均满足） | 
 | reader.js / paged.js / textpos.js | 阅读内核 / 分页几何 / 坐标映射 |
 | nga_service.py / ngapost2md-python | NGA 下载服务 / 下载转换内核 |
 | native_book.py | 原生书容器（meta/floors/chapters） |

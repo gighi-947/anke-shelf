@@ -1766,3 +1766,35 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   `contract_js_points` / `contract_js_astral_utf16` 均 PASS）。
 - **附带**：runner.py 增加契约失败明细输出（用例 id + got/expected），
   以后 FAIL 可直接定位，不再盲猜。
+
+### 10.6 B2：文本分歧统一（UTF-16 canonical）+ Position / Book Protocol（2026-08-10）
+
+#### B2a 文本分歧统一
+
+- **canonical 变更**：`text_offset` 按 **UTF-16 code unit** 计数（与 DOM/JS/Kotlin
+  字符串索引一致；emoji 等星形字符占 2）；Python 内部按码点扫描，对外输出换算。
+- **Windows Python**：`app/text.py` 新增 `utf16_len / utf16_index /
+  cp_index_from_utf16`；`app/search.py` 对外返回的 `offset/text_len` 统一 UTF-16
+  （顺带修复“命中点在 emoji 之后时 JS 跳转/高亮偏差”的潜在 bug）。
+- **Android Kotlin**：`data/Text.kt` 空白折叠改为 Unicode 空白类（含 NBSP、
+  U+2000–U+3000 空白族）；CDATA 与 Python/JS 一致不产生文本；命名实体改用
+  完整 HTML5 表（新增 `Html5Entities.kt`，由 Python `html.entities.html5`
+  机械生成 2125 条，替代 44 条子集）。
+- **契约与测试**：`text-cases.json` 的 astral 用例 offset 2→3（canonical=UTF-16）；
+  TEXT_NORMALIZATION_SPEC §2.9/§4 更新（4 项分歧标记已统一，残余 FEFF 记录在案）；
+  DATA_CONTRACT 注明 UTF-16 计数语义；Python/Node/Kotlin/UI harness 全部同步。
+- **验证**：Python 182 项 OK；Node 15 cases OK；Android 90 过/1 跳；
+  UI harness exit=0（92 项 PASS，含三项契约断言）。
+
+#### B2b Position + Book Protocol
+
+- 新增 `app/domain.py`：`Position`（frozen dataclass：chapter_index + text_offset）
+  与 `Book`（runtime_checkable Protocol：id/title/author/open/close/read_file/
+  chapter_text/chapter_title/get_cover_bytes，EpubBook 与 NativeBook 均满足）。
+- 最小接入（不改磁盘格式与 `/api/<name>` 协议）：
+  `ProgressStore.position/set_position`；`Api.save_progress` 改用 `Position`；
+  `BookManager` 缓存与返回类型改为 `Book`。
+- 新增 `tests/test_domain.py` 5 条（Position 不可变/往返、两种 Book 满足协议、
+  BookManager 注册返回 Book）。
+- 验证：Python 全量 **187 项 OK**。
+- **待办**：B3（拆 api.py + 前端 ApiClient）按 review 顺序推进。

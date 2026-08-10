@@ -62,6 +62,8 @@
 兼容规则：
 
 - `text_offset` 永远非负；`0` 表示章首/无进度。
+- `text_offset` 计数语义：**UTF-16 code unit**（emoji 等星形字符占 2；
+  与 DOM/JS/Kotlin 字符串索引一致；Python 对外输出做换算）。
 - 安卓扩展字段缺省 `-1/-1.0`，旧数据与 Windows 数据读入后保持缺省；
   Windows 端读取安卓数据时忽略这三个字段。
 - 模式隔离：`page_index/page_total` 只属于分页模式；`scroll_ratio` 只属于
