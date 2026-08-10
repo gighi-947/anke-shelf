@@ -2,11 +2,14 @@
 import unittest
 from pathlib import Path
 
+from app.domain import book_revision
 from app.epub import EpubBook
+from app.native_book import NativeBook
 from app.search import SearchService
 from app.text import extract_dom_text as extract_plain_text
 
 SAMPLE_DIR = Path(__file__).parent / "sample"
+FIXTURE = Path(__file__).resolve().parent.parent / "contracts" / "fixtures" / "native-book" / "basic-nga"
 
 
 class TestExtractPlainText(unittest.TestCase):
@@ -38,6 +41,7 @@ class TestSearchService(unittest.TestCase):
 
     def test_ready(self):
         self.assertTrue(self.svc.is_ready(self.book.id))
+
 
     def test_not_ready_unknown_book(self):
         self.assertFalse(self.svc.is_ready("0" * 32))
@@ -209,6 +213,35 @@ class TestDrop(unittest.TestCase):
         self.svc.drop(self.book.id)
         self.assertIsNone(self.svc.search(self.book.id, "引力波"))
         self.assertFalse(self.svc.is_ready(self.book.id))
+
+
+class TestSearchRevision(unittest.TestCase):
+    def test_refresh_if_stale_rebuilds_after_update(self):
+        import json
+        import shutil
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            dst = Path(tmp) / "book"
+            shutil.copytree(FIXTURE, dst)
+            book = NativeBook(str(dst)).open()
+            svc = SearchService()
+            svc.ensure_index(book)
+            self.assertTrue(svc.is_ready(book.id))
+            self.assertFalse(svc.refresh_if_stale(book))
+
+            meta_path = dst / "meta.json"
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            meta["last_lou"] += 1
+            meta["updated_time"] = "2026-08-10T13:00:00"
+            meta_path.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+
+            book2 = NativeBook(str(dst)).open()
+            self.assertTrue(svc.refresh_if_stale(book2))
+            self.assertEqual(svc._indexes[book.id]["revision"], book_revision(book2))
+            self.assertTrue(svc.is_ready(book.id))
+            book.close()
+            book2.close()
 
 
 if __name__ == "__main__":

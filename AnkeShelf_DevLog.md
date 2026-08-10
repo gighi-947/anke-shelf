@@ -1855,3 +1855,21 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   进度链路）。
 - **待办**：B4 剩余（controller/position/chapter-loader 进一步拆分）暂缓，
   避免一次性大改；后续按“哪里开始疼先拆哪里”推进。
+
+### 10.10 B5：BookRevision + 轻量领域事件 + Repository 接口（2026-08-10）
+
+- **改动**（Windows Python）：
+  - `app/domain.py`：新增 `book_revision(book)`（NativeBook =
+    `native:<tid>:<last_lou>:<updated_time>`，EPUB = `epub:<size>:<mtime>`；
+    热更新/替换文件后必变）；新增 `ProgressRepository` / `ShelfRepository`
+    runtime_checkable Protocol（ProgressStore / Shelf 已满足）；
+  - 新增 `app/events.py`：进程内 `EventBus`（on/emit，订阅方异常不影响主流程）；
+  - `app/search.py`：索引携带 `revision`，`ensure_index` 同版本复用、版本变化
+    重建；新增 `refresh_if_stale(book)`；
+  - `app/nga_service.py`：首次下载注册与热更新完成后 `emit("book_updated")`；
+  - `app/main.py`：订阅 `book_updated` → 若书在 BookManager 缓存中则按
+    revision 刷新搜索索引（惰性重建，修复“热更新后旧索引残留”隐患）。
+- **验证**：Python 全量 **194 项 OK**（新增 events 3 条、BookRevision/协议 4 条、
+  搜索 revision 1 条）；UI 实机 harness exit=0（92 项 PASS）。
+- **待办**：B6（统一 Migration + 结构化 API 错误码 + 诊断导出/日志）按 review
+  顺序推进；TaskManager/ContentSource 仍按计划推迟到第二书源需求出现时。

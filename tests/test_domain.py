@@ -1,13 +1,21 @@
 """B2 领域模型：Position 值对象与 Book Protocol（EpubBook / NativeBook 双实现）。"""
+import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
 from app.book_manager import BookManager
-from app.domain import Book, Position
+from app.domain import (
+    Book,
+    Position,
+    ProgressRepository,
+    ShelfRepository,
+    book_revision,
+)
 from app.epub import EpubBook
 from app.native_book import NativeBook
-from app.shelf import ProgressStore
+from app.shelf import ProgressStore, Shelf
 
 PROJECT = Path(__file__).resolve().parent.parent
 SAMPLE = PROJECT / "tests" / "sample" / "sample_nav3.epub"
@@ -54,6 +62,42 @@ class BookProtocolTest(unittest.TestCase):
             self.assertIsInstance(registered, Book)
         finally:
             books.close_all()
+
+
+class BookRevisionTest(unittest.TestCase):
+    def test_native_and_epub_revision_prefix(self):
+        nb = NativeBook(str(FIXTURE)).open()
+        self.assertTrue(book_revision(nb).startswith("native:"))
+        nb.close()
+        eb = EpubBook(str(SAMPLE)).open()
+        self.assertTrue(book_revision(eb).startswith("epub:"))
+        eb.close()
+
+    def test_native_revision_changes_after_update(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dst = Path(tmp) / "book"
+            shutil.copytree(FIXTURE, dst)
+            nb = NativeBook(str(dst)).open()
+            r1 = book_revision(nb)
+            meta_path = dst / "meta.json"
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            meta["last_lou"] = 10
+            meta["updated_time"] = "2026-08-10T12:00:00"
+            meta_path.write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+            nb2 = NativeBook(str(dst)).open()
+            r2 = book_revision(nb2)
+            self.assertNotEqual(r1, r2)
+            nb.close()
+            nb2.close()
+
+
+class RepositoryProtocolTest(unittest.TestCase):
+    def test_stores_satisfy_protocols(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = ProgressStore(Path(tmp) / "progress.json")
+            shelf = Shelf(Path(tmp) / "shelf.json", Path(tmp) / "covers")
+            self.assertIsInstance(store, ProgressRepository)
+            self.assertIsInstance(shelf, ShelfRepository)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ import hashlib
 from pathlib import Path
 from typing import Callable, Optional
 
+from .events import bus
 from .nga_config import ensure_nga_config, load_nga_config
 from .native_book import (
     append_container,
@@ -394,7 +395,9 @@ class NgaService:
                 "max_floors": max(0, int(params.get("max_floors", 0) or 0)),
             })
             # 注册到书架（BookManager + Shelf 由调用方回调完成）
-            return self._book_register(str(native_dir) if valid else str(epub_path))
+            book_id = self._book_register(str(native_dir) if valid else str(epub_path))
+            bus.emit("book_updated", book_id=book_id)
+            return book_id
         finally:
             nga_mod.set_cancel_cb(None)
 
@@ -501,6 +504,7 @@ class NgaService:
                 self._books.register(str(native_dir))
             except Exception:  # noqa: BLE001
                 pass
+        bus.emit("book_updated", book_id=rec.id)
         return new_count
 
     def _progress_cb(self, stage: str, detail: dict) -> None:

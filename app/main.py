@@ -120,6 +120,14 @@ def main() -> int:
     settings = Settings(settings_path())
     settings.load()
     search_svc = SearchService()
+    from .events import bus
+
+    def _on_book_updated(book_id: str) -> None:
+        """NGA 下载/热更新后：若书在缓存中，按 revision 刷新全文索引（惰性重建）。"""
+        if books.has(book_id):
+            search_svc.refresh_if_stale(books.open(book_id))
+
+    bus.on("book_updated", _on_book_updated)
     annotations = AnnotationStore(annotations_path())
     annotations.load()
     stats = StatsStore(statistics_path())

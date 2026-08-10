@@ -17,6 +17,7 @@ import threading
 import re
 from typing import Optional
 
+from .domain import book_revision
 from .epub import EpubBook
 from .text import cp_index_from_utf16, extract_dom_text, utf16_index, utf16_len
 
@@ -37,12 +38,19 @@ class SearchService:
         self._lock = threading.RLock()
         self._indexes: dict[str, Optional[dict]] = {}
 
-    def ensure_index(self, book: EpubBook) -> None:
-        """daemon 线程调用：逐章提取纯文本建索引。重复调用安全。"""
+    def ensure_index(self, book: EpubBook, revision: Optional[str] = None) -> None:
+        """逐章提取纯文本建索引；同一 revision 的索引复用，变化时重建。"""
+        revision = revision or book_revision(book)
         with self._lock:
             if book.id in self._indexes:
-                return
-            self._indexes[book.id] = None  # 占位：正在构建
+                idx = self._indexes[book.id]
+                if idx is None:
+                    return  # 正在构建
+                if idx.get("revision") == revision:
+                    return
+                self._indexes[book.id] = None  # 版本变化：重建
+            else:
+                self._indexes[book.id] = None  # 占位：正在构建
         chapters = []
         total = 0
         for i in range(len(book.chapters)):
@@ -55,7 +63,18 @@ class SearchService:
                 "chapters": chapters,
                 "total": total,
                 "lens": {ch["index"]: len(ch["text"]) for ch in chapters},
+                "revision": revision,
             }
+
+    def refresh_if_stale(self, book: EpubBook) -> bool:
+        """书籍 revision 与索引不一致时重建；返回是否触发重建。"""
+        rev = book_revision(book)
+        with self._lock:
+            idx = self._indexes.get(book.id)
+            if idx is not None and idx.get("revision") == rev:
+                return False
+        self.ensure_index(book, rev)
+        return True
 
     def is_ready(self, book_id: str) -> bool:
         with self._lock:

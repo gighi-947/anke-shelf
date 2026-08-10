@@ -30,6 +30,8 @@
 | --- | --- | --- |
 | text_offset | 章内折叠纯文本字符偏移（唯一坐标，0 基） | Windows `app/text.py` / `web/js/textpos.js`；Android `data/Text.kt` / reader-lite.js `TextPos` |
 | Position | 阅读位置值对象（chapter_index + text_offset，UTF-16 code unit） | `app/domain.py`；Android 侧对应 ProgressEntry |
+| BookRevision | 书籍内容版本标识（native:<tid>:<last_lou>:<updated_time> / epub:<size>:<mtime>） | `app/domain.py`；搜索索引按它自动失效 |
+| EventBus / book_updated | 进程内领域事件（NGA 下载/热更新后通知缓存失效） | `app/events.py`；订阅在 `app/main.py` |
 | TextPos | DOM↔纯文本逐字符映射 | 同上；跨端对照测试 `ReaderPagedCrossTest` |
 | scroll_ratio | 滚动模式整屏图片时的滚动比例锚点（0..1；-1=文本锚点） | Android `ProgressEntry.scroll_ratio`；reader-lite.js `state.scrollRatio` |
 | page_index / page_total | 分页模式页码/总页数（0 基；-1=无） | Android `ProgressEntry` 扩展字段 |
