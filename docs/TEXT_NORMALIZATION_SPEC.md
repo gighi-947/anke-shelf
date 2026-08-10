@@ -42,7 +42,7 @@
 | # | 场景 | Python / Windows JS | Android Kotlin（Text.kt） | 计划 |
 |---|------|--------------------|--------------------------|------|
 | 1 | `\s` 与 NBSP | `\s` 含 NBSP，折叠 | `Regex("\\s+")` 仅 ASCII 空白，NBSP 保留 | B2 统一空白定义 |
-| 2 | HTML 命名实体 | 完整 HTML 实体表 | 内置约 44 个常用实体子集，未知命名实体原样保留 | B2 统一实体表 |
+| 2 | HTML 命名实体（用例 `entity_subset`：`&thinsp;`） | 完整 HTML 实体表，U+2009 按空白折叠 | 内置约 44 个常用实体子集，`&thinsp;` 按字面保留且不折叠 | B2 统一实体表 |
 | 3 | CDATA | 视为 bogus comment，无文本 | 输出 CDATA 内容 | B2 统一解析语义 |
 | 4 | 星形字符偏移 | Python 按码点；JS 按 UTF-16 code unit | Kotlin 按 UTF-16 code unit | B2 统一 text_offset 计数语义 |
 

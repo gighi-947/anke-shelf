@@ -51,6 +51,13 @@
       "points": [ { "quote": "…", "offset": 10 } ]
     },
     {
+      "id": "entity_subset",
+      "html": "<p>a&thinsp;b</p>",
+      "expected": "a b",
+      "note": "已知分歧：Python/JS 解码 &thinsp; 为 U+2009 并折叠；Kotlin 实体表无 thinsp，当前按字面保留 a&thinsp;b",
+      "points": [ { "quote": "b", "offset": 2 } ]
+    },
+    {
       "id": "fragment",
       "html": "Hello <b>world</b>",
       "expected": "Hello world",
