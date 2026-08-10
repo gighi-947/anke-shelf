@@ -1716,3 +1716,33 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   4. 星形字符（emoji）偏移计数：Python 按码点、JS/Kotlin 按 UTF-16 code unit。
 - **待办**：B1 跨端 golden tests（Python / Windows JS / Android Kotlin+JS 读同一
   fixtures）+ schema 校验接入 CI；B2 统一上述四项分歧语义。
+
+### 10.4 B1 跨端契约 golden tests（2026-08-10）
+
+- **目标**：把 `contracts/` fixtures 接入三端测试，让 text_offset / 文本折叠
+  契约漂移显性化（红→绿，先暴露后统一）。
+- **改动**：
+  - `contracts/text/text-cases.json` 增至 15 条（新增 `entity_subset`：
+    `&thinsp;` 三端行为不同），同步更新 TEXT_NORMALIZATION_SPEC 分歧清单；
+  - `web/js/textpos.js`：把折叠核心提取为纯函数 `foldItems` 并导出
+    （`module.exports` + `window` 守卫），浏览器行为不变，Node 可直接加载；
+  - 新增 `contracts/tests/textpos.test.js`（Node，无 npm 依赖）：折叠语义、
+    15 条用例结构自洽、astral UTF-16 已知分歧断言；
+  - 新增 `tests/test_contracts.py`（8 条）：text-cases 权威匹配、fixture
+    期望纯文本、NativeBook 读取与路径穿越、JSON Schema 校验
+    （`jsonschema` 加入 requirements.txt）；
+  - 扩展 `tests/ui/runner.py`：真实 WebView 内运行全部 text-cases
+    （新增 `contract_text_cases` / `contract_js_points` /
+    `contract_js_astral_utf16` 三项断言）；
+  - Android 新增 `ContractTextTest` + `ContractNativeBookTest`
+    （读取仓库根 `contracts/`；4 个已知分歧用例断言当前行为，B2 翻转）；
+  - `.github/workflows/windows.yml`：`contracts/**` 纳入触发路径，
+    新增 Node 契约测试步骤。
+- **验证**：
+  - Node：`textpos contract OK: 15 cases`；
+  - Python：182 项全绿（新增 8 项）；
+  - Android：90 tests completed / 1 skipped（ContractTextTest 与
+    ContractNativeBookTest 均通过）；
+  - UI harness 扩展未实跑（需桌面 WebView2 会话，留待本地验证）。
+- **待办**：B2 统一四项分歧（NBSP 空白定义、实体表、CDATA 解析、
+  UTF-16 offset 计数语义）；UI harness 实跑确认三项新断言。
