@@ -62,7 +62,7 @@ Compose 外壳 → WebView 渲染内核 → CSS/JS 排版 → text_offset
 
 | 端 | 文件 | 说明 |
 | --- | --- | --- |
-| Windows | `web/js/reader.js` / `paged.js` / `textpos.js` / `web/css/*` | iframe 章节渲染、分页/滚动、TextPos 坐标 |
+| Windows | `web/js/reader.js`（核心编排）+ `reader-utils.js` / `reader-session.js` / `reader-navigation.js` / `reader-help.js` / `reader-image.js` + `paged.js` / `textpos.js` / `web/css/*` | iframe 章节渲染、分页/滚动、TextPos 坐标、阅读会话 |
 | Android | `ui/reader/native/NativeReaderScreen.kt` | Compose 外壳：目录、控制条、图片查看、主题、沉浸式 |
 | Android | `ui/reader/WebViewChapterView.kt` | WebView 内核宿主：桥、换章捕获、dispose 查询、在线图片代理 |
 | Android | `assets/reader/reader-lite.js` | **现役**渲染桥：分页几何、TextPos、滚动比例、事件上报 |

@@ -49,8 +49,10 @@ jobs:
           }
           if ($failed) { exit 1 }
 
-      - name: Contract JS tests (textpos folding)
-        run: node contracts/tests/textpos.test.js
+      - name: Contract JS tests (textpos + reader-session)
+        run: |
+          node contracts/tests/textpos.test.js
+          node tests/js/reader-session.test.js
 
       - name: Unit tests
         run: python -m unittest discover tests

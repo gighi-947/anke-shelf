@@ -1828,3 +1828,30 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
     `node --check` 全部通过、`Bridge.call` 仅存在于 bridge.js 与 api-client.js。
 - **验证**：`node --check web/js/*.js` OK；UI 实机 harness exit=0（92 项 PASS）。
 - **待办**：B4（拆 reader.js：ReaderSession 先行）按 review 顺序推进。
+
+### 10.9 B4：ReaderSession 引入 + reader.js 拆分（utils/session/navigation/help/image）（2026-08-10）
+
+- **改动**（reader.js 873 行 → 核心约 560 行）：
+  - 新增 `web/js/reader-utils.js`：CSS 覆盖层常量（BASE/NGA/PAGINATION）、
+    快捷键帮助文案、字体解析（activeFontKey/fontFaceCss/resolveFamily）；
+  - 新增 `web/js/reader-session.js`：`ReaderSession`（bookId/chapterIndex/
+    textOffset/mode/startedAt/dirty/lastSaved + enterChapter/setPosition/
+    markSaved/elapsedSeconds），Node 可直接加载；
+  - 新增 `reader-navigation.js`（prev/nextChapter、pageOrChapter）、
+    `reader-help.js`（showShortcuts/closeShortcuts）、`reader-image.js`
+    （openImage/closeImage，lightboxScale 收归模块内），均在 reader.js 之后
+    `Object.assign` 回 `window.Reader`；
+  - reader.js 删除上述常量/工具/方法，核心保留 loadChapter/currentOffset/
+    saveProgress/applyMode/applyOverrides/updateProgressUI/seekToOffset/
+    jumpToFraction/onKeyDown/toggleChrome 等编排；接入 `ensureSession()`，
+    loadChapter 记 `enterChapter`、saveProgress 记 `setPosition + markSaved`、
+    applyLayout 记 `mode`；
+  - index.html 脚本顺序：utils/session 在 reader.js 前，navigation/help/image
+    在 reader.js 后；
+  - 新增 `tests/js/reader-session.test.js`（Node，无 npm），Windows CI
+    的契约 JS 步骤同时跑 textpos + reader-session。
+- **验证**：`node --check web/js/*.js` OK；两个 Node 测试 OK；
+  UI 实机 harness exit=0（92 项 PASS，含 help_modal/lightbox/翻页/换章/
+  进度链路）。
+- **待办**：B4 剩余（controller/position/chapter-loader 进一步拆分）暂缓，
+  避免一次性大改；后续按“哪里开始疼先拆哪里”推进。

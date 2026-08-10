@@ -5,156 +5,18 @@
 (function () {
   'use strict';
 
-  const BASE_OVERRIDE = `
-    body {
-      font-family: var(--reader-font-family, "Segoe UI", "Microsoft YaHei", serif) !important;
-      font-size: var(--reader-font-size, 18px) !important;
-      line-height: var(--reader-line-height, 1.8) !important;
-      color: var(--reader-fg, #222) !important;
-      background: transparent !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      overflow-wrap: anywhere !important;
-      word-break: break-word !important;
-    }
-    p { margin: 0.6em 0; }
-    img { max-width: 100% !important; height: auto !important; }
-    a { color: var(--reader-accent, #77bbee) !important; }
-    h1, h2, h3, h4 { line-height: 1.4 !important; }
-    pre { overflow-x: auto; }
-    table { max-width: 100%; }
-  `;
-
-  // NGA books keep their original thread styles (floor cards, quotes, colors);
-  // only typography and image responsiveness are managed here.
-  const NGA_OVERRIDE = `
-    body {
-      font-family: var(--reader-font-family, "Segoe UI", "Microsoft YaHei", serif) !important;
-      font-size: var(--reader-font-size, 18px) !important;
-      line-height: var(--reader-line-height, 1.8) !important;
-      /* 默认文字色跟随阅读器主题：深色页→浅色字，浅色页→深色字。
-         仅作用于 body 继承的默认色；楼层内的彩色/灰色字体不受影响。 */
-      color: var(--reader-fg, #222) !important;
-      background: transparent !important;
-      overflow-wrap: anywhere !important;
-      word-break: break-word !important;
-    }
-    img { max-width: 100% !important; height: auto !important; }
-    pre { overflow-x: auto; }
-    table { max-width: 100%; }
-  `;
-
-  const PAGINATION_OVERRIDE = `
-    html, body {
-      height: 100% !important;
-      width: 100% !important;
-      margin: 0 !important;
-      overflow: hidden !important;
-      box-sizing: border-box !important;
-    }
-    body {
-      padding: 20px var(--margin-px, 40px) !important;
-      column-width: var(--col-px, 600px) !important;
-      column-gap: var(--gap-px, 28px) !important;
-      column-fill: auto !important;
-    }
-    pre { white-space: pre-wrap !important; word-break: break-all; }
-    img, video {
-      max-width: 100% !important;
-      max-height: 72vh !important;
-      object-fit: contain;
-      break-inside: avoid;
-    }
-    p { margin: 0.45em 0 !important; }
-    /* NGA 楼层/表格/引用等必须允许跨页拆分：楼层里的长表格常超过一页高度，
-       若整栋楼禁止分页，表格会整体溢出列边界，导致页面出界与错位。 */
-    .nga-floor, .nga-quote, .nga-comment, blockquote, table, details {
-      margin: 10px 0 !important;
-      break-inside: auto !important;
-    }
-    .nga-floor { padding: 10px 12px !important; }
-    table { max-width: 100% !important; }
-    td, th {
-      max-width: 100% !important;
-      overflow-wrap: anywhere !important;
-      word-break: break-word !important;
-    }
-    .nga-table-scroll {
-      max-width: 100% !important;
-      overflow: auto !important;
-    }
-  `;
+  const { BASE_OVERRIDE, NGA_OVERRIDE, PAGINATION_OVERRIDE } = ReaderUtils;
 
   const scroller = () => document.getElementById('chapter-scroll');
   const frameEl = () => document.getElementById('chapter-frame');
-  const overlayRoot = () => {
-    let root = document.getElementById('overlay-root');
-    if (!root) {
-      root = document.createElement('div');
-      root.id = 'overlay-root';
-      document.body.appendChild(root);
-    }
-    return root;
-  };
-
   // 超过该纯文本长度的章节不启用分页（CSS 多栏渲染超大章节会占用数 GB 内存），
   // 自动退回滚动阅读；阅读进度与标注仍按章节级工作。
   const MAX_PAGED_TEXT = 800000;
 
-  // 快捷键帮助弹窗内容（与 settings.js 的默认值保持一致；此处只做展示兜底）
-  const HELP_SHORTCUTS = {
-    next_page: 'ArrowRight',
-    prev_page: 'ArrowLeft',
-    next_chapter: 'ArrowDown',
-    prev_chapter: 'ArrowUp',
-    toggle_theme: 't',
-    toggle_sidebar: 's',
-    toggle_bars: 'b',
-    bookmark: 'm',
-    help: '?',
-    toggle_fullscreen: 'F11',
-  };
-  const HELP_ACTIONS = [
-    ['next_page', '下一页 / 下一章'],
-    ['prev_page', '上一页 / 上一章'],
-    ['next_chapter', '下一章'],
-    ['prev_chapter', '上一章'],
-    ['toggle_theme', '切换主题'],
-    ['toggle_sidebar', '开/关侧栏'],
-    ['toggle_bars', '固定顶底栏'],
-    ['bookmark', '书签'],
-    ['help', '快捷键帮助'],
-    ['toggle_fullscreen', '沉浸式阅读（全屏）'],
-  ];
-
-  function activeFontKey() {
-    const s = App.state.settings || {};
-    if (App.state.bookId && s.book_fonts && s.book_fonts[App.state.bookId]) {
-      return s.book_fonts[App.state.bookId];
-    }
-    return s.custom_font || '';
-  }
-
-  function fontFaceCss() {
-    const key = activeFontKey();
-    if (!key) return '';
-    let url = '';
-    if (key.startsWith('sys:')) url = '/font/system/' + key.slice(4);
-    else if (key.startsWith('custom:')) url = '/font/custom/' + key.slice(7);
-    if (!url) return '';
-    return '@font-face { font-family: "AnkeCustomFont"; src: url("' + url + '"); font-display: swap; }\n';
-  }
-
-  function resolveFamily() {
-    const key = activeFontKey();
-    if (key) return '"AnkeCustomFont", "Segoe UI", "Microsoft YaHei", serif';
-    return '"Segoe UI", "Microsoft YaHei", serif';
-  }
-
   function readVars() {
     const cs = getComputedStyle(document.getElementById('reader-root'));
     return {
-      family: resolveFamily(),
+      family: ReaderUtils.resolveFamily(),
       fontSize: cs.getPropertyValue('--reader-font-size').trim() || '18px',
       lineHeight: cs.getPropertyValue('--reader-line-height').trim() || '1.8',
       fg: cs.getPropertyValue('--reader-fg').trim() || '#e0e0e0',
@@ -174,9 +36,9 @@
     const isNga = !!(App.state.book && App.state.book.nga);
     let css = isNga ? NGA_OVERRIDE : BASE_OVERRIDE;
     if (Paged.isActive()) css += PAGINATION_OVERRIDE;
-    css = fontFaceCss() + css;
+    css = ReaderUtils.fontFaceCss() + css;
     el.textContent = css
-      .replace('var(--reader-font-family, "Segoe UI", "Microsoft YaHei", serif)', v.family)
+      .replace('var(--reader-font-family, "Segoe UI", "Microsoft YaHei", serif)', ReaderUtils.resolveFamily())
       .replace('var(--reader-font-size, 18px)', v.fontSize)
       .replace('var(--reader-line-height, 1.8)', v.lineHeight)
       .replace('var(--reader-fg, #222)', v.fg)
@@ -303,10 +165,21 @@
   let sliderTimer = null;
   let loadToken = 0;
   let loadResolve = null;
-  let lightboxScale = 1;
 
   window.Reader = {
+    ensureSession() {
+      if (!this.session || this.session.bookId !== App.state.bookId) {
+        this.session = new ReaderSession(
+          App.state.bookId,
+          Math.max(0, App.state.chapterIndex || 0),
+          0,
+        );
+      }
+      return this.session;
+    },
+
     async loadChapter(index, textOffset) {
+      this.ensureSession();
       const book = App.state.book;
       if (!book || index < 0 || index >= book.chapters.length) return;
 
@@ -316,6 +189,7 @@
         Api.saveProgress( prevBook, prevIndex, this.currentOffset());
       }
       App.state.chapterIndex = index;
+      this.session.enterChapter(index, textOffset || 0);
       App.state.textCtx = null;
       const token = ++loadToken;
 
@@ -472,7 +346,11 @@
 
     saveProgress() {
       if (!App.state.bookId || App.state.view !== 'reader' || App.state.chapterIndex < 0) return;
-      Api.saveProgress( App.state.bookId, App.state.chapterIndex, this.currentOffset());
+      const session = this.ensureSession();
+      const off = this.currentOffset();
+      session.setPosition(off);
+      Api.saveProgress( App.state.bookId, session.chapterIndex, off);
+      session.markSaved();
     },
 
     onPageTurned() {
@@ -592,29 +470,6 @@
       }
     },
 
-    prevChapter() {
-      const i = App.state.chapterIndex - 1;
-      if (i >= 0) this.loadChapter(i, 0);
-    },
-
-    nextChapter() {
-      const book = App.state.book;
-      if (!book) return;
-      const i = App.state.chapterIndex + 1;
-      if (i < book.chapters.length) this.loadChapter(i, 0);
-    },
-
-    pageOrChapter(delta) {
-      if (Paged.isActive()) {
-        if (delta > 0) Paged.nextPage(true);
-        else Paged.prevPage(true);
-      } else if (delta > 0) {
-        this.nextChapter();
-      } else {
-        this.prevChapter();
-      }
-    },
-
     fontSize(delta) {
       const s = App.state.settings;
       s.font_size = Math.max(12, Math.min(36, s.font_size + delta));
@@ -641,6 +496,7 @@
     applyLayout() {
       const rv = document.getElementById('reader-view');
       rv.classList.toggle('paged', Paged.isActive());
+      if (this.session) this.session.mode = Paged.isActive() ? 'paged' : 'scroll';
       const root = document.getElementById('reader-root');
       if (root) root.classList.toggle('dual', !!(Paged.isDual && Paged.isDual()));
       const wrap = document.querySelector('.chapter-wrap');
@@ -686,107 +542,6 @@
       }
       const topBar = document.getElementById('top-bar');
       App.setBarsVisible(!topBar.classList.contains('bar-visible'));
-    },
-
-    /** 快捷键帮助弹窗（按 ? 或顶栏帮助按钮打开，Esc / 点击空白关闭）。 */
-    showShortcuts() {
-      let ov = document.getElementById('shortcut-help');
-      if (!ov) {
-        ov = document.createElement('div');
-        ov.className = 'modal-overlay hidden';
-        ov.id = 'shortcut-help';
-        const box = document.createElement('div');
-        box.className = 'help-modal';
-        const title = document.createElement('div');
-        title.className = 'help-modal-title';
-        title.textContent = '快捷键';
-        const close = document.createElement('button');
-        close.className = 'vm-btn';
-        close.textContent = '关闭 (Esc)';
-        close.addEventListener('click', () => Reader.closeShortcuts());
-        title.appendChild(close);
-        const list = document.createElement('div');
-        list.className = 'help-modal-list';
-        list.id = 'shortcut-help-list';
-        const hint = document.createElement('p');
-        hint.className = 'help-hint';
-        hint.textContent = 'Ctrl+F 打开全文搜索；滚动阅读模式下左右方向键直接切换章节；点击页面中央可切换顶栏/底栏；Esc 关闭弹窗或侧栏。';
-        box.append(title, list, hint);
-        ov.appendChild(box);
-        ov.addEventListener('click', (e) => {
-          if (e.target === ov) Reader.closeShortcuts();
-        });
-        overlayRoot().appendChild(ov);
-      }
-      const sc = Object.assign({}, HELP_SHORTCUTS, (App.state.settings && App.state.settings.shortcuts) || {});
-      const list = document.getElementById('shortcut-help-list');
-      list.innerHTML = '';
-      for (const [action, label] of HELP_ACTIONS) {
-        const row = document.createElement('div');
-        row.className = 'help-row';
-        const l = document.createElement('span');
-        l.textContent = label;
-        const k = document.createElement('kbd');
-        k.className = 'help-key';
-        k.textContent = Util.displayKey(sc[action]);
-        row.append(l, k);
-        list.appendChild(row);
-      }
-      ov.classList.remove('hidden');
-    },
-
-    closeShortcuts() {
-      const ov = document.getElementById('shortcut-help');
-      if (!ov || ov.classList.contains('hidden')) return false;
-      ov.classList.add('hidden');
-      return true;
-    },
-
-    /** 图片点击放大：滚轮缩放（0.5x~5x），双击在适配/1:1 间切换。 */
-    openImage(src) {
-      if (!src) return;
-      let ov = document.getElementById('image-lightbox');
-      if (!ov) {
-        ov = document.createElement('div');
-        ov.className = 'image-lightbox hidden';
-        ov.id = 'image-lightbox';
-        const img = document.createElement('img');
-        img.id = 'lightbox-img';
-        img.alt = '';
-        const close = document.createElement('button');
-        close.className = 'lightbox-close';
-        close.title = '关闭 (Esc)';
-        close.textContent = '✕';
-        const hint = document.createElement('span');
-        hint.className = 'lightbox-hint';
-        hint.textContent = '滚轮缩放 · 双击 1:1 · 点击关闭';
-        ov.append(img, close, hint);
-        ov.addEventListener('click', (e) => {
-          if (e.target === ov || e.target === close || e.target === hint) Reader.closeImage();
-        });
-        ov.addEventListener('wheel', (e) => {
-          e.preventDefault();
-          lightboxScale = Math.max(0.5, Math.min(5, lightboxScale + (e.deltaY < 0 ? 0.15 : -0.15)));
-          img.style.transform = 'scale(' + lightboxScale + ')';
-        }, { passive: false });
-        img.addEventListener('dblclick', () => {
-          lightboxScale = lightboxScale === 1 ? 2 : 1;
-          img.style.transform = 'scale(' + lightboxScale + ')';
-        });
-        overlayRoot().appendChild(ov);
-      }
-      lightboxScale = 1;
-      const img = document.getElementById('lightbox-img');
-      img.src = src;
-      img.style.transform = 'scale(1)';
-      ov.classList.remove('hidden');
-    },
-
-    closeImage() {
-      const ov = document.getElementById('image-lightbox');
-      if (!ov || ov.classList.contains('hidden')) return false;
-      ov.classList.add('hidden');
-      return true;
     },
 
     async goToSearchHit(chapterIndex, offset) {
