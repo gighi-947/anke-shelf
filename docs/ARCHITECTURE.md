@@ -7,7 +7,7 @@ run_app.py            入口（PyInstaller 目标脚本）
 app/                  Python 后端
   main.py             窗口生命周期、服务装配、单实例、DPI
   server.py           本地 HTTP 服务（/api/<name> 分发 + /book/ 读取书内容）
-  api.py              前端唯一业务入口（方法名即接口名）
+  api/                前端唯一业务入口（api/ 包：registry + 按域 handler，方法名即接口名）
   settings.py         用户设置持久化（默认值 + 旧版迁移）
   shelf.py            书架/进度存储（原子 JSON）
   stats.py            阅读统计（全局 + 每书 + 按天）

@@ -1798,3 +1798,19 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   BookManager 注册返回 Book）。
 - 验证：Python 全量 **187 项 OK**。
 - **待办**：B3（拆 api.py + 前端 ApiClient）按 review 顺序推进。
+
+### 10.7 B3a：拆 api.py → app/api/ 包（registry + 按域 handler，外部协议零变化）（2026-08-10）
+
+- **目标**：消除 Api 门面继续膨胀的隐患；`/api/<name>`、`Api(...)` 构造签名、
+  server.py 分发全部不变。
+- **改动**：
+  - 新增 `app/api/` 包：`registry.py`（ApiRegistry：register + `__getattr__`
+    兼容 server 的 `getattr(api, name, None)` 分发）、`common.py`
+    （ApiContext + 共享辅助）、按域 handler 模块：system / library / reader /
+    search_api / annotation_api / stats_api / nga_api / settings_api；
+  - `app/api/__init__.py`：`Api(ApiRegistry)` 构造时把全部 handler 绑定
+    ApiContext 并注册（方法名即契约，未注册名 AttributeError → 404）；
+  - 删除单文件 `app/api.py`（482 行拆为 10 个小模块）；
+  - 文档同步：ARCHITECTURE / CODEBASE_MAP / GLOSSARY 的 api 引用改为 `app/api/`。
+- **验证**：Python 187 项 OK；UI 实机 harness exit=0（92 项 PASS，无 FAIL）。
+- **待办**：B3b 前端 ApiClient（UI 不再直接调 Bridge.call，收口到 api-client.js）。
