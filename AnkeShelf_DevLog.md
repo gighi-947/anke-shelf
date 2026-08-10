@@ -1688,3 +1688,31 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
 - **验证（已完成）**：推送后 Windows CI 重跑 **success**（15:48 UTC，
   含 unittest 174 项 + PyInstaller 目录版打包 + 目录版 zip 上传）；
   `android/m1-data-layer` 已快进同步至 `5fcbd97`，与 main 一致。
+
+### 10.3 双端契约 B0：contracts/ 目录、NativeBook 格式规范、文本规范化规范（2026-08-10）
+
+- **背景**：收到第三方 review（`saas-nexus-1786343013653.md`，四轮：结构分析 /
+  调用链 / 分层建议 / Architecture 2.0），核心建议为“不做大重写，把已正确的
+  边界契约化、可测试化”；用户批准按 B0（契约与文档先行，零业务代码改动）开始。
+- **改动**：
+  - 新增 `contracts/`：README（使用规则与版本）、JSON Schema
+    （native-book meta/floors、progress、annotations、settings）；
+  - `contracts/text/text-cases.json`：14 条文本规范化用例（basic/br/block/
+    script_style/collapse/nbsp/entities/fragment/comment/cdata/display_none/
+    ruby/unicode/astral），`expected` 以 Windows Python 实现为准；
+  - `contracts/fixtures/native-book/basic-nga/`：最小原生书 fixture
+    （meta/floors/chapters + expected_plaintext）；
+  - 新增 `docs/NATIVE_BOOK_FORMAT.md`（ank-native/1 规范：目录布局、六大
+    invariant、字段表、分组规则、安全与迁移）与
+    `docs/TEXT_NORMALIZATION_SPEC.md`（9 条权威规则 + 4 项已知分歧清单）；
+  - 修正 `android/README.md` 过期里程碑（M2 → 指向根 README 的 v1.0.0）；
+    `AGENTS.md` 共享文件清单加入 `contracts/`；`DATA_CONTRACT.md` 增加指向。
+- **验证**：Python 权威实现与 14 条用例、fixture 期望纯文本逐条一致；全部
+  contracts JSON 可解析（本机无 jsonschema，schema 校验留到 B1 CI）。
+- **发现并记录的已知分歧（B1 暴露、B2 统一）**：
+  1. Kotlin `Regex("\\s+")` 为 ASCII 空白，NBSP 不折叠（Python/JS 会）；
+  2. Kotlin 命名实体表为常用子集（Python 为完整 HTML 实体表）；
+  3. CDATA：Python/JS 视为 bogus comment 无文本，Kotlin 会输出内容；
+  4. 星形字符（emoji）偏移计数：Python 按码点、JS/Kotlin 按 UTF-16 code unit。
+- **待办**：B1 跨端 golden tests（Python / Windows JS / Android Kotlin+JS 读同一
+  fixtures）+ schema 校验接入 CI；B2 统一上述四项分歧语义。

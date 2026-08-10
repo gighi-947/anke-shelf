@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/gighi-947/anke-shelf/contracts/native-book/meta.schema.json",
+  "title": "Anke Native Book meta.json",
+  "type": "object",
+  "required": [
+    "format", "book_id", "tid", "title", "folder_name",
+    "per_chapter", "image_mode", "theme", "toc_mode", "chapters", "last_lou"
+  ],
+  "properties": {
+    "format": { "const": "ank-native/1" },
+    "book_id": { "type": "string", "minLength": 1 },
+    "tid": { "type": "integer", "minimum": 0 },
+    "author_id": { "type": "integer", "minimum": 0 },
+    "title": { "type": "string" },
+    "author": { "type": "string" },
+    "folder_name": { "type": "string" },
+    "per_chapter": { "type": "integer", "minimum": 1 },
+    "image_mode": { "enum": ["online", "embedded", "none"] },
+    "theme": { "enum": ["light", "dark"] },
+    "toc_mode": { "enum": ["index", "split"] },
+    "toc": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "entries"],
+        "properties": {
+          "title": { "type": "string" },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": [ { "type": "string" }, { "type": "integer" } ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "chapters": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/chapter" }
+    },
+    "last_lou": { "type": "integer" },
+    "created_time": { "type": "string" },
+    "updated_time": { "type": "string" }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "chapter": {
+      "type": "object",
+      "required": ["file", "title", "floor_count", "first_lou", "last_lou", "main"],
+      "properties": {
+        "file": { "type": "string", "pattern": "^chapters/[0-9]{4}\\.xhtml$" },
+        "title": { "type": "string" },
+        "floor_count": { "type": "integer", "minimum": 0 },
+        "first_lou": { "type": "integer" },
+        "last_lou": { "type": "integer" },
+        "main": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

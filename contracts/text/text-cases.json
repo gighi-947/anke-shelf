@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "spec": "docs/TEXT_NORMALIZATION_SPEC.md",
+  "cases": [
+    {
+      "id": "basic",
+      "html": "<p>Hello <b>World</b></p>",
+      "expected": "Hello World",
+      "points": [
+        { "quote": "Hello", "offset": 0 },
+        { "quote": "World", "offset": 6 }
+      ]
+    },
+    {
+      "id": "br",
+      "html": "<p>line1<br/>line2</p>",
+      "expected": "line1 line2",
+      "points": [ { "quote": "line2", "offset": 6 } ]
+    },
+    {
+      "id": "block",
+      "html": "<p>a</p><p>b</p>",
+      "expected": "a b",
+      "points": [ { "quote": "b", "offset": 2 } ]
+    },
+    {
+      "id": "script_style",
+      "html": "<script>var x=1</script><p>ok</p><style>.x{}</style>",
+      "expected": "ok",
+      "points": [ { "quote": "ok", "offset": 0 } ]
+    },
+    {
+      "id": "collapse",
+      "html": "<p>a\n  b\t c</p>",
+      "expected": "a b c",
+      "points": [
+        { "quote": "b", "offset": 2 },
+        { "quote": "c", "offset": 4 }
+      ]
+    },
+    {
+      "id": "nbsp",
+      "html": "<p>a&nbsp;&nbsp;b</p>",
+      "expected": "a b",
+      "points": [ { "quote": "b", "offset": 2 } ]
+    },
+    {
+      "id": "entities",
+      "html": "<p>&amp; &lt; &gt; &#39; &#x27; &hellip; &unknown;</p>",
+      "expected": "& < > ' ' … &unknown;",
+      "points": [ { "quote": "…", "offset": 10 } ]
+    },
+    {
+      "id": "fragment",
+      "html": "Hello <b>world</b>",
+      "expected": "Hello world",
+      "points": [ { "quote": "world", "offset": 6 } ]
+    },
+    {
+      "id": "comment",
+      "html": "<p>a<!-- c -->b</p>",
+      "expected": "ab",
+      "points": [ { "quote": "ab", "offset": 0 } ]
+    },
+    {
+      "id": "cdata",
+      "html": "<![CDATA[x<y]]>",
+      "expected": "",
+      "note": "浏览器 HTML 解析器将 CDATA 视为 bogus comment（无文本）；Kotlin TextExtractor 当前会输出内容，属已知分歧，见 TEXT_NORMALIZATION_SPEC"
+    },
+    {
+      "id": "display_none",
+      "html": "<p style=\"display:none\">hidden</p><p>shown</p>",
+      "expected": "hidden shown",
+      "note": "文本提取不做 CSS 计算，display:none 内容仍然计入"
+    },
+    {
+      "id": "ruby",
+      "html": "<ruby>漢<rt>かん</rt></ruby>",
+      "expected": "漢 かん",
+      "points": [ { "quote": "かん", "offset": 2 } ]
+    },
+    {
+      "id": "unicode",
+      "html": "<p>café 中文 👋</p>",
+      "expected": "café 中文 👋",
+      "note": "不做 Unicode 规范化（NFC/NFKC），原样保留",
+      "points": [ { "quote": "中文", "offset": 5 } ]
+    },
+    {
+      "id": "astral",
+      "html": "<p>a👋b</p>",
+      "expected": "a👋b",
+      "note": "已知分歧：Python 按 Unicode 码点计数（b 的 offset=2）；JS/Kotlin 字符串按 UTF-16 code unit 计数（b 的 offset=3）。B1 跨端测试须暴露并在 B2 统一语义",
+      "points": [ { "quote": "b", "offset": 2 } ]
+    }
+  ]
+}

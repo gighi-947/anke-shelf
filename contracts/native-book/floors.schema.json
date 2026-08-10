@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/gighi-947/anke-shelf/contracts/native-book/floors.schema.json",
+  "title": "Anke Native Book floors.json",
+  "type": "array",
+  "items": { "$ref": "#/definitions/floor" },
+  "definitions": {
+    "floor": {
+      "type": "object",
+      "required": ["pid", "lou", "timestamp", "username", "user_id", "like_num", "raw_content", "comments"],
+      "properties": {
+        "pid": { "type": "integer" },
+        "lou": { "type": "integer", "minimum": -1 },
+        "timestamp": { "type": "integer", "minimum": 0 },
+        "username": { "type": "string" },
+        "user_id": { "type": "integer", "minimum": 0 },
+        "like_num": { "type": "integer" },
+        "raw_content": { "type": "string" },
+        "comments": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/floor" }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -11,7 +11,7 @@
 
 - Windows 端：`app/`（Python）、`web/`（前端）、`ngapost2md-python/`、`tests/`。
 - Android 端：`android/`（独立 Gradle 工程，Kotlin + Compose）。
-- 共享文件仅：`README.md`、`docs/`、`LICENSE`、`AnkeShelf_DevLog.md`、`.github/`。
+- 共享文件仅：`README.md`、`docs/`、`contracts/`、`LICENSE`、`AnkeShelf_DevLog.md`、`.github/`。
 - **两端代码绝不互相引用**；android 构建只发生在 `android/` 内。
 - CI：`.github/workflows/android.yml` 仅 `android/**` 与自身变更时触发，不得扩大范围。
 - 版本线分离：Windows `vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；Android `android-vX.Y.Z` +

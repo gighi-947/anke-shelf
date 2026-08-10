@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/gighi-947/anke-shelf/contracts/settings/settings.schema.json",
+  "title": "settings.json",
+  "type": "object",
+  "required": ["settings_version"],
+  "properties": {
+    "settings_version": { "type": "integer", "minimum": 3 },
+    "theme": { "type": "string" },
+    "theme_mode": { "type": "string" },
+    "font_size": { "type": "integer" },
+    "line_height": { "type": "number" },
+    "ui_font_scale": { "type": "number" },
+    "font_family": { "type": "string" },
+    "custom_font": { "type": "string" },
+    "book_fonts": { "type": "object" },
+    "custom_bg": { "type": "string" },
+    "custom_primary": { "type": "string" },
+    "custom_accent": { "type": "string" },
+    "custom_text": { "type": "string" },
+    "page_width": { "type": "number" },
+    "pagination": { "type": "boolean" },
+    "dual_page": { "type": "boolean" },
+    "auto_dual": { "type": "boolean" },
+    "shelf_view": { "enum": ["grid", "list"] },
+    "shelf_sort": { "type": "string" },
+    "margin_px": { "type": "integer" },
+    "gap_px": { "type": "integer" },
+    "brightness": { "type": "number" }
+  },
+  "additionalProperties": true
+}

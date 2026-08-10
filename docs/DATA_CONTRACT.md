@@ -2,6 +2,10 @@
 
 > Windows 与 Android 两端共享同一套 JSON 数据契约，用于将来数据互通与
 > 交叉验证。任何一端扩展字段都必须遵守本文档的兼容规则。
+>
+> 机器可验证资产见 `contracts/`（JSON Schema + fixtures）；原生书格式规范见
+> [NATIVE_BOOK_FORMAT.md](NATIVE_BOOK_FORMAT.md)，文本坐标规范见
+> [TEXT_NORMALIZATION_SPEC.md](TEXT_NORMALIZATION_SPEC.md)。
 
 ## 1. 存储位置与写入方式
 

@@ -1,0 +1,63 @@
+[
+  {
+    "pid": 0,
+    "lou": 0,
+    "timestamp": 1754000000,
+    "username": "样本楼主",
+    "user_id": 1,
+    "like_num": 0,
+    "raw_content": "[b]欢迎[/b] 来到契约样本安科。\n[color=red]红色文字[/color] 与 [color=blue]蓝色文字[/color]。",
+    "comments": []
+  },
+  {
+    "pid": 101,
+    "lou": 1,
+    "timestamp": 1754000100,
+    "username": "读者A",
+    "user_id": 2,
+    "like_num": 3,
+    "raw_content": "第一楼正文：\n[quote]楼上说的对。[/quote]\n掷骰：1d100 = 87",
+    "comments": []
+  },
+  {
+    "pid": 102,
+    "lou": 2,
+    "timestamp": 1754000200,
+    "username": "读者B",
+    "user_id": 3,
+    "like_num": 5,
+    "raw_content": "第二楼正文，带图片 [img]https://example.com/a.png[/img]。",
+    "comments": [
+      {
+        "pid": 201,
+        "lou": 1,
+        "timestamp": 1754000240,
+        "username": "读者C",
+        "user_id": 4,
+        "like_num": 0,
+        "raw_content": "回复：同意楼上。",
+        "comments": []
+      }
+    ]
+  },
+  {
+    "pid": 103,
+    "lou": 3,
+    "timestamp": 1754000300,
+    "username": "读者C",
+    "user_id": 4,
+    "like_num": 2,
+    "raw_content": "第三楼：\n[collapse]折叠内容[/collapse] 与 类颜色。",
+    "comments": []
+  },
+  {
+    "pid": 104,
+    "lou": 4,
+    "timestamp": 1754000400,
+    "username": "读者D",
+    "user_id": 5,
+    "like_num": 7,
+    "raw_content": "第四楼正文结束。",
+    "comments": []
+  }
+]

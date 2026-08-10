@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/gighi-947/anke-shelf/contracts/annotation/annotations.schema.json",
+  "title": "annotations.json",
+  "type": "object",
+  "required": ["version", "books"],
+  "properties": {
+    "version": { "const": 1 },
+    "books": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "highlights": { "type": "array", "items": { "$ref": "#/definitions/highlight" } },
+          "bookmarks": { "type": "array", "items": { "$ref": "#/definitions/bookmark" } }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "definitions": {
+    "highlight": {
+      "type": "object",
+      "required": ["id", "chapter_index", "start_offset", "end_offset", "text", "color"],
+      "properties": {
+        "id": { "type": "string" },
+        "chapter_index": { "type": "integer", "minimum": 0 },
+        "start_offset": { "type": "integer", "minimum": 0 },
+        "end_offset": { "type": "integer", "minimum": 0 },
+        "text": { "type": "string" },
+        "color": { "enum": ["yellow", "green", "blue", "pink", "purple", "cyan"] },
+        "note": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "bookmark": {
+      "type": "object",
+      "required": ["id", "chapter_index", "offset", "text"],
+      "properties": {
+        "id": { "type": "string" },
+        "chapter_index": { "type": "integer", "minimum": 0 },
+        "offset": { "type": "integer", "minimum": 0 },
+        "text": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}
