@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from .events import bus
+from .logutil import log_event
 from .nga_config import ensure_nga_config, load_nga_config
 from .native_book import (
     append_container,
@@ -397,6 +398,7 @@ class NgaService:
             # 注册到书架（BookManager + Shelf 由调用方回调完成）
             book_id = self._book_register(str(native_dir) if valid else str(epub_path))
             bus.emit("book_updated", book_id=book_id)
+            log_event(log, "nga", "download_done", book_id=book_id)
             return book_id
         finally:
             nga_mod.set_cancel_cb(None)
@@ -412,6 +414,7 @@ class NgaService:
             detail = f"已更新 {new_count} 楼" if new_count else "已是最新"
             self._set(running=False, stage="done", detail=detail,
                       book_id=rec.id, action="update")
+            log_event(log, "nga", "update_done", book_id=rec.id, new_floors=new_count)
             _save_download_settings(folder, self._current_settings(folder, tid, params))
         except Exception as e:  # noqa: BLE001
             if self._cancel.is_set():

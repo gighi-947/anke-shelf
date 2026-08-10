@@ -1892,3 +1892,19 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   UI 实机 harness exit=0（92 项 PASS）。
 - **待办**：B7（TaskManager 抽象 / 统一日志字段）按 review 顺序推进；
   ContentSource 仍留到第二书源需求。
+
+### 10.12 B7：TaskManager 抽象 + 统一日志字段（2026-08-10）
+
+- **任务基础设施**：新增 `app/tasks.py`（`TaskStatus` / `TaskProgress` /
+  `TaskCancelled` / `TaskManager`）：按 lane 单飞（同 lane 同时只允许一个任务，
+  不同 lane 可并行），取消由任务方检查标志；**NgaService 暂不迁移**
+  （保持其自身单飞锁，语义一致），模块供大文件导入/导出/索引重建等新任务接入。
+- **统一日志字段**：新增 `app/logutil.py` 的 `log_event(logger, component,
+  event, **fields)`（输出 `component event key=value`，None 字段跳过）；
+  接入 NGA 下载完成（`nga download_done`）、热更新完成（`nga update_done`）、
+  搜索索引构建（`search index_built`，含 chapters/duration_ms）。
+- **验证**：Python 全量 **204 项 OK**（+5：tasks 4、logutil 1）；
+  UI 实机 harness exit=0（92 项 PASS）。
+- **待办**：ContentSource / 第二书源抽象仍留到需求出现；review 的
+  P0/P1 主要项（契约、领域模型、Api/Reader 拆分、事件/缓存失效、迁移/错误码/
+  诊断）已全部落地。

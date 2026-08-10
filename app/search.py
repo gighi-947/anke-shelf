@@ -13,13 +13,18 @@
 offset/text_len 一律按 UTF-16 code unit 计数（与 DOM/JS 字符串索引一致；
 星形字符占 2 个 code unit），Python 内部仍用码点索引扫描。
 """
+import logging
 import threading
 import re
+import time
 from typing import Optional
 
 from .domain import book_revision
 from .epub import EpubBook
+from .logutil import log_event
 from .text import cp_index_from_utf16, extract_dom_text, utf16_index, utf16_len
+
+log = logging.getLogger("search")
 
 
 def _word_re(q: str) -> re.Pattern:
@@ -41,6 +46,7 @@ class SearchService:
     def ensure_index(self, book: EpubBook, revision: Optional[str] = None) -> None:
         """逐章提取纯文本建索引；同一 revision 的索引复用，变化时重建。"""
         revision = revision or book_revision(book)
+        t0 = time.monotonic()
         with self._lock:
             if book.id in self._indexes:
                 idx = self._indexes[book.id]
@@ -65,6 +71,14 @@ class SearchService:
                 "lens": {ch["index"]: len(ch["text"]) for ch in chapters},
                 "revision": revision,
             }
+        log_event(
+            log,
+            "search",
+            "index_built",
+            book_id=book.id,
+            chapters=len(chapters),
+            duration_ms=round((time.monotonic() - t0) * 1000),
+        )
 
     def refresh_if_stale(self, book: EpubBook) -> bool:
         """书籍 revision 与索引不一致时重建；返回是否触发重建。"""

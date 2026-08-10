@@ -35,6 +35,8 @@
 | ErrorCode / api_error | 结构化 API 错误码（message 不变，新增 ok/error_code） | `app/errors.py` |
 | run_migrations | 统一数据迁移框架（load → migrate → validate → 原子写） | `app/migrations.py`；Settings v<3 迁移已接入 |
 | build_diagnostics | 诊断包导出（版本/平台/日志/脱敏设置，不含凭据） | `app/diagnostics.py`；设置 → 数据「导出诊断信息」 |
+| TaskManager / TaskStatus | 按 lane 单飞的任务基础设施（NGA 暂未迁移） | `app/tasks.py` |
+| log_event | 统一日志字段（component event key=value） | `app/logutil.py`；nga/search 已接入 |
 | TextPos | DOM↔纯文本逐字符映射 | 同上；跨端对照测试 `ReaderPagedCrossTest` |
 | scroll_ratio | 滚动模式整屏图片时的滚动比例锚点（0..1；-1=文本锚点） | Android `ProgressEntry.scroll_ratio`；reader-lite.js `state.scrollRatio` |
 | page_index / page_total | 分页模式页码/总页数（0 基；-1=无） | Android `ProgressEntry` 扩展字段 |
