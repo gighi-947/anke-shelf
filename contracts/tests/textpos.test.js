@@ -27,6 +27,11 @@ assert.strictEqual(
   'x y',
   '注入链与外部节点间保留分隔空格',
 );
+assert.strictEqual(
+  fold([{ text: 'a', noSep: true }, { text: 'b', noSep: true }]).text,
+  'ab',
+  '注释分隔的相邻文本节点之间不插分隔（noSep）',
+);
 assert.strictEqual(fold(['  a\n\t b  ']).text, 'a b', '\\s+ 折叠 + trim');
 
 const collapsed = fold(['  ab']);

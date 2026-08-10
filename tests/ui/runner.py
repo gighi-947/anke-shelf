@@ -547,6 +547,7 @@ def main() -> int:
     """
 
     results = {}
+    _contract_failures = []
     _last_logs = []
 
     def run():
@@ -584,7 +585,13 @@ def main() -> int:
                 d.close();
                 const ctx = TextPos.build(d);
                 const offsets = (c.points || []).map(p => ctx.text.indexOf(p.quote));
-                out.push({ id: c.id, text: ctx.text, offsets: offsets });
+                out.push({
+                  id: c.id, text: ctx.text, offsets: offsets,
+                  textOk: ctx.text === c.expected,
+                  pointsOk: (c.points || []).every(
+                    (p, pi) => c.id === 'astral' || offsets[pi] === p.offset
+                  ),
+                });
                 f.remove();
               }
               return JSON.stringify(out);
@@ -597,10 +604,22 @@ def main() -> int:
                 js_cases_result = json.loads(raw2)
             except Exception:
                 js_cases_result = []
-            results['contract_text_cases'] = bool(js_cases_result) and all(
-                r.get('text') == c['expected'] for r, c in zip(js_cases_result, _cases)
+            for r, c in zip(js_cases_result, _cases):
+                if r.get('text') != c['expected']:
+                    _contract_failures.append(
+                        f"text {c['id']}: got={r.get('text')!r} expected={c['expected']!r}"
+                    )
+                for pi, p in enumerate(c.get('points', [])):
+                    if c['id'] != 'astral' and r.get('offsets', [])[pi:pi + 1] != [p['offset']]:
+                        _contract_failures.append(
+                            f"point {c['id']}: got={r.get('offsets')} expected={p['offset']}"
+                        )
+            results['contract_text_cases'] = (
+                len(js_cases_result) == len(_cases) and all(
+                    r.get('text') == c['expected'] for r, c in zip(js_cases_result, _cases)
+                )
             )
-            results['contract_js_points'] = bool(js_cases_result) and all(
+            results['contract_js_points'] = len(js_cases_result) == len(_cases) and all(
                 r['offsets'][pi] == p['offset']
                 for r, c in zip(js_cases_result, _cases)
                 for pi, p in enumerate(c.get('points', []))
@@ -756,6 +775,10 @@ def main() -> int:
     if not all_ok:
         print("  --- JS 日志 ---")
         for line in _last_logs:
+            print("   ", line)
+    if _contract_failures:
+        print("  --- 契约用例细节 ---")
+        for line in _contract_failures:
             print("   ", line)
 
     books.close_all()

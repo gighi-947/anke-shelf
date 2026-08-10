@@ -48,7 +48,10 @@
     });
     let node;
     while ((node = walker.nextNode())) {
-      items.push({ node, text: node.data, isInj: isInjectedText(node) });
+      const prev = items.length ? items[items.length - 1] : null;
+      // 注释分隔的相邻文本节点：注释不产生文本也不产生分隔（与 Python/Kotlin、视觉渲染一致）
+      const noSep = !!(prev && separatedByCommentOnly(prev.node, node));
+      items.push({ node, text: node.data, isInj: isInjectedText(node), noSep });
     }
 
     const folded = foldItems(items);
@@ -72,7 +75,7 @@
     let sawPrev = false;
     let lastWasInj = false;
     for (const it of items) {
-      if (sawPrev && !(it.isInj && lastWasInj)) {
+      if (sawPrev && !(it.isInj && lastWasInj) && !it.noSep) {
         raw += ' ';
       }
       sawPrev = true;
@@ -109,6 +112,13 @@
     }
 
     return { raw, text, mapRaw, ranges };
+  }
+
+  /** 两个文本节点之间是否只有注释节点（无元素边界）。 */
+  function separatedByCommentOnly(a, b) {
+    let s = b.previousSibling;
+    while (s && s.nodeType === Node.COMMENT_NODE) s = s.previousSibling;
+    return s === a;
   }
 
   let buildCount = 0;
