@@ -7,6 +7,7 @@ on:
       - 'web/**'
       - 'ngapost2md-python/**'
       - 'tests/**'
+      - 'contracts/**'
       - 'requirements.txt'
       - 'ankeshelf.spec'
       - 'run_app.py'
@@ -17,6 +18,7 @@ on:
       - 'web/**'
       - 'ngapost2md-python/**'
       - 'tests/**'
+      - 'contracts/**'
       - 'requirements.txt'
       - 'ankeshelf.spec'
       - 'run_app.py'
@@ -46,6 +48,9 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failed = $true }
           }
           if ($failed) { exit 1 }
+
+      - name: Contract JS tests (textpos folding)
+        run: node contracts/tests/textpos.test.js
 
       - name: Unit tests
         run: python -m unittest discover tests

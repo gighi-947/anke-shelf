@@ -33,6 +33,7 @@ from app.epub import EpubBook
 from app.text import extract_dom_text
 
 SAMPLE = PROJECT / "tests" / "sample" / "sample_nav3.epub"
+CONTRACTS = PROJECT / "contracts"
 
 
 def main() -> int:
@@ -568,6 +569,48 @@ def main() -> int:
             logs = data.get('log', [])
             _last_logs[:] = logs
 
+            # ---- 契约文本用例：真实 WebView 内运行 textpos.js（对照 contracts/text/text-cases.json） ----
+            _cases = json.loads((CONTRACTS / "text" / "text-cases.json").read_text(encoding="utf-8"))["cases"]
+            JS_CASES = r"""
+            (() => {
+              const out = [];
+              for (const c of window.__cases) {
+                const f = document.createElement('iframe');
+                f.style.display = 'none';
+                document.body.appendChild(f);
+                const d = f.contentDocument;
+                d.open();
+                d.write('<html><body>' + c.html + '</body></html>');
+                d.close();
+                const ctx = TextPos.build(d);
+                const offsets = (c.points || []).map(p => ctx.text.indexOf(p.quote));
+                out.push({ id: c.id, text: ctx.text, offsets: offsets });
+                f.remove();
+              }
+              return JSON.stringify(out);
+            })()
+            """
+            try:
+                raw2 = window.evaluate_js(
+                    "window.__cases = " + json.dumps(_cases, ensure_ascii=False) + ";" + JS_CASES
+                )
+                js_cases_result = json.loads(raw2)
+            except Exception:
+                js_cases_result = []
+            results['contract_text_cases'] = bool(js_cases_result) and all(
+                r.get('text') == c['expected'] for r, c in zip(js_cases_result, _cases)
+            )
+            results['contract_js_points'] = bool(js_cases_result) and all(
+                r['offsets'][pi] == p['offset']
+                for r, c in zip(js_cases_result, _cases)
+                for pi, p in enumerate(c.get('points', []))
+                if c['id'] != 'astral'  # 已知分歧：JS UTF-16 vs canonical 码点（B2 统一）
+            )
+            results['contract_js_astral_utf16'] = bool(js_cases_result) and any(
+                r.get('id') == 'astral' and r.get('offsets') == [3]
+                for r in js_cases_result
+            )
+
             def get(name):
                 for line in logs:
                     if line.startswith(name + ':'):
@@ -676,7 +719,9 @@ def main() -> int:
 
     print("=== UI 自动化验证 ===")
     all_ok = True
-    for name in ['init', 'default_scroll', 'diff_js_py', 'pages', 'page_next',
+    for name in ['init', 'default_scroll', 'diff_js_py', 'contract_text_cases',
+                 'contract_js_points', 'contract_js_astral_utf16',
+                 'pages', 'page_next',
                  'marks', 'bookmark',
                  'code_highlight', 'stats', 'stats_modal', 'stats_default_all',
                  'stats_book_cards', 'stats_side_tab', 'stats_side_total',

@@ -51,8 +51,23 @@
       items.push({ node, text: node.data, isInj: isInjectedText(node) });
     }
 
-    // 拼 raw：注入节点链内部无缝（代码高亮/高亮 mark 拆出的多段同源），
-    // 但与外部节点之间正常保留分隔空格（pre/code 等原始元素边界）。
+    const folded = foldItems(items);
+    return {
+      doc,
+      text: folded.text,
+      ranges: folded.ranges,
+      mapRaw: folded.mapRaw,
+      buildCount: (buildCount + 1),
+    };
+  }
+
+  /**
+   * 纯函数：文本项数组 → 折叠纯文本与坐标映射（供 build() 与 Node 契约单测共用）。
+   * items: [{ text, isInj }]；与 Python app/text.py 的折叠规则一致
+   * （相邻文本块间一个空格、`\s+` → 单空格、trim）。
+   * 注入节点链（.hl-mark / .syntax）内部无缝，与外部节点间保留分隔空格。
+   */
+  function foldItems(items) {
     let raw = '';
     let sawPrev = false;
     let lastWasInj = false;
@@ -61,13 +76,12 @@
         raw += ' ';
       }
       sawPrev = true;
-      lastWasInj = it.isInj;
+      lastWasInj = !!it.isInj;
       it.rawStart = raw.length;
       raw += it.text;
       it.rawEnd = raw.length;
     }
 
-    // 折叠 + trim，构建 raw 位置 → plain 位置 映射
     const text = raw.replace(/\s+/g, ' ').trim();
     const mapRaw = new Int32Array(raw.length);
     let tIdx = 0;
@@ -83,7 +97,6 @@
       }
     }
 
-    // 每节点 → plain 区间
     const ranges = [];
     for (const it of items) {
       if (it.rawEnd <= it.rawStart) continue;
@@ -95,7 +108,7 @@
       });
     }
 
-    return { doc, text, ranges, mapRaw, buildCount: (buildCount + 1) };
+    return { raw, text, mapRaw, ranges };
   }
 
   let buildCount = 0;
@@ -196,10 +209,15 @@
     }
   }
 
-  window.TextPos = {
-    build,
-    plainToPoint,
-    rangeToOffsets,
-    currentOffsetFromPoint,
-  };
+  if (typeof window !== 'undefined') {
+    window.TextPos = {
+      build,
+      plainToPoint,
+      rangeToOffsets,
+      currentOffsetFromPoint,
+    };
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { foldItems };
+  }
 })();
