@@ -1746,3 +1746,23 @@ GitHub 邮件通知 Android CI 在 main 上失败，共修三轮：
   - UI harness 扩展未实跑（需桌面 WebView2 会话，留待本地验证）。
 - **待办**：B2 统一四项分歧（NBSP 空白定义、实体表、CDATA 解析、
   UTF-16 offset 计数语义）；UI harness 实跑确认三项新断言。
+
+### 10.5 实机验证暴露并修复：textpos 对“注释分隔的文本节点”误插空格（2026-08-10）
+
+- **现象**：`python -m tests.ui.runner` 实机跑出 `contract_text_cases FAIL` /
+  `contract_js_points FAIL`；其余 90 项全 PASS。失败详情：
+  `text comment: got='a b' expected='ab'`。
+- **根因**：浏览器 DOM 不合并注释两侧的文本节点（`<p>a<!-- c -->b</p>` 产生
+  “a”与“b”两个 Text 节点），textpos.js 按“相邻文本节点间一个空格”折叠 → `a b`；
+  而 Python/Kotlin 解析器与视觉渲染都是 `ab`。这是 B1 实机测试抓到的真实
+  跨端漂移（此前 Python 差分通过只是因为样本书没有注释分隔文本）。
+- **修复**：`web/js/textpos.js` 的 `build()` 增加
+  `separatedByCommentOnly(prev.node, node)` 判定——两个文本节点之间只有注释
+  时给后一项标记 `noSep`，`foldItems` 不再插入分隔；坐标映射（mapRaw/ranges）
+  保持逐节点不变。`foldItems` 契约新增 `noSep` 字段，Node 单测补充断言；
+  TEXT_NORMALIZATION_SPEC 第 4 条明确“注释分隔的相邻文本节点之间不插空格”。
+- **验证**：`node contracts/tests/textpos.test.js` OK（15 cases）；
+  UI 实机 harness 全绿 **exit=0，92 项 PASS**（`contract_text_cases` /
+  `contract_js_points` / `contract_js_astral_utf16` 均 PASS）。
+- **附带**：runner.py 增加契约失败明细输出（用例 id + got/expected），
+  以后 FAIL 可直接定位，不再盲猜。

@@ -18,9 +18,9 @@
 2. **跳过 script/style**：`<script>` 与 `<style>` 及其嵌套内容不计入。
 3. **标签边界 = 一个空格**：每个开始/结束/自闭合标签视为相邻文本块之间的
    一个分隔空格（与浏览器“相邻文本节点之间一个空格”等价）。
-4. **注释与 CDATA**：注释不产生文本也不产生分隔；CDATA 在 HTML 解析下视为
-   bogus comment，不产生文本（当前 Kotlin `TextExtractor` 会输出 CDATA 内容，
-   属已知分歧，见 §4）。
+4. **注释与 CDATA**：注释不产生文本也不产生分隔（被注释分隔的相邻文本节点
+   之间同样不插空格，与视觉渲染一致）；CDATA 在 HTML 解析下视为 bogus comment，
+   不产生文本（当前 Kotlin `TextExtractor` 会输出 CDATA 内容，属已知分歧，见 §4）。
 5. **实体解码**：按 HTML 实体规则解码——命名实体与十进制/十六进制数字实体；
    未知命名实体原样保留（Python `html.parser(convert_charrefs=True)` 语义）。
 6. **空白折叠**：`\s+`（Unicode 空白，含 NBSP U+00A0）折叠为单个空格，首尾 trim。
