@@ -7,18 +7,18 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-12）
+## 1. 当前状态（2026-08-13）
 
-- HEAD：`1ea4c95`（docs: 补记 10.14 会话交接快照并更新日志头部），分支 `main`，
-  已推送 GitHub。
-- 工作树：含未提交的文档重构（本文件、docs/DEVLOG_ARCHIVE.md、
-  docs/LESSONS_LEARNED.md、docs/ARCHITECTURE_ROADMAP.md，以及
-  AGENTS.md / GLOSSARY 引用同步）。
+- HEAD：`4810d0c`（docs: DevLog 拆分归档与教训文档，新增架构整合路线图），
+  分支 `main`，已推送 GitHub，与 `origin/main` 同步。
+- 旧状态 `1ea4c95` 时点所列的文档重构已在 `4810d0c` 一次性提交完毕，
+  本次文档状态同步（2026-08-13）见“最近流水”首个条目；本次提交后工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
-- 测试基线：
+- 测试基线（Windows/JS 于 2026-08-13 实跑复核；Android 沿用 2026-08-10 本地报告）：
   - Windows Python：`python -m unittest discover tests` = 211 项 OK；
-  - JS：`node contracts/tests/textpos.test.js`、`node tests/js/reader-session.test.js` OK；
+  - JS：`node contracts/tests/textpos.test.js`（15 例）、
+    `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 90 过 / 1 跳；DisciplineTest 在岗；
   - UI 实机 harness：`python -m tests.ui.runner` = 92 项 PASS（需桌面 WebView2）。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`；契约 CI 待按路线图新增。
@@ -42,6 +42,18 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-13 文档状态同步（本次提交）
+
+- 现象：`4810d0c` 提交后本文件“当前状态”仍停留在 `1ea4c95` 与“含未提交重构”
+  的旧描述；多份非归档文档存在过期状态（路线图基线 HEAD、VERSIONING 发布记录
+  SHA256 与“未推送”、M4 验收遗留项、原生渲染器/旧 reader.js 引用、
+  ARCHITECTURE 前端文件清单等）。
+- 处理：全量通读仓库文档后，最小化同步非归档文档到当前 HEAD / 版本线 / 测试基线；
+  历史文档（M4 验收、代码/性能/安全审查、原生渲染器、NGA 集成方案）加“状态”
+  说明而不改写历史结论。纯文档改动，未改代码、契约与 CI。
+- 验证：`python -m unittest discover tests` 211 项 OK；Node 契约 15 例 +
+  reader-session OK；`git status` 仅文档文件变更。
 
 ### 2026-08-12 DevLog 重构：归档 + 教训分类 + 现役日志瘦身
 

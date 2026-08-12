@@ -1,5 +1,12 @@
 # Android 原生渲染器（Kotlin/Compose 替代 WebView）
 
+> **状态（2026-08-13 核对）：本方案已停用，仅作历史参考。** 现役架构为
+> Compose 外壳 + WebView 渲染内核（`WebViewChapterView.kt` + `reader-lite.js`），
+> 决策见归档 §9.42 / §9.57；本文提到的 `ReaderModel.kt` / `NativeChapterView.kt`
+> 已在 9.57 作为死代码归档删除，路线图“明确不做”也列出“不重写现役阅读内核”。
+> 下文的渲染坑约束清单对 WebView 内核仍有参考价值，但“目标 / 架构 / 里程碑”
+> 不代表当前方向。
+
 目标：阅读器（EPUB 与原生书）不再用 WebView 渲染，改为 Kotlin/Compose 原生排版，最终视觉（NGA 楼层/引用/骰子/表格/颜色/字体）与桌面端对齐。
 
 ## 从开发日志回顾的渲染坑（约束清单）
@@ -25,7 +32,7 @@
 - `ui/reader/native/NativeReaderScreen.kt`：页面壳（顶/底栏、目录、图片查看、进度保存、主题、安全区）。
 - 数据层复用：`sanitizeReaderBody`、`PagedLayout`（几何）、`NgaFormatHtml` 色板、`EpubBook.readAsset`、进度存储。
 
-## 当前里程碑
+## 历史里程碑（已停用）
 
 - [x] 设计约束与架构
 - [x] 块模型解析器（XHTML → 楼层/段落/引用/骰子/表格/图片/评论，span 颜色粗斜体）

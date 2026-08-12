@@ -3,6 +3,11 @@
 日期：2026-08-08
 范围：`android/app/src/main` 全部 Kotlin 与 `assets/reader` 前端资源；以“正式提交前全面梳理”为目标，只做低风险重构。
 
+> 状态（2026-08-13 核对）：本报告为 2026-08-08 时点的审查记录。其后 9.57 精简中，
+> 第 1/4 项涉及的旧 WebView 三件套（ReaderBridge / ReaderBottomBar / ReaderScreen）
+> 与 `assets/reader/reader.js` 已作为死代码归档删除；现役内核为
+> `WebViewChapterView.kt` + `reader-lite.js`。
+
 ## 审查结论
 
 整体分层清晰（ui / data / service / reader），手动 DI（`AppContainer`）轻量，无全局可变单例滥用。主要问题是：单体大文件、重复的 NGA 请求头、少量死代码/死资产、硬编码路径与个别编译器警告。

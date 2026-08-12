@@ -73,7 +73,7 @@
 
 ## 分页模式落地（2026-08）
 
-- `assets/reader/reader.css + reader.js` 已实现 CSS multi-column 分页：
+- `assets/reader/reader.css + reader-lite.js`（`reader.js` 已于 9.57 删除）已实现 CSS multi-column 分页：
   scrollLeft 按 advance 翻页、双页补偶数列、超大章（>800000 字符）自动回退滚动；
   text_offset 双向映射（TextPos）与桌面 `textpos.js` 语义对齐，并附
   androidTest 跨端对照（`ReaderPagedCrossTest`：PagedMath/TextPos vs Kotlin）。

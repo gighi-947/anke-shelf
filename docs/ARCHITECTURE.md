@@ -22,8 +22,11 @@ web/                  前端（纯静态，前后端分离）
   index.html + css/   书架/阅读器/设置/下载导出页
   js/
     bridge.js         fetch 封装（令牌鉴权 + 超时 + 调试 mock）
+    api-client.js     前端 API 客户端（UI 统一走 Api.<method>()）
     app.js            应用状态、视图切换、顶底栏自动隐藏
-    reader.js         章节渲染（滚动/分页切换、进度、快捷键、交互）
+    reader.js         阅读核心编排（章节加载/进度/快捷键/交互）
+    reader-utils.js / reader-session.js / reader-navigation.js /
+    reader-help.js / reader-image.js   reader.js 拆分的常量/会话/换章/帮助/图片模块
     paged.js          CSS multi-column 分页核心（单页/自动双页/强制双页）
     nga_download.js   下载/导出/更新整合页
     settings.js       独立设置页
@@ -39,7 +42,8 @@ docs/                 架构与规划文档
 
 ## 数据流
 
-- 前端所有业务调用走 `Bridge.call(name, ...args)` → `POST /api/<name>`（本地随机令牌）。
+- 前端所有业务调用走 `Api.<method>()`（`api-client.js`）→
+  `Bridge.call(name, ...args)` → `POST /api/<name>`（本地随机令牌）。
 - 书内容：`/book/<book_id>/<zip_path>`（EPUB zip 内路径）或原生书目录读取，
   章节由 iframe 加载（同源，可注入样式与交互）。
 - 阅读进度：统一 `text_offset`（纯文本字符偏移），滚动/分页模式都可精确恢复。

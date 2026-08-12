@@ -1,7 +1,8 @@
 # AnkeShelf 架构整合路线图（下阶段任务参考）
 
-> 文档日期：2026-08-12
-> 分析基线：`main` / `1ea4c95`（工作树干净）
+> 文档日期：2026-08-12（2026-08-13 状态核对）
+> 分析基线：`main` / `1ea4c95`（分析时点）；2026-08-13 核对：HEAD 已推进至
+> `4810d0c`（docs-only 提交，工作树干净），代码与测试基线无变化。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
 > - `H:\AnkeShelf_Architecture_Improvement_Proposal.md`（架构改进提案）
@@ -44,7 +45,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| HEAD | `1ea4c95`（docs: 补记 10.14 会话交接快照并更新日志头部） |
+| HEAD | `4810d0c`（docs: DevLog 拆分归档与教训文档，新增架构整合路线图；2026-08-13 核对，分析基线 `1ea4c95` 之后仅此 docs-only 提交） |
 | 分支 | `main`，与 `origin/main` 同步，工作树干净 |
 | Windows Python 单测 | 211 项 OK（日志基线） |
 | JS 契约测试 | `textpos` 15 cases + `reader-session` OK |
@@ -275,4 +276,3 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - 是否需要 UI harness / 模拟器 / 真机；进度类必跑“滚动/翻页 → 退出 →
   重进”回归；
 - 是否检查发布包实际资产、扫描凭据、说明回滚方式。
-

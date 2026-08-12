@@ -25,7 +25,7 @@
 - Git 标签：`android-vX.Y.Z`（例：`android-v1.0.0`）。
 - Release 标题：`安科书架 Android vX.Y.Z`。
 - 资产名纯 ASCII 且带版本号：`AnkeShelf-vX.Y.Z-android.apk`。
-- 发布推送需用户明确授权（当前仓库未推送 GitHub）。
+- 发布推送需用户明确授权（v1.0.0 已按用户授权推送并发布）。
 
 ## 3. 签名
 
@@ -121,4 +121,4 @@
 
 | 版本 | 标签 | 日期 | 资产 | SHA256 |
 | --- | --- | --- | --- | --- |
-| v1.0.0 | `android-v1.0.0` | 2026-08-09 | `AnkeShelf-v1.0.0-android.apk`（16.4MB） | `3F1B212FD6CD966B4FF47599A782C155468F2E31B216CAA5A4961028C4FF7475` |
+| v1.0.0 | `android-v1.0.0` | 2026-08-09 | `AnkeShelf-v1.0.0-android.apk`（16,538,184 字节） | `5CD70CA083A0C11F6465302AFEC0B62EC453EA582AB355FB7B62779D7D52F4D0`（2026-08-10 正式 Logo 最终包） |
