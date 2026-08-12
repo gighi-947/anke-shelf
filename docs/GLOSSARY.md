@@ -92,7 +92,7 @@
 | AGENTS.md | 开发规则入口（进场先读） |
 | CODEBASE_MAP.md | 双端链路阅读地图 |
 | DATA_CONTRACT.md | 双端 JSON 数据契约 |
-| AnkeShelf_DevLog.md | 跨平台变更流水（9.x 节） |
+| AnkeShelf_DevLog.md | 现役开发日志（当前状态 + 最近流水）；历史归档见 docs/DEVLOG_ARCHIVE.md，教训见 docs/LESSONS_LEARNED.md |
 | VERSIONING.md | 安卓版本/签名/发布 SOP |
 | android-vX.Y.Z | 安卓独立版本线（Windows 用 vX.Y.Z） |
 | check-release.ps1 | 发布前凭据扫描 |

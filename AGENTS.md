@@ -1,7 +1,9 @@
 # AnkeShelf 开发规则（Agent 进场先读）
 
 > 本文件是所有开发会话的**进场入口**。改动前先读本节；详细背景见
-> [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)（变更流水，最新编号在顶部/末尾）、
+> [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)（现役日志：当前状态 + 最近流水；
+> 历史归档见 [docs/DEVLOG_ARCHIVE.md](docs/DEVLOG_ARCHIVE.md)，
+> 教训见 [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md)）、
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（Windows）、
 > [docs/ANDROID_ARCHITECTURE.md](docs/ANDROID_ARCHITECTURE.md)（Android）、
 > [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md)（双端链路入口与阅读顺序）、
@@ -22,7 +24,8 @@
 
 - 提交前缀：`android:` / `win:` / `docs:`；功能分支 `android/<feature>`、`win/<feature>`。
 - 单主干 `main`：功能分支验证后合并 main，再打标签发布。
-- 每次改动必须补记 [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)（9.x 节，含日期/现象/结论）。
+- 每次改动必须补记 [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)（最近流水，
+  含日期/现象/结论；详细历史归档见 [docs/DEVLOG_ARCHIVE.md](docs/DEVLOG_ARCHIVE.md)）。
 
 ## 3. 阅读器与进度保持铁律（踩坑十轮沉淀，9.43-9.59）
 
