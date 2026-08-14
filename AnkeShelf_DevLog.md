@@ -48,6 +48,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 docs：H: 审查材料归档（AnkeShelf_Review_Archive）
+
+- 处理：H: 根目录散落的审查文档与早期仓库包（review1/2/3、两轮审查报告、
+  复审报告、架构提案、架构债清单、anke_shelf-repo-2026-08-10.zip）与 4 个
+  旧 review zip 统一移入 `H:\AnkeShelf_Review_Archive\`；根目录只保留最新
+  源码包 `AnkeShelf-review-20260814-1bb79ec.zip`。仓库内 15 处 `H:\` 引用
+  同步改为归档路径（`H:\AnkeShelfReferences` 不变）。
+- 验证：纯文档/外部文件整理，未跑构建。
+
 ### 2026-08-14 win/android：重构批落地（D1 backup helper / D5 参数归一化 / D3 callBridge）
 
 - D1：`system_api.py` 抽 `_pick_and_call`（选择 → 取消 → 执行 → 异常映射），
@@ -79,7 +88,7 @@
 
 ### 2026-08-14 win/android/docs：review3 核验 + 快批清理（死代码/噪音）
 
-- 背景：第三视角审查（`H:\review3.md`，防御性编码 / 复杂度位置），15 项建议。
+- 背景：第三视角审查（`H:\AnkeShelf_Review_Archive\review3.md`，防御性编码 / 复杂度位置），15 项建议。
 - 核验：B2（0 偏移）与数据契约冲突驳回（`0 = 无进度`）；A 的“假绿”指控
   证据不足；D4/D5 数量夸大；其余主张基本成立（详见计划 §6）。
 - 快批已落地：删 `ProgressRepository / ShelfRepository` Protocol（C1）、
@@ -188,7 +197,7 @@
 ### 2026-08-14 docs：第二轮架构债审查评估（P0 立项 + 纪律固化）
 
 - 背景：reviewer 对 `AnkeShelf-review-20260814` 产出
-  `H:\ARCHITECTURE_DEBT_REVIEW_20260814.md`（P0×2 / P1×2 / P2×2）。
+  `H:\AnkeShelf_Review_Archive\ARCHITECTURE_DEBT_REVIEW_20260814.md`（P0×2 / P1×2 / P2×2）。
 - 核验结论：字面 `catch(Exception)` 为零，带变量 `catch (e: Exception)` 47 处
   抽查均为显式结果转换（EpubError / RepoResult / StoreLoadResult /
   VerifyResult）、缺省语义（配置/颜色/日期解析）或注明降级（编码兜底、
@@ -505,8 +514,8 @@
 
 ### 2026-08-12 整合四份架构评审文档并输出路线图
 
-- 来源：`H:\AnkeShelf_Architecture_Improvement_Proposal.md`、`H:\review1.md`、
-  `H:\review2.md`、`H:\架构债清理清单.md`。
+- 来源：`H:\AnkeShelf_Review_Archive\AnkeShelf_Architecture_Improvement_Proposal.md`、`H:\AnkeShelf_Review_Archive\review1.md`、
+  `H:\AnkeShelf_Review_Archive\review2.md`、`H:\AnkeShelf_Review_Archive\架构债清理清单.md`。
 - 产出：`docs/ARCHITECTURE_ROADMAP.md`（P0 发行包崩溃 → P1 契约/API 守卫、
   桥协议版本 + 进度回放、依赖锁定、首批 ADR → P2 jsoup 清洗、错误模型、
   诊断闭环 → P3 拆分/任务试点/存储恢复/开源治理 → P4 参考仓库与触发式扩展）。

@@ -10,10 +10,10 @@
 > 各节“状态”注明进度。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
-> - `H:\AnkeShelf_Architecture_Improvement_Proposal.md`（架构改进提案）
-> - `H:\review1.md`（外部工程评审）
-> - `H:\review2.md`（开源参考项目调研）
-> - `H:\架构债清理清单.md`（架构债清理清单）
+> - `H:\AnkeShelf_Review_Archive\AnkeShelf_Architecture_Improvement_Proposal.md`（架构改进提案）
+> - `H:\AnkeShelf_Review_Archive\review1.md`（外部工程评审）
+> - `H:\AnkeShelf_Review_Archive\review2.md`（开源参考项目调研）
+> - `H:\AnkeShelf_Review_Archive\架构债清理清单.md`（架构债清理清单）
 >
 > 本文档是四份文档与仓库现状的整合产物，只做方向指引，不含代码改动。
 > 后续任务立项时以此为准，逐项补充“成功标准 + 验证方式”后开工。
@@ -125,7 +125,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P0（新）：章节读取失败模型（BookSession 契约收紧）
 
-> 来源：第二轮架构债审查（2026-08-14，`H:\ARCHITECTURE_DEBT_REVIEW_20260814.md`）。
+> 来源：第二轮架构债审查（2026-08-14，`H:\AnkeShelf_Review_Archive\ARCHITECTURE_DEBT_REVIEW_20260814.md`）。
 > 状态（2026-08-14）：已完成（`867e7ea`）——`ChapterReadResult` 显式结果 +
 > 阅读页错误分支；111 过 / 1 跳，`assembleDebug` 通过。
 
