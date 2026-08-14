@@ -48,6 +48,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：P3 SettingsScreen 大屏拆分
+
+- 处理：`SettingsScreen.kt` 从 1369 行降至 575 行——外观 / 阅读 / 操作·统计·数据·帮助
+  面板机械拆到 `SettingsAppearancePanels.kt` / `SettingsReadingPanels.kt` /
+  `SettingsMiscPanels.kt`（同包 internal，保留完整 import 块；共享常量与
+  SettingsList / SettingsSection / SettingsRow / queryDisplayName 改 internal）。
+- 验证：`testDebugUnitTest` 106 过 / 1 跳（行为零变化）；`assembleDebug` 通过。
+
 ### 2026-08-14 win：发布资产摘要（release_manifest + CI sidecar）
 
 - 处理：新增 `scripts/release_manifest.py`——输出版本 / commit / 数据契约版本
