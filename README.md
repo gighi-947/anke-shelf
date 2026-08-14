@@ -228,6 +228,7 @@ gradlew.bat compileDebugAndroidTestKotlin :: 仪器测试编译
   `AnkeShelf-vX.Y.Z-android.apk`（资产名纯 ASCII）。
 - **发布流程**：Windows 与 Android 各有独立 SOP（安卓见
   [android/VERSIONING.md](android/VERSIONING.md)），互不混用。
+- 用户可见变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 目录结构
 
