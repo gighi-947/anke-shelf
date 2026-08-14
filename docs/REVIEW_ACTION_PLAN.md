@@ -56,7 +56,7 @@
 
 ## 3. 待办计划
 
-### 批次 A：Windows/CI 快修（低风险，约 30 分钟）
+### 批次 A：Windows/CI 快修（✅ 2026-08-14 已完成，含 A1–A5）
 
 - **A1（P1.2 + P1.3）token 安全**
   - 改动：`app/server.py` 的 `_authorized` 改用 `secrets.compare_digest`；

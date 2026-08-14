@@ -16,7 +16,7 @@
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android 均于 2026-08-14 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 229 项 OK
+  - Windows Python：`python -m unittest discover tests` = 231 项 OK
     （本机 Python 3.14 与沙箱 3.12 双环境）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（45 方法一致）、
@@ -47,6 +47,20 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-14 win/android/docs：批次 A 快修（token 安全 / CI 权限 / 模板 / 漂移）
+
+- 处理（按 REVIEW_ACTION_PLAN）：
+  - A1（P1.2 + P1.3）：`app/server.py` `_authorized` 改用 `secrets.compare_digest`
+    （header 与 query 双路径）；`web/js/bridge.js` 启动 token 落 sessionStorage
+    后立即 `history.replaceState` 抹掉地址栏 query，刷新从 sessionStorage 恢复；
+  - A2（P1.5）：4 个 workflow 顶层加 `permissions: contents: read`；
+  - A3（P3.4）：bug 模板顶部加安全报告重定向；
+  - A4（P3.1）：requirements-build.lock 头部说明 `--allow-unsafe` 原因；
+  - A5（P2.5）：路线图 §2.2 代码规模表按当前行数全量更新
+    （reader.js 乱码已修复；SettingsScreen/DownloadScreen 等行数为拆分后现值）。
+- 验证：Python 231 项 OK（+2 token 回归：query 兼容、错误 token 拒绝）；
+  UI harness 92 PASS / 0 FAIL；JS 契约全绿；workflow 结构检查通过。
 
 ### 2026-08-14 docs：两轮审查总结 + 整改计划（REVIEW_ACTION_PLAN）
 

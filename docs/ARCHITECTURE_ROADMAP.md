@@ -52,7 +52,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | --- | --- |
 | 功能基线 | `867e7ea`（android: 章节读取失败模型；2026-08-14 核对） |
 | 分支 | `main`，与 `origin/main` 同步 |
-| Windows Python 单测 | 229 项 OK（3.12 / 3.14 双环境实测） |
+| Windows Python 单测 | 231 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 45 methods + `reader-session` OK |
 | Android JVM 单测 | 111 过 / 1 跳（2026-08-14 实跑） |
 | UI 实机 harness | 92 项 PASS（需桌面 WebView2） |
@@ -62,17 +62,21 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 文件 | 行数 | 关注点 |
 | --- | --- | --- |
-| `android/.../data/Html5Entities.kt` | 2130 | 机械生成表，正常 |
-| `android/.../ui/settings/SettingsScreen.kt` | 1348 | 单一文件内已按 Panel 拆分 |
-| `android/.../ui/download/DownloadScreen.kt` | 982 | 同上 |
-| `android/.../ui/reader/native/NativeReaderScreen.kt` | 624 | 外壳混入生命周期/目录/图片/进度适配 |
-| `android/.../ui/reader/WebViewChapterView.kt` | 595 | 桥与宿主，多参数桥协议 |
-| `android/.../assets/reader/reader-lite.js` | 1018 | 现役渲染内核 |
-| `web/js/nga_download.js` | 860 | 面板/任务/列表混在一个文件 |
-| `web/js/settings.js` | 748 | 按 row 函数组织，可拆 section |
-| `web/js/reader.js` | 628 | 核心编排，8 处中文注释编码损坏 |
-| `app/nga_service.py` | 581 | 下载/更新/清理语义集中 |
-| `web/css/reader.css` | 1353 | 样式，暂不处理 |
+| `android/.../data/Html5Entities.kt` | 2129 | 机械生成表，正常 |
+| `android/.../ui/reader/WebViewChapterView.kt` | 594 | 桥与宿主 |
+| `android/.../ui/shelf/BookshelfScreen.kt` | 591 | 书架页，未拆分 |
+| `android/.../data/NativeBook.kt` | 562 | 原生书数据层 |
+| `android/.../ui/settings/SettingsScreen.kt` | 550 | 已按 Panel 拆分 |
+| `android/.../ui/search/SearchScreen.kt` | 541 | 搜索页，未拆分 |
+| `android/.../data/Epub.kt` | 512 | EPUB 数据层 |
+| `android/.../ui/reader/native/NativeReaderScreen.kt` | 428 | 外壳已拆 Chrome |
+| `android/.../ui/download/DownloadScreen.kt` | 338 | 已拆分面板 |
+| `android/.../assets/reader/reader-lite.js` | 977 | 现役渲染内核（parts 模块化） |
+| `web/js/reader.js` | 589 | 核心编排（乱码注释已修复） |
+| `web/js/nga_download.js` | 569 | 已拆 nga-download-panels |
+| `app/nga_service.py` | 524 | 下载/更新/清理语义集中 |
+| `web/js/settings.js` | 166 | 已拆 settings-ui / settings-panels |
+| `web/css/reader.css` | 1314 | 样式，暂不处理 |
 
 ### 2.3 已确认的架构债
 
