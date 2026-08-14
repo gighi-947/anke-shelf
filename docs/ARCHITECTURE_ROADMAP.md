@@ -156,6 +156,9 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P1：首批 ADR 与文档治理
 
+> 状态（2026-08-14）：`docs/adr/` 首批 5 份 + 索引已补录，DevLog 头部已加 ADR 链接；
+> `CHANGELOG.md` 拆分未做（留待真实发布节奏需求触发）。
+
 - 新增 `docs/adr/`，首批补录：双端代码隔离与共享契约边界、Compose + WebView
   阅读架构、`text_offset` UTF-16 code unit、原生书只追加、JSON 为权威存储；
 - 每份 ADR 只含：背景、决策、替代方案、后果、状态；

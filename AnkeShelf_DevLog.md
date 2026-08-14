@@ -4,6 +4,7 @@
 > 历史记录（全量、按时间轴索引）→ [docs/DEVLOG_ARCHIVE.md](docs/DEVLOG_ARCHIVE.md)
 > 经验教训（分类归纳）→ [docs/LESSONS_LEARNED.md](docs/LESSONS_LEARNED.md)
 > 架构整合路线图 → [docs/ARCHITECTURE_ROADMAP.md](docs/ARCHITECTURE_ROADMAP.md)
+> 决策记录（ADR）→ [docs/adr/README.md](docs/adr/README.md)
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
@@ -42,6 +43,14 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-14 P1：首批 ADR 补录
+
+- 处理：新增 `docs/adr/README.md`（索引 + 状态约定）与 0001–0005 五份 ADR
+  （双端边界、Compose+WebView、text_offset UTF-16、原生书只追加、JSON 权威存储）；
+  DevLog 头部增加 ADR 链接；路线图“首批 ADR”标记完成。
+- 验证：纯文档改动，未跑构建；内容与 ARCHITECTURE / DATA_CONTRACT /
+  NATIVE_BOOK_FORMAT / TEXT_NORMALIZATION_SPEC 交叉核对一致。
 
 ### 2026-08-14 纪律：文档漂移检查写入 AGENTS.md
 
