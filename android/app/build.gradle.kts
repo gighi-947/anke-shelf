@@ -63,6 +63,9 @@ android {
     androidResources {
         ignoreAssetsPattern = "reader-lite.parts:"
     }
+
+    // 内置字体 canonical 源：仓库根 assets/fonts（双端共享单一副本，构建时并入 APK assets）。
+    sourceSets["main"].assets.srcDirs("src/main/assets", "../../assets")
 }
 
 kotlin {
