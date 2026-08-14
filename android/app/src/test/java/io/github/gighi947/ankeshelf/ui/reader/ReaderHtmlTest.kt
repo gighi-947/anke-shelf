@@ -74,14 +74,58 @@ class ReaderHtmlTest {
             "<a href=\"javascript:alert(2)\">x</a>" +
             "<iframe src=\"https://evil.example\"></iframe>"
         val clean = sanitizeReaderBody(html)
-        println("CLEAN=[" + clean + "]")
         assertFalse(clean.contains("<script"))
         assertFalse(clean.contains("onclick"))
         assertFalse(clean.contains("javascript:"))
         assertFalse(clean.contains("iframe"))
         assertTrue(clean.contains("style=\"color:red\""))
         assertTrue(clean.contains("你好"))
-        assertTrue(clean.contains("<a >x</a>"))
+        assertTrue(clean.contains("<a>x</a>"))
+    }
+
+    @Test
+    fun sanitizeKeepsContentAfterSelfClosingScript() {
+        val html = "<p>前文</p><script src=\"x\"/><p>正文</p>"
+        val clean = sanitizeReaderBody(html)
+        assertFalse(clean.contains("<script"))
+        assertTrue(clean.contains("前文"))
+        assertTrue(clean.contains("正文"))
+    }
+
+    @Test
+    fun sanitizeDropsEntityEncodedJavascriptUrl() {
+        val html = "<a href=\"java&#x73;cript:alert(1)\">x</a><p>正文</p>"
+        val clean = sanitizeReaderBody(html)
+        assertFalse(clean.contains("javascript"))
+        assertFalse(clean.contains("&#x73;cript"))
+        assertTrue(clean.contains("正文"))
+    }
+
+    @Test
+    fun sanitizeRemovesFormControlsAndMeta() {
+        val html = "<form><input name=\"a\"><button>go</button></form>" +
+            "<meta http-equiv=\"refresh\" content=\"0;url=evil\"><p>正文</p>"
+        val clean = sanitizeReaderBody(html)
+        assertFalse(clean.contains("input"))
+        assertFalse(clean.contains("button"))
+        assertFalse(clean.contains("form"))
+        assertFalse(clean.contains("meta"))
+        assertTrue(clean.contains("正文"))
+    }
+
+    @Test
+    fun sanitizePreservesNgaMarkup() {
+        val html = "<div class=\"nga-floor\" style=\"border-left:4px solid #60A8D8\">" +
+            "<blockquote class=\"nga-quote\"><span class=\"red\">彩色</span>" +
+            "<table><tr><td colspan=\"2\">格</td></tr></table>" +
+            "<img src=\"file:///android_images/b/1.jpg\" alt=\"图\"></blockquote></div>"
+        val clean = sanitizeReaderBody(html)
+        assertTrue(clean.contains("nga-floor"))
+        assertTrue(clean.contains("nga-quote"))
+        assertTrue(clean.contains("class=\"red\""))
+        assertTrue(clean.contains("colspan=\"2\""))
+        assertTrue(clean.contains("src=\"file:///android_images/b/1.jpg\""))
+        assertTrue(clean.contains("彩色"))
     }
 
     @Test

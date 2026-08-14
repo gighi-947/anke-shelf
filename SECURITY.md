@@ -24,5 +24,5 @@ https://github.com/gighi-947/anke-shelf/security/advisories/new ）私下报告�
 
 ## 已知限制（见 docs/ANDROID_SECURITY_REVIEW.md）
 
-- Android 章节清洗目前为正则实现，计划改为 jsoup DOM allowlist（路线图 P2）。
+- Android 章节清洗已改为 jsoup DOM allowlist（2026-08-14，路线图 P2）。
 - Android 为加载 https 图片允许混合内容，风险限于图片子资源。

@@ -3,8 +3,52 @@ package io.github.gighi947.ankeshelf.ui.reader
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
 import java.net.URLEncoder
+import org.jsoup.Jsoup
 
 private val RE_IMG_TAG = Regex("""(?is)<img\b[^>]*>""")
+
+/** 保留的白名单标签：NGA 楼层卡片/引用/骰子/表格/媒体/彩色字排版所需。 */
+private val ALLOWED_TAGS = setOf(
+    "a", "b", "strong", "i", "em", "u", "s", "strike", "del", "ins", "small", "big",
+    "sub", "sup", "code", "pre", "kbd", "mark", "wbr",
+    "span", "div", "p", "br", "hr",
+    "h1", "h2", "h3", "h4", "h5", "h6",
+    "ul", "ol", "li", "dl", "dt", "dd",
+    "blockquote", "details", "summary",
+    "table", "thead", "tbody", "tfoot", "tr", "td", "th", "caption", "colgroup", "col",
+    "img", "picture", "video", "audio", "source",
+    "font", "center", "ruby", "rt", "rp", "figure", "figcaption",
+    "style",
+)
+
+/** 直接移除的标签：脚本/嵌入/表单/元数据/矢量容器，畸形 HTML 也由解析器兜底。 */
+private val BLOCKED_TAGS = setOf(
+    "script", "iframe", "object", "embed", "form", "base", "meta", "link",
+    "input", "button", "select", "textarea", "template", "noscript",
+    "applet", "frame", "frameset", "svg", "math",
+)
+
+private val GLOBAL_ATTRS = setOf("class", "style", "title", "lang", "dir")
+
+private val TAG_ATTRS: Map<String, Set<String>> = mapOf(
+    "a" to setOf("href", "target", "rel", "name"),
+    "img" to setOf("src", "alt", "width", "height", "loading", "decoding", "referrerpolicy"),
+    "video" to setOf("src", "poster", "controls", "autoplay", "loop", "muted", "preload", "width", "height"),
+    "audio" to setOf("src", "controls", "autoplay", "loop", "muted", "preload"),
+    "source" to setOf("src", "srcset", "type", "media"),
+    "td" to setOf("colspan", "rowspan", "headers"),
+    "th" to setOf("colspan", "rowspan", "headers", "scope"),
+    "col" to setOf("span", "width"),
+    "ol" to setOf("start", "type", "reversed"),
+    "font" to setOf("color", "face", "size"),
+)
+
+private fun isUnsafeUrl(value: String): Boolean {
+    val v = value.trim().lowercase()
+    return v.startsWith("javascript:") ||
+        v.startsWith("vbscript:") ||
+        v.startsWith("data:text/html")
+}
 
 /** 章节 HTML 的可渲染部分：<body> 内容 + <head> 里的样式块。 */
 data class ReaderHtmlParts(
@@ -47,20 +91,32 @@ fun deferContentImages(body: String): String =
         }
     }
 
-/** 清洗章节 body：删除脚本/危险标签/事件属性/javascript: 链接，保留 NGA 排版样式。 */
+/** 清洗章节 body：jsoup DOM 级白名单清洗，保留 NGA 排版样式。 */
 fun sanitizeReaderBody(body: String): String {
-    var s = body
-    s = s.replace(Regex("(?is)<script\\b[^>]*>.*?</script\\s*>"), "")
-    s = s.replace(Regex("(?is)<script\\b[^>]*>.*"), "")
-    s = s.replace(
-        Regex("(?is)<\\s*(?:iframe|object|embed|base|form)\\b[^>]*>.*?</\\s*(?:iframe|object|embed|form)\\s*>"),
-        "",
-    )
-    s = s.replace(Regex("(?is)<\\s*(?:iframe|object|embed|base|form)\\b[^>]*/?>"), "")
-    s = s.replace(Regex("(?is)<meta\\b[^>]*http-equiv\\s*=\\s*[\"']?refresh[^>]*>"), "")
-    s = s.replace(Regex("(?is)\\son\\w+\\s*=\\s*(\"[^\"]*\"|'[^']*'|[^\\s>]+)"), "")
-    s = s.replace(Regex("(?is)\\b(?:href|src)\\s*=\\s*[\"']?\\s*javascript:[^\"'>\\s]*[\"']?"), "")
-    return s
+    val doc = Jsoup.parseBodyFragment(body)
+    doc.outputSettings().prettyPrint(false)
+    val root = doc.body()
+
+    // 1) 移除脚本/嵌入/表单等危险元素（HTML5 解析器按 DOM 判定，不受畸形写法影响）。
+    root.select(BLOCKED_TAGS.joinToString(",")).forEach { it.remove() }
+
+    // 2) 非白名单元素解包（保留子内容），白名单元素清理属性。
+    for (element in root.allElements.toList()) {
+        if (element === root) continue
+        val tag = element.tagName().lowercase()
+        if (tag !in ALLOWED_TAGS) {
+            if (element.parent() != null) element.unwrap()
+            continue
+        }
+        val allowed = GLOBAL_ATTRS + (TAG_ATTRS[tag] ?: emptySet())
+        for (attr in element.attributes().asList().toList()) {
+            val key = attr.key.lowercase()
+            val isUrl = key == "href" || key == "src" || key == "poster" || key == "srcset"
+            val drop = key !in allowed || key.startsWith("on") || (isUrl && isUnsafeUrl(attr.value))
+            if (drop) element.removeAttr(attr.key)
+        }
+    }
+    return root.html()
 }
 
 /**

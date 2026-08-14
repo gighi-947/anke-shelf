@@ -177,6 +177,9 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P2：Android HTML 清洗改 jsoup allowlist
 
+> 状态（2026-08-14）：已完成——`sanitizeReaderBody()` 改为 jsoup DOM 白名单清洗，
+> 保留 NGA 排版标签与内联样式，`ReaderHtmlTest` 新增畸形 HTML/实体编码 javascript 用例。
+
 - `ui/reader/ReaderHtml.kt` 的 `sanitizeReaderBody()` 改为 DOM 级清洗 +
   allowlist（项目已有 jsoup 依赖）；
 - 同步 `ReaderHtmlTest.kt` 与安全用例，保留 NGA 排版标签/内联样式能力。

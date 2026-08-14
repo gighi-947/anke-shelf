@@ -49,6 +49,17 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：P2 章节 HTML 清洗改 jsoup DOM 白名单
+
+- 现象：`sanitizeReaderBody()` 为正则“尽力而为”，畸形写法可绕过或误删后续正文
+  （`<script src/>` 吞掉同行内容、实体编码 `javascript:` href 不被识别）。
+- 处理：改为 jsoup DOM 级清洗——危险标签集直接移除、非白名单标签解包、属性按标签
+  白名单 + 事件属性（on*）与 javascript:/vbscript:/data:text/html 链接剔除；
+  关闭 prettyPrint 避免块级元素被插入换行。新增 4 条安全用例（自闭合 script、
+  实体编码 javascript、表单/元数据移除、NGA 排版保留），旧用例按 jsoup 规范化调整。
+- 验证：ReaderHtmlTest 13 条全绿；全量 `testDebugUnitTest` 99 过 / 1 跳；
+  `assembleDebug` 通过。
+
 ### 2026-08-14 android：P1 阅读桥协议版本握手 + 进度事件回放
 
 - 现象：桥协议无版本握手、`saveProgress` 多位置参数；进度语义散在 tracker 与真实

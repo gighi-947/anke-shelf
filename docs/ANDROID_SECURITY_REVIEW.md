@@ -33,7 +33,9 @@
 
 1. **本地敏感存档**：`D:\Codex\project1\.local\archive\` 下（cherry-studio-export、ngapost2md-python/verify*/config.ini）含真实 NGA uid/cid。该目录被 `.gitignore` 覆盖、从未入库，但建议尽快删除或移到加密保管处（也占用 F 盘空间）。
 2. **mixedContentMode**：为让 file:// 阅读页加载 https 图，全局允许混合内容；风险限于图片子资源（无脚本执行）。后续可评估 WebViewAssetLoader + 自定义 scheme 收紧。
-3. **正则清洗局限**：极端畸形 HTML 可能有遗漏；项目已有 jsoup 依赖，后续可改为 DOM 级清洗。
+3. **正则清洗局限（已解决，2026-08-14）**：`sanitizeReaderBody()` 已改为 jsoup DOM 级
+   白名单清洗（危险标签移除 / 非白名单解包 / 事件属性与 `javascript:` 等链接剔除），
+   不再依赖正则“尽力而为”。
 4. **图片加载/长按**：模拟器无法解析 img.nga.cn（DNS），需真机补验。
 
 ## 4. 建议的例行检查
