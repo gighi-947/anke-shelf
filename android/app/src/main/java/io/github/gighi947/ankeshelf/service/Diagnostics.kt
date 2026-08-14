@@ -69,6 +69,7 @@ object Diagnostics {
         taskState = buildString {
             append("stage=").append(NgaServiceStatus.stage)
             append(" running=").append(NgaServiceStatus.running)
+            append(" task_id=").append(NgaServiceStatus.taskId.ifBlank { "-" })
             append(" detail=").append(NgaServiceStatus.detail)
             append(" error=").append(NgaServiceStatus.error)
             append(" book_id_hash=")

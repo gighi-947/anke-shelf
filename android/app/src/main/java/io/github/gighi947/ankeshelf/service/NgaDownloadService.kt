@@ -51,6 +51,9 @@ object NgaServiceStatus {
     @Volatile
     var action: String = "download"
 
+    @Volatile
+    var taskId: String = ""
+
     fun snapshot(): NgaProgress =
         NgaProgress(stage = stage, current = current, total = total, detail = detail)
 }
@@ -107,11 +110,14 @@ class NgaDownloadService : Service() {
             container.repository,
             container.ngaConfig,
         )
+        val taskId = "nga-${action}-${params.tid}-${System.currentTimeMillis()}"
         this.downloader = downloader
+        downloader.taskId = taskId
         NgaServiceStatus.running = true
         NgaServiceStatus.error = ""
         NgaServiceStatus.action = action
         NgaServiceStatus.bookId = bookId
+        NgaServiceStatus.taskId = taskId
         downloader.setListener { p ->
             NgaServiceStatus.stage = p.stage
             NgaServiceStatus.current = p.current
@@ -157,13 +163,27 @@ class NgaDownloadService : Service() {
             NgaServiceStatus.stage = "cancelled"
             NgaServiceStatus.detail = "已取消"
             finalText = "已取消"
+            LogEvents.event(
+                "nga",
+                "task_cancelled",
+                "task_id" to taskId,
+                "book_id_hash" to LogEvents.bookIdHash(bookId),
+            )
         } catch (e: Exception) {
             NgaServiceStatus.stage = "error"
             NgaServiceStatus.error = e.message ?: "下载失败"
             NgaServiceStatus.detail = ""
             finalText = "任务失败：${NgaServiceStatus.error}"
+            LogEvents.event(
+                "nga",
+                "task_failed",
+                "task_id" to taskId,
+                "book_id_hash" to LogEvents.bookIdHash(bookId),
+                "error" to NgaServiceStatus.error,
+            )
         } finally {
             NgaServiceStatus.running = false
+            NgaServiceStatus.taskId = ""
             stopForeground(STOP_FOREGROUND_REMOVE)
             postFinalNotification(finalText)
             stopSelf()

@@ -66,6 +66,7 @@ import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.BookUi
+import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.ui.components.ActionIcon
 import io.github.gighi947.ankeshelf.ui.components.BookManagementOverlay
@@ -554,6 +555,14 @@ private fun exportBook(
     uri: Uri,
 ) {
     scope.launch(Dispatchers.IO) {
+        val taskId = "export-${System.currentTimeMillis()}"
+        LogEvents.event(
+            "export",
+            "start",
+            "task_id" to taskId,
+            "book_id_hash" to LogEvents.bookIdHash(rec.id),
+            "format" to fmt,
+        )
         try {
             val os = context.contentResolver.openOutputStream(uri) ?: return@launch
             os.use { out ->
@@ -569,7 +578,21 @@ private fun exportBook(
                     File(rec.path).inputStream().use { input -> input.copyTo(out) }
                 }
             }
-        } catch (_: Exception) {
+            LogEvents.event(
+                "export",
+                "done",
+                "task_id" to taskId,
+                "book_id_hash" to LogEvents.bookIdHash(rec.id),
+                "format" to fmt,
+            )
+        } catch (e: Exception) {
+            LogEvents.event(
+                "export",
+                "failed",
+                "task_id" to taskId,
+                "book_id_hash" to LogEvents.bookIdHash(rec.id),
+                "error" to (e.message ?: "导出失败"),
+            )
         }
     }
 }

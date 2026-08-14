@@ -76,6 +76,7 @@ class SearchIndex(private val session: BookSession) {
             LogEvents.event(
                 "search",
                 "index_built",
+                "task_id" to ("search-" + LogEvents.bookIdHash(session.id)),
                 "book_id_hash" to LogEvents.bookIdHash(session.id),
                 "chapters" to list.size,
                 "duration_ms" to (System.currentTimeMillis() - t0),
@@ -102,6 +103,7 @@ class SearchIndex(private val session: BookSession) {
         LogEvents.event(
             "search",
             "index_built",
+            "task_id" to ("search-" + LogEvents.bookIdHash(session.id)),
             "book_id_hash" to LogEvents.bookIdHash(session.id),
             "chapters" to list.size,
             "duration_ms" to (System.currentTimeMillis() - t0),

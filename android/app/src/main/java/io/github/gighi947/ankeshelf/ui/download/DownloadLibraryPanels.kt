@@ -90,6 +90,7 @@ import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.NgaDownloadService
 import io.github.gighi947.ankeshelf.service.NgaExport
+import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.ui.components.ActionIcon
@@ -439,16 +440,38 @@ internal fun writeLibraryExport(
     uri: Uri,
 ) {
     scope.launch(Dispatchers.IO) {
-        runCatching {
+        val taskId = "export-${System.currentTimeMillis()}"
+        LogEvents.event(
+            "export",
+            "start",
+            "task_id" to taskId,
+            "book_id_hash" to LogEvents.bookIdHash(book.id),
+            "format" to fmt,
+        )
+        try {
             val dir = File(book.path)
-            val meta = NgaExport.metaOf(dir) ?: return@runCatching
+            val meta = NgaExport.metaOf(dir) ?: return@launch
             val bytes = if (fmt == "md") {
                 NgaExport.markdownText(dir, meta).toByteArray(Charsets.UTF_8)
             } else {
                 NgaExport.epubBytes(dir, meta)
             }
             context.contentResolver.openOutputStream(uri)?.use { os -> os.write(bytes) }
+            LogEvents.event(
+                "export",
+                "done",
+                "task_id" to taskId,
+                "book_id_hash" to LogEvents.bookIdHash(book.id),
+                "format" to fmt,
+            )
+        } catch (e: Exception) {
+            LogEvents.event(
+                "export",
+                "failed",
+                "task_id" to taskId,
+                "book_id_hash" to LogEvents.bookIdHash(book.id),
+                "error" to (e.message ?: "导出失败"),
+            )
         }
     }
 }
-

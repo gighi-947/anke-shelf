@@ -52,6 +52,7 @@ class NgaDownloader(
     private val appPaths: AppPaths,
     private val repository: BookRepository,
     private val config: NgaConfig,
+    @Volatile var taskId: String = "",
 ) {
     private val imageHttp = OkHttpClient()
 
@@ -143,6 +144,7 @@ class NgaDownloader(
             LogEvents.event(
                 "nga",
                 "update_done",
+                "task_id" to taskId,
                 "tid" to params.tid,
                 "floors" to added,
                 "book_id_hash" to LogEvents.bookIdHash(rec.id),
@@ -211,6 +213,7 @@ class NgaDownloader(
             LogEvents.event(
                 "nga",
                 "download_done",
+                "task_id" to taskId,
                 "tid" to params.tid,
                 "floors" to totalPage,
                 "book_id_hash" to LogEvents.bookIdHash(bookId),
