@@ -48,11 +48,11 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 功能基线 | `2ea7aff`（win: 统一备份包；2026-08-14 核对） |
-| 分支 | `main`，本地领先 `origin/main` 1 提交（`2ea7aff` 待推送） |
+| 功能基线 | `96eb2e7`（android: 统一备份包；2026-08-14 核对） |
+| 分支 | `main`，本地领先 `origin/main` 1 提交（`96eb2e7` 待推送） |
 | Windows Python 单测 | 229 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 40 methods + `reader-session` OK |
-| Android JVM 单测 | 106 过 / 1 跳（2026-08-14 实跑） |
+| Android JVM 单测 | 109 过 / 1 跳（2026-08-14 实跑） |
 | UI 实机 harness | 92 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
 
