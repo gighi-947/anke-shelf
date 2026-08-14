@@ -68,7 +68,14 @@ jobs:
           Compress-Archive -Path dist\AnkeShelf -DestinationPath "dist\AnkeShelf-v$ver.zip" -CompressionLevel Optimal -Force
           Write-Output "package=AnkeShelf-v$ver.zip"
 
+      - name: Generate release manifest
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem dist\AnkeShelf-v*.zip | Select-Object -First 1
+          $ver = python -c "import app; print(app.__version__)"
+          python scripts/release_manifest.py --version $ver --zip $zip.FullName --out "dist\AnkeShelf-v$ver.release.txt"
+          Get-FileHash -LiteralPath $zip.FullName -Algorithm SHA256 | ForEach-Object { "zip_sha256=$($_.Hash)" } | Set-Content -Encoding ASCII "dist\AnkeShelf-v$ver.zip.sha256"
       - uses: actions/upload-artifact@v5
         with:
           name: ankeshelf-windows-package
-          path: dist/AnkeShelf-v*.zip
+          path: dist/AnkeShelf-v*

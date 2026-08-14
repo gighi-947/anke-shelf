@@ -48,6 +48,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win：发布资产摘要（release_manifest + CI sidecar）
+
+- 处理：新增 `scripts/release_manifest.py`——输出版本 / commit / 数据契约版本
+  （progress schema const）/ Python / 平台 / 构建时间，并对 zip / apk 计算 SHA-256
+  与大小；windows.yml 在打包后生成 `AnkeShelf-vX.Y.Z.release.txt` 与
+  `.zip.sha256` sidecar 并一并上传。
+- 验证：Python 225 项 OK（+3）；对 `dist/AnkeShelf-v1.2.0.zip` 实测输出正确。
+
 ### 2026-08-14 win：P3 导出服务接入 TaskManager（试点）
 
 - 处理：`ExportService` 单飞/进度/取消改由 `TaskManager(lanes={"export": 1})` 承载——
