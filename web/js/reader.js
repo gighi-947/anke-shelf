@@ -198,8 +198,9 @@
       const href = ch.href.split('#')[0].split('/').map(encodeURIComponent).join('/');
       const url = `/book/${App.state.bookId}/${href}`;
 
-      // ????????????/?????????????
-      // ???? about:blank???????????????????
+      // 判断 iframe 是否停留在同一章节路径：同路径时加时间戳强制重新加载，
+      // 避免热更新后仍命中旧缓存。
+      // 首帧 about:blank 没有路径（跨源读取会抛错），按非同一路径处理。
       let samePath = false;
       try {
         samePath = frame.contentWindow.location.pathname ===
@@ -212,7 +213,7 @@
           if (loadResolve === resolve) loadResolve = null;
           resolve();
         }, 15000);
-        // ?????????????????????? Promise ??
+        // 先解除上一次尚未完成的加载 Promise 等待，避免换章时旧等待永久挂起。
         if (loadResolve) loadResolve();
         loadResolve = resolve;
         frame.onload = () => {
@@ -221,14 +222,14 @@
           if (token !== loadToken) { resolve(); return; }
           const doc = frame.contentDocument;
           if (!doc) { resolve(); return; }
-          // ????????????????????/????????
+          // 先构建文本坐标并判定章节大小，再决定分页/滚动与覆盖样式。
           window.__readerHugeChapter__ = false;
           App.state.textCtx = TextPos.build(doc);
           window.__readerHugeChapter__ = App.state.textCtx.text.length > MAX_PAGED_TEXT;
           applyOverrides(doc);
           const paged = Paged.isActive();
           if (!paged && window.__readerHugeChapter__) {
-            try { Toast.show('?????????????????'); } catch (e) { /* ignore */ }
+            try { Toast.show('本章内容较大，已自动切换为滚动阅读'); } catch (e) { /* ignore */ }
           }
           try {
             if (window.CodeHighlight) CodeHighlight.highlightBlocks(doc);
@@ -236,14 +237,14 @@
           try {
             if (window.Annotations) Annotations.injectForChapter(doc);
           } catch (e) { /* ignore */ }
-          // ????/???? span ???????? text_offset ????? DOM ???
+          // 注入高亮/代码高亮 span 后重建坐标，保证 text_offset 与注入后的 DOM 对齐。
           App.state.textCtx = TextPos.build(doc);
           try {
             if (window.Annotations) Annotations.bindSelection(doc);
           } catch (e) { /* ignore */ }
           bindLinkHandler(doc);
           bindDocInteractions(doc);
-          // ??? iframe ????????????????????????
+          // 焦点在 iframe 内时也能响应全局快捷键（热键在阅读正文中生效）。
           doc.addEventListener('keydown', Reader.onKeyDown);
           if (App.state.book && App.state.book.nga) remapNgaDefaultColors(doc);
           if (paged) Paged.prepare(doc);
@@ -251,7 +252,7 @@
           doc.querySelectorAll('img').forEach((img) => {
             img.addEventListener('load', onImgChange);
           });
-          // ?????????????????????????????????
+          // 文档级委托：任何图片（含后加载的）加载失败都收起占位，避免大段空白。
           doc.addEventListener('error', (e) => {
             const t = e.target;
             if (t && t.tagName === 'IMG') {
