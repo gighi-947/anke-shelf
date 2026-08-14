@@ -48,6 +48,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win：统一备份包（ank-backup/1）
+
+- 处理：新增 `app/backup.py`——`create_backup`（zip：manifest + 五份 JSON + SHA-256）、
+  `verify_backup`（只读：清单 / 校验和 / 可解析性 / 版本字段）、`restore_backup`
+  （先验证；目标已存在且未显式覆盖时返回 needs_overwrite 不写盘）；新增
+  `/api/backup_create | backup_verify | backup_restore`（backup 文件选择器）与设置页
+  「备份数据 / 验证备份包 / 导入备份」按钮（导入覆盖前二次确认）；DATA_CONTRACT 补 §8。
+- 验证：Python 229 项 OK（+4 备份用例）；api-contract 45 方法一致；
+  UI harness 92 项 PASS / 0 FAIL。
+
 ### 2026-08-14 docs：P4 参考仓库研究（首批 5/8）
 
 - 处理：研究 `H:\AnkeShelfReferences` 下已克隆的 5 个仓库（koreader /

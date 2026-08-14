@@ -17,6 +17,9 @@ _HANDLERS = (
     ("uninstall_and_quit", system_api.uninstall_and_quit),
     ("export_diagnostics", system_api.export_diagnostics),
     ("verify_data_integrity", system_api.verify_data_integrity),
+    ("backup_create", system_api.backup_create),
+    ("backup_verify", system_api.backup_verify),
+    ("backup_restore", system_api.backup_restore),
     # 书架与书籍
     ("get_shelf", library.get_shelf),
     ("import_books", library.import_books),

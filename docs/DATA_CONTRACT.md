@@ -156,7 +156,16 @@
 - 章节文件**只追加、不重写**，保证 text_offset 稳定（热更新语义）。
 - 正文为 NGA 排版 HTML（楼层卡片、引用、骰子、颜色内联样式）。
 
-## 8. 新增字段流程（必须遵守）
+## 8. 备份包（ank-backup/1）
+
+- 统一备份包为 zip：`manifest.json`（format=ank-backup/1、created_at、app_version、
+  files[{name, version, size, sha256}]）+ 五个 JSON 存储
+  （shelf / progress / settings / annotations / statistics）。
+- 导入流程：先只读验证（清单 / 校验和 / 可解析性 / 版本字段），失败不写；
+  目标已有数据时默认不覆盖，需显式确认（overwrite=true）。
+- 实现：`app/backup.py`；入口：设置页「备份数据 / 验证备份包 / 导入备份」。
+
+## 9. 新增字段流程（必须遵守）
 
 1. 默认值向后兼容（新字段缺省等价旧行为）；
 2. 同步更新本文档；

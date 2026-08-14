@@ -46,6 +46,7 @@
 | settings_version | 设置迁移版本（只增不删） | `app/settings.py`；Android `data/Settings.kt` |
 | 原子写 | 临时文件 + rename，避免半写状态 | `app/storage.py`；Android `data/Storage.kt` |
 | 损坏隔离 / 完整性校验 | 载入损坏即隔离 `.corrupt-*`；原子写前保留 `.bak`；`verify_data_integrity` 报告可解析性/版本/大小 | `app/storage.py` + `/api/verify_data_integrity` |
+| 统一备份包（ank-backup/1） | zip：manifest + 五份 JSON + SHA-256；导入前只验证不覆盖 | `app/backup.py` + `/api/backup_*` |
 
 ## 3. Android 代码组件
 

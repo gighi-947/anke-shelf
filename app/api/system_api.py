@@ -65,6 +65,73 @@ def verify_data_integrity(ctx: ApiContext) -> dict:
     return {"ok": True, "healthy": all(r["ok"] for r in results), "files": results}
 
 
+def backup_create(ctx: ApiContext) -> dict:
+    """创建统一备份包（ank-backup/1）到自选文件夹。"""
+    from .. import __version__
+    from ..backup import create_backup
+    from ..dialogs import pick_folder
+
+    dest = pick_folder("选择备份保存文件夹")
+    if not dest:
+        return api_error(ErrorCode.EXPORT_FAILED, "已取消")
+    try:
+        return create_backup(
+            dest,
+            {
+                "shelf": shelf_path(),
+                "progress": progress_path(),
+                "settings": settings_path(),
+                "annotations": annotations_path(),
+                "statistics": statistics_path(),
+            },
+            __version__,
+        )
+    except (OSError, ValueError) as e:
+        return api_error(ErrorCode.STORAGE_ERROR, str(e))
+
+
+def backup_verify(ctx: ApiContext) -> dict:
+    """选择备份包并只读验证（校验和/可解析性/版本字段，不写盘）。"""
+    from pathlib import Path
+
+    from ..backup import verify_backup
+    from ..dialogs import pick_paths
+
+    picked = pick_paths("backup")
+    if not picked:
+        return api_error(ErrorCode.EXPORT_FAILED, "已取消")
+    try:
+        return verify_backup(Path(picked[0]))
+    except Exception as e:  # noqa: BLE001
+        return api_error(ErrorCode.STORAGE_ERROR, str(e))
+
+
+def backup_restore(ctx: ApiContext, overwrite: bool = False) -> dict:
+    """选择备份包恢复：先验证再写；已有数据时需 overwrite=True 才覆盖。"""
+    from pathlib import Path
+
+    from ..backup import restore_backup
+    from ..dialogs import pick_paths
+
+    picked = pick_paths("backup")
+    if not picked:
+        return api_error(ErrorCode.EXPORT_FAILED, "已取消")
+    try:
+        return restore_backup(
+            Path(picked[0]),
+            {
+                "shelf": shelf_path(),
+                "progress": progress_path(),
+                "settings": settings_path(),
+                "annotations": annotations_path(),
+                "statistics": statistics_path(),
+            },
+            overwrite=bool(overwrite),
+        )
+    except Exception as e:  # noqa: BLE001
+        return api_error(ErrorCode.STORAGE_ERROR, str(e))
+
+
 def log_frontend(ctx: ApiContext, message: str) -> None:
     """前端把启动阶段的关键节点写进启动日志，便于定位卡死/慢启动。"""
     logging.getLogger("app.frontend").info("JS: %s", message)

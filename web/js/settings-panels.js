@@ -476,6 +476,31 @@
           }
         }).catch((e) => Toast.show('检查失败：' + (e.message || e), true));
       }),
+      btn('备份数据', () => {
+        Api.backupCreate().then((r) => {
+          if (r && r.ok) Toast.show('备份已创建：' + r.path);
+          else Toast.show('备份失败：' + ((r && r.error) || '已取消'), true);
+        }).catch((e) => Toast.show('备份失败：' + (e.message || e), true));
+      }),
+      btn('验证备份包', () => {
+        Api.backupVerify().then((r) => {
+          if (r && r.ok) Toast.show('备份包有效（' + ((r.files || []).length) + ' 个文件）');
+          else Toast.show('备份包无效：' + ((r && r.errors || []).join('、') || '已取消'), true);
+        }).catch((e) => Toast.show('验证失败：' + (e.message || e), true));
+      }),
+      btn('导入备份', () => {
+        Api.backupRestore().then((r) => {
+          if (r && r.needs_overwrite) {
+            if (!confirm('目标数据已存在，导入将覆盖书架、进度、设置、标注与统计。\n确认继续？')) return;
+            return Api.backupRestore(true).then((r2) => {
+              if (r2 && r2.ok) Toast.show('备份已恢复：' + ((r2.restored || []).length) + ' 个文件');
+              else Toast.show('恢复失败：' + ((r2 && r2.errors || []).join('、') || ''), true);
+            }).catch((e) => Toast.show('恢复失败：' + (e.message || e), true));
+          }
+          if (r && r.ok) Toast.show('备份已恢复：' + ((r.restored || []).length) + ' 个文件');
+          else Toast.show('导入失败：' + ((r && r.errors || []).join('、') || '已取消'), true);
+        }).catch((e) => Toast.show('导入失败：' + (e.message || e), true));
+      }),
       btn('卸载并清除数据', uninstallAndClear),
     );
     wrap.appendChild(rowWrap);

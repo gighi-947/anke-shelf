@@ -19,6 +19,11 @@ _DIALOGS = {
         "filter": "字体文件 (*.ttf;*.otf;*.ttc;*.woff;*.woff2)|*.ttf;*.otf;*.ttc;*.woff;*.woff2",
         "multi": False,
     },
+    "backup": {
+        "title": "选择备份包",
+        "filter": "备份包 (*.zip)|*.zip",
+        "multi": False,
+    },
 }
 
 
