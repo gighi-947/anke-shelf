@@ -1,6 +1,7 @@
 """Custom font registry: system fonts plus user-imported font files."""
 import hashlib
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -41,13 +42,32 @@ def _system_root() -> Path:
     return Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
 
 
+def _assets_fonts_dir() -> Path:
+    """内置字体 canonical 源：仓库根 assets/fonts（开发）或打包后 _MEIPASS/assets/fonts。"""
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        return Path(meipass) / "assets" / "fonts"
+    return Path(__file__).resolve().parents[1] / "assets" / "fonts"
+
+
+def _bundled_font(fname: str) -> Optional[Path]:
+    """内置字体查找：web/fonts（旧布局）→ canonical 源（assets/fonts，双端单一副本）。"""
+    p = web_dir() / "fonts" / fname
+    if p.is_file():
+        return p
+    if fname == "weidqczfkyxk.ttf":
+        c = _assets_fonts_dir() / "LXGWWenKai-Regular.ttf"
+        if c.is_file():
+            return c
+    return None
+
+
 def list_fonts() -> list[dict]:
     out: list[dict] = []
     root = _system_root()
     for label, fname in _SYSTEM_FONTS:
-        bundled = web_dir() / "fonts" / fname
         p = root / fname
-        if bundled.is_file():
+        if _bundled_font(fname) is not None:
             out.append({
                 "key": "sys:" + fname,
                 "label": label + "（内置）",
@@ -99,8 +119,8 @@ def resolve_font_file(kind: str, name: str) -> Optional[Path]:
     if kind == "system":
         for _, fname in _SYSTEM_FONTS:
             if fname.lower() == safe_name.lower():
-                bundled = web_dir() / "fonts" / fname
-                if bundled.is_file():
+                bundled = _bundled_font(fname)
+                if bundled is not None:
                     return bundled
                 p = _system_root() / fname
                 return p if p.is_file() else None

@@ -13,6 +13,7 @@ sys.path.insert(0, "ngapost2md-python")
 
 datas = [
     ("web", "web"),
+    ("assets/fonts/LXGWWenKai-Regular.ttf", "assets/fonts"),
     ("ngapost2md-python/config.ini.example", "ngapost2md-python"),
     ("ngapost2md-python/ngapost2md", "ngapost2md-python/ngapost2md"),
 ]

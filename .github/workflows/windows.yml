@@ -11,6 +11,7 @@ on:
       - 'requirements*'
       - 'ankeshelf.spec'
       - 'run_app.py'
+      - 'assets/**'
       - '.github/workflows/windows.yml'
   pull_request:
     paths:
@@ -22,6 +23,7 @@ on:
       - 'requirements*'
       - 'ankeshelf.spec'
       - 'run_app.py'
+      - 'assets/**'
       - '.github/workflows/windows.yml'
   workflow_dispatch:
 
@@ -72,7 +74,7 @@ jobs:
         if: matrix.python-version == '3.12'
         shell: pwsh
         run: |
-          Copy-Item -LiteralPath README.md, LICENSE, web/fonts/OFL.txt, 使用说明.txt -Destination dist\AnkeShelf -Force
+          Copy-Item -LiteralPath README.md, LICENSE, assets/fonts/OFL.txt, 使用说明.txt -Destination dist\AnkeShelf -Force
           $ver = python -c "import app; print(app.__version__)"
           Compress-Archive -Path dist\AnkeShelf -DestinationPath "dist\AnkeShelf-v$ver.zip" -CompressionLevel Optimal -Force
           Write-Output "package=AnkeShelf-v$ver.zip"
