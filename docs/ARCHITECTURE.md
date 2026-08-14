@@ -60,7 +60,8 @@ docs/                 架构与规划文档
   `custom_bg / custom_text / custom_primary / custom_accent` 四色。
 - 分页几何与 flow/epub.js 对齐：border-box、精确列宽、双页补偶数列。
 - 发行版打包：`python -m PyInstaller --noconfirm --clean ankeshelf.spec`，
-  然后把 README/LICENSE/OFL/使用说明复制进 `dist\AnkeShelf`，再压成目录版 zip。
+然后把 README/LICENSE/OFL（`assets/fonts/OFL.txt`）/使用说明复制进
+`dist\AnkeShelf`，再压成目录版 zip。
 
 ## 测试
 

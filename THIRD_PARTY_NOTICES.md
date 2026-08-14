@@ -12,11 +12,10 @@
 ## 字体：霞鹜文楷 LXGW WenKai
 
 - 来源：https://github.com/lxgw/LxgwWenKai
-- 许可证：SIL OFL 1.1；许可证文本见 `web/fonts/OFL.txt` 与
-  `android/app/src/main/assets/fonts/OFL.txt`。
-- 文件：`web/fonts/weidqczfkyxk.ttf` 与
-  `android/app/src/main/assets/fonts/LXGWWenKai-Regular.ttf`（两者 SHA-256 相同，
-  分端各存一份；去重为路线图 P3 待办）。
+- 许可证：SIL OFL 1.1；许可证文本见 `assets/fonts/OFL.txt`。
+- 文件：`assets/fonts/LXGWWenKai-Regular.ttf`（双端 canonical 单一源；Windows
+  发行包以 `web/fonts/weidqczfkyxk.ttf` 逻辑名提供，Android APK 以
+  `assets/fonts/LXGWWenKai-Regular.ttf` 打包）。
 
 ## 设计参考（思路借鉴，独立实现）
 

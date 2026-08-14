@@ -48,6 +48,19 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win/android/docs：字体去重（E6 / P3，canonical 源 assets/fonts）
+
+- 处理：双端重复的 LXGW WenKai 字体（SHA-256 相同，各 24.8MB）收敛为单一
+  canonical 源 `assets/fonts/LXGWWenKai-Regular.ttf` + `OFL.txt`（两份 OFL
+  内容一致）；Windows `fonts.py` 增加 canonical fallback（开发模式读仓库根，
+  打包经 spec datas 进 `_MEIPASS/assets/fonts`；逻辑文件名
+  weidqczfkyxk.ttf 与默认设置 key 不变）；spec 与 windows.yml 打包引用改
+  canonical；Android `build.gradle.kts` assets srcDir 并入 `../../assets`
+  并删除 android 副本；两个 workflow 路径过滤加 `assets/**`；AGENTS.md
+  共享文件清单与 CI 纪律同步。
+- 验证：Python 全量测试、UI harness（字体服务走 canonical 源）、
+  `assembleDebug` + 解包 APK 校验 TTF SHA-256 与 canonical 一致。
+
 ### 2026-08-14 win/docs：批次 E 收尾（README 新人导航 + CI Python 矩阵）
 
 - E3（P2.4）：README 顶部新增「仓库布局（新人导航）」；`使用说明.txt`

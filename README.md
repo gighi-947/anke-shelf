@@ -23,6 +23,7 @@ Android 手机端，两端共享同一套数据契约（书架 / 进度 / 标注
 - `app/` `web/` `tests/`——Windows 桌面端（Python 后端 / 前端 / 测试）
 - `android/`——Android 端（Kotlin + Compose，独立 Gradle 工程）
 - `contracts/`——双端共享数据契约与守卫测试
+- `assets/fonts/`——内置字体 canonical 源（双端构建共用单一副本）
 - `docs/`——架构、契约、术语、路线图与审查计划
 - `README.md` `CHANGELOG.md` `CONTRIBUTING.md` `SECURITY.md` `LICENSE`——项目入口
 - `使用说明.txt`——Windows 发行包内置用户手册
@@ -268,7 +269,7 @@ docs/                 架构说明、验收报告与双端截图
 | [Legado](https://github.com/gedoor/legado) | GPL-3.0 | Android 阅读器章节内进度字段语义（durChapterPos）、onPause 保存时机 |
 | [daisyUI](https://github.com/saadeghi/daisyui) | MIT | 以 CSS 变量组织设计令牌的 UI 思路 |
 | [ngapost2md](https://github.com/ludoux/ngapost2md) | 以原仓库 LICENSE 为准 | `ngapost2md-python/` 为其 Python 重写版，下载流程、数据模型与格式规则等价；表情与匿名映射表由 Go 源码提取 |
-| [霞鹜文楷 LXGW WenKai](https://github.com/lxgw/LxgwWenKai) | SIL OFL 1.1 | 内置默认阅读字体，许可证见 `web/fonts/OFL.txt` 与安卓 `assets/fonts/OFL.txt` |
+| [霞鹜文楷 LXGW WenKai](https://github.com/lxgw/LxgwWenKai) | SIL OFL 1.1 | 内置默认阅读字体（canonical 源 `assets/fonts/`），许可证见 `assets/fonts/OFL.txt` |
 
 本项目自身代码以 [GNU AGPL-3.0](LICENSE) 开源。
 

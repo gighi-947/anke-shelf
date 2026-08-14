@@ -110,7 +110,7 @@
   JVM 111 过 / 1 跳；DisciplineTest 在岗。
 - 风险提示：动阅读内核加载链，按阅读器铁律（AGENTS.md §3）执行。
 
-### 批次 E：低优先 / 延后（E1–E4 已于 2026-08-14 完成；E5 延后；E6 归路线图）
+### 批次 E：低优先 / 延后（E1–E4、E6 已于 2026-08-14 完成；E5 延后）
 
 - **E1（P2.2）** CONTRIBUTING.md 顶部醒目标记“开发前必读 AGENTS.md”。
 - **E2（P2.3）** 对外贡献说明：外部 PR 只要求“改动摘要 / 验证”，
@@ -122,7 +122,9 @@
 - **E4（P3.3）✅** `windows.yml` 测试矩阵 3.12 / 3.13 / 3.14
   （`fail-fast: false`；打包与 manifest 仅 3.12 跑，避免多版本 artifact 冲突）。
 - **E5（P3.5）** `build.sh`——暂缓（无 Linux/macOS 需求）。
-- **E6（P3.6）** 字体去重——沿用路线图 P3 待办，不重复立项。
+- **E6（P3.6）✅** 字体去重完成：canonical 源 `assets/fonts/`
+  （LXGWWenKai-Regular.ttf + OFL.txt）；Windows fonts.py / spec 与 Android
+  Gradle assets srcDir 构建期并入，双端重复副本删除。
 
 ### 驳回记录
 
