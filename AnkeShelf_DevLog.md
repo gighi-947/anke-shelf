@@ -10,12 +10,12 @@
 
 ## 1. 当前状态（2026-08-14）
 
-- 功能基线 HEAD：`96eb2e7`（android: 统一备份包）；此前功能提交
+- 功能基线 HEAD：`b63809f`（android: 统一 task_id）；此前功能提交
   （P0 / P1 / P2 / P3 / P4 首批）均已推送 `origin/main`。
-- 推送状态：`96eb2e7` 待推送；工作树干净。
+- 推送状态：与 `origin/main` 同步；工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
-- 测试基线（Windows/JS 于 2026-08-14 实跑复核；Android 沿用 2026-08-10 本地报告）：
+- 测试基线（Windows / JS / Android 均于 2026-08-14 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 229 项 OK
     （本机 Python 3.14 与沙箱 3.12 双环境）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
@@ -47,6 +47,14 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-14 android：统一 task_id（下载/更新/导出/索引 + 诊断包）
+
+- 处理：`NgaServiceStatus.taskId` / `NgaDownloader.taskId` 贯穿下载与更新；
+  导出（书架 / 已下载两处）与搜索索引事件均带 `task_id`；诊断报告回显
+  当前任务 `task_id`（空则显示 `-`）；取消 / 失败事件同样携带 `task_id`，
+  便于跨 UI / 服务 / 日志 / 诊断包串联一次任务。
+- 验证：`testDebugUnitTest` 109 过 / 1 跳；`assembleDebug` 通过。
 
 ### 2026-08-14 android：统一备份包（ank-backup/1，与 Windows 同格式）
 

@@ -5,7 +5,8 @@
 > `4810d0c`（docs-only 提交）；2026-08-14 再核对：HEAD 已推进至 `c8f90cf`，
 > P0 / P1 已按本路线图落地；随后推进至 `edaf442`（依赖锁定，另含 ADR/治理文档），
 > 再推进至 `ad034b8`（Android 桥协议 + 进度回放）、`d697330`（P2 jsoup 清洗）、
-> `9e84c4c`（P2 错误模型）与 `cb40cee`（P2 诊断闭环）。各节“状态”注明进度。
+> `9e84c4c`（P2 错误模型）与 `cb40cee`（P2 诊断闭环）；随后 `96eb2e7`
+> （统一备份包）、`b63809f`（统一 task_id）。各节“状态”注明进度。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
 > - `H:\AnkeShelf_Architecture_Improvement_Proposal.md`（架构改进提案）
@@ -48,8 +49,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 功能基线 | `96eb2e7`（android: 统一备份包；2026-08-14 核对） |
-| 分支 | `main`，本地领先 `origin/main` 1 提交（`96eb2e7` 待推送） |
+| 功能基线 | `b63809f`（android: 统一 task_id；2026-08-14 核对） |
+| 分支 | `main`，与 `origin/main` 同步 |
 | Windows Python 单测 | 229 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 40 methods + `reader-session` OK |
 | Android JVM 单测 | 109 过 / 1 跳（2026-08-14 实跑） |
@@ -212,7 +213,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 > （component event key=value，book_id 短哈希）、`Diagnostics.report / collect`
 > （应用/系统/WebView/桥版本、数据文件版本与大小、最近事件、任务状态，不含凭据与正文），
 > 设置页新增「导出诊断信息」；bridge / search / nga 关键节点接入结构化事件。
-> task_id 全链路统一留待任务基础设施改造时一并做。
+> task_id 全链路统一已落地（`b63809f`）：下载 / 更新 / 导出 / 索引事件与
+> 诊断包均带 task_id，取消 / 失败事件同样携带，可按 task_id 串联一次任务。
 
 - Android 对齐 Windows 诊断包：应用/系统/WebView 版本、脱敏设置、最近有限条
   结构化日志、数据文件版本与大小、桥版本、最近任务状态；绝不包含 Cookie、
