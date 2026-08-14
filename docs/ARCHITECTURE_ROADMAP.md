@@ -90,6 +90,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P0：修复当前用户报错（发行包启动崩溃）
 
+> 状态（2026-08-14）：项目侧“友好提示 + 文档”已落地（`app/startup_errors.py`、
+> `app/main.py` 捕获 `RuntimeError`、README / 使用说明补充 .NET 4.8 与“解除锁定”）；
+> 用户已自行修复本机环境，本轮未重新打包 / 替换 v1.2.0 发行资产。
+
 - 现象：`Failed to resolve Python.Runtime.Loader.Initialize from
   ...\pythonnet\runtime\Python.Runtime.dll`，pywebview winforms 两次加载
   （netfx + coreclr）均失败。

@@ -5,6 +5,9 @@
 Python 运行时、pywebview、EPUB 解析、NGA 帖子下载器
 （httpx / ebooklib / curl_cffi / Pillow 等）。
 
+系统要求：Windows 10/11、Edge WebView2 运行时（Win11 自带）、
+.NET Framework 4.8（或更高版本）。
+
 使用方法：
 1. 将整个 AnkeShelf 文件夹解压到本地硬盘（建议不要放在
    压缩包内直接运行，也不要只把 exe 单独拷走）。
@@ -91,6 +94,9 @@ NGA 下载：
   如需彻底卸载，清除后手动删除程序文件夹即可。
 
 遇到问题：
+- 若启动报错“无法启动 / Python.Runtime / .NET”：
+  1) 从浏览器下载的 zip 请先右键 → 属性 → 勾选“解除锁定”，再重新解压运行；
+  2) 安装或修复 .NET Framework 4.8（或更高版本）后重启本程序。
 - 若程序无法启动或卡死，请删除 %APPDATA%\AnkeShelf\instance.lock 后重试。
 - 若阅读时页面比窗口大、内容错位或需要拖动滚动条居中：程序已默认锁定
   浏览器缩放为 100%（Ctrl+滚轮不会误触缩放），重启程序即可恢复。

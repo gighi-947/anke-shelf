@@ -43,6 +43,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 P0：发行包启动失败友好提示与文档
+
+- 现象：pythonnet/.NET 加载失败（`Failed to resolve Python.Runtime.Loader.Initialize`）
+  导致发行版启动崩溃；用户已自行修复本机环境，本轮仅补项目侧提示与文档。
+- 处理：新增 `app/startup_errors.py`（运行时加载失败判定 + 友好指引文案 +
+  MessageBox 兜底）；`app/main.py` 在 `webview.start` 捕获 `RuntimeError` 后弹窗、
+  记日志并退出码 1；README 与 使用说明 补充 .NET Framework 4.8 要求与“解除锁定”；
+  新增 `tests/test_startup_errors.py`。
+- 验证：`python -m unittest discover tests` 全量通过（新增 5 条启动错误用例）；
+  Node 契约测试不受影响。纯 Windows 端代码 + 双端共享文档，未改契约/Android/CI，
+  未重新打包发行版。
+
 ### 2026-08-13 文档状态同步（本次提交）
 
 - 现象：`4810d0c` 提交后本文件“当前状态”仍停留在 `1ea4c95` 与“含未提交重构”

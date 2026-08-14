@@ -128,8 +128,12 @@ NGA 下载：下载配置与任务控制
 ### Windows
 
 从 [GitHub Releases](https://github.com/gighi-947/anke-shelf/releases) 下载
-`AnkeShelf-vX.Y.Z.zip`（Windows 10/11，需 Edge WebView2 Runtime，Win11 自带），
-解压后运行 `AnkeShelf.exe`。
+`AnkeShelf-vX.Y.Z.zip`（Windows 10/11，需 Edge WebView2 Runtime 与
+.NET Framework 4.8，Win11 自带 WebView2），解压后运行 `AnkeShelf.exe`。
+
+> 若启动报错“无法启动 / Python.Runtime / .NET”：先确认系统已安装
+> .NET Framework 4.8；若从浏览器下载的 zip 解压后运行，先对 zip 右键 →
+> 属性 → 勾选“解除锁定”，再重新解压运行。详见 `使用说明.txt`。
 
 源码运行：
 

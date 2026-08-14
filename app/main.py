@@ -103,6 +103,7 @@ from .search import SearchService
 from .server import start_server
 from .settings import Settings
 from .shelf import ProgressStore, Shelf
+from .startup_errors import show_startup_error
 from .stats import StatsStore
 
 
@@ -234,13 +235,22 @@ def main() -> int:
         except Exception:
             startup_log.exception("窗口显示失败")
 
-    webview.start(
-        gui="edgechromium",
-        func=_show_when_ready,
-        # WebView2 使用 pywebview 默认的私有临时目录（每次启动全新）：
-        # 实测自定义 storage_path 会导致初始化间歇性卡死与内存暴涨。
-        private_mode=True,
-    )
+    try:
+        webview.start(
+            gui="edgechromium",
+            func=_show_when_ready,
+            # WebView2 使用 pywebview 默认的私有临时目录（每次启动全新）：
+            # 实测自定义 storage_path 会导致初始化间歇性卡死与内存暴涨。
+            private_mode=True,
+        )
+    except RuntimeError as exc:
+        # 已知最典型的是 pythonnet/.NET 加载失败（发行包启动崩溃 P0）：
+        # 此时 pywebview 无法使用，改用系统 MessageBox 给用户可执行的指引。
+        logging.getLogger("app.startup").exception("pywebview 启动失败：%s", exc)
+        show_startup_error(exc)
+        books.close_all()
+        release_instance_lock()
+        return 1
     books.close_all()
     release_instance_lock()
     # pywebview 6.2.1 在 Windows 下窗口关闭后仍有非 daemon 线程，
