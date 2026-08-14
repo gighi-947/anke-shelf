@@ -18,6 +18,17 @@ Android 手机端，两端共享同一套数据契约（书架 / 进度 / 标注
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 与
 > [docs/ANDROID_ARCHITECTURE.md](docs/ANDROID_ARCHITECTURE.md)。
 
+## 📁 仓库布局（新人导航）
+
+- `app/` `web/` `tests/`——Windows 桌面端（Python 后端 / 前端 / 测试）
+- `android/`——Android 端（Kotlin + Compose，独立 Gradle 工程）
+- `contracts/`——双端共享数据契约与守卫测试
+- `docs/`——架构、契约、术语、路线图与审查计划
+- `README.md` `CHANGELOG.md` `CONTRIBUTING.md` `SECURITY.md` `LICENSE`——项目入口
+- `使用说明.txt`——Windows 发行包内置用户手册
+- `AGENTS.md`——开发规则（AI 与人工开发进场均需先读）
+- `AnkeShelf_DevLog.md`——现役开发日志
+
 ---
 
 ## ✨ 功能特性

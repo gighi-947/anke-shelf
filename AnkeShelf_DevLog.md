@@ -48,6 +48,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win/docs：批次 E 收尾（README 新人导航 + CI Python 矩阵）
+
+- E3（P2.4）：README 顶部新增「仓库布局（新人导航）」；`使用说明.txt`
+  不改名（项目既有中文命名纪律，发行包对中文用户友好），治理文档不移动
+  （GitHub 根目录约定），仅做缓解。
+- E4（P3.3）：windows.yml 测试矩阵 3.12 / 3.13 / 3.14（fail-fast: false；
+  打包与 manifest 仅 3.12 跑，避免多版本 artifact 冲突）。
+- E5 维持延后（无 Linux/macOS 需求）；E6 字体去重维持路线图 P3 待办。
+- 验证：workflow 结构检查通过；纯文档/CI 配置改动，未跑构建。
+
 ### 2026-08-14 docs：批次 E 首项（CONTRIBUTING 入口提示 + 对外贡献门槛）
 
 - 处理（按 REVIEW_ACTION_PLAN）：CONTRIBUTING.md 顶部加醒目
