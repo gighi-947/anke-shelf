@@ -12,7 +12,7 @@
 
 - 功能基线 HEAD：`9e84c4c`（android: P2 错误模型与 null 清理）；此前功能提交
   （P0 / P1 契约守卫 / 桥协议 / jsoup 清洗 / 依赖锁定等）均已推送 `origin/main`。
-- 推送状态：`9e84c4c` 待推送；工作树干净。
+- 推送状态：已推送 `origin/main`，与远程同步；工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows/JS 于 2026-08-14 实跑复核；Android 沿用 2026-08-10 本地报告）：

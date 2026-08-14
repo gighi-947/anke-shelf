@@ -48,8 +48,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| HEAD | `9e84c4c`（android: P2 错误模型与 null 清理；2026-08-14 核对） |
-| 分支 | `main`，本地领先 `origin/main` 1 提交（`9e84c4c` 待推送） |
+| HEAD | `a597f8b`（docs: 文档漂移同步；2026-08-14 核对） |
+| 分支 | `main`，与 `origin/main` 同步 |
 | Windows Python 单测 | 218 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 40 methods + `reader-session` OK |
 | Android JVM 单测 | 102 过 / 1 跳（2026-08-14 实跑） |
