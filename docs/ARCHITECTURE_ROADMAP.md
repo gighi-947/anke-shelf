@@ -48,8 +48,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 功能基线 | `b368dc1`（android: P3 reader-lite.js 模块化拆分；2026-08-14 核对） |
-| 分支 | `main`，本地领先 `origin/main` 1 提交（`b368dc1` 待推送） |
+| 功能基线 | `7dc49ba`（android: check-release.ps1 增加 reader-lite.js SHA 校验；2026-08-14 核对） |
+| 分支 | `main`，本地领先 `origin/main` 1 提交（`7dc49ba` 待推送） |
 | Windows Python 单测 | 218 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 40 methods + `reader-session` OK |
 | Android JVM 单测 | 106 过 / 1 跳（2026-08-14 实跑） |
