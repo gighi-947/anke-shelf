@@ -116,6 +116,14 @@ class DisciplineTest {
         )
         assertTrue("android.yml 应使用 setup-java@v5", yml.contains("actions/setup-java@v5"))
         assertTrue("android.yml 应含 reader JS 语法检查", yml.contains("node --check"))
+        assertTrue(
+            "android.yml 的 run 工作目录已是 android/，bundle 脚本应使用 scripts/ 相对路径",
+            yml.contains("run: node scripts/bundle-reader-lite.js"),
+        )
+        assertFalse(
+            "android.yml 不得从 android/ 工作目录重复拼接 android/scripts",
+            yml.contains("run: node android/scripts/bundle-reader-lite.js"),
+        )
     }
 
     @Test
