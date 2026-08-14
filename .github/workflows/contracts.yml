@@ -1,0 +1,39 @@
+name: Contracts CI
+
+on:
+  push:
+    paths:
+      - 'contracts/**'
+      - 'app/api/**'
+      - 'web/js/api-client.js'
+      - 'web/js/bridge.js'
+      - 'tests/test_contracts.py'
+      - 'tests/test_api_contract.py'
+      - '.github/workflows/contracts.yml'
+  pull_request:
+    paths:
+      - 'contracts/**'
+      - 'app/api/**'
+      - 'web/js/api-client.js'
+      - 'web/js/bridge.js'
+      - 'tests/test_contracts.py'
+      - 'tests/test_api_contract.py'
+      - '.github/workflows/contracts.yml'
+  workflow_dispatch:
+
+jobs:
+  contract-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install schema validator
+        run: pip install jsonschema
+      - name: Node API manifest comparison
+        run: node contracts/tests/api-contract.test.js
+      - name: Node textpos contract
+        run: node contracts/tests/textpos.test.js
+      - name: Python contract and API contract tests
+        run: python -m unittest tests.test_api_contract tests.test_contracts

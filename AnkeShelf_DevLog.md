@@ -43,6 +43,17 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 P1：契约/API 漂移守卫落地
+
+- 现象：后端 `_HANDLERS` 与前端 `api-client.js` METHODS、`bridge.js` MOCKS 无自动对照；
+  MOCKS 实际缺 `export_diagnostics`、`get_chapter_plaintext`、`search_more` 三个方法。
+- 处理：`app/api/__init__.py` 新增 `api_manifest()`；`api-client.js` 支持 Node 加载；
+  `bridge.js` 补齐 3 个 MOCK；新增 `contracts/tests/api-contract.test.js`（Node 双向比对）
+  与 `tests/test_api_contract.py`（后端↔前端↔MOCKS 覆盖）；新增
+  `.github/workflows/contracts.yml`（独立触发，未扩大 android.yml）。
+- 验证：Python 全量 218 项 OK（+2）；Node api-contract 40 方法一致、textpos 15 例 OK；
+  `node --check` 通过。
+
 ### 2026-08-14 P0：发行包启动失败友好提示与文档
 
 - 现象：pythonnet/.NET 加载失败（`Failed to resolve Python.Runtime.Loader.Initialize`）

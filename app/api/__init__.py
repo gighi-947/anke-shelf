@@ -59,6 +59,11 @@ _HANDLERS = (
 )
 
 
+def api_manifest() -> list[dict]:
+    """导出当前 API 方法契约清单（方法名），供前端与 CI 对照，防止两端漂移。"""
+    return [{"name": name} for name, _ in _HANDLERS]
+
+
 class Api(ApiRegistry):
     """本地 HTTP API 聚合门面：构造时注册全部 handler。
 

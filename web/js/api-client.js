@@ -53,5 +53,11 @@
   for (const [snake, camel] of METHODS) {
     Api[camel] = (...args) => Bridge.call(snake, ...args);
   }
-  window.Api = Api;
+  if (typeof window !== 'undefined') {
+    window.Api = Api;
+  }
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { METHODS };
+  }
 })();

@@ -15,7 +15,9 @@
     remove_book: async () => true,
     open_book: async () => ({ error: '浏览器调试模式：无法打开书籍' }),
     save_progress: async () => undefined,
+    get_chapter_plaintext: async () => '',
     search: async () => ({ ready: true, results: [] }),
+    search_more: async () => ({ hits: [], more: false }),
     is_index_ready: async () => true,
     get_settings: async () => ({
       theme: 'light', theme_mode: '', font_size: 18, line_height: 1.8, font_family: 'reader',
@@ -38,6 +40,7 @@
     export_start: async () => ({ ok: false, error: '浏览器调试模式：无法导出' }),
     export_status: async () => ({ running: false, stage: 'idle', detail: '', files: [], dest: '', error: '' }),
     export_open_dest: async () => ({ ok: false, error: '浏览器调试模式' }),
+    export_diagnostics: async () => ({ ok: false, error: '浏览器调试模式：无法导出诊断包' }),
     get_annotations: async () => ({ highlights: [], bookmarks: [] }),
     save_annotation: async () => ({}),
     update_annotation: async () => ({}),

@@ -15,6 +15,7 @@ contracts/
 ├── annotation/        annotations.json 的 JSON Schema
 ├── settings/          settings.json 的 JSON Schema
 ├── text/              文本规范化用例（HTML → 折叠纯文本 + text_offset 采样点）
+├── tests/             Node 契约测试（textpos / api-contract）
 └── fixtures/
     └── native-book/basic-nga/   最小原生书 fixture（meta/floors/chapters + 期望纯文本）
 ```
@@ -30,6 +31,9 @@ contracts/
 4. 文本用例的 `expected` 是**权威期望值**（以 Windows Python/JS 现行为准，
    见 TEXT_NORMALIZATION_SPEC 的已知分歧清单）；任何一端与期望不符即为契约漂移，
    须修复实现或经评审后修订规范，不允许只改测试绕过。
+5. API 清单由机器对照（`contracts/tests/api-contract.test.js` 与
+   `tests/test_api_contract.py`）：后端 `app/api` 与前端 `web/js/api-client.js`、
+   `bridge.js` MOCKS 必须一一对应；新增 API 必须同时更新 handler、客户端与 MOCK。
 
 ## 版本
 

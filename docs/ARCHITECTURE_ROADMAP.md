@@ -116,6 +116,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P1：契约与 API 漂移守卫
 
+> 状态（2026-08-14）：已落地——`contracts.yml`、`app/api/__init__.py::api_manifest()`、
+> `contracts/tests/api-contract.test.js`、`tests/test_api_contract.py`，并补齐
+> `bridge.js` 缺失的 3 个 MOCK。
+
 - 新增 `.github/workflows/contracts.yml`（独立于 `android.yml`，不扩大其触发范围）；
 - `app/api/__init__.py` 或 `registry.py` 导出方法清单；
 - 新增 Node 对照测试：加载 `web/js/api-client.js`，与 Python 清单逐项比对
