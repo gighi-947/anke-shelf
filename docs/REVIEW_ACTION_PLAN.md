@@ -2,8 +2,8 @@
 
 > 制定日期：2026-08-14
 > 来源：两轮外部审查
-> - 第一轮架构债：`H:\AnkeShelf_Review_Archive\ARCHITECTURE_DEBT_REVIEW_20260814.md`
-> - 第二轮仓库评审：`H:\AnkeShelf_Review_Archive\AnkeShelf_Review_20260814.md`
+> - 第一轮架构债：`I:\AnkeShelf_Review_Archive\ARCHITECTURE_DEBT_REVIEW_20260814.md`
+> - 第二轮仓库评审：`I:\AnkeShelf_Review_Archive\AnkeShelf_Review_20260814.md`
 > 计划基线：`ab3c6d8`（`main` / `origin/main`，Android JVM 111 过 / 1 跳）
 > 配套纪律：AGENTS.md（失败显式化、规模与抽象门槛、业务不变量测试、
 > 文档漂移检查）；每项按“成功标准 + 验证方式”推进。
@@ -144,7 +144,7 @@
 
 ## 5. 复审（v2）采纳记录（2026-08-14）
 
-复审报告：`H:\AnkeShelf_Review_Archive\AnkeShelf_Review_20260814_v2_ReReview.md`；评级
+复审报告：`I:\AnkeShelf_Review_Archive\AnkeShelf_Review_20260814_v2_ReReview.md`；评级
 工程 A / 维护 A- / 安全 A+ / 合规 A- / 社区 B+，13 项问题 100% 决策闭环。
 核验：行号引用全部精确，状态判定与实际一致。4 项小瑕疵处理：
 
@@ -160,7 +160,7 @@
 
 ## 6. 复审（review3，防御性编码视角）核验记录（2026-08-14）
 
-审查报告：`H:\AnkeShelf_Review_Archive\review3.md`；视角：防御性编码、复杂度位置、设计约束 vs
+审查报告：`I:\AnkeShelf_Review_Archive\review3.md`；视角：防御性编码、复杂度位置、设计约束 vs
 运行时补丁。15 项建议核验与处理：
 
 | 项 | 判定 | 处理 |
