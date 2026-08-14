@@ -30,6 +30,12 @@ pip install -r requirements.txt
 
 也可直接运行 `python -m ngapost2md --gen-config-file` 生成默认配置。
 
+## 许可证与上游
+
+MIT License（见本目录 `LICENSE`）。本实现参考上游 Go 版
+[ludoux/ngapost2md](https://github.com/ludoux/ngapost2md)
+（commit `e3b9434`，2026-05-30），引用说明见本目录 `NOTICE`。
+
 ## 使用
 
 ```bash

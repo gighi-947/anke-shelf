@@ -1,0 +1,10 @@
+ngapost2md（Python 重写版）· 上游引用说明
+
+本目录是独立 Python 重写实现，功能与上游 Go 版核心部分等价：
+
+- 上游：https://github.com/ludoux/ngapost2md
+- 上游 commit：e3b94346c805（2026-05-30，分支 neo）
+- 上游许可证：MIT（Copyright (c) 2020-2026 Lu Chang，原文见本目录 LICENSE）
+- 引用范围：下载流程、数据模型与格式规则与上游核心等价；
+  表情与匿名映射表由上游 Go 源码提取。
+- 本目录包版本独立：0.1.0-ankeshelf，不与 AnkeShelf 主项目 vX.Y.Z 混淆。
