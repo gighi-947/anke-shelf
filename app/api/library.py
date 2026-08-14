@@ -48,7 +48,9 @@ def import_books(ctx: ApiContext) -> list[dict]:
             )
             ctx.shelf.upsert(rec)
             ctx.shelf.save()
-            results.append({"ok": True, "record": record_to_dict(rec)})
+            d = record_to_dict(rec)
+            d["progress_pct"] = 0.0  # 刚导入的书尚无进度（最终值，非占位）
+            results.append({"ok": True, "record": d})
         except EpubError as e:
             results.append({"ok": False, "file": Path(p).name, "error": str(e)})
         except OSError as e:

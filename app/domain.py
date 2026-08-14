@@ -4,7 +4,6 @@
 - Position：阅读位置（chapter_index + text_offset，UTF-16 code unit）；
 - Book：BookManager 可注册书籍的统一接口（EpubBook / NativeBook 均满足）。
 - BookRevision：书籍内容版本标识（热更新/缓存失效用）；
-- ProgressRepository / ShelfRepository：持久化接口（未来同步/替换实现用）。
 """
 import os
 from dataclasses import dataclass
@@ -57,20 +56,3 @@ def book_revision(book) -> str:
     except OSError:
         return "epub:unknown"
 
-
-@runtime_checkable
-class ProgressRepository(Protocol):
-    """阅读进度持久化接口（ProgressStore 满足）。"""
-
-    def get(self, book_id: str) -> Optional[dict]: ...
-    def set(self, book_id: str, chapter_index: int, text_offset: int) -> None: ...
-
-
-@runtime_checkable
-class ShelfRepository(Protocol):
-    """书架持久化接口（Shelf 满足）。"""
-
-    def list_books(self): ...
-    def get(self, book_id: str): ...
-    def upsert(self, rec) -> None: ...
-    def remove(self, book_id: str) -> None: ...

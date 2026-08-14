@@ -9,13 +9,11 @@ from app.book_manager import BookManager
 from app.domain import (
     Book,
     Position,
-    ProgressRepository,
-    ShelfRepository,
     book_revision,
 )
 from app.epub import EpubBook
 from app.native_book import NativeBook
-from app.shelf import ProgressStore, Shelf
+from app.shelf import ProgressStore
 
 PROJECT = Path(__file__).resolve().parent.parent
 SAMPLE = PROJECT / "tests" / "sample" / "sample_nav3.epub"
@@ -89,15 +87,6 @@ class BookRevisionTest(unittest.TestCase):
             self.assertNotEqual(r1, r2)
             nb.close()
             nb2.close()
-
-
-class RepositoryProtocolTest(unittest.TestCase):
-    def test_stores_satisfy_protocols(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            store = ProgressStore(Path(tmp) / "progress.json")
-            shelf = Shelf(Path(tmp) / "shelf.json", Path(tmp) / "covers")
-            self.assertIsInstance(store, ProgressRepository)
-            self.assertIsInstance(shelf, ShelfRepository)
 
 
 if __name__ == "__main__":

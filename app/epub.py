@@ -18,10 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-try:
-    import xml.etree.ElementTree as ET
-except ImportError:  # pragma: no cover
-    raise
+import xml.etree.ElementTree as ET
 
 # 命名空间（EPUB 规范）
 NS_CNT = "urn:oasis:names:tc:opendocument:xmlns:container"

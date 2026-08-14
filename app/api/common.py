@@ -71,7 +71,6 @@ def record_to_dict(rec: BookRecord) -> dict:
         "last_read_at": rec.last_read_at,
         "nga_tid": rec.nga_tid,
         "cover_url": f"/cover/{rec.id}",
-        "progress_pct": 0.0,
     }
 
 

@@ -4,8 +4,12 @@ import os
 import shutil
 import subprocess
 import time
+from pathlib import Path
 
 from .. import __version__
+from ..backup import create_backup, restore_backup, verify_backup
+from ..diagnostics import build_diagnostics
+from ..dialogs import pick_folder, pick_paths
 from ..errors import ErrorCode, api_error
 from ..instance_guard import release_instance_lock
 from ..paths import (
@@ -16,6 +20,7 @@ from ..paths import (
     shelf_path,
     statistics_path,
 )
+from ..storage import verify_json_file
 from .common import ApiContext
 
 
@@ -39,11 +44,6 @@ def toggle_fullscreen(ctx: ApiContext) -> dict:
 
 def export_diagnostics(ctx: ApiContext) -> dict:
     """导出诊断包（版本/平台/日志/脱敏设置）到用户自选文件夹。"""
-    from pathlib import Path
-
-    from ..diagnostics import build_diagnostics
-    from ..dialogs import pick_folder
-
     dest = pick_folder("选择诊断包保存文件夹")
     if not dest:
         return api_error(ErrorCode.EXPORT_FAILED, "已取消")
@@ -56,8 +56,6 @@ def export_diagnostics(ctx: ApiContext) -> dict:
 
 def verify_data_integrity(ctx: ApiContext) -> dict:
     """检查各 JSON 数据文件可解析性/版本/大小（不读取内容值，不含凭据）。"""
-    from ..storage import verify_json_file
-
     results = [
         verify_json_file(p)
         for p in (shelf_path(), progress_path(), settings_path(), annotations_path(), statistics_path())
@@ -67,10 +65,6 @@ def verify_data_integrity(ctx: ApiContext) -> dict:
 
 def backup_create(ctx: ApiContext) -> dict:
     """创建统一备份包（ank-backup/1）到自选文件夹。"""
-    from .. import __version__
-    from ..backup import create_backup
-    from ..dialogs import pick_folder
-
     dest = pick_folder("选择备份保存文件夹")
     if not dest:
         return api_error(ErrorCode.EXPORT_FAILED, "已取消")
@@ -92,11 +86,6 @@ def backup_create(ctx: ApiContext) -> dict:
 
 def backup_verify(ctx: ApiContext) -> dict:
     """选择备份包并只读验证（校验和/可解析性/版本字段，不写盘）。"""
-    from pathlib import Path
-
-    from ..backup import verify_backup
-    from ..dialogs import pick_paths
-
     picked = pick_paths("backup")
     if not picked:
         return api_error(ErrorCode.EXPORT_FAILED, "已取消")
@@ -108,11 +97,6 @@ def backup_verify(ctx: ApiContext) -> dict:
 
 def backup_restore(ctx: ApiContext, overwrite: bool = False) -> dict:
     """选择备份包恢复：先验证再写；已有数据时需 overwrite=True 才覆盖。"""
-    from pathlib import Path
-
-    from ..backup import restore_backup
-    from ..dialogs import pick_paths
-
     picked = pick_paths("backup")
     if not picked:
         return api_error(ErrorCode.EXPORT_FAILED, "已取消")
@@ -175,4 +159,3 @@ def uninstall_and_quit(ctx: ApiContext) -> dict:
     except Exception:  # noqa: BLE001
         pass
     os._exit(0)
-    return {"ok": True}
