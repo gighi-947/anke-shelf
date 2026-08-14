@@ -10,9 +10,9 @@
 
 ## 1. 当前状态（2026-08-14）
 
-- 功能基线 HEAD：`aecb5a5`（android: DownloadScreen 大屏拆分）；此前功能提交
+- 功能基线 HEAD：`3a65635`（android: NativeReaderScreen Chrome 拆分）；此前功能提交
   （P0 / P1 / P2 / P3 各项）均已推送 `origin/main`。
-- 推送状态：`aecb5a5` 待推送；工作树干净。
+- 推送状态：`3a65635` 待推送；工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows/JS 于 2026-08-14 实跑复核；Android 沿用 2026-08-10 本地报告）：
