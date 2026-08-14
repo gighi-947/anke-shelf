@@ -76,7 +76,7 @@ import io.github.gighi947.ankeshelf.data.SearchIndex
 import io.github.gighi947.ankeshelf.data.SearchResponse
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookUi
-import io.github.gighi947.ankeshelf.service.getOrNull
+import io.github.gighi947.ankeshelf.service.RepoResult
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.AnkeRadius
@@ -113,11 +113,14 @@ fun SearchScreen(
     }
 
     // 当前书的会话与索引（DisposableEffect 保证退出页面时释放文件句柄）。
-    val index = remember(bookId) {
+    val sessionState = remember(bookId) {
         val ui = books.firstOrNull { it.record.id == bookId } ?: return@remember null
-        val session = container.repository.openSession(ui.record).getOrNull() ?: return@remember null
-        SearchIndex(session)
+        container.repository.openSession(ui.record)
     }
+    val index = remember(sessionState) {
+        (sessionState as? RepoResult.Ok)?.value?.let { SearchIndex(it) }
+    }
+    val openError = (sessionState as? RepoResult.Err)?.error?.message
     DisposableEffect(bookId) {
         onDispose {
             // session 由 SearchIndex 持有，页面销毁时关闭。
@@ -144,7 +147,7 @@ fun SearchScreen(
         delay(300)
         while (true) {
             val idx = index ?: run {
-                status = "请先选择一本书"
+                status = openError?.let { "书籍打开失败：$it" } ?: "请先选择一本书"
                 return@LaunchedEffect
             }
             if (!idx.isReady()) {

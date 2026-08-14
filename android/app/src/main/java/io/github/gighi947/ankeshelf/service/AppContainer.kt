@@ -295,24 +295,43 @@ class BookRepository(
 
     fun progressOf(bookId: String): ProgressEntry? = progress.get(bookId)
 
-    fun removeBook(rec: BookRecord) {
+    /** 删除书架条目与本地文件；返回文件是否删除成功（条目已移除，失败可提示残留）。 */
+    fun removeBook(rec: BookRecord): Boolean {
         shelf.remove(rec.id)
         shelf.save()
         progress.remove(rec.id)
-        try {
+        val fileOk = try {
             val f = File(rec.path)
-            if (f.isDirectory) {
+            val deleted = if (f.isDirectory) {
                 // 原生书：删除整个帖子目录（含 book/ 与 download.json 断点）。
-                f.deleteRecursively()
+                val ok = f.deleteRecursively()
                 f.parentFile?.let { File(it, "download.json").delete() }
+                ok
             } else {
                 f.delete()
             }
             rec.cover_rel?.let { rel ->
                 File(appPaths.coversDir, rel.substringAfterLast('/')).delete()
             }
-        } catch (_: Exception) {
+            deleted
+        } catch (e: Exception) {
+            LogEvents.event(
+                "shelf",
+                "remove_file_failed",
+                "book_id_hash" to LogEvents.bookIdHash(rec.id),
+                "error" to (e.toString()),
+            )
+            false
         }
+        if (!fileOk) {
+            LogEvents.event(
+                "shelf",
+                "remove_file_failed",
+                "book_id_hash" to LogEvents.bookIdHash(rec.id),
+                "error" to "delete returned false",
+            )
+        }
+        return fileOk
     }
 
     companion object {

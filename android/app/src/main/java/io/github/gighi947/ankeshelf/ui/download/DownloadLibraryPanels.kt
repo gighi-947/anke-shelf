@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -229,7 +230,9 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
             tick++
         },
         onDelete = { rec ->
-            container.repository.removeBook(rec)
+            if (!container.repository.removeBook(rec)) {
+                Toast.makeText(context, "删除书籍文件失败，书架条目已移除", Toast.LENGTH_LONG).show()
+            }
             onChanged()
             tick++
         },
@@ -243,7 +246,9 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
             text = { Text("将删除「${rec.title}」及其进度、断点与本地文件，此操作不可恢复。") },
             confirmButton = {
                 TextButton(shape = MaterialTheme.shapes.small, onClick = {
-                    container.repository.removeBook(rec)
+                    if (!container.repository.removeBook(rec)) {
+                        Toast.makeText(context, "删除书籍文件失败，书架条目已移除", Toast.LENGTH_LONG).show()
+                    }
                     deleteTarget = null
                     onChanged()
                     tick++

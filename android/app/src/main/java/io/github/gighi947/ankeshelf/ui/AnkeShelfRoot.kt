@@ -47,7 +47,6 @@ import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.service.RepoResult
-import io.github.gighi947.ankeshelf.service.getOrNull
 import io.github.gighi947.ankeshelf.ui.download.DownloadScreen
 import io.github.gighi947.ankeshelf.ui.reader.native.NativeReaderScreen
 import io.github.gighi947.ankeshelf.ui.search.SearchScreen
@@ -92,7 +91,19 @@ fun AnkeShelfRoot(container: AppContainer) {
     val record = remember(bookId, refresh) {
         bookId?.let { id -> books.find { it.record.id == id }?.record }
     }
-    val session = remember(record) { record?.let { container.repository.openSession(it).getOrNull() } }
+    val sessionResult = remember(record) { record?.let { container.repository.openSession(it) } }
+    val session = remember(sessionResult) { (sessionResult as? RepoResult.Ok)?.value }
+    // 打开失败显式提示，不再静默回书架（review3 C3）。
+    LaunchedEffect(sessionResult) {
+        if (routeName == "reader" && sessionResult is RepoResult.Err) {
+            Toast.makeText(
+                context,
+                "打开书籍失败：${(sessionResult as RepoResult.Err).error.message}",
+                Toast.LENGTH_LONG,
+            ).show()
+            routeName = "shelf"
+        }
+    }
     // 不能用 record 对象做 key：书架 map 里 record 是稳定实例，refresh++ 后
     // remember 不会重算，导致重进阅读器时读到旧的 savedOffset（进度落后）。
     val savedProgress = remember(refresh, record?.id) {
@@ -233,7 +244,13 @@ fun AnkeShelfRoot(container: AppContainer) {
                                         refresh++
                                     },
                                     onDelete = { rec ->
-                                        container.repository.removeBook(rec)
+                                        if (!container.repository.removeBook(rec)) {
+                                            Toast.makeText(
+                                                context,
+                                                "删除书籍文件失败，书架条目已移除",
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                        }
                                         refresh++
                                     },
                                     onShelfViewChange = { view ->
