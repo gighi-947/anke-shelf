@@ -4,8 +4,8 @@
 > 分析基线：`main` / `1ea4c95`（分析时点）；2026-08-13 核对：HEAD 已推进至
 > `4810d0c`（docs-only 提交）；2026-08-14 再核对：HEAD 已推进至 `c8f90cf`，
 > P0 / P1 已按本路线图落地；随后推进至 `edaf442`（依赖锁定，另含 ADR/治理文档），
-> 再推进至 `ad034b8`（Android 桥协议 + 进度回放）与 `d697330`（P2 jsoup 清洗）。
-> 各节“状态”注明进度，工作树干净。
+> 再推进至 `ad034b8`（Android 桥协议 + 进度回放）、`d697330`（P2 jsoup 清洗）
+> 与 `9e84c4c`（P2 错误模型）。各节“状态”注明进度，工作树干净。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
 > - `H:\AnkeShelf_Architecture_Improvement_Proposal.md`（架构改进提案）
@@ -48,11 +48,11 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| HEAD | `d697330`（android: P2 章节 HTML 清洗改 jsoup；2026-08-14 核对） |
-| 分支 | `main`，本地领先 `origin/main` 1 提交（`d697330` 待推送） |
+| HEAD | `9e84c4c`（android: P2 错误模型与 null 清理；2026-08-14 核对） |
+| 分支 | `main`，本地领先 `origin/main` 1 提交（`9e84c4c` 待推送） |
 | Windows Python 单测 | 218 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 40 methods + `reader-session` OK |
-| Android JVM 单测 | 99 过 / 1 跳（2026-08-14 实跑） |
+| Android JVM 单测 | 102 过 / 1 跳（2026-08-14 实跑） |
 | UI 实机 harness | 92 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
 

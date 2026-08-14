@@ -10,9 +10,9 @@
 
 ## 1. 当前状态（2026-08-14）
 
-- 功能基线 HEAD：`d697330`（android: P2 章节 HTML 清洗改 jsoup）；此前功能提交
-  （P0 / P1 契约守卫 / 桥协议 / 依赖锁定等）均已推送 `origin/main`。
-- 推送状态：`d697330` 待推送；工作树干净。
+- 功能基线 HEAD：`9e84c4c`（android: P2 错误模型与 null 清理）；此前功能提交
+  （P0 / P1 契约守卫 / 桥协议 / jsoup 清洗 / 依赖锁定等）均已推送 `origin/main`。
+- 推送状态：`9e84c4c` 待推送；工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows/JS 于 2026-08-14 实跑复核；Android 沿用 2026-08-10 本地报告）：
@@ -22,7 +22,7 @@
     `node contracts/tests/api-contract.test.js`（40 方法一致）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node tests/js/reader-session.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 99 过 / 1 跳；DisciplineTest 在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 102 过 / 1 跳；DisciplineTest 在岗；
   - UI 实机 harness：`python -m tests.ui.runner` = 92 项 PASS（需桌面 WebView2）。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
 
