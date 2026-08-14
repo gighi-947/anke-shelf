@@ -14,7 +14,13 @@
    已加入 `.gitignore`；若使用 Android Studio 则直接用其自带 JDK/SDK）。
 2. 确认 `android/local.properties` 存在且包含本机 SDK 路径
    （`sdk.dir=...`；该文件不入库）。
-3. 在 `android/` 目录执行：
+3. 校验工具链（JDK 17+ 与 SDK，可选但推荐）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/check-toolchain.ps1
+```
+
+4. 在 `android/` 目录执行：
 
 ```powershell
 ..\.tools\gradle-dist\gradle-9.4.1\bin\gradle.bat assembleDebug

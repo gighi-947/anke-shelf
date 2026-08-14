@@ -48,6 +48,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：本地构建 Java 工具链检查
+
+- 处理：新增 `android/scripts/check-toolchain.ps1`——定位 JAVA_HOME/PATH 的 java，
+  解析大版本并强制 ≥17，打印 SDK 位置（ANDROID_HOME 或仓库 `.tools/android-sdk`）；
+  android/README「本地构建」增加校验步骤。脚本输出保持 ASCII，避免 PS 5.1 编码坑；
+  java 版本输出经 `cmd /c` 合并 stderr，规避 `$ErrorActionPreference='Stop'` 误抛。
+- 验证：JDK 25（jbr）→ PASS（exit 0）；无效 JAVA_HOME → FAIL（exit 1）。
+
 ### 2026-08-14 android：check-release.ps1 增加 APK 内 reader-lite.js SHA 校验
 
 - 现象：Gradle 曾误判资产 UP-TO-DATE 导致旧 `reader-lite.js` 入包，此前只能手工解包确认。
