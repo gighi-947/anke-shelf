@@ -51,7 +51,7 @@ class TextTest {
     fun `sample chapter stable`() {
         val book = EpubBook(SampleEpubs.copy("nav3")).open()
         try {
-            val text = extract(book.chapterText(2)!!)
+            val text = extract((book.chapterText(2) as ChapterReadResult.Success).text)
             assertTrue(text.contains("黎明前的第 1 个观测窗口"))
             assertTrue(text.contains("def detect(signal, noise)"))
             assertTrue(text.contains("信噪比"))

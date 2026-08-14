@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.ChapterReadResult
 import io.github.gighi947.ankeshelf.data.EpubBook
 import io.github.gighi947.ankeshelf.data.EpubError
 import io.github.gighi947.ankeshelf.data.NativeBook
@@ -62,13 +63,13 @@ class BookSession(
     val title: String,
     val author: String,
     val chapters: List<SpineItem>,
-    private val textFn: (Int) -> String?,
+    private val textFn: (Int) -> ChapterReadResult,
     private val titleFn: (Int) -> String,
     private val closeFn: () -> Unit,
     private val baseDirFn: (Int) -> String = { "" },
     private val assetFn: ((Int, String) -> ByteArray?)? = null,
 ) : Closeable {
-    fun chapterText(index: Int): String? = textFn(index)
+    fun chapterText(index: Int): ChapterReadResult = textFn(index)
     fun chapterTitle(index: Int): String = titleFn(index)
     fun chapterBaseDir(index: Int): String = baseDirFn(index)
 
@@ -262,7 +263,7 @@ class BookRepository(
 
     /** 章纯文本长度（text_offset 坐标基准）。 */
     fun chapterPlainLength(session: BookSession, index: Int): Int =
-        TextExtractor.extractDomText(session.chapterText(index) ?: "").length
+        TextExtractor.extractDomText(session.chapterText(index).textOrEmpty()).length
 
     fun saveProgress(
         bookId: String,

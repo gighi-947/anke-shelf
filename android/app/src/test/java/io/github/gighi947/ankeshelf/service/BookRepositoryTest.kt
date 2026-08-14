@@ -2,6 +2,7 @@ package io.github.gighi947.ankeshelf.service
 
 import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.ChapterReadResult
 import io.github.gighi947.ankeshelf.data.ProgressStore
 import io.github.gighi947.ankeshelf.data.Shelf
 import org.junit.Assert.assertEquals
@@ -37,7 +38,7 @@ class BookRepositoryTest {
 
             val session = repo.openSession(rec).getOrNull()!!
             assertEquals(rec.chapter_count, session.chapters.size)
-            assertNotNull(session.chapterText(0))
+            assertTrue(session.chapterText(0) is ChapterReadResult.Success)
             val len = repo.chapterPlainLength(session, 0)
             assertTrue(len > 0)
             val offset = BookRepository.offsetForRatio(0.5, len)

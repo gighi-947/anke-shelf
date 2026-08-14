@@ -60,13 +60,27 @@ class EpubTest {
             assertNull(book.readFile("OEBPS/nope/missing.png"))
 
             val text = book.chapterText(0)
-            assertNotNull(text)
-            assertTrue(text!!.contains("引力波"))
-            assertTrue(text.contains("css/style.css"))
+            assertTrue(text is ChapterReadResult.Success)
+            assertTrue((text as ChapterReadResult.Success).text.contains("引力波"))
+            assertTrue(text.text.contains("css/style.css"))
             assertEquals("第一章 起航", book.chapterTitle(0))
         } finally {
             book.close()
         }
+    }
+
+    @Test
+    fun `chapter read failure is explicit`() {
+        val book = EpubBook(SampleEpubs.copy("nav3")).open()
+        try {
+            assertTrue(book.chapterText(0) is ChapterReadResult.Success)
+            assertEquals(ChapterReadResult.NotFound, book.chapterText(999))
+            assertEquals(ChapterReadResult.NotFound, book.chapterText(-1))
+        } finally {
+            book.close()
+        }
+        // 容器关闭后读取 = IO 失败，而不是 null 折叠
+        assertTrue(book.chapterText(0) is ChapterReadResult.Io)
     }
 
     @Test

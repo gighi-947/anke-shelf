@@ -230,10 +230,22 @@ class EpubBook(val path: File) : Closeable {
         }
     }
 
-    fun chapterText(index: Int): String? {
-        if (index !in chapters.indices) return null
-        val data = readFile(chapters[index].href) ?: return null
-        return decodeText(data)
+    fun chapterText(index: Int): ChapterReadResult {
+        if (index !in chapters.indices) return ChapterReadResult.NotFound
+        val zf = zip ?: return ChapterReadResult.Io("EPUB 容器已关闭")
+        val href = chapters[index].href
+        val info = entries[href] ?: entriesLower[href.lowercase()]
+        if (info == null) return ChapterReadResult.NotFound
+        val bytes = try {
+            zf.getInputStream(info).use { it.readBytes() }
+        } catch (e: Exception) {
+            return ChapterReadResult.Io(e.toString())
+        }
+        return try {
+            ChapterReadResult.Success(decodeText(bytes))
+        } catch (e: Exception) {
+            ChapterReadResult.Corrupt(e.toString())
+        }
     }
 
     /** 章节所在目录（EPUB 内相对路径基准，如 "OEBPS/ch01"）。 */

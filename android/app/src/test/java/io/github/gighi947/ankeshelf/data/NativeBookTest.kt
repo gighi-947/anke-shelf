@@ -126,13 +126,36 @@ class NativeBookTest {
         assertEquals(3, book.chapters.size)
         assertEquals("序章 · 主楼", book.chapterTitle(0))
         assertEquals("第 22~25 楼", book.chapterTitle(2))
-        assertTrue(book.chapterText(2)!!.contains("floor-25"))
+        val t2 = book.chapterText(2)
+        assertTrue(t2 is ChapterReadResult.Success)
+        assertTrue((t2 as ChapterReadResult.Success).text.contains("floor-25"))
         assertEquals(1, book.tocSpineIndex("chapters/0001.xhtml"))
         assertNotNull(book.readFile("meta.json"))
         assertNull(book.readFile("../meta.json"))
         assertNull(book.readFile("/meta.json"))
         assertNull(book.readFile("chapters\\0000.xhtml"))
         book.close()
+    }
+
+    @Test
+    fun `chapter read failure is explicit`() {
+        val book = NativeBook(referenceDir("write25")).open()
+        assertEquals(ChapterReadResult.NotFound, book.chapterText(99))
+        assertEquals(ChapterReadResult.NotFound, book.chapterText(-1))
+        assertTrue(book.chapterText(0) is ChapterReadResult.Success)
+        book.close()
+
+        // meta 声明了章节但文件缺失 → NotFound（而非笼统 null）
+        val tmp = kotlin.io.path.createTempDirectory("native-missing-").toFile()
+        try {
+            referenceDir("write25").copyRecursively(tmp, overwrite = true)
+            File(tmp, "chapters/0002.xhtml").delete()
+            val broken = NativeBook(tmp).open()
+            assertEquals(ChapterReadResult.NotFound, broken.chapterText(2))
+            broken.close()
+        } finally {
+            tmp.deleteRecursively()
+        }
     }
 
     @Test

@@ -65,11 +65,10 @@ class SearchIndex(private val session: BookSession) {
         scope.launch(Dispatchers.Default) {
             val t0 = System.currentTimeMillis()
             val list = (0 until session.chapters.size).map { i ->
-                val raw = session.chapterText(i)
                 ChapterText(
                     index = i,
                     title = session.chapterTitle(i),
-                    text = if (raw != null) TextExtractor.extractDomText(raw) else "",
+                    text = TextExtractor.extractDomText(session.chapterText(i).textOrEmpty()),
                 )
             }
             lock.withLock { chapters = list }
@@ -92,11 +91,10 @@ class SearchIndex(private val session: BookSession) {
         }
         val t0 = System.currentTimeMillis()
         val list = (0 until session.chapters.size).map { i ->
-            val raw = session.chapterText(i)
             ChapterText(
                 index = i,
                 title = session.chapterTitle(i),
-                text = if (raw != null) TextExtractor.extractDomText(raw) else "",
+                text = TextExtractor.extractDomText(session.chapterText(i).textOrEmpty()),
             )
         }
         lock.withLock { chapters = list }

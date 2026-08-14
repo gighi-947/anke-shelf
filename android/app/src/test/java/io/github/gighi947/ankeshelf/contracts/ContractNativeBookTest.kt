@@ -1,5 +1,6 @@
 package io.github.gighi947.ankeshelf.contracts
 
+import io.github.gighi947.ankeshelf.data.ChapterReadResult
 import io.github.gighi947.ankeshelf.data.NativeBook
 import io.github.gighi947.ankeshelf.data.NativeBookWriter
 import java.io.File
@@ -24,7 +25,9 @@ class ContractNativeBookTest {
         assertEquals("序章 · 主楼", book.toc[0].label)
         assertEquals("第 1~2 楼", book.toc[1].label)
         assertNotNull(book.readFile("chapters/0001.xhtml"))
-        assertTrue(book.chapterText(1)!!.contains("第一楼正文"))
+            val t1 = book.chapterText(1)
+            assertTrue(t1 is ChapterReadResult.Success)
+            assertTrue((t1 as ChapterReadResult.Success).text.contains("第一楼正文"))
         assertNull(book.readFile("../meta.json")) // 路径穿越拒绝
         book.close()
     }

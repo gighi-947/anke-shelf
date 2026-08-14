@@ -201,10 +201,25 @@ class NativeBook(val path: File) : Closeable {
         }
     }
 
-    fun chapterText(index: Int): String? {
-        if (index !in chapters.indices) return null
-        val data = readFile(chapters[index].href) ?: return null
-        return decodeText(data)
+    fun chapterText(index: Int): ChapterReadResult {
+        if (index !in chapters.indices) return ChapterReadResult.NotFound
+        val root = root ?: return ChapterReadResult.Io("书籍目录未打开")
+        val safe = safeRel(chapters[index].href) ?: return ChapterReadResult.NotFound
+        val p = File(root, safe).absoluteFile
+        if (!p.path.startsWith(root.absolutePath + File.separator)) {
+            return ChapterReadResult.NotFound
+        }
+        if (!p.isFile) return ChapterReadResult.NotFound
+        val bytes = try {
+            p.readBytes()
+        } catch (e: Exception) {
+            return ChapterReadResult.Io(e.toString())
+        }
+        return try {
+            ChapterReadResult.Success(decodeText(bytes))
+        } catch (e: Exception) {
+            ChapterReadResult.Corrupt(e.toString())
+        }
     }
 
     fun chapterTitle(index: Int): String {

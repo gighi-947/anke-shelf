@@ -59,12 +59,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.ViewCompat
+import io.github.gighi947.ankeshelf.data.ChapterReadResult
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
@@ -90,6 +92,12 @@ import okhttp3.Request
 import java.io.File
 import kotlin.math.roundToInt
 
+
+/** 章节内容 UI 状态：读取失败走显式错误分支，不静默渲染空白页。 */
+private sealed interface ChapterUiState {
+    data class Html(val html: String, val len: Int) : ChapterUiState
+    data class Error(val message: String) : ChapterUiState
+}
 
 /**
  * 阅读页：Compose 外壳 + 安卓专用 WebView 渲染内核（reader-lite.js）。
@@ -164,13 +172,19 @@ fun NativeReaderScreen(
     }
 
     // 章节 HTML：换章/换书时后台组装一次；主题/字号后续用 JS 桥更新，不重载页面。
-    val htmlState = remember(session.id, chapterIndex) {
-        runCatching {
-            val parts = extractReaderParts(session.chapterText(chapterIndex).orEmpty())
-            val len = TextExtractor.extractDomText(parts.body).length
-            val html = buildReaderHtml(parts, theme, readerSettings)
-            html to len
-        }.getOrNull()
+    // 读取失败进入显式分支（NotFound/Corrupt/Io），不静默渲染空白。
+    val chapterState = remember(session.id, chapterIndex) {
+        when (val r = session.chapterText(chapterIndex)) {
+            is ChapterReadResult.Success -> runCatching {
+                val parts = extractReaderParts(r.text)
+                val len = TextExtractor.extractDomText(parts.body).length
+                val html = buildReaderHtml(parts, theme, readerSettings)
+                ChapterUiState.Html(html, len)
+            }.getOrElse { e -> ChapterUiState.Error(e.message ?: "章节渲染失败") }
+            is ChapterReadResult.NotFound -> ChapterUiState.Error("章节不存在，请返回目录")
+            is ChapterReadResult.Corrupt -> ChapterUiState.Error("章节文件损坏：${r.detail}")
+            is ChapterReadResult.Io -> ChapterUiState.Error("章节读取失败：${r.detail}")
+        }
     }
 
     // 异形屏安全区：沉浸式时顶部保留挖孔约 3/8（手动 dp 可覆盖）。
@@ -280,14 +294,19 @@ fun NativeReaderScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(themeColor(theme.background, Color.White))) {
-        val html = htmlState
-        if (html == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("正在加载章节…", color = fg.copy(alpha = 0.7f))
+        when (val state = chapterState) {
+            is ChapterUiState.Error -> Box(
+                Modifier.fillMaxSize().padding(24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "章节读取失败\n${state.message}",
+                    color = fg.copy(alpha = 0.8f),
+                    textAlign = TextAlign.Center,
+                )
             }
-        } else {
-            WebViewChapterView(
-                html = html.first,
+            is ChapterUiState.Html -> WebViewChapterView(
+                html = state.html,
                 chapterIndex = chapterIndex,
                 paged = readerSettings.pagination,
                 theme = theme,
@@ -314,8 +333,8 @@ fun NativeReaderScreen(
                             // UI 百分比：全图页直接用 JS 滚动比例，文本页用 text_offset 比例。
                             scrollRatio = if (ratio in 0.0..1.0) {
                                 ratio.toFloat()
-                            } else if (html.second > 0) {
-                                offset.toFloat() / html.second
+                            } else if (state.len > 0) {
+                                offset.toFloat() / state.len
                             } else {
                                 0f
                             }
@@ -445,4 +464,3 @@ fun NativeReaderScreen(
         }
     }
 }
-

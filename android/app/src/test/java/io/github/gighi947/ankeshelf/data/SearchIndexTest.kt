@@ -15,7 +15,10 @@ class SearchIndexTest {
         title = "测试书",
         author = "",
         chapters = texts.indices.map { SpineItem(it, "id$it", "c$it.xhtml") },
-        textFn = { texts.getOrNull(it) },
+        textFn = { i ->
+            texts.getOrNull(i)?.let { ChapterReadResult.Success(it) }
+                ?: ChapterReadResult.NotFound
+        },
         titleFn = { "第 ${it + 1} 章" },
         closeFn = {},
     )
