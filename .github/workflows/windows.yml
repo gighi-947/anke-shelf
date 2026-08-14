@@ -31,12 +31,16 @@ permissions:
 jobs:
   test-and-package:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13', '3.14']
     steps:
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
           cache: 'pip'
 
       - name: Install Python dependencies
@@ -61,9 +65,11 @@ jobs:
         run: python -m unittest discover tests
 
       - name: Build Windows package (PyInstaller)
+        if: matrix.python-version == '3.12'
         run: python -m PyInstaller --noconfirm --clean ankeshelf.spec
 
       - name: Bundle docs and create directory release zip
+        if: matrix.python-version == '3.12'
         shell: pwsh
         run: |
           Copy-Item -LiteralPath README.md, LICENSE, web/fonts/OFL.txt, 使用说明.txt -Destination dist\AnkeShelf -Force
@@ -72,6 +78,7 @@ jobs:
           Write-Output "package=AnkeShelf-v$ver.zip"
 
       - name: Generate release manifest
+        if: matrix.python-version == '3.12'
         shell: pwsh
         run: |
           $zip = Get-ChildItem dist\AnkeShelf-v*.zip | Select-Object -First 1
@@ -79,6 +86,7 @@ jobs:
           python scripts/release_manifest.py --version $ver --zip $zip.FullName --out "dist\AnkeShelf-v$ver.release.txt"
           Get-FileHash -LiteralPath $zip.FullName -Algorithm SHA256 | ForEach-Object { "zip_sha256=$($_.Hash)" } | Set-Content -Encoding ASCII "dist\AnkeShelf-v$ver.zip.sha256"
       - uses: actions/upload-artifact@v5
+        if: matrix.python-version == '3.12'
         with:
           name: ankeshelf-windows-package
           path: dist/AnkeShelf-v*
