@@ -75,6 +75,12 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   （text_offset/scroll_ratio/原生书）一一对应。
 - **Diff 影响检查**：改动涉及共享文件或数据契约字段时，先列出受影响端
   （Windows / Android / CI / 文档），逐项核对后再提交。
+- **文档漂移检查**：任何涉及 HEAD / 版本线 / 测试基线 / CI 清单的改动，收尾时
+  必须把非归档文档（DevLog「当前状态」、路线图基线、
+  README（重点核对版本表与系统要求）、VERSIONING、contracts README 等）
+  同步到仓库实际状态，并跑一次漂移扫描：用
+  `git rev-parse HEAD`、最新测试计数、`.github/workflows/*.yml` 清单逐一对照
+  文档声明；`docs/DEVLOG_ARCHIVE.md` 等归档只保留历史，不改写。
 
 ## 6. 数据契约（docs/DATA_CONTRACT.md）
 
@@ -102,3 +108,7 @@ powershell -ExecutionPolicy Bypass -File android/scripts/check-release.ps1 -ApkP
 ```
 
 Windows 端：`python -m unittest discover tests`、`python -m tests.make_test_epub`。
+
+契约/API 守卫：`node contracts/tests/api-contract.test.js`、
+`node contracts/tests/textpos.test.js`、
+`python -m unittest tests.test_api_contract tests.test_contracts`。
