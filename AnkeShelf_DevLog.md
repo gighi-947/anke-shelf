@@ -48,6 +48,24 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 docs：第二轮架构债审查评估（P0 立项 + 纪律固化）
+
+- 背景：reviewer 对 `AnkeShelf-review-20260814` 产出
+  `H:\ARCHITECTURE_DEBT_REVIEW_20260814.md`（P0×2 / P1×2 / P2×2）。
+- 核验结论：字面 `catch(Exception)` 为零，带变量 `catch (e: Exception)` 47 处
+  抽查均为显式结果转换（EpubError / RepoResult / StoreLoadResult /
+  VerifyResult）、缺省语义（配置/颜色/日期解析）或注明降级（编码兜底、
+  原子写回退），未见静默吞错；抽象控制与测试方向与现状一致；
+  P0「BookSession 契约 + 核心数据层 null」成立且是同一问题——
+  `BookSession.chapterText(): String?` 与 `Epub/NativeBook.readFile` 把越界、
+  损坏、IO、权限折叠成 null；P1「Silent fallback」已大幅缓解（备份验证已走
+  `VerifyResult(false, 具体错误)`，残余折叠归入 P0）；P1「AppContainer
+  膨胀」为预防性建议，暂缓拆分只收规则；P2「UI 大文件」部分成立（>500 行
+  剩 BookshelfScreen / SearchScreen / WebViewChapterView 等）。
+- 动作：路线图新立 P0「章节读取失败模型」（BookSession → ChapterReadResult）；
+  AGENTS.md 固化纪律（失败显式化、规模与抽象门槛、业务不变量测试）。
+- 验证：纯文档改动，未跑构建。
+
 ### 2026-08-14 docs：总体完成状况核验（api-contract 基线 40 → 45）
 
 - 处理：对照仓库现状逐项核验里程碑产物与测试基线，修正 DevLog「当前状态」

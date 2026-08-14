@@ -59,6 +59,15 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   发现更简单方案或矛盾时直接指出（本项目的进度保持教训 9.53 就是反面教材）。
 - **简单优先**：只做被要求的，不建一次性抽象/投机配置；能少写就少写，
   删死代码要确认引用（参考 9.57 架构精简）。
+- **失败显式化**：禁止用 null 折叠业务失败（`chapterText(): String?` 同时
+  表达越界/损坏/IO/权限就是反例）；失败走明确结果类型（仓库层 `RepoResult` /
+  存储层 `StoreLoadResult` / 备份 `VerifyResult` 同款 sealed 结构）。禁止
+  `catch(Exception)` 后静默吞错/降级；`catch (e: Exception)` 只允许用于转换
+  为显式失败结果（如 `RepoResult.Err(BookRepoError.Io(...))`）；`runCatching`
+  只允许用于日志、可选资源等“缺省语义”边界，且对外保留错误上下文。
+- **规模与抽象门槛**：单文件超过 500 行必须审查（机械生成表豁免）；新增依赖
+  必须说明模块归属，UI 减少直接访问 AppContainer；新抽象必须先回答“是否已有
+  至少两个真实实现”，没有就先用普通函数 / 简单类 / 明确接口。
 - **外科手术式改动**：只动任务涉及的代码；不顺手“改进”相邻代码/注释；
   发现无关死代码时报告，不删除。双端共享文件（README/docs/DevLog/契约）尤其如此。
 - **目标驱动**：每个任务先写“成功标准 + 验证方式”，再动手；
@@ -94,6 +103,8 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
 
 - 单测必须守真实合同：跨端对照测试加载现役 `reader-lite.js`（不是退役副本）。
 - 禁止假绿：不写只验证 mock/非空/happy path 的用例；不跳过关键路径。
+- 业务不变量优先：少写“异常输入不会崩”型用例；重点覆盖阅读位置一致性
+  （保存 offset → 重开 → 恢复一致）与数据一致性（修改 → 保存 → 重载状态一致）。
 - 结构性纪律测试在 `DisciplineTest.kt`（UI 令牌、阅读器模式隔离、CI 配置），
   改动相关代码后必须保持通过。
 - 发布前跑 `android/scripts/check-release.ps1`（凭据扫描）。

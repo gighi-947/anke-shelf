@@ -118,6 +118,25 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
   - 视情况重打并替换 v1.2.0 发行资产。
 - 预期目标：用户可启动；无法启动时得到明确、可执行的修复指引。
 
+### P0（新）：章节读取失败模型（BookSession 契约收紧）
+
+> 来源：第二轮架构债审查（2026-08-14，`H:\ARCHITECTURE_DEBT_REVIEW_20260814.md`）。
+> 状态：待立项——已核验成立，未开工。
+
+- 现状：`BookSession.chapterText(index): String?`（`service/AppContainer.kt`）；
+  `Epub.chapterText` / `NativeBook.chapterText` 的 `readFile` 把越界、文件
+  损坏、IO、权限全部折叠成 null，调用方无法区分失败原因，UI 只能当空白页处理。
+- 成功标准：
+  1. 章节读取返回显式结果（`Success(text)` / `NotFound` / `Corrupt` /
+     `Io(detail)`），null 仅保留“资源可能不存在”语义（封面/资产等）；
+  2. 阅读页对三类失败分别可处理：越界回退目录、损坏提示修复、IO 允许重试，
+     不静默渲染空白页；
+  3. 现有 109 项 JVM 测试保持通过，新增失败路径用例先红后绿。
+- 验证方式：`gradlew testDebugUnitTest` 全绿；打开损坏 EPUB 与缺失章节文件，
+  确认 UI 有明确错误而非空白。
+- 不改动：共享 JSON 数据契约与桥协议；仓库层 `RepoResult` / 存储层
+  `StoreLoadResult` 已同类，不重复改造。
+
 ### P1：契约与 API 漂移守卫
 
 > 状态（2026-08-14）：已落地——`contracts.yml`、`app/api/__init__.py::api_manifest()`、
@@ -311,7 +330,9 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
    （风险中、收益最高，独立专项，严格红→绿→回归）。
 3. **第三批（安全与错误模型）**：P2 jsoup 清洗 → P2 错误模型/null 清理 →
    P2 诊断闭环。
-4. **之后（随变化点）**：P3 拆分与 TaskManager 试点、存储恢复、开源治理；
+4. **第四批（模型收紧，审查 P0）**：BookSession 章节读取失败模型
+   （严格红→绿→回归）。
+5. **之后（随变化点）**：P3 拆分与 TaskManager 试点、存储恢复、开源治理；
    P4 等网络与真实需求触发。
 
 ---
@@ -322,6 +343,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - 不让 Android 复用 Windows `web/`；
 - 不重写现役阅读内核；
 - 不把 Kotlin `PagedLayout` 发展成第二套生产分页器；
+- 不立即把 AppContainer 拆成 BookModule / ReaderModule / DownloadModule /
+  SettingsModule（以“新依赖必须有模块归属”纪律替代，出现真实膨胀再拆）；
 - 不为拆文件引入 Hilt/Koin、前端框架或复杂分层模板；
 - 不立即把全部 JSON 迁移 SQLite；
 - 不提前实现 ContentSource / 第二书源抽象、插件系统、跨端同步；
