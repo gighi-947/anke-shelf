@@ -49,7 +49,18 @@ class StatsStore(private val file: File) {
     private var global: StatsEntry = StatsEntry()
 
     fun load() {
-        val data = readJsonOrNull<StatsFile>(file) ?: StatsFile()
+        val data = when (val r = readJsonStore<StatsFile>(file)) {
+            is StoreLoadResult.Ok -> r.value
+            StoreLoadResult.Missing -> StatsFile()
+            is StoreLoadResult.Corrupt -> {
+                logWarn("AnkeShelf", "statistics.json 损坏，回退默认：${r.detail}")
+                StatsFile()
+            }
+            is StoreLoadResult.IoError -> {
+                logWarn("AnkeShelf", "statistics.json 读取失败：${r.detail}")
+                StatsFile()
+            }
+        }
         lock.withLock {
             books = data.books.toMutableMap()
             global = data.global

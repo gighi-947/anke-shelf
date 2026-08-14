@@ -59,7 +59,18 @@ class Shelf(private val shelfFile: File, private val coversDir: File) {
     private var books: MutableMap<String, BookRecord> = mutableMapOf()
 
     fun load() {
-        val data = readJsonOrNull<ShelfFile>(shelfFile) ?: ShelfFile()
+        val data = when (val r = readJsonStore<ShelfFile>(shelfFile)) {
+            is StoreLoadResult.Ok -> r.value
+            StoreLoadResult.Missing -> ShelfFile()
+            is StoreLoadResult.Corrupt -> {
+                logWarn("AnkeShelf", "shelf.json 损坏，回退默认：${r.detail}")
+                ShelfFile()
+            }
+            is StoreLoadResult.IoError -> {
+                logWarn("AnkeShelf", "shelf.json 读取失败：${r.detail}")
+                ShelfFile()
+            }
+        }
         lock.withLock {
             books = data.books.associateBy { it.id }.toMutableMap()
         }
@@ -170,7 +181,18 @@ class ProgressStore(private val progressFile: File) {
     }
 
     fun load() {
-        val loaded = readJsonOrNull<ProgressFile>(progressFile) ?: ProgressFile()
+        val loaded = when (val r = readJsonStore<ProgressFile>(progressFile)) {
+            is StoreLoadResult.Ok -> r.value
+            StoreLoadResult.Missing -> ProgressFile()
+            is StoreLoadResult.Corrupt -> {
+                logWarn("AnkeShelf", "progress.json 损坏，回退默认：${r.detail}")
+                ProgressFile()
+            }
+            is StoreLoadResult.IoError -> {
+                logWarn("AnkeShelf", "progress.json 读取失败：${r.detail}")
+                ProgressFile()
+            }
+        }
         lock.withLock { data = loaded.progress.toMutableMap() }
     }
 
@@ -246,11 +268,3 @@ class ProgressStore(private val progressFile: File) {
     }
 }
 
-internal inline fun <reified T> readJsonOrNull(file: File): T? {
-    return try {
-        if (!file.exists()) null
-        else Shelf.json.decodeFromString<T>(file.readText(Charsets.UTF_8))
-    } catch (_: Exception) {
-        null
-    }
-}

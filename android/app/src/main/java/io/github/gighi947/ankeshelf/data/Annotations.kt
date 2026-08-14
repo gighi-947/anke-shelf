@@ -49,7 +49,19 @@ class AnnotationStore(private val file: File) {
     private var books: MutableMap<String, AnnotationBook> = mutableMapOf()
 
     fun load() {
-        books = (readJsonOrNull<AnnotationsFile>(file) ?: AnnotationsFile()).books.toMutableMap()
+        val loaded = when (val r = readJsonStore<AnnotationsFile>(file)) {
+            is StoreLoadResult.Ok -> r.value
+            StoreLoadResult.Missing -> AnnotationsFile()
+            is StoreLoadResult.Corrupt -> {
+                logWarn("AnkeShelf", "annotations.json 损坏，回退默认：${r.detail}")
+                AnnotationsFile()
+            }
+            is StoreLoadResult.IoError -> {
+                logWarn("AnkeShelf", "annotations.json 读取失败：${r.detail}")
+                AnnotationsFile()
+            }
+        }
+        books = loaded.books.toMutableMap()
     }
 
     fun save() {

@@ -237,7 +237,18 @@ class SearchHistoryStore(private val file: File) {
     private var data: MutableMap<String, List<String>> = mutableMapOf()
 
     fun load() {
-        val loaded = readJsonOrNull<SearchHistoryFile>(file) ?: SearchHistoryFile()
+        val loaded = when (val r = readJsonStore<SearchHistoryFile>(file)) {
+            is StoreLoadResult.Ok -> r.value
+            StoreLoadResult.Missing -> SearchHistoryFile()
+            is StoreLoadResult.Corrupt -> {
+                logWarn("AnkeShelf", "search_history.json 损坏，回退默认：${r.detail}")
+                SearchHistoryFile()
+            }
+            is StoreLoadResult.IoError -> {
+                logWarn("AnkeShelf", "search_history.json 读取失败：${r.detail}")
+                SearchHistoryFile()
+            }
+        }
         lock.withLock { data = loaded.history.toMutableMap() }
     }
 

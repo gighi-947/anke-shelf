@@ -76,6 +76,7 @@ import io.github.gighi947.ankeshelf.data.SearchIndex
 import io.github.gighi947.ankeshelf.data.SearchResponse
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookUi
+import io.github.gighi947.ankeshelf.service.getOrNull
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.AnkeRadius
@@ -114,7 +115,7 @@ fun SearchScreen(
     // 当前书的会话与索引（DisposableEffect 保证退出页面时释放文件句柄）。
     val index = remember(bookId) {
         val ui = books.firstOrNull { it.record.id == bookId } ?: return@remember null
-        val session = container.repository.openSession(ui.record) ?: return@remember null
+        val session = container.repository.openSession(ui.record).getOrNull() ?: return@remember null
         SearchIndex(session)
     }
     DisposableEffect(bookId) {

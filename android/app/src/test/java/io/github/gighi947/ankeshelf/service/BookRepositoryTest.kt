@@ -1,6 +1,7 @@
 package io.github.gighi947.ankeshelf.service
 
 import io.github.gighi947.ankeshelf.data.AppPaths
+import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.ProgressStore
 import io.github.gighi947.ankeshelf.data.Shelf
 import org.junit.Assert.assertEquals
@@ -25,7 +26,7 @@ class BookRepositoryTest {
             val copy = File(tmp, "sample_nav3.epub")
             File(sampleUrl.toURI()).copyTo(copy)
 
-            val rec = repo.registerEpubFile(copy)
+            val rec = repo.registerEpubFile(copy).getOrNull()
             assertNotNull(rec)
             assertTrue(rec!!.chapter_count > 0)
             assertTrue(rec.title.isNotBlank())
@@ -34,7 +35,7 @@ class BookRepositoryTest {
             assertEquals(1, ui.size)
             assertEquals(0.0, ui[0].progressPct, 0.001)
 
-            val session = repo.openSession(rec)!!
+            val session = repo.openSession(rec).getOrNull()!!
             assertEquals(rec.chapter_count, session.chapters.size)
             assertNotNull(session.chapterText(0))
             val len = repo.chapterPlainLength(session, 0)
@@ -54,6 +55,48 @@ class BookRepositoryTest {
             assertEquals(rec.id, shelf2.listBooks().first().id)
             assertEquals(offset, progress2.get(rec.id)!!.text_offset)
             session.close()
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `register missing file reports NotFound`() {
+        val tmp = kotlin.io.path.createTempDirectory("repo-").toFile()
+        try {
+            val paths = AppPaths(File(tmp, "AnkeShelf")).also { it.ensure() }
+            val repo = BookRepository(paths, Shelf(paths.shelfFile, paths.coversDir), ProgressStore(paths.progressFile))
+            val result = repo.registerEpubFile(File(tmp, "missing.epub"))
+            assertEquals(BookRepoError.NotFound, (result as RepoResult.Err).error)
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `register corrupt file reports Corrupt`() {
+        val tmp = kotlin.io.path.createTempDirectory("repo-").toFile()
+        try {
+            val paths = AppPaths(File(tmp, "AnkeShelf")).also { it.ensure() }
+            val repo = BookRepository(paths, Shelf(paths.shelfFile, paths.coversDir), ProgressStore(paths.progressFile))
+            val bad = File(tmp, "bad.epub")
+            bad.writeText("not an epub", Charsets.UTF_8)
+            val result = repo.registerEpubFile(bad)
+            assertEquals(BookRepoError.Corrupt, (result as RepoResult.Err).error)
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `open session missing file reports NotFound`() {
+        val tmp = kotlin.io.path.createTempDirectory("repo-").toFile()
+        try {
+            val paths = AppPaths(File(tmp, "AnkeShelf")).also { it.ensure() }
+            val repo = BookRepository(paths, Shelf(paths.shelfFile, paths.coversDir), ProgressStore(paths.progressFile))
+            val rec = BookRecord(id = "x", path = File(tmp, "nope.epub").absolutePath, title = "x")
+            val result = repo.openSession(rec)
+            assertEquals(BookRepoError.NotFound, (result as RepoResult.Err).error)
         } finally {
             tmp.deleteRecursively()
         }

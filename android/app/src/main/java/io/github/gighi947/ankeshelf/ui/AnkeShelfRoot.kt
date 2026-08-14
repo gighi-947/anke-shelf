@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
+import io.github.gighi947.ankeshelf.service.RepoResult
+import io.github.gighi947.ankeshelf.service.getOrNull
 import io.github.gighi947.ankeshelf.ui.download.DownloadScreen
 import io.github.gighi947.ankeshelf.ui.reader.native.NativeReaderScreen
 import io.github.gighi947.ankeshelf.ui.search.SearchScreen
@@ -90,7 +92,7 @@ fun AnkeShelfRoot(container: AppContainer) {
     val record = remember(bookId, refresh) {
         bookId?.let { id -> books.find { it.record.id == id }?.record }
     }
-    val session = remember(record) { record?.let { container.repository.openSession(it) } }
+    val session = remember(record) { record?.let { container.repository.openSession(it).getOrNull() } }
     // 不能用 record 对象做 key：书架 map 里 record 是稳定实例，refresh++ 后
     // remember 不会重算，导致重进阅读器时读到旧的 savedOffset（进度落后）。
     val savedProgress = remember(refresh, record?.id) {
@@ -244,7 +246,11 @@ fun AnkeShelfRoot(container: AppContainer) {
                                         settingsTick++
                                     },
                                     onImport = { uri ->
-                                        container.repository.importEpub(context, uri)
+                                        when (val result = container.repository.importEpub(context, uri)) {
+                                            is RepoResult.Ok -> Unit
+                                            is RepoResult.Err ->
+                                                Toast.makeText(context, result.error.message, Toast.LENGTH_SHORT).show()
+                                        }
                                         refresh++
                                     },
                                     onOpen = { rec ->

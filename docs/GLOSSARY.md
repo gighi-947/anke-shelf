@@ -68,6 +68,8 @@
 | NgaUpdateDialog | 更新参数公共弹窗（书架+已下载共用） |
 | AnkeSpacing / AnkeRadius / ankeshelfColors | 设计令牌（间距/圆角/颜色） |
 | DisciplineTest | 纪律测试（UI 令牌/模式隔离/CI 配置/契约） |
+| StoreLoadResult / readJsonStore | JSON 载入显式结果（Missing / Corrupt / IoError），失败回退默认并记日志 |
+| BookRepoError / RepoResult | 书籍仓库显式失败模型（NotFound / Corrupt / Io / Permission）与结果封装 |
 
 ## 4. Windows 代码组件
 

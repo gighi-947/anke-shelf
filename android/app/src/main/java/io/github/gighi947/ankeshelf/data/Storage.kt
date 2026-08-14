@@ -7,6 +7,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
+import kotlinx.serialization.json.Json
 
 private val BASE_SECONDS: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
@@ -37,4 +38,32 @@ private fun moveReplace(from: File, to: File) {
     } catch (_: Exception) {
         Files.move(from.toPath(), to.toPath(), StandardCopyOption.REPLACE_EXISTING)
     }
+}
+
+/** JSON 文件加载结果：显式区分“缺失 / 损坏 / IO 失败”，不再全吞成 null。 */
+sealed interface StoreLoadResult<out T> {
+    data class Ok<T>(val value: T) : StoreLoadResult<T>
+    data object Missing : StoreLoadResult<Nothing>
+    data class Corrupt(val detail: String) : StoreLoadResult<Nothing>
+    data class IoError(val detail: String) : StoreLoadResult<Nothing>
+}
+
+/** 读取并反序列化 JSON 文件；失败原因可区分（调用方决定回退与日志）。 */
+inline fun <reified T> readJsonStore(file: File, json: Json = Shelf.json): StoreLoadResult<T> {
+    if (!file.exists()) return StoreLoadResult.Missing
+    val text = try {
+        file.readText(Charsets.UTF_8)
+    } catch (e: Exception) {
+        return StoreLoadResult.IoError(e.toString())
+    }
+    return try {
+        StoreLoadResult.Ok(json.decodeFromString<T>(text))
+    } catch (e: Exception) {
+        StoreLoadResult.Corrupt(e.toString())
+    }
+}
+
+/** 数据层警告日志：JVM 单测环境无 android.util.Log，失败静默（不影响回退行为）。 */
+internal fun logWarn(tag: String, message: String) {
+    runCatching { android.util.Log.w(tag, message) }
 }

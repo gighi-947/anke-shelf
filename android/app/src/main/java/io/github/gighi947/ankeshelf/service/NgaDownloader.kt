@@ -193,7 +193,10 @@ class NgaDownloader(
                     imagesDir = imagesDir,
                 )
                 saveState(folderName, lastPage, valid, params)
-                repository.registerNativeDir(nativeDir, params.tid)
+                val registered = repository.registerNativeDir(nativeDir, params.tid)
+                if (registered is RepoResult.Err) {
+                    throw NgaHttpException("书籍登记失败：${registered.error.message}")
+                }
             } else {
                 throw NgaHttpException("没有可用的楼层内容")
             }

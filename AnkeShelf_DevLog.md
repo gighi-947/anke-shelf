@@ -48,6 +48,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：P2 错误模型与 null 清理
+
+- 现象：`readJsonOrNull` 全吞异常、失败原因不可区分；仓库方法返回 null，调用方只能猜；
+  `Settings.get(key): Any?` 已无生产调用方。
+- 处理：新增 `StoreLoadResult`（Ok / Missing / Corrupt / IoError）与 `readJsonStore`，
+  五个 store 载入显式区分失败并回退默认 + `logWarn`；新增 `BookRepoError`
+  （NotFound / Corrupt / Io / Permission）与 `RepoResult`，`openSession / importEpub /
+  registerNativeDir / registerEpubFile` 改返回显式结果——书架导入失败 Toast 展示
+  Domain 错误、下载登记失败转为 NgaHttpException；删除 `Settings.get(key)`，
+  测试改走类型化 `getAll()`。
+- 验证：`testDebugUnitTest` 102 过 / 1 跳（+3 仓库错误分类用例）；`assembleDebug` 通过。
+
 ### 2026-08-14 android：P2 章节 HTML 清洗改 jsoup DOM 白名单
 
 - 现象：`sanitizeReaderBody()` 为正则“尽力而为”，畸形写法可绕过或误删后续正文

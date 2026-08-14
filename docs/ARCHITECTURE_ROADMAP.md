@@ -188,6 +188,13 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P2：错误模型与 null 清理（架构债清单 Phase 1）
 
+> 状态（2026-08-14）：核心项已完成——`readJsonStore` / `StoreLoadResult`
+> （Missing / Corrupt / IoError 显式区分，各 store 回退默认并记日志）；
+> `BookRepository` 的 openSession / importEpub / registerNativeDir /
+> registerEpubFile 改返回 `RepoResult`（NotFound / Corrupt / Io / Permission），
+> UI 用 when 展示 Domain 错误；删除无生产调用方的 `Settings.get(key): Any?`，
+> 统一走类型化 `getAll()`。残余 null 收敛与降级日志保持现状。
+
 - `data/Storage.kt` 的 `readJsonOrNull` 拆为显式 `Result`/sealed 错误；
 - `service/BookRepository.kt` 的 `openSession/importEpub/registerNativeDir`
   返回显式失败类型（损坏/格式/权限/不存在）；

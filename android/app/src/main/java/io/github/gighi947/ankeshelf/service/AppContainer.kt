@@ -86,6 +86,22 @@ data class BookUi(
     val totalChapters: Int,
 )
 
+/** 书籍仓库的显式失败模型：调用方不再靠 null 猜测失败原因。 */
+sealed class BookRepoError(val message: String) {
+    data object NotFound : BookRepoError("书籍文件不存在")
+    data object Corrupt : BookRepoError("书籍文件损坏或格式无法解析")
+    data class Io(val detail: String) : BookRepoError("读取书籍失败：$detail")
+    data class Permission(val detail: String) : BookRepoError("无权访问书籍：$detail")
+}
+
+sealed interface RepoResult<out T> {
+    data class Ok<T>(val value: T) : RepoResult<T>
+    data class Err(val error: BookRepoError) : RepoResult<Nothing>
+}
+
+/** 兼容便捷访问：调用方只关心成功值时的解包（UI 需要错误展示时直接用 when）。 */
+fun <T> RepoResult<T>.getOrNull(): T? = (this as? RepoResult.Ok)?.value
+
 /** 书籍仓库：导入/登记/打开/进度（M2 阅读 MVP 核心）。 */
 class BookRepository(
     private val appPaths: AppPaths,
@@ -108,30 +124,38 @@ class BookRepository(
         BookUi(rec, pct, rec.chapter_count)
     }
 
-    /** SAF 导入：复制到应用私有目录并登记书架；失败返回 null。 */
-    fun importEpub(context: Context, uri: Uri): BookRecord? {
+    /** SAF 导入：复制到应用私有目录并登记书架；失败返回显式原因。 */
+    fun importEpub(context: Context, uri: Uri): RepoResult<BookRecord> {
         val name = queryDisplayName(context.contentResolver, uri)
             ?: "book-${System.currentTimeMillis()}.epub"
         val safeName = name.replace(Regex("[\\\\/:*?\"<>|\\s]+"), "_")
             .ifBlank { "book.epub" }
         val target = File(booksDir.apply { mkdirs() }, safeName)
-        val copied = try {
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                target.outputStream().use { out -> input.copyTo(out) }
-            } != null
-        } catch (_: Exception) {
-            false
+        val input = try {
+            context.contentResolver.openInputStream(uri)
+        } catch (e: Exception) {
+            return RepoResult.Err(BookRepoError.Io(e.toString()))
         }
-        if (!copied || !target.isFile) return null
+        if (input == null) return RepoResult.Err(BookRepoError.NotFound)
+        val copied = try {
+            input.use { src -> target.outputStream().use { out -> src.copyTo(out) } }
+            true
+        } catch (e: Exception) {
+            return RepoResult.Err(BookRepoError.Io(e.toString()))
+        }
+        if (!copied || !target.isFile) return RepoResult.Err(BookRepoError.Io("复制失败"))
         return registerEpubFile(target)
     }
 
     /** 登记本地 EPUB 文件（也用于测试）。 */
-    fun registerEpubFile(file: File): BookRecord? {
+    fun registerEpubFile(file: File): RepoResult<BookRecord> {
+        if (!file.isFile) return RepoResult.Err(BookRepoError.NotFound)
         val book = try {
             EpubBook(file).open()
         } catch (_: EpubError) {
-            return null
+            return RepoResult.Err(BookRepoError.Corrupt)
+        } catch (e: Exception) {
+            return RepoResult.Err(BookRepoError.Io(e.toString()))
         }
         return try {
             val coverRel = shelf.extractCover(book)
@@ -149,34 +173,43 @@ class BookRepository(
             )
             shelf.upsert(rec)
             shelf.save()
-            rec
+            RepoResult.Ok(rec)
+        } catch (e: Exception) {
+            RepoResult.Err(BookRepoError.Io(e.toString()))
         } finally {
             book.close()
         }
     }
 
     /** 注册原生书目录（meta.json + chapters/），返回书架记录。 */
-    fun registerNativeDir(dir: File, tid: Long): BookRecord? {
+    fun registerNativeDir(dir: File, tid: Long): RepoResult<BookRecord> {
+        if (!dir.isDirectory || !File(dir, "meta.json").isFile) {
+            return RepoResult.Err(BookRepoError.NotFound)
+        }
         val book = try {
             NativeBook(dir).open()
         } catch (_: Exception) {
-            return null
+            return RepoResult.Err(BookRepoError.Corrupt)
         }
-        val rec = BookRecord(
-            id = book.id,
-            path = dir.absolutePath,
-            title = book.title.ifBlank { dir.name },
-            author = book.author,
-            language = "zh",
-            chapter_count = book.chapters.size,
-            file_size = 0,
-            file_mtime = "",
-            added_at = nowIso(),
-            nga_tid = tid.toInt(),
-        )
-        shelf.upsert(rec)
-        shelf.save()
-        return rec
+        return try {
+            val rec = BookRecord(
+                id = book.id,
+                path = dir.absolutePath,
+                title = book.title.ifBlank { dir.name },
+                author = book.author,
+                language = "zh",
+                chapter_count = book.chapters.size,
+                file_size = 0,
+                file_mtime = "",
+                added_at = nowIso(),
+                nga_tid = tid.toInt(),
+            )
+            shelf.upsert(rec)
+            shelf.save()
+            RepoResult.Ok(rec)
+        } catch (e: Exception) {
+            RepoResult.Err(BookRepoError.Io(e.toString()))
+        }
     }
 
     /** 按 id 查书架记录。 */
@@ -187,36 +220,43 @@ class BookRepository(
         shelf.listBooks().firstOrNull { it.nga_tid.toLong() == tid }
 
     /** 打开书籍（原生书目录或 EPUB 文件）。 */
-    fun openSession(rec: BookRecord): BookSession? {
+    fun openSession(rec: BookRecord): RepoResult<BookSession> {
         val f = File(rec.path)
+        if (!f.exists()) return RepoResult.Err(BookRepoError.NotFound)
         return try {
             if (f.isDirectory) {
                 val nb = NativeBook(f).open()
-                BookSession(
-                    id = nb.id,
-                    title = nb.title,
-                    author = nb.author,
-                    chapters = nb.chapters.toList(),
-                    textFn = { nb.chapterText(it) },
-                    titleFn = { nb.chapterTitle(it) },
-                    closeFn = { nb.close() },
+                RepoResult.Ok(
+                    BookSession(
+                        id = nb.id,
+                        title = nb.title,
+                        author = nb.author,
+                        chapters = nb.chapters.toList(),
+                        textFn = { nb.chapterText(it) },
+                        titleFn = { nb.chapterTitle(it) },
+                        closeFn = { nb.close() },
+                    ),
                 )
             } else {
                 val eb = EpubBook(f).open()
-                BookSession(
-                    id = eb.id,
-                    title = eb.title,
-                    author = eb.author,
-                    chapters = eb.chapters.toList(),
-                    textFn = { eb.chapterText(it) },
-                    titleFn = { eb.chapterTitle(it) },
-                    closeFn = { eb.close() },
-                    baseDirFn = { eb.chapterBaseDir(it) },
-                    assetFn = { idx, rel -> eb.resolveAsset(idx, rel) },
+                RepoResult.Ok(
+                    BookSession(
+                        id = eb.id,
+                        title = eb.title,
+                        author = eb.author,
+                        chapters = eb.chapters.toList(),
+                        textFn = { eb.chapterText(it) },
+                        titleFn = { eb.chapterTitle(it) },
+                        closeFn = { eb.close() },
+                        baseDirFn = { eb.chapterBaseDir(it) },
+                        assetFn = { idx, rel -> eb.resolveAsset(idx, rel) },
+                    ),
                 )
             }
-        } catch (_: Exception) {
-            null
+        } catch (_: EpubError) {
+            RepoResult.Err(BookRepoError.Corrupt)
+        } catch (e: Exception) {
+            RepoResult.Err(BookRepoError.Io(e.toString()))
         }
     }
 

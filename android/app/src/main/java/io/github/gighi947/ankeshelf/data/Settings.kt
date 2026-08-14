@@ -131,42 +131,6 @@ class Settings(private val file: File) {
         }
     }
 
-    fun get(key: String): Any? = lock.withLock {
-        when (key) {
-            "settings_version" -> data.settings_version
-            "theme" -> data.theme
-            "theme_mode" -> data.theme_mode
-            "font_size" -> data.font_size
-            "line_height" -> data.line_height
-            "ui_font_scale" -> data.ui_font_scale
-            "font_family" -> data.font_family
-            "custom_font" -> data.custom_font
-            "book_fonts" -> data.book_fonts
-            "custom_bg" -> data.custom_bg
-            "custom_primary" -> data.custom_primary
-            "custom_accent" -> data.custom_accent
-            "custom_text" -> data.custom_text
-            "page_width" -> data.page_width
-            "bars_pinned" -> data.bars_pinned
-            "pagination" -> data.pagination
-            "dual_page" -> data.dual_page
-            "auto_dual" -> data.auto_dual
-            "shelf_view" -> data.shelf_view
-            "shelf_sort" -> data.shelf_sort
-            "margin_px" -> data.margin_px
-            "gap_px" -> data.gap_px
-            "brightness" -> data.brightness
-            "rsvp_rate" -> data.rsvp_rate
-            "autoscroll_speed" -> data.autoscroll_speed
-            "show_ruler" -> data.show_ruler
-            "show_statusbar" -> data.show_statusbar
-            "shortcuts" -> data.shortcuts
-            "window_size" -> data.window_size
-            "last_open_book" -> data.last_open_book
-            else -> null
-        }
-    }
-
     fun getAll(): SettingsData = lock.withLock { data }
 
     fun update(patch: SettingsPatch) {
