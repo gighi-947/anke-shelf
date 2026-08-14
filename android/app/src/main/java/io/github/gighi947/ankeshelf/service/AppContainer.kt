@@ -92,7 +92,6 @@ sealed class BookRepoError(val message: String) {
     data object NotFound : BookRepoError("书籍文件不存在")
     data object Corrupt : BookRepoError("书籍文件损坏或格式无法解析")
     data class Io(val detail: String) : BookRepoError("读取书籍失败：$detail")
-    data class Permission(val detail: String) : BookRepoError("无权访问书籍：$detail")
 }
 
 sealed interface RepoResult<out T> {
