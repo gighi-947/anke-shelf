@@ -16,7 +16,7 @@
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android 均于 2026-08-14 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 231 项 OK
+  - Windows Python：`python -m unittest discover tests` = 230 项 OK
     （本机 Python 3.14 与沙箱 3.12 双环境）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（45 方法一致）、
