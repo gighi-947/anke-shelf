@@ -45,6 +45,7 @@
 | BookRecord / ShelfFile | 书架记录 / 书架文件 | 两端 `shelf.json` 同构 |
 | settings_version | 设置迁移版本（只增不删） | `app/settings.py`；Android `data/Settings.kt` |
 | 原子写 | 临时文件 + rename，避免半写状态 | `app/storage.py`；Android `data/Storage.kt` |
+| 损坏隔离 / 完整性校验 | 载入损坏即隔离 `.corrupt-*`；原子写前保留 `.bak`；`verify_data_integrity` 报告可解析性/版本/大小 | `app/storage.py` + `/api/verify_data_integrity` |
 
 ## 3. Android 代码组件
 

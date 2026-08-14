@@ -48,6 +48,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win：P3 存储恢复能力（损坏隔离 + 备份 + 完整性校验）
+
+- 处理：`app/storage.py` 新增 `backup_previous`（原子写前保留 .bak）、
+  `isolate_corrupt` / `load_json_file`（损坏即隔离 .corrupt-* 并回退默认）、
+  `verify_json_file`（可解析性/大小/版本号，不读内容值）；shelf / progress / settings /
+  annotations / stats 五个 store 载入统一走 `load_json_file`；新增
+  `/api/verify_data_integrity`（system_api + registry + ApiClient + MOCK）与设置页
+  「验证数据完整性」按钮。
+- 验证：Python 221 项 OK（+3 存储用例）；api-contract 41 方法一致；node 检查通过。
+
 ### 2026-08-14 android：本地构建 Java 工具链检查
 
 - 处理：新增 `android/scripts/check-toolchain.ps1`——定位 JAVA_HOME/PATH 的 java，

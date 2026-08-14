@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .migrations import run_migrations
-from .storage import atomic_write_json
+from .storage import atomic_write_json, load_json_file
 
 DEFAULTS: dict[str, Any] = {
     "settings_version": 3,
@@ -75,9 +75,8 @@ class Settings:
         self._data: dict[str, Any] = copy.deepcopy(DEFAULTS)
 
     def load(self) -> None:
-        try:
-            with open(self._file, encoding="utf-8") as f:
-                data = json.load(f)
+        data = load_json_file(self._file)
+        if data:
             migrated = int(data.get("settings_version", 0) or 0) < 3
             if migrated:
                 # 旧版设置文件：一次性切到新默认值（滚动阅读 + 内置默认字体）
@@ -87,8 +86,6 @@ class Settings:
                     self._data[k] = data[k]
             if migrated:
                 self.save()
-        except (OSError, json.JSONDecodeError, AttributeError):
-            pass
 
     def save(self) -> None:
         atomic_write_json(self._file, self._data)

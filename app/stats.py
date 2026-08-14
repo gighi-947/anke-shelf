@@ -12,7 +12,7 @@ import threading
 from datetime import date, timedelta
 from pathlib import Path
 
-from .storage import atomic_write_json, now_iso
+from .storage import atomic_write_json, load_json_file, now_iso
 
 
 def _local_today() -> str:
@@ -75,14 +75,9 @@ class StatsStore:
         self._global: dict = {}
 
     def load(self) -> None:
-        try:
-            with open(self._file, encoding="utf-8") as f:
-                data = json.load(f)
-            self._books = data.get("books", {})
-            self._global = data.get("global", {})
-        except (OSError, json.JSONDecodeError, AttributeError):
-            self._books = {}
-            self._global = {}
+        data = load_json_file(self._file)
+        self._books = data.get("books", {}) if data else {}
+        self._global = data.get("global", {}) if data else {}
 
     def save(self) -> None:
         with self._lock:

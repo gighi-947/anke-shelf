@@ -16,7 +16,7 @@ from typing import Optional
 
 from .domain import Position
 from .epub import EpubBook
-from .storage import atomic_write_json, now_iso
+from .storage import atomic_write_json, load_json_file, now_iso
 
 
 @dataclass
@@ -66,15 +66,14 @@ class Shelf:
         self._write_lock = threading.Lock()  # 串行化落盘（下载线程/导入线程可能并发）
 
     def load(self) -> None:
-        try:
-            with open(self._file, encoding="utf-8") as f:
-                data = json.load(f)
-            with self._lock:
+        data = load_json_file(self._file)
+        with self._lock:
+            if data:
                 self._books = {
                     r.id: r for r in (_record_from_dict(d) for d in data.get("books", []))
                 }
-        except (OSError, json.JSONDecodeError, AttributeError):
-            self._books = {}
+            else:
+                self._books = {}
 
     def save(self) -> None:
         with self._lock:
@@ -173,12 +172,8 @@ class ProgressStore:
         self._data: dict = {}
 
     def load(self) -> None:
-        try:
-            with open(self._file, encoding="utf-8") as f:
-                data = json.load(f)
-            self._data = data.get("progress", {})
-        except (OSError, json.JSONDecodeError, AttributeError):
-            self._data = {}
+        data = load_json_file(self._file)
+        self._data = data.get("progress", {}) if data else {}
 
     def save(self) -> None:
         with self._lock:

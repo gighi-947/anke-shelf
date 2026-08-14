@@ -635,6 +635,16 @@
           else Toast.show('导出失败：' + ((r && r.error) || '已取消'), true);
         }).catch((e) => Toast.show('导出失败：' + (e.message || e), true));
       }),
+      btn('验证数据完整性', () => {
+        Api.verifyDataIntegrity().then((r) => {
+          if (r && r.healthy) {
+            Toast.show('数据完整性检查通过');
+          } else {
+            const bad = (r && r.files || []).filter((f) => !f.ok).map((f) => f.file).join('、') || '未知';
+            Toast.show('发现异常数据文件：' + bad, true);
+          }
+        }).catch((e) => Toast.show('检查失败：' + (e.message || e), true));
+      }),
       btn('卸载并清除数据', uninstallAndClear),
     );
     wrap.appendChild(rowWrap);

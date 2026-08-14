@@ -8,7 +8,14 @@ import time
 from .. import __version__
 from ..errors import ErrorCode, api_error
 from ..instance_guard import release_instance_lock
-from ..paths import data_dir
+from ..paths import (
+    annotations_path,
+    data_dir,
+    progress_path,
+    settings_path,
+    shelf_path,
+    statistics_path,
+)
 from .common import ApiContext
 
 
@@ -45,6 +52,17 @@ def export_diagnostics(ctx: ApiContext) -> dict:
         return {"ok": True, "path": str(path)}
     except (OSError, ValueError) as e:
         return api_error(ErrorCode.STORAGE_ERROR, str(e))
+
+
+def verify_data_integrity(ctx: ApiContext) -> dict:
+    """检查各 JSON 数据文件可解析性/版本/大小（不读取内容值，不含凭据）。"""
+    from ..storage import verify_json_file
+
+    results = [
+        verify_json_file(p)
+        for p in (shelf_path(), progress_path(), settings_path(), annotations_path(), statistics_path())
+    ]
+    return {"ok": True, "healthy": all(r["ok"] for r in results), "files": results}
 
 
 def log_frontend(ctx: ApiContext, message: str) -> None:

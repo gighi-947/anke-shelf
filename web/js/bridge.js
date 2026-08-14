@@ -41,6 +41,7 @@
     export_status: async () => ({ running: false, stage: 'idle', detail: '', files: [], dest: '', error: '' }),
     export_open_dest: async () => ({ ok: false, error: '浏览器调试模式' }),
     export_diagnostics: async () => ({ ok: false, error: '浏览器调试模式：无法导出诊断包' }),
+    verify_data_integrity: async () => ({ healthy: true, files: [] }),
     get_annotations: async () => ({ highlights: [], bookmarks: [] }),
     save_annotation: async () => ({}),
     update_annotation: async () => ({}),

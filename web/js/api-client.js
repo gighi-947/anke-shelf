@@ -14,6 +14,7 @@
     ['open_data_dir', 'openDataDir'],
     ['uninstall_and_quit', 'uninstallAndQuit'],
     ['export_diagnostics', 'exportDiagnostics'],
+    ['verify_data_integrity', 'verifyDataIntegrity'],
     ['get_shelf', 'getShelf'],
     ['import_books', 'importBooks'],
     ['remove_book', 'removeBook'],

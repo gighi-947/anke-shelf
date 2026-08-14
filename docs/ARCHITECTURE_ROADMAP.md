@@ -246,6 +246,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P3：存储恢复能力（保留 JSON）
 
+> 状态（2026-08-14）：Windows 侧已落地——`load_json_file` 损坏即隔离为
+> `.corrupt-<时间戳>`，原子写前保留 `.bak` 最近有效副本，新增
+> `/api/verify_data_integrity` 与设置页「验证数据完整性」；统一备份包待办。
+
 - 启动 schema/version 校验；损坏文件隔离为 `.corrupt-<timestamp>`；
 - 保留最近一次有效副本；设置页提供“验证数据完整性”；
 - 统一备份包（manifest + schema version + 校验和）；导入前只验证不覆盖。

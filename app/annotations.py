@@ -15,7 +15,7 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from .storage import atomic_write_json, now_iso
+from .storage import atomic_write_json, load_json_file, now_iso
 
 HL_COLORS = ("yellow", "green", "blue", "pink", "purple", "cyan")
 
@@ -29,12 +29,8 @@ class AnnotationStore:
         self._books: dict = {}
 
     def load(self) -> None:
-        try:
-            with open(self._file, encoding="utf-8") as f:
-                data = json.load(f)
-            self._books = data.get("books", {})
-        except (OSError, json.JSONDecodeError, AttributeError):
-            self._books = {}
+        data = load_json_file(self._file)
+        self._books = data.get("books", {}) if data else {}
 
     def save(self) -> None:
         with self._lock:
