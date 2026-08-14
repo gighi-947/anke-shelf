@@ -168,12 +168,12 @@
 | A Optional 服务注入 | ◐ 成立（噪音，17 处 None 检查），P1 | 待做：ApiContext 字段 required + 测试 NullObject（“假绿”指控证据不足） |
 | B1 clamp 重复 | ◐ 部分成立，P2 | 保留 Store 层契约守卫（`text_offset 永远非负`） |
 | B2 丢弃 0 偏移 | ❌ 驳回 | DATA_CONTRACT 明确 `0 = 章首/无进度`，`persistOf` 不保存 0 是设计 |
-| B3 静默吞错 ×4 | ✅ 成立，P1 | 待做：nga register / EpubError / Android 删文件 / uninstall 加日志或提示 |
-| B4 `_fullscreen` 动态属性 | ✅ 成立，P1 | 待做：状态移出 ApiContext |
+| B3 静默吞错 ×4 | ✅ 已修 | nga register / EpubError / uninstall 加 warning/error 日志；Android 删文件失败 Toast + LogEvents |
+| B4 `_fullscreen` 动态属性 | ✅ 已修 | `ApiContext.fullscreen` 正式字段 + `Api.fullscreen` property（顺带修复 main.py 读取永远 False 的全屏尺寸 bug） |
 | B5 `progress_pct` 占位 | ✅ 已修 | `record_to_dict` 移除；`import_books` 显式组装最终值 |
 | C1 Protocol 死抽象 | ✅ 已修 | `domain.py` 删两个 Protocol + 对应测试 |
 | C2 `Permission` 死分支 | ✅ 已修 | `BookRepoError` 删除该 case |
-| C3 `getOrNull()` escape hatch | ◐ 成立，P1 | 待做：AnkeShelfRoot / SearchScreen 打开失败显式处理 |
+| C3 `getOrNull()` escape hatch | ✅ 已修 | AnkeShelfRoot / SearchScreen 打开失败显式处理（Toast / 状态提示）；`RepoResult.getOrNull` 生产调用清零 |
 | C4 `try import ET` 噪音 | ✅ 已修 | `epub.py` 删除 |
 | C5 三个相同迁移 | ◐ 保留 | 迁移框架属兼容性基础设施，加注释说明 |
 | C6 unreachable return | ✅ 已修 | `system_api.py` 删除 |

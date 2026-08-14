@@ -48,6 +48,20 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win/android：行为批落地（B3 静默吞错 / B4 fullscreen / C3 显式失败）
+
+- 处理（按 review3 计划 §6）：
+  - B3：`nga_service.py` 热更新注册失败、`library.py` 解析失败沿用旧记录、
+    `system_api.py` 卸载清理脚本失败均加 warning/error 日志；Android
+    `removeBook` 返回删除结果，三处调用点失败 Toast + `LogEvents` 事件；
+  - B4：`ApiContext.fullscreen` 正式字段 + `Api.fullscreen` property，
+    替换 `_fullscreen` 动态属性——顺带修复 `main.py` 用 `getattr(api,
+    "_fullscreen")` 永远读 False 的 bug（全屏中退出会误记全屏分辨率）；
+  - C3：`AnkeShelfRoot` 打开书籍失败 Toast + 回书架；`SearchScreen`
+    打开失败显示明确状态；两个 UI 的 `RepoResult.getOrNull` 调用清零。
+- 验证：Python 230 项 OK（+fullscreen 翻转断言）；Android JVM 111 过 /
+  1 跳；`assembleDebug` 通过；check-release PASS（字体/JS SHA 一致）。
+
 ### 2026-08-14 win/android/docs：review3 核验 + 快批清理（死代码/噪音）
 
 - 背景：第三视角审查（`H:\review3.md`，防御性编码 / 复杂度位置），15 项建议。
