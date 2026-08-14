@@ -44,6 +44,13 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 docs：开源治理文档落地
+
+- 处理：新增 CONTRIBUTING.md / SECURITY.md / Issue·PR 模板 / CODEOWNERS /
+  THIRD_PARTY_NOTICES.md，README 增加参与与安全入口；路线图 P3 标记部分完成
+  （字体去重、dependabot、CHANGELOG 拆分等待办）。
+- 验证：纯文档改动，未跑构建。
+
 ### 2026-08-14 win：reader.js 乱码注释修复
 
 - 修复：`web/js/reader.js` 8 处乱码注释——5 处从父提交 `cb87a35` 找回原文

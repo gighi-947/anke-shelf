@@ -260,6 +260,12 @@ docs/                 架构说明、验收报告与双端截图
 
 本项目自身代码以 [GNU AGPL-3.0](LICENSE) 开源。
 
+## 参与贡献与安全
+
+- 贡献流程见 [CONTRIBUTING.md](CONTRIBUTING.md)；依赖与借鉴声明见
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+- 安全漏洞请按 [SECURITY.md](SECURITY.md) 私下报告，勿在公开 Issue 贴出细节。
+
 ## License
 
 [GNU AGPL-3.0](LICENSE) © gighi-947

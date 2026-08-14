@@ -220,6 +220,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P3：开源治理与仓库卫生
 
+> 状态（2026-08-14）：治理文档已落地（CONTRIBUTING / SECURITY / Issue·PR 模板 /
+> CODEOWNERS / THIRD_PARTY_NOTICES），`web/js/reader.js` 乱码注释已修复；
+> 字体去重、dependabot、`CHANGELOG` 拆分等待办。
+
 - 新增 `CONTRIBUTING.md` / `SECURITY.md` / Issue/PR 模板 / `CODEOWNERS` /
   `dependabot.yml`（或 Renovate）；
 - 新增 `THIRD_PARTY_NOTICES.md`：明确 `ngapost2md-python` 的 origin、
