@@ -126,11 +126,11 @@
     var m = measure();
     try { log('[flip] dir=' + dir + ' before cur=' + m.current + '/' + m.total + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
     if (dir > 0 && m.current >= m.total - 1) {
-      try { AnkeReaderBridge.requestChapter(1); } catch (e) { /* ignore */ }
+      callBridge('requestChapter', 1);
       return;
     }
     if (dir < 0 && m.current <= 0) {
-      try { AnkeReaderBridge.requestChapter(-1); } catch (e) { /* ignore */ }
+      callBridge('requestChapter', -1);
       return;
     }
     gotoPage(skipToContent(m.current + (dir > 0 ? 1 : -1), dir));
@@ -325,12 +325,12 @@
     var off = currentOffset();
     if (state.restorePending && off > 0 && doSave) state.restorePending = false;
     try {
-      AnkeReaderBridge.pageChanged(state.chapterIndex, m.current, m.total);
+      callBridge('pageChanged', state.chapterIndex, m.current, m.total);
       // 翻页保存立即落盘（saveProgressNow），避免“进度缓存赶不上操作”。
       if (off > 0 && doSave) {
         log('[save:flip] ch=' + state.chapterIndex + ' off=' + off + ' page=' + m.current + '/' + m.total);
       // 分页模式显式 ratio=-1：滚动比例字段只属于滚动模式（模式隔离）。
-      AnkeReaderBridge.saveProgressNow(state.chapterIndex, off, true, m.current, m.total, -1);
+      callBridge('saveProgressNow', state.chapterIndex, off, true, m.current, m.total, -1);
       }
     } catch (e) { /* ignore */ }
   }

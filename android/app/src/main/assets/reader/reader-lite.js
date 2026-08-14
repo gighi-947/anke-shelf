@@ -43,8 +43,14 @@
     userMoved: false,
   };
 
+  function callBridge(name) {
+    try {
+      return AnkeReaderBridge[name].apply(AnkeReaderBridge, [].slice.call(arguments, 1));
+    } catch (e) { /* ignore */ }
+  }
+
   function log(msg) {
-    try { AnkeReaderBridge.log('[reader] ' + msg); } catch (e) { /* ignore */ }
+    callBridge('log', '[reader] ' + msg);
   }
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -361,11 +367,11 @@
     var m = measure();
     try { log('[flip] dir=' + dir + ' before cur=' + m.current + '/' + m.total + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
     if (dir > 0 && m.current >= m.total - 1) {
-      try { AnkeReaderBridge.requestChapter(1); } catch (e) { /* ignore */ }
+      callBridge('requestChapter', 1);
       return;
     }
     if (dir < 0 && m.current <= 0) {
-      try { AnkeReaderBridge.requestChapter(-1); } catch (e) { /* ignore */ }
+      callBridge('requestChapter', -1);
       return;
     }
     gotoPage(skipToContent(m.current + (dir > 0 ? 1 : -1), dir));
@@ -560,12 +566,12 @@
     var off = currentOffset();
     if (state.restorePending && off > 0 && doSave) state.restorePending = false;
     try {
-      AnkeReaderBridge.pageChanged(state.chapterIndex, m.current, m.total);
+      callBridge('pageChanged', state.chapterIndex, m.current, m.total);
       // 翻页保存立即落盘（saveProgressNow），避免“进度缓存赶不上操作”。
       if (off > 0 && doSave) {
         log('[save:flip] ch=' + state.chapterIndex + ' off=' + off + ' page=' + m.current + '/' + m.total);
       // 分页模式显式 ratio=-1：滚动比例字段只属于滚动模式（模式隔离）。
-      AnkeReaderBridge.saveProgressNow(state.chapterIndex, off, true, m.current, m.total, -1);
+      callBridge('saveProgressNow', state.chapterIndex, off, true, m.current, m.total, -1);
       }
     } catch (e) { /* ignore */ }
   }
@@ -624,9 +630,7 @@
   }
 
   function emitReady() {
-    try {
-      AnkeReaderBridge.onReady(JSON.stringify(bridgeReadyPayload()));
-    } catch (e) { /* ignore */ }
+    callBridge('onReady', JSON.stringify(bridgeReadyPayload()));
   }
 
   function applyTheme(vars) {
@@ -692,7 +696,7 @@
     state.pagedAnchorPage = -1;
     state.pagedAnchorTotal = -1;
     state.settled = false;
-    try { AnkeReaderBridge.onMode(state.paged); } catch (e) { /* ignore */ }
+    callBridge('onMode', state.paged);
     document.body.classList.toggle('paged', state.paged);
     if (state.paged) forceEagerImages();
     requestAnimationFrame(function () {
@@ -746,7 +750,7 @@
   function markSettled() {
     if (state.settled) return;
     state.settled = true;
-    try { AnkeReaderBridge.onSettled(); } catch (e) { /* ignore */ }
+    callBridge('onSettled');
   }
 
   // 字体/图片加载期间多列布局会反复进入中间态（同一 offset 在不同列之间跳），
@@ -780,7 +784,7 @@
           try { log('[settle-save] so=' + so); } catch (e) { /* ignore */ }
           state.scrollAnchor = so;
           // 滚动保存显式 page=-1：清除追踪器里残留的分页页码（模式隔离）。
-          try { AnkeReaderBridge.saveProgress(state.chapterIndex, so, true, -1, -1, state.scrollRatio); } catch (e) { /* ignore */ }
+          callBridge('saveProgress', state.chapterIndex, so, true, -1, -1, state.scrollRatio);
         }
       }
       report(false);
@@ -876,7 +880,7 @@
     if (!document.body) return;
     state.huge = (document.body.textContent || '').length > MAX_PAGED_TEXT;
     state.paged = !!opts.paged && !state.huge;
-    try { AnkeReaderBridge.onMode(state.paged); } catch (e) { /* ignore */ }
+    callBridge('onMode', state.paged);
     if (state.paged) {
       state.textCtx = TextPos.build(document);
     } else {
@@ -891,7 +895,7 @@
         if (o > 0) {
           log('[save:scroll] ch=' + state.chapterIndex + ' off=' + o);
           state.scrollAnchor = o;
-          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true, -1, -1, state.scrollRatio); } catch (e) { /* ignore */ }
+          callBridge('saveProgress', state.chapterIndex, o, true, -1, -1, state.scrollRatio);
         }
         if (!layoutReady()) {
           tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.scrollAnchor, 0);
@@ -914,12 +918,12 @@
     var nextBtn = document.getElementById('android-next-chapter');
     if (prevBtn) {
       prevBtn.addEventListener('click', function () {
-        try { AnkeReaderBridge.requestChapter(-1); } catch (e) { /* ignore */ }
+        callBridge('requestChapter', -1);
       });
     }
     if (nextBtn) {
       nextBtn.addEventListener('click', function () {
-        try { AnkeReaderBridge.requestChapter(1); } catch (e) { /* ignore */ }
+        callBridge('requestChapter', 1);
       });
     }
     // 只拦截章节内链接；图片打开由 Kotlin 长按（openImageAt）触发，单击不放行。
@@ -945,7 +949,7 @@
       var now = Date.now();
       if (now - lastScrollNotify > 250) {
         lastScrollNotify = now;
-        try { AnkeReaderBridge.onScrollMoved(); } catch (e) { /* ignore */ }
+        callBridge('onScrollMoved');
       }
       if (scrollTimer) clearTimeout(scrollTimer);
       scrollTimer = setTimeout(function () {
@@ -955,7 +959,7 @@
         if (o > 0) {
           state.userMoved = true;
           state.scrollAnchor = o;
-          try { AnkeReaderBridge.saveProgress(state.chapterIndex, o, true, -1, -1, state.scrollRatio); } catch (e) { /* ignore */ }
+          callBridge('saveProgress', state.chapterIndex, o, true, -1, -1, state.scrollRatio);
         }
       }, 500);
     });
@@ -976,7 +980,7 @@
           // 落库（offset=1 即章首），否则退出重进会回到上一章。
           log('[save:switch] ch=' + state.chapterIndex + ' off=' + (o > 0 ? o : 1));
           // 分页换章落库：显式 page=-1,total=-1,ratio=-1，绝不携带滚动比例。
-          try { AnkeReaderBridge.saveProgressNow(state.chapterIndex, o > 0 ? o : 1, true, -1, -1, -1); } catch (e) { /* ignore */ }
+          callBridge('saveProgressNow', state.chapterIndex, o > 0 ? o : 1, true, -1, -1, -1);
         }
       } else {
         if (state.restoreOffset > 0) restoreScrollOffset(state.restoreOffset, state.restoreRatio);
@@ -1006,7 +1010,7 @@
       // 长按进入预览时清除系统文本选区，避免选中提示文字残留（9.20 记录）。
       var sel = window.getSelection ? window.getSelection() : null;
       if (sel) sel.removeAllRanges();
-      try { AnkeReaderBridge.openImage(img.src); } catch (e) { /* ignore */ }
+      callBridge('openImage', img.src);
       return 'true';
     }
     return 'false';

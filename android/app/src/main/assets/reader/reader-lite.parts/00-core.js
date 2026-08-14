@@ -43,8 +43,14 @@
     userMoved: false,
   };
 
+  function callBridge(name) {
+    try {
+      return AnkeReaderBridge[name].apply(AnkeReaderBridge, [].slice.call(arguments, 1));
+    } catch (e) { /* ignore */ }
+  }
+
   function log(msg) {
-    try { AnkeReaderBridge.log('[reader] ' + msg); } catch (e) { /* ignore */ }
+    callBridge('log', '[reader] ' + msg);
   }
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }

@@ -75,7 +75,7 @@ class DisciplineTest {
     fun `分页保存显式 ratio=-1 且滚动保存携带 scrollRatio`() {
         val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
 
-        val pagedSaves = js.lines().filter { it.contains("AnkeReaderBridge.saveProgressNow(") }
+        val pagedSaves = js.lines().filter { it.contains("callBridge('saveProgressNow'") }
         assertTrue(
             "分页 saveProgressNow 调用必须显式 ratio=-1（模式隔离）：\n" +
                 pagedSaves.joinToString("\n"),
@@ -84,7 +84,7 @@ class DisciplineTest {
 
         assertTrue(
             "滚动防抖保存必须携带 state.scrollRatio",
-            js.contains("saveProgress(state.chapterIndex, o, true, -1, -1, state.scrollRatio)"),
+            js.contains("callBridge('saveProgress', state.chapterIndex, o, true, -1, -1, state.scrollRatio)"),
         )
 
         for (export in listOf(
@@ -125,7 +125,7 @@ class DisciplineTest {
         assertTrue("reader-lite.js 必须声明 BRIDGE_VERSION = 1", js.contains("var BRIDGE_VERSION = 1"))
         assertTrue(
             "ready 握手必须走结构化 JSON payload",
-            js.contains("AnkeReaderBridge.onReady(JSON.stringify(bridgeReadyPayload()))"),
+            js.contains("callBridge('onReady', JSON.stringify(bridgeReadyPayload()))"),
         )
         val kotlin = File(
             repoRoot,
