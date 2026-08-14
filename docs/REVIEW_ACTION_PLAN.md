@@ -63,8 +63,8 @@
     `app/main.py` 启动 URL 的 `?token=` 保留为兼容入口，前端就绪后立即
     `history.replaceState` 抹掉 query；`web/js/` 取 token 改优先 header。
   - 成功标准：header 与 query 两条路径均校验正确；页面加载后 URL 不再含 token。
-  - 验证：`tests/test_server.py` 新增常量时间/兼容回归；`python -m unittest
-    discover tests` 全量 229 项 OK；UI harness 92 项 PASS。
+  - 验证：`tests/test_server.py` 新增 query 兼容与错误 token 回归；`python -m
+    unittest discover tests` 全量 231 项 OK；UI harness 92 项 PASS。
 - **A2（P1.5）workflow 权限收敛**
   - 改动：`windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml`
     顶层加 `permissions: { contents: read }`。
