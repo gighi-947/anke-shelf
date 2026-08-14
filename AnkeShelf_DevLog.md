@@ -48,6 +48,20 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win/android/docs：review3 核验 + 快批清理（死代码/噪音）
+
+- 背景：第三视角审查（`H:\review3.md`，防御性编码 / 复杂度位置），15 项建议。
+- 核验：B2（0 偏移）与数据契约冲突驳回（`0 = 无进度`）；A 的“假绿”指控
+  证据不足；D4/D5 数量夸大；其余主张基本成立（详见计划 §6）。
+- 快批已落地：删 `ProgressRepository / ShelfRepository` Protocol（C1）、
+  `BookRepoError.Permission`（C2）、`epub.py` try-import（C4）、
+  `system_api.py` unreachable return（C6）、`record_to_dict` 的
+  `progress_pct` 占位（B5，`import_books` 显式组装最终值）、
+  `system_api.py` 函数内局部 import 顶部收敛（D2）。
+- 待办：行为批 B3 / B4 / C3、重构批 D1 / D5 / D3（见计划 §6）。
+- 验证：Python 230 项 OK（-1：删除 Protocol 测试）；Android JVM
+  111 过 / 1 跳。
+
 ### 2026-08-14 win/docs：复审（v2）小瑕疵落地（NOTICE 打包 + 字体 SHA 校验）
 
 - 背景：reviewer 对 `bae2fc2` 复审（评级 A / A- / A+ / A- / B+，13 项

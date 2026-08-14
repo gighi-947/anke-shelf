@@ -157,3 +157,31 @@
 
 中期建议（待排期）：README 加「寻求维护者」小节；P2.1 拆独立 GitHub issue
 （`enhancement` + `security`）跟踪 WebViewAssetLoader 迁移。
+
+## 6. 复审（review3，防御性编码视角）核验记录（2026-08-14）
+
+审查报告：`H:\review3.md`；视角：防御性编码、复杂度位置、设计约束 vs
+运行时补丁。15 项建议核验与处理：
+
+| 项 | 判定 | 处理 |
+| --- | --- | --- |
+| A Optional 服务注入 | ◐ 成立（噪音，17 处 None 检查），P1 | 待做：ApiContext 字段 required + 测试 NullObject（“假绿”指控证据不足） |
+| B1 clamp 重复 | ◐ 部分成立，P2 | 保留 Store 层契约守卫（`text_offset 永远非负`） |
+| B2 丢弃 0 偏移 | ❌ 驳回 | DATA_CONTRACT 明确 `0 = 章首/无进度`，`persistOf` 不保存 0 是设计 |
+| B3 静默吞错 ×4 | ✅ 成立，P1 | 待做：nga register / EpubError / Android 删文件 / uninstall 加日志或提示 |
+| B4 `_fullscreen` 动态属性 | ✅ 成立，P1 | 待做：状态移出 ApiContext |
+| B5 `progress_pct` 占位 | ✅ 已修 | `record_to_dict` 移除；`import_books` 显式组装最终值 |
+| C1 Protocol 死抽象 | ✅ 已修 | `domain.py` 删两个 Protocol + 对应测试 |
+| C2 `Permission` 死分支 | ✅ 已修 | `BookRepoError` 删除该 case |
+| C3 `getOrNull()` escape hatch | ◐ 成立，P1 | 待做：AnkeShelfRoot / SearchScreen 打开失败显式处理 |
+| C4 `try import ET` 噪音 | ✅ 已修 | `epub.py` 删除 |
+| C5 三个相同迁移 | ◐ 保留 | 迁移框架属兼容性基础设施，加注释说明 |
+| C6 unreachable return | ✅ 已修 | `system_api.py` 删除 |
+| D1 backup 三件套同构 | ✅ 成立，P1 | 待做：抽 `_pick_and_call` helper |
+| D2 函数内 import | ✅ 已修 | `system_api.py` 顶部收敛 |
+| D3 `callBridge` helper | ◐ 成立，P2 | 待做：改 JS 后按阅读器铁律回归 |
+| D4 `bookshelf.js` 兜底 | ◐ 数量夸大（`\|\| ''` 19 处），P3 | 低优先 |
+| D5 参数校验集中 | ◐ 成立但数量夸大（image_mode 2 处 / `max(0,int(...))` 6 处），P1 | 待做：`normalize_download_params` |
+
+快批已落地（C1/C2/C4/C6/B5/D2），验证：Python 230 项 OK（-1 Protocol 测试）、
+Android JVM 111 过 / 1 跳。行为批与重构批按上表待排期。
