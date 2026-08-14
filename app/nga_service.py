@@ -307,7 +307,7 @@ class NgaService:
         try:
             cfg = _build_cfg(config_mod, params, epub_enabled=True)
 
-            author_id = max(0, int(params.get("authorid", 0) or 0))
+            author_id = _param_int(params, "authorid")
             full = bool(params.get("full_redownload", False))
             folder = nga_mod.find_folder_name_by_tid(tid, author_id)
             if full and folder:
@@ -370,7 +370,7 @@ class NgaService:
                 f for f in tiezi.floors
                 if f.lou != -1 and (tiezi.max_lou < 0 or f.lou <= tiezi.max_lou)
             ]
-            per_chapter = max(1, int(params.get("per_chapter", 20) or 20))
+            per_chapter = _param_int(params, "per_chapter", 20, 1)
             image_mode = str(params.get("image_mode", "online"))
             if image_mode not in ("online", "embedded", "none"):
                 image_mode = "online"
@@ -391,9 +391,9 @@ class NgaService:
                 "theme": theme,
                 "image_mode": image_mode,
                 "per_chapter": per_chapter,
-                "toc_pid": max(0, int(params.get("toc_pid", 0) or 0)),
+                "toc_pid": _param_int(params, "toc_pid"),
                 "toc_mode": toc_mode,
-                "max_floors": max(0, int(params.get("max_floors", 0) or 0)),
+                "max_floors": _param_int(params, "max_floors"),
             })
             # 注册到书架（BookManager + Shelf 由调用方回调完成）
             book_id = self._book_register(str(native_dir) if valid else str(epub_path))
@@ -471,7 +471,7 @@ class NgaService:
         image_mode = str(params.get("image_mode", "online"))
         if image_mode not in ("online", "none"):
             image_mode = "online"
-        per_chapter = max(1, int(params.get("per_chapter", 20) or 20))
+        per_chapter = _param_int(params, "per_chapter", 20, 1)
 
         if not native:
             old_max_floor = _local_max_floor(folder)
@@ -542,12 +542,17 @@ def _parse_tid(text: str) -> tuple[int, Optional[str]]:
     return 0, f"无法识别帖子编号：{text}"
 
 
+def _param_int(params: dict, key: str, default: int = 0, minimum: int = 0) -> int:
+    """下载参数 int 归一化：缺省/空值回退 default，再夹到 [minimum, +∞)。"""
+    return max(minimum, int(params.get(key, default) or default))
+
+
 def _build_cfg(config_mod, params: dict, *, epub_enabled: bool):
     """构造 ngapost2md 下载配置：公共字段 + EPUB 专属字段。"""
     cfg = config_mod.load_config(str(ensure_nga_config()))
     cfg.thread = 2
-    cfg.page_download_limit = int(params.get("page_limit", 0) or 0)  # 0=不限制
-    cfg.max_floors = max(0, int(params.get("max_floors", 0) or 0))
+    cfg.page_download_limit = _param_int(params, "page_limit")  # 0=不限制
+    cfg.max_floors = _param_int(params, "max_floors")
     cfg.no_images = False  # 图片开关由 EPUB 渲染层控制
     cfg.no_media = True    # Markdown 不下载媒体（EPUB 自行处理，避免双重下载）
     cfg.epub_enabled = epub_enabled
@@ -555,11 +560,11 @@ def _build_cfg(config_mod, params: dict, *, epub_enabled: bool):
     if epub_enabled:
         image_mode = str(params.get("image_mode", "online"))
         cfg.epub_image_mode = "online" if image_mode == "online" else "embedded"
-        cfg.epub_per_chapter = max(1, int(params.get("per_chapter", 20) or 20))
+        cfg.epub_per_chapter = _param_int(params, "per_chapter", 20, 1)
         cfg.epub_image_quality = max(1, min(100, int(params.get("quality", 85) or 85)))
-        cfg.epub_image_max_size = max(0, int(params.get("max_size", 1280) or 1280))
+        cfg.epub_image_max_size = _param_int(params, "max_size", 1280)
         cfg.epub_theme = "dark" if str(params.get("theme", "light")) == "dark" else "light"
-        cfg.epub_toc_pid = max(0, int(params.get("toc_pid", 0) or 0))
+        cfg.epub_toc_pid = _param_int(params, "toc_pid")
     return cfg
 
 

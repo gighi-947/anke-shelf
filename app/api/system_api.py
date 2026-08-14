@@ -26,6 +26,17 @@ from ..storage import verify_json_file
 from .common import ApiContext
 
 
+def _pick_and_call(picker, runner, cancel_msg: str = "已取消") -> dict:
+    """文件选择 → 取消映射 → 执行 → 异常映射 的统一模板（backup 三件套共用）。"""
+    picked = picker()
+    if not picked:
+        return api_error(ErrorCode.EXPORT_FAILED, cancel_msg)
+    try:
+        return runner(picked)
+    except Exception as e:  # noqa: BLE001
+        return api_error(ErrorCode.STORAGE_ERROR, str(e))
+
+
 def on_frontend_ready(ctx: ApiContext) -> None:
     """前端初始化完成后由 JS 调用；主程序据此显示隐藏中的窗口。"""
     if ctx.frontend_ready is not None:
@@ -67,55 +78,40 @@ def verify_data_integrity(ctx: ApiContext) -> dict:
 
 def backup_create(ctx: ApiContext) -> dict:
     """创建统一备份包（ank-backup/1）到自选文件夹。"""
-    dest = pick_folder("选择备份保存文件夹")
-    if not dest:
-        return api_error(ErrorCode.EXPORT_FAILED, "已取消")
-    try:
-        return create_backup(
-            dest,
-            {
-                "shelf": shelf_path(),
-                "progress": progress_path(),
-                "settings": settings_path(),
-                "annotations": annotations_path(),
-                "statistics": statistics_path(),
-            },
-            __version__,
-        )
-    except (OSError, ValueError) as e:
-        return api_error(ErrorCode.STORAGE_ERROR, str(e))
+    paths = {
+        "shelf": shelf_path(),
+        "progress": progress_path(),
+        "settings": settings_path(),
+        "annotations": annotations_path(),
+        "statistics": statistics_path(),
+    }
+    return _pick_and_call(
+        lambda: pick_folder("选择备份保存文件夹"),
+        lambda dest: create_backup(dest, paths, __version__),
+    )
 
 
 def backup_verify(ctx: ApiContext) -> dict:
     """选择备份包并只读验证（校验和/可解析性/版本字段，不写盘）。"""
-    picked = pick_paths("backup")
-    if not picked:
-        return api_error(ErrorCode.EXPORT_FAILED, "已取消")
-    try:
-        return verify_backup(Path(picked[0]))
-    except Exception as e:  # noqa: BLE001
-        return api_error(ErrorCode.STORAGE_ERROR, str(e))
+    return _pick_and_call(
+        lambda: pick_paths("backup"),
+        lambda picked: verify_backup(Path(picked[0])),
+    )
 
 
 def backup_restore(ctx: ApiContext, overwrite: bool = False) -> dict:
     """选择备份包恢复：先验证再写；已有数据时需 overwrite=True 才覆盖。"""
-    picked = pick_paths("backup")
-    if not picked:
-        return api_error(ErrorCode.EXPORT_FAILED, "已取消")
-    try:
-        return restore_backup(
-            Path(picked[0]),
-            {
-                "shelf": shelf_path(),
-                "progress": progress_path(),
-                "settings": settings_path(),
-                "annotations": annotations_path(),
-                "statistics": statistics_path(),
-            },
-            overwrite=bool(overwrite),
-        )
-    except Exception as e:  # noqa: BLE001
-        return api_error(ErrorCode.STORAGE_ERROR, str(e))
+    paths = {
+        "shelf": shelf_path(),
+        "progress": progress_path(),
+        "settings": settings_path(),
+        "annotations": annotations_path(),
+        "statistics": statistics_path(),
+    }
+    return _pick_and_call(
+        lambda: pick_paths("backup"),
+        lambda picked: restore_backup(Path(picked[0]), paths, overwrite=bool(overwrite)),
+    )
 
 
 def log_frontend(ctx: ApiContext, message: str) -> None:
