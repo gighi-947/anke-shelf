@@ -205,6 +205,12 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P2：可观测性与诊断闭环
 
+> 状态（2026-08-14）：核心项已完成——`LogEvents` 结构化事件环形缓冲
+> （component event key=value，book_id 短哈希）、`Diagnostics.report / collect`
+> （应用/系统/WebView/桥版本、数据文件版本与大小、最近事件、任务状态，不含凭据与正文），
+> 设置页新增「导出诊断信息」；bridge / search / nga 关键节点接入结构化事件。
+> task_id 全链路统一留待任务基础设施改造时一并做。
+
 - Android 对齐 Windows 诊断包：应用/系统/WebView 版本、脱敏设置、最近有限条
   结构化日志、数据文件版本与大小、桥版本、最近任务状态；绝不包含 Cookie、
   书籍正文与签名信息；

@@ -39,6 +39,7 @@ import io.github.gighi947.ankeshelf.BuildConfig
 import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookSession
+import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.ngaHeaders
 import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
 import java.io.ByteArrayInputStream
@@ -584,6 +585,7 @@ private class LiteBridge(
         val ready = BridgeProtocol.parseReady(payload)
         if (ready == null) {
             Log.e("AnkeShelf", "[bridge] malformed ready payload")
+            LogEvents.event("bridge", "ready_malformed", "expected" to BridgeProtocol.VERSION)
             main.post { callbacks().onBridgeVersionMismatch(BridgeProtocol.VERSION, -1) }
             return
         }
@@ -595,6 +597,12 @@ private class LiteBridge(
             Log.e(
                 "AnkeShelf",
                 "[bridge] incompatible version=${ready.version} expected=${BridgeProtocol.VERSION}",
+            )
+            LogEvents.event(
+                "bridge",
+                "version_mismatch",
+                "expected" to BridgeProtocol.VERSION,
+                "actual" to ready.version,
             )
             main.post { callbacks().onBridgeVersionMismatch(BridgeProtocol.VERSION, ready.version) }
             return

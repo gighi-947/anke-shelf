@@ -48,6 +48,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：P2 可观测性与诊断闭环
+
+- 处理：新增 `LogEvents`（结构化事件环形缓冲，component event key=value，
+  book_id 短哈希）与 `Diagnostics`（`report` 纯函数 + `collect` 设备采集：应用/系统/
+  WebView/桥版本、数据文件版本与大小、最近 50 条事件、最近任务状态，脱敏不含凭据
+  与正文）；设置页「数据」新增“导出诊断信息”（SAF 存 txt）；bridge 握手异常、
+  搜索索引构建、NGA 下载/更新完成接入结构化事件。
+- 验证：`testDebugUnitTest` 106 过 / 1 跳（+4 诊断/脱敏/环形缓冲用例）；
+  `assembleDebug` 通过。
+
 ### 2026-08-14 android：P2 错误模型与 null 清理
 
 - 现象：`readJsonOrNull` 全吞异常、失败原因不可区分；仓库方法返回 null，调用方只能猜；

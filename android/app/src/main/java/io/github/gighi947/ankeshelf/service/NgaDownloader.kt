@@ -140,6 +140,13 @@ class NgaDownloader(
             val added = updateFolder(folderName, params.tid, params.authorId, params)
             val rec = repository.findByNgaTid(params.tid)
                 ?: throw NgaHttpException("书架中找不到该书")
+            LogEvents.event(
+                "nga",
+                "update_done",
+                "tid" to params.tid,
+                "floors" to added,
+                "book_id_hash" to LogEvents.bookIdHash(rec.id),
+            )
             progress("done", added, added, if (added > 0) "已更新 $added 楼" else "已是最新")
             return rec.id
         }
@@ -201,6 +208,13 @@ class NgaDownloader(
                 throw NgaHttpException("没有可用的楼层内容")
             }
             progress("done", totalPage, totalPage, "下载完成")
+            LogEvents.event(
+                "nga",
+                "download_done",
+                "tid" to params.tid,
+                "floors" to totalPage,
+                "book_id_hash" to LogEvents.bookIdHash(bookId),
+            )
             return bookId
         } finally {
             // 取消且目录为本次新建时清理半成品

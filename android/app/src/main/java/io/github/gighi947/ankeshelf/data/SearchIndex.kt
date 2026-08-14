@@ -1,5 +1,6 @@
 package io.github.gighi947.ankeshelf.data
 
+import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.BookSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,6 +63,7 @@ class SearchIndex(private val session: BookSession) {
             building = true
         }
         scope.launch(Dispatchers.Default) {
+            val t0 = System.currentTimeMillis()
             val list = (0 until session.chapters.size).map { i ->
                 val raw = session.chapterText(i)
                 ChapterText(
@@ -71,6 +73,13 @@ class SearchIndex(private val session: BookSession) {
                 )
             }
             lock.withLock { chapters = list }
+            LogEvents.event(
+                "search",
+                "index_built",
+                "book_id_hash" to LogEvents.bookIdHash(session.id),
+                "chapters" to list.size,
+                "duration_ms" to (System.currentTimeMillis() - t0),
+            )
         }
     }
 
@@ -80,6 +89,7 @@ class SearchIndex(private val session: BookSession) {
             if (chapters != null || building) return
             building = true
         }
+        val t0 = System.currentTimeMillis()
         val list = (0 until session.chapters.size).map { i ->
             val raw = session.chapterText(i)
             ChapterText(
@@ -89,6 +99,13 @@ class SearchIndex(private val session: BookSession) {
             )
         }
         lock.withLock { chapters = list }
+        LogEvents.event(
+            "search",
+            "index_built",
+            "book_id_hash" to LogEvents.bookIdHash(session.id),
+            "chapters" to list.size,
+            "duration_ms" to (System.currentTimeMillis() - t0),
+        )
     }
 
     /** 释放底层书籍会话（页面销毁/换书时调用）。 */

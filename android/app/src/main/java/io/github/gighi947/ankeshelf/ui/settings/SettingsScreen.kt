@@ -104,6 +104,7 @@ import io.github.gighi947.ankeshelf.ui.theme.effectivePalette
 import io.github.gighi947.ankeshelf.ui.theme.formatDuration
 import io.github.gighi947.ankeshelf.ui.theme.hexColor
 import io.github.gighi947.ankeshelf.service.BookUi
+import io.github.gighi947.ankeshelf.service.Diagnostics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -1131,10 +1132,30 @@ private fun DataPanel(
     onShowPath: () -> Unit,
     onClearAll: () -> Unit,
 ) {
+    val diagContext = LocalContext.current
+    val diagScope = rememberCoroutineScope()
+    val diagLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain"),
+    ) { uri ->
+        uri?.let {
+            val text = Diagnostics.collect(diagContext, appPaths, version)
+            diagScope.launch(Dispatchers.IO) {
+                diagContext.contentResolver.openOutputStream(it)?.use { os ->
+                    os.write(text.toByteArray(Charsets.UTF_8))
+                }
+            }
+        }
+    }
     SettingsList {
         SettingsSection("数据") {
             SettingsRow("打开数据目录", "查看书架/进度/标注等 JSON 数据文件位置") {
                 Button(shape = MaterialTheme.shapes.small, onClick = onShowPath) { Text("查看路径") }
+            }
+            SettingsRow("导出诊断信息", "版本/系统/WebView/数据文件与最近事件（不含凭据与正文）") {
+                Button(
+                    shape = MaterialTheme.shapes.small,
+                    onClick = { diagLauncher.launch("ankeshelf-diagnostics.txt") },
+                ) { Text("导出") }
             }
             SettingsRow("清除全部数据", "删除书架、进度、标注、NGA 配置与统计") {
                 Button(shape = MaterialTheme.shapes.small, onClick = onClearAll) { Text("清除") }
