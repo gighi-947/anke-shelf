@@ -10,9 +10,9 @@
 
 ## 1. 当前状态（2026-08-14）
 
-- 功能基线 HEAD：`b63809f`（android: 统一 task_id）；此前功能提交
+- 功能基线 HEAD：`867e7ea`（android: 章节读取失败模型）；此前功能提交
   （P0 / P1 / P2 / P3 / P4 首批）均已推送 `origin/main`。
-- 推送状态：与 `origin/main` 同步；工作树干净。
+- 推送状态：`867e7ea` 待推送；工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android 均于 2026-08-14 实跑复核）：
@@ -22,7 +22,7 @@
     `node contracts/tests/api-contract.test.js`（45 方法一致）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node tests/js/reader-session.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 109 过 / 1 跳；DisciplineTest 在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 111 过 / 1 跳；DisciplineTest 在岗；
   - UI 实机 harness：`python -m tests.ui.runner` = 92 项 PASS（需桌面 WebView2）。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
 
@@ -47,6 +47,18 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-14 android：章节读取失败模型（ChapterReadResult，替代 null 折叠）
+
+- 背景：第二轮架构债审查 P0 立项（BookSession 契约 + 核心数据层 null）。
+- 处理：新增 `data/ChapterReadResult.kt`（Success / NotFound / Corrupt / Io +
+  textOrEmpty）；`Epub.chapterText` / `NativeBook.chapterText` / `BookSession`
+  返回显式结果，越界与缺失条目 → NotFound、容器关闭/权限 → Io、解码失败 →
+  Corrupt；SearchIndex 与 `chapterPlainLength` 用 textOrEmpty 保持空串缺省；
+  阅读页 `htmlState` 改为 `ChapterUiState`（Html / Error），失败显示明确错误
+  而非“正在加载”或空白页。
+- 验证：先写失败语义测试（红：旧 API 编译失败）→ 实现 → 全量 111 过 / 1 跳
+  （+2：Epub / NativeBook 失败语义用例）；`assembleDebug` 通过。
 
 ### 2026-08-14 docs：第二轮架构债审查评估（P0 立项 + 纪律固化）
 

@@ -6,7 +6,8 @@
 > P0 / P1 已按本路线图落地；随后推进至 `edaf442`（依赖锁定，另含 ADR/治理文档），
 > 再推进至 `ad034b8`（Android 桥协议 + 进度回放）、`d697330`（P2 jsoup 清洗）、
 > `9e84c4c`（P2 错误模型）与 `cb40cee`（P2 诊断闭环）；随后 `96eb2e7`
-> （统一备份包）、`b63809f`（统一 task_id）。各节“状态”注明进度。
+> （统一备份包）、`b63809f`（统一 task_id）、`867e7ea`（章节读取失败模型）。
+> 各节“状态”注明进度。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
 > - `H:\AnkeShelf_Architecture_Improvement_Proposal.md`（架构改进提案）
@@ -49,11 +50,11 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 功能基线 | `b63809f`（android: 统一 task_id；2026-08-14 核对） |
+| 功能基线 | `867e7ea`（android: 章节读取失败模型；2026-08-14 核对） |
 | 分支 | `main`，与 `origin/main` 同步 |
 | Windows Python 单测 | 229 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 45 methods + `reader-session` OK |
-| Android JVM 单测 | 109 过 / 1 跳（2026-08-14 实跑） |
+| Android JVM 单测 | 111 过 / 1 跳（2026-08-14 实跑） |
 | UI 实机 harness | 92 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
 
@@ -121,7 +122,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 ### P0（新）：章节读取失败模型（BookSession 契约收紧）
 
 > 来源：第二轮架构债审查（2026-08-14，`H:\ARCHITECTURE_DEBT_REVIEW_20260814.md`）。
-> 状态：待立项——已核验成立，未开工。
+> 状态（2026-08-14）：已完成（`867e7ea`）——`ChapterReadResult` 显式结果 +
+> 阅读页错误分支；111 过 / 1 跳，`assembleDebug` 通过。
 
 - 现状：`BookSession.chapterText(index): String?`（`service/AppContainer.kt`）；
   `Epub.chapterText` / `NativeBook.chapterText` 的 `readFile` 把越界、文件

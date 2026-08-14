@@ -72,6 +72,7 @@
 | DisciplineTest | 纪律测试（UI 令牌/模式隔离/CI 配置/契约） |
 | StoreLoadResult / readJsonStore | JSON 载入显式结果（Missing / Corrupt / IoError），失败回退默认并记日志 |
 | BookRepoError / RepoResult | 书籍仓库显式失败模型（NotFound / Corrupt / Io / Permission）与结果封装 |
+| ChapterReadResult | 章节读取显式结果（Success / NotFound / Corrupt / Io），替代 `chapterText(): String?` 的 null 折叠 | `data/ChapterReadResult.kt`；Epub / NativeBook / BookSession 共用 |
 | LogEvents / Diagnostics | 结构化诊断事件环形缓冲 / 脱敏诊断报告（设置页「导出诊断信息」） |
 | task_id | 单次下载/更新/导出/索引任务的贯穿标识：事件与诊断包均可按它串联（`NgaServiceStatus.taskId`；导出/索引按任务生成） |
 
