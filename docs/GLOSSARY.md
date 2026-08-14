@@ -88,6 +88,7 @@
 | export_service.py | EPUB 导出 |
 | search.py / fullsearch.js | 全文搜索（后端索引 / 前端页） |
 | annotations.py / stats.py / settings.py | 标注 / 统计 / 设置存储 |
+| settings.js（settings-ui / settings-panels） | 独立设置页：共享工具与面板行构建器（拆分后） |
 
 ## 5. 工程与流程
 

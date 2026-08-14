@@ -228,7 +228,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 > （core / geometry / textpos / paging / layout / api）+ 合并脚本 + 字节级一致性守卫，
 > parts 不入 APK；`SettingsScreen.kt`（1369 → 575 行）与 `DownloadScreen.kt`
 > （982 → 349 行）、`NativeReaderScreen.kt`（624 → 448 行，Chrome 组件拆出）已拆。
-> Windows 前端拆分待办。
+> Windows 前端 `settings.js` 已拆（758 → 179 行 + settings-ui / settings-panels，
+> UI harness 92 项全绿）；`nga_download.js` 拆分待办。
 
 - `SettingsScreen.kt`：路由装配 + 各 Panel 独立文件 + 状态模型独立；
 - `DownloadScreen.kt`：表单/任务状态/已下载列表/进度独立；

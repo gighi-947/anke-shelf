@@ -48,6 +48,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win：Windows 前端拆分第一刀——settings.js
+
+- 处理：`settings.js` 从 758 行降至 179 行——共享常量与 `section/row/btn` 拆到
+  `settings-ui.js`（`window.SettingsUI`），外观/阅读/辅助/快捷键/统计/数据面板
+  行构建器拆到 `settings-panels.js`（`window.SettingsPanels`）；index.html 按
+  settings-ui → settings-panels → settings 顺序加载。
+- 验证：node --check 全过；UI harness **92 项 PASS / 0 FAIL**（拆分前后一致）。
+
 ### 2026-08-14 android：P3 NativeReaderScreen Chrome 拆分
 
 - 处理：`NativeReaderScreen.kt` 从 624 行降至 448 行——新增 `NativeReaderChrome.kt`：
