@@ -89,6 +89,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.github.gighi947.ankeshelf.BuildConfig
+import io.github.gighi947.ankeshelf.data.Backup
 import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.data.AnnotationStore
 import io.github.gighi947.ankeshelf.data.EnrichedStats
@@ -103,12 +104,13 @@ import io.github.gighi947.ankeshelf.ui.theme.AnkeRadius
 import io.github.gighi947.ankeshelf.ui.theme.effectivePalette
 import io.github.gighi947.ankeshelf.ui.theme.formatDuration
 import io.github.gighi947.ankeshelf.ui.theme.hexColor
+import java.io.File
 import io.github.gighi947.ankeshelf.service.BookUi
 import io.github.gighi947.ankeshelf.service.Diagnostics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.rememberCoroutineScope
-import java.io.File
 import kotlin.math.roundToInt
 /* ---------------- 操作 ---------------- */
 
@@ -189,6 +191,87 @@ internal fun DataPanel(
             }
         }
     }
+    val backupCache = remember { File(diagContext.cacheDir, "ankeshelf-backup-cache.zip") }
+    val backupPaths = mapOf(
+        "shelf" to appPaths.shelfFile,
+        "progress" to appPaths.progressFile,
+        "settings" to appPaths.settingsFile,
+        "annotations" to appPaths.annotationsFile,
+        "statistics" to appPaths.statisticsFile,
+    )
+    fun toast(msg: String, error: Boolean = false) {
+        Toast.makeText(diagContext, msg, if (error) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
+    }
+    val backupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri ->
+        uri?.let {
+            diagScope.launch {
+                val ok = withContext(Dispatchers.IO) {
+                    runCatching {
+                        Backup.createBackupZip(backupCache, backupPaths, version)
+                        diagContext.contentResolver.openOutputStream(it)?.use { os ->
+                            backupCache.inputStream().use { inp -> inp.copyTo(os) }
+                        } != null
+                    }.getOrDefault(false)
+                }
+                toast(if (ok) "备份已创建" else "备份失败", error = !ok)
+            }
+        }
+    }
+    var pendingRestore by remember { mutableStateOf(false) }
+    val verifyLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let {
+            diagScope.launch {
+                val report = withContext(Dispatchers.IO) {
+                    runCatching {
+                        diagContext.contentResolver.openInputStream(it)?.use { input ->
+                            backupCache.outputStream().use { out -> input.copyTo(out) }
+                        }
+                        Backup.verifyBackupZip(backupCache)
+                    }.getOrNull()
+                }
+                when {
+                    report == null -> toast("验证失败", error = true)
+                    report.ok -> toast("备份包有效（${report.files.size} 个文件）")
+                    else -> toast("备份包无效：${report.errors.joinToString("、")}", error = true)
+                }
+            }
+        }
+    }
+    val restoreLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let {
+            diagScope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    runCatching {
+                        diagContext.contentResolver.openInputStream(it)?.use { input ->
+                            backupCache.outputStream().use { out -> input.copyTo(out) }
+                        }
+                        Backup.restoreBackupZip(backupCache, backupPaths, overwrite = false)
+                    }.getOrNull()
+                }
+                when {
+                    result == null -> toast("导入失败", error = true)
+                    result.ok -> toast("备份已恢复（${result.restored.size} 个文件），建议重启应用生效")
+                    result.needsOverwrite -> pendingRestore = true
+                    else -> toast("导入失败：${result.errors.joinToString("、")}", error = true)
+                }
+            }
+        }
+    }
+    val restoreOverwrite: () -> Unit = {
+        diagScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                Backup.restoreBackupZip(backupCache, backupPaths, overwrite = true)
+            }
+            if (result.ok) toast("备份已恢复（${result.restored.size} 个文件），建议重启应用生效")
+            else toast("恢复失败：${result.errors.joinToString("、")}", error = true)
+        }
+    }
     SettingsList {
         SettingsSection("数据") {
             SettingsRow("打开数据目录", "查看书架/进度/标注等 JSON 数据文件位置") {
@@ -199,6 +282,24 @@ internal fun DataPanel(
                     shape = MaterialTheme.shapes.small,
                     onClick = { diagLauncher.launch("ankeshelf-diagnostics.txt") },
                 ) { Text("导出") }
+            }
+            SettingsRow("备份数据", "把书架/进度/设置/标注/统计打包为 ank-backup/1 zip") {
+                Button(
+                    shape = MaterialTheme.shapes.small,
+                    onClick = { backupLauncher.launch("ankeshelf-backup.zip") },
+                ) { Text("备份") }
+            }
+            SettingsRow("验证备份包", "只读校验清单/校验和/版本，不写盘") {
+                Button(
+                    shape = MaterialTheme.shapes.small,
+                    onClick = { verifyLauncher.launch(arrayOf("application/zip")) },
+                ) { Text("验证") }
+            }
+            SettingsRow("导入备份", "先验证；已有数据需二次确认后才覆盖") {
+                Button(
+                    shape = MaterialTheme.shapes.small,
+                    onClick = { restoreLauncher.launch(arrayOf("application/zip")) },
+                ) { Text("导入") }
             }
             SettingsRow("清除全部数据", "删除书架、进度、标注、NGA 配置与统计") {
                 Button(shape = MaterialTheme.shapes.small, onClick = onClearAll) { Text("清除") }
@@ -231,6 +332,19 @@ internal fun DataPanel(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = AnkeSpacing.sm),
+        )
+    }
+    if (pendingRestore) {
+        AlertDialog(
+            onDismissRequest = { pendingRestore = false },
+            title = { Text("覆盖确认") },
+            text = { Text("目标数据已存在，导入将覆盖书架、进度、设置、标注与统计。\n确认继续？") },
+            confirmButton = {
+                TextButton(onClick = { pendingRestore = false; restoreOverwrite() }) { Text("覆盖并导入") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRestore = false }) { Text("取消") }
+            },
         )
     }
 }

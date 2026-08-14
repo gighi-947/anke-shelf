@@ -48,6 +48,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：统一备份包（ank-backup/1，与 Windows 同格式）
+
+- 处理：新增 `data/Backup.kt`——`createBackupZip / verifyBackupZip / restoreBackupZip`
+  （manifest + 五份 JSON + SHA-256；导入前只读验证，目标已有数据需显式确认覆盖）；
+  设置页「数据」新增 备份数据 / 验证备份包 / 导入备份（SAF，覆盖前 AlertDialog
+  二次确认）。与 Windows `app/backup.py` 同格式，备份包可跨端互认。
+- 验证：`testDebugUnitTest` 109 过 / 1 跳（+3 备份用例：创建校验、篡改失败、
+  覆盖守卫）；`assembleDebug` 通过。
+
 ### 2026-08-14 win：统一备份包（ank-backup/1）
 
 - 处理：新增 `app/backup.py`——`create_backup`（zip：manifest + 五份 JSON + SHA-256）、
