@@ -48,6 +48,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win：Windows 前端拆分收官——nga_download.js
+
+- 处理：`nga_download.js` 从 870 行降至 622 行——下载/更新/导出/配置四个面板
+  构建器拆到 `nga-download-panels.js`；共享 `section/fmtBtn/field/input/numInput/
+  select/checkbox/val/check` 与面板引用的任务函数经 `window.NgaPage` 暴露，
+  index.html 按 nga_download.js → nga-download-panels.js 顺序加载。
+- 踩坑：面板文件最初在加载期解构 `window.NgaPage`（主文件末尾才赋值）导致整页
+  测试脚本中断，先跑 harness 抓到 87 FAIL，调换加载顺序后恢复。
+- 验证：node --check 全过；UI harness **92 项 PASS / 0 FAIL**。
+
 ### 2026-08-14 win：Windows 前端拆分第一刀——settings.js
 
 - 处理：`settings.js` 从 758 行降至 179 行——共享常量与 `section/row/btn` 拆到
