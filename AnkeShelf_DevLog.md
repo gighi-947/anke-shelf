@@ -48,6 +48,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 docs：两轮审查总结 + 整改计划（REVIEW_ACTION_PLAN）
+
+- 背景：reviewer 相继产出架构债审查（ARCHITECTURE_DEBT_REVIEW_20260814）
+  与仓库评审（AnkeShelf_Review_20260814，评级工程 A- / 安全 A / 合规 B）。
+- 处理：逐条核验两轮共 20+ 项主张（行号/代码/PyPI/GitHub 证据），
+  产出 `docs/REVIEW_ACTION_PLAN.md`：已落地整改 3 笔（63b6994 / 867e7ea /
+  ab3c6d8）+ 待办批次 A（token/CI/模板快修）~ E（低优先/延后）+ 驳回记录
+  （P3.2 ebooklib 0.20 为 PyPI 最新版；P2.5 reader.js 乱码已修复）。
+- 验证：纯文档改动，未跑构建。
+
 ### 2026-08-14 android：章节读取失败模型（ChapterReadResult，替代 null 折叠）
 
 - 背景：第二轮架构债审查 P0 立项（BookSession 契约 + 核心数据层 null）。
