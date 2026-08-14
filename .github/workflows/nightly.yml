@@ -6,6 +6,9 @@ on:
     - cron: '0 20 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   windows-nightly:
     runs-on: windows-latest

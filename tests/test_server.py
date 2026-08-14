@@ -107,6 +107,18 @@ class ServerTestCase(unittest.TestCase):
         status, _ = self.post("/api/get_settings", token=None)
         self.assertEqual(status, 401)
 
+    def test_api_query_token_compat(self):
+        # 启动 URL 兼容入口（?token=...）：query token 仍被接受
+        status, data = self.post(f"/api/get_settings?token={self.token}", token=None)
+        self.assertEqual(status, 200)
+        self.assertTrue(data["ok"])
+
+    def test_api_wrong_token_rejected(self):
+        status, _ = self.post("/api/get_settings", token="wrong-token")
+        self.assertEqual(status, 401)
+        status, _ = self.post("/api/get_settings?token=wrong-token", token=None)
+        self.assertEqual(status, 401)
+
     def test_api_get_settings(self):
         status, data = self.post("/api/get_settings", token=self.token)
         self.assertEqual(status, 200)

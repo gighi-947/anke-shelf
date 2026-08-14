@@ -22,6 +22,7 @@ import json
 import logging
 import posixpath
 import re
+import secrets
 import threading
 import urllib.parse
 from pathlib import Path
@@ -186,10 +187,15 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
         if not self.token:
             return True  # 未启用令牌（仅本地开发/测试）
         header = self.headers.get(_API_TOKEN_HEADER)
-        if header == self.token:
+        if header is not None and secrets.compare_digest(header, self.token):
             return True
         query = urllib.parse.parse_qs(parsed.query)
-        return query.get("token") == [self.token]
+        qtoken = query.get("token")
+        return (
+            qtoken is not None
+            and len(qtoken) == 1
+            and secrets.compare_digest(qtoken[0], self.token)
+        )
 
     def do_POST(self) -> None:
         parsed = urllib.parse.urlparse(self.path)

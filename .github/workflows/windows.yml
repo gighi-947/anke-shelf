@@ -25,6 +25,9 @@ on:
       - '.github/workflows/windows.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   test-and-package:
     runs-on: windows-latest

@@ -1,13 +1,21 @@
 /**
  * HTTP API 桥接封装（前后端分离版）。
  * - 运行时通过 fetch 调用本地 /api/<name>，业务不再依赖 pywebview js_api
- * - 每次启动随机生成令牌，从 URL query 读取（?token=...），随请求头带回
+ * - 每次启动随机生成令牌，从 URL query 读取（?token=...），落 sessionStorage
+ *   后立即抹掉地址栏 query，随请求头带回（防 token 进历史/日志）
  * - 浏览器直接打开（无令牌）时降级为 MOCKS，便于纯前端调试
  */
 (function () {
   'use strict';
 
-  const TOKEN = new URLSearchParams(window.location.search).get('token') || '';
+  const TOKEN = new URLSearchParams(window.location.search).get('token') ||
+      sessionStorage.getItem('anke_token') || '';
+  if (TOKEN && window.location.search) {
+    // 启动 URL 的 token 只用于首屏：落 sessionStorage 后立即抹掉 query，
+    // 刷新后从 sessionStorage 恢复，避免 token 留在地址栏/历史/本地日志。
+    sessionStorage.setItem('anke_token', TOKEN);
+    history.replaceState(null, '', window.location.pathname);
+  }
 
   const MOCKS = {
     get_shelf: async () => [],

@@ -5,6 +5,8 @@ title: "[Bug] "
 labels: bug
 ---
 
+> ⚠ 安全漏洞请勿公开 Issue，请走 [SECURITY.md](../../SECURITY.md) 流程。
+
 **受影响端与版本**
 （Windows vX.Y.Z / Android android-vX.Y.Z）
 

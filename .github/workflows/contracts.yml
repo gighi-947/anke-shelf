@@ -21,6 +21,9 @@ on:
       - '.github/workflows/contracts.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   contract-guard:
     runs-on: ubuntu-latest
