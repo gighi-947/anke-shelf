@@ -10,13 +10,13 @@
 
 ## 1. 当前状态（2026-08-14）
 
-- 功能基线 HEAD：`058d78f`（win: P3 导出服务接入 TaskManager）；此前功能提交
+- 功能基线 HEAD：`8763bf8`（win: 发布资产摘要）；此前功能提交
   （P0 / P1 / P2 / P3 各项）均已推送 `origin/main`。
-- 推送状态：`058d78f` 待推送；工作树干净。
+- 推送状态：`8763bf8` 待推送；工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows/JS 于 2026-08-14 实跑复核；Android 沿用 2026-08-10 本地报告）：
-  - Windows Python：`python -m unittest discover tests` = 222 项 OK
+  - Windows Python：`python -m unittest discover tests` = 225 项 OK
     （本机 Python 3.14 与沙箱 3.12 双环境）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（40 方法一致）、
