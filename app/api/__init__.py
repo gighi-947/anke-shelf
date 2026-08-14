@@ -49,6 +49,7 @@ _HANDLERS = (
     ("export_start", nga_api.export_start),
     ("export_status", nga_api.export_status),
     ("export_open_dest", nga_api.export_open_dest),
+    ("export_cancel", nga_api.export_cancel),
     ("nga_start_download", nga_api.nga_start_download),
     ("nga_download_status", nga_api.nga_download_status),
     ("nga_cancel", nga_api.nga_cancel),

@@ -341,13 +341,21 @@
     start.id = 'dl-export-start';
     start.textContent = '开始导出';
     start.addEventListener('click', startExport);
+    const cancelExport = document.createElement('button');
+    cancelExport.className = 'btn';
+    cancelExport.id = 'dl-export-cancel';
+    cancelExport.textContent = '取消导出';
+    cancelExport.disabled = true;
+    cancelExport.addEventListener('click', () => {
+      Api.exportCancel().catch(() => {});
+    });
     const openDest = document.createElement('button');
     openDest.className = 'btn';
     openDest.id = 'dl-export-open';
     openDest.textContent = '打开文件夹';
     openDest.disabled = true;
     openDest.addEventListener('click', openExportDest);
-    actions.append(start, openDest);
+    actions.append(start, cancelExport, openDest);
     wrap.appendChild(actions);
 
     const status = document.createElement('div');
@@ -746,6 +754,8 @@
       () => Api.exportStatus(),
       renderExportStatus,
       (s) => {
+        const cancelBtn = document.getElementById('dl-export-cancel');
+        if (cancelBtn) cancelBtn.disabled = !s.running;
         if (s.stage === 'done') {
           const openBtn = document.getElementById('dl-export-open');
           if (openBtn) openBtn.disabled = false;

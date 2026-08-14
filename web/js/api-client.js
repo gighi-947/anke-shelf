@@ -41,6 +41,7 @@
     ['export_start', 'exportStart'],
     ['export_status', 'exportStatus'],
     ['export_open_dest', 'exportOpenDest'],
+    ['export_cancel', 'exportCancel'],
     ['nga_start_download', 'ngaStartDownload'],
     ['nga_download_status', 'ngaDownloadStatus'],
     ['nga_cancel', 'ngaCancel'],

@@ -50,6 +50,12 @@ def export_open_dest(ctx: ApiContext) -> dict:
     return ctx.export_service.open_dest()
 
 
+def export_cancel(ctx: ApiContext) -> dict:
+    if ctx.export_service is None:
+        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "导出服务不可用")
+    return ctx.export_service.cancel()
+
+
 def nga_start_download(ctx: ApiContext, params: dict) -> dict:
     if ctx.nga_service is None:
         return api_error(ErrorCode.SERVICE_UNAVAILABLE, "NGA 下载服务不可用")

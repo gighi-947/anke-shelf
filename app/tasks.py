@@ -42,10 +42,10 @@ class TaskManager:
         self._lock = threading.RLock()
 
     def start(self, lane: str, task_id: str) -> bool:
-        """尝试占用 lane；空闲则登记并返回 True，否则返回 False。"""
+        """尝试占用 lane；空闲则登记并返回 True，同任务重入视为已持有，否则 False。"""
         with self._lock:
             if lane in self._active:
-                return False
+                return self._active[lane] == task_id
             self._active[lane] = task_id
             self._cancelled.discard(task_id)
             return True

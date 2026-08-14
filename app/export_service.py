@@ -3,12 +3,14 @@ import logging
 import re
 import shutil
 import threading
+import uuid
 from pathlib import Path
 from typing import Callable, Optional
 
 from . import dialogs
 from .native_book import is_native_dir, rebuild_epub_for_native
 from .shelf import Shelf
+from .tasks import TaskCancelled, TaskManager, TaskProgress, TaskStatus
 
 log = logging.getLogger("export_service")
 
@@ -21,12 +23,19 @@ def _safe_filename(name: str) -> str:
 
 
 class ExportService:
-    """一次只允许一个导出任务；文件夹选择在后台线程触发。"""
+    """导出任务：单飞/进度/取消由 TaskManager（lane=export）承载，状态可轮询。"""
 
-    def __init__(self, shelf: Shelf, folder_picker: Optional[Callable[[], str]] = None):
+    def __init__(
+        self,
+        shelf: Shelf,
+        folder_picker: Optional[Callable[[], str]] = None,
+        task_manager: Optional[TaskManager] = None,
+    ):
         self._shelf = shelf
         self._folder_picker = folder_picker or dialogs.pick_folder
+        self._tasks = task_manager or TaskManager(lanes={"export": 1})
         self._lock = threading.Lock()
+        self._current_task: Optional[str] = None
         self._status = {
             "running": False,
             "stage": "idle",
@@ -44,17 +53,21 @@ class ExportService:
 
     def start(self, book_id: str, fmt: str = "both") -> dict:
         """启动后台导出。fmt: epub / md / both。"""
-        if not self._begin(stage="prepare", detail="正在准备导出…",
-                           current=0, total=0, files=[], dest="", error=""):
-            return {"ok": False, "error": "已有导出任务在运行"}
         rec = self._shelf.get(book_id)
         if rec is None or not rec.nga_tid:
-            with self._lock:
-                self._status.update(running=False, stage="idle", detail="")
             return {"ok": False, "error": "仅支持导出 NGA 下载的帖子"}
+        task_id = f"export-{uuid.uuid4().hex[:12]}"
+        if not self._tasks.start("export", task_id):
+            return {"ok": False, "error": "已有导出任务在运行"}
+        with self._lock:
+            self._current_task = task_id
+            self._status.update(
+                running=True, stage="prepare", detail="正在准备导出…",
+                current=0, total=0, files=[], dest="", error="",
+            )
         t = threading.Thread(
-            target=self._run,
-            args=(rec, fmt),
+            target=self._run_task,
+            args=(rec, fmt, task_id),
             daemon=True,
             name="nga-export",
         )
@@ -74,9 +87,42 @@ class ExportService:
         except OSError as e:
             return {"ok": False, "error": str(e)}
 
+    def cancel(self) -> dict:
+        """取消当前导出任务（协作出取消，文件夹选择等阻塞点不可中断）。"""
+        with self._lock:
+            task_id = self._current_task
+        if task_id is None:
+            return {"ok": False, "error": "没有进行中的导出任务"}
+        self._tasks.cancel(task_id)
+        return {"ok": True}
+
     # ---------- 后台执行 ----------
 
-    def _run(self, rec, fmt: str) -> None:
+    def _run_task(self, rec, fmt: str, task_id: str) -> None:
+        def on_progress(p: TaskProgress) -> None:
+            self._set(stage=p.stage, current=p.current, total=p.total, detail=p.message)
+
+        try:
+            status = self._tasks.run(
+                "export",
+                task_id,
+                lambda report: self._run(rec, fmt, report),
+                on_progress=on_progress,
+            )
+            if status == TaskStatus.CANCELLED:
+                self._set(running=False, stage="cancelled", detail="已取消")
+            elif status == TaskStatus.FAILED:
+                self._set(running=False, stage="error")
+        finally:
+            with self._lock:
+                if self._current_task == task_id:
+                    self._current_task = None
+
+    def _run(self, rec, fmt: str, report) -> None:
+        def step(stage: str, current: int = 0, total: int = 0, detail: str = "") -> None:
+            self._set(stage=stage, current=current, total=total, detail=detail)
+            report(TaskProgress(current=current, total=total, stage=stage, message=detail))
+
         try:
             self._set(running=True, stage="prepare", current=0, total=0,
                       detail="正在选择导出文件夹…", files=[], dest="", error="")
@@ -87,7 +133,7 @@ class ExportService:
             native = is_native_dir(Path(rec.path))
             if fmt in ("epub", "both"):
                 if native:
-                    self._set(stage="copy", detail="正在生成 EPUB…")
+                    step("copy", detail="正在生成 EPUB…")
                     folder = Path(rec.path).parent.name
                     epub = rebuild_epub_for_native(folder)
                     sources.append(epub)
@@ -102,8 +148,7 @@ class ExportService:
                 raise RuntimeError("没有可导出的 EPUB / Markdown 文件")
             dest = self._folder_picker()
             if not dest:
-                self._set(running=False, stage="cancelled", detail="已取消")
-                return
+                raise TaskCancelled("export cancelled by user")
             out_dir = Path(dest)
             out_dir.mkdir(parents=True, exist_ok=True)
             copied = []
@@ -118,23 +163,18 @@ class ExportService:
                     out_path = out_dir / f"{base}-{i}{src.suffix or ''}"
                 shutil.copy2(str(src), str(out_path))
                 copied.append(out_path.name)
-                self._set(stage="copy", current=i, total=total,
-                          detail=f"正在导出 {i}/{total}：{out_path.name}")
+                step("copy", i, total, f"正在导出 {i}/{total}：{out_path.name}")
             self._set(running=False, stage="done", detail="导出完成",
                       files=copied, dest=str(out_dir))
+        except TaskCancelled:
+            self._set(running=False, stage="cancelled", detail="已取消", error="")
+            raise
         except Exception as e:  # noqa: BLE001
             log.exception("NGA 导出失败")
             self._set(running=False, stage="error", detail="", error=str(e),
                       files=[], dest="")
+            raise
 
     def _set(self, **kw) -> None:
         with self._lock:
             self._status.update(kw)
-
-    def _begin(self, **kw) -> bool:
-        """原子占位：任务启动瞬间即标记 running，避免并发重复启动。"""
-        with self._lock:
-            if self._status["running"]:
-                return False
-            self._status.update(running=True, **kw)
-        return True

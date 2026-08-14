@@ -1,5 +1,6 @@
 """导出服务单元测试：后台复制、状态、单飞、打开目标文件夹。"""
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -86,14 +87,32 @@ class ExportServiceTest(unittest.TestCase):
 
     def test_export_single_flight(self):
         svc = ExportService(self.shelf, folder_picker=lambda: str(self.dest))
-        svc._set(running=True, stage="prepare")
+        self.assertTrue(svc._tasks.start("export", "busy"))
         r = svc.start(self.rec.id, "both")
         self.assertFalse(r["ok"])
         self.assertIn("已有", r["error"])
+        svc._tasks.finish("export", "busy")
 
     def test_export_cancel_picker_marks_cancelled(self):
         svc = ExportService(self.shelf, folder_picker=lambda: "")
         svc.start(self.rec.id, "both")
+        st = self._wait_done(svc)
+        self.assertEqual(st["stage"], "cancelled")
+
+    def test_export_cancel_api_marks_cancelled(self):
+        entered = threading.Event()
+        release = threading.Event()
+
+        def picker():
+            entered.set()
+            release.wait(5)
+            return str(self.dest)
+
+        svc = ExportService(self.shelf, folder_picker=picker)
+        svc.start(self.rec.id, "md")
+        entered.wait(5)
+        self.assertTrue(svc.cancel()["ok"])
+        release.set()
         st = self._wait_done(svc)
         self.assertEqual(st["stage"], "cancelled")
 

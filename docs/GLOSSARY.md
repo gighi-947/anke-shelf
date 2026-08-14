@@ -35,7 +35,7 @@
 | ErrorCode / api_error | 结构化 API 错误码（message 不变，新增 ok/error_code） | `app/errors.py` |
 | run_migrations | 统一数据迁移框架（load → migrate → validate → 原子写） | `app/migrations.py`；Settings v<3 迁移已接入 |
 | build_diagnostics | 诊断包导出（版本/平台/日志/脱敏设置，不含凭据） | `app/diagnostics.py`；设置 → 数据「导出诊断信息」 |
-| TaskManager / TaskStatus | 按 lane 单飞的任务基础设施（NGA 暂未迁移） | `app/tasks.py` |
+| TaskManager / TaskStatus | 按 lane 单飞的任务基础设施（导出已接入，NGA 暂未迁移） | `app/tasks.py` |
 | log_event | 统一日志字段（component event key=value） | `app/logutil.py`；nga/search 已接入 |
 | tests/security / bench.py | EPUB 安全回归（CSP/穿越/ZIP 炸弹）与性能基准（baseline.json） | `tests/security/`、`tests/performance/`；nightly CI 执行 |
 | TextPos | DOM↔纯文本逐字符映射 | 同上；跨端对照测试 `ReaderPagedCrossTest` |

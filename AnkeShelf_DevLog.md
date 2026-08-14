@@ -48,6 +48,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win：P3 导出服务接入 TaskManager（试点）
+
+- 处理：`ExportService` 单飞/进度/取消改由 `TaskManager(lanes={"export": 1})` 承载——
+  `start` 原子占 lane、线程内经 `run` 执行、进度走 `on_progress`、取消走 cancel 标志并在
+  step 上报时抛 `TaskCancelled`；`TaskManager.start` 增加同任务重入幂等；新增 `cancel()`
+  与 `/api/export_cancel`、导出页「取消导出」按钮（运行中可用）。
+- 验证：Python 222 项 OK（+1 取消用例，导出 7 项全绿）；api-contract 42 方法一致；
+  `node --check` 通过。
+
 ### 2026-08-14 win：P3 存储恢复能力（损坏隔离 + 备份 + 完整性校验）
 
 - 处理：`app/storage.py` 新增 `backup_previous`（原子写前保留 .bak）、

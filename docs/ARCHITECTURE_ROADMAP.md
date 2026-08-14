@@ -238,6 +238,11 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P3：任务语义统一试点
 
+> 状态（2026-08-14）：导出服务已接入 `TaskManager`（lane=export）——单飞占位、进度经
+> `on_progress`、取消经 cancel 标志与 `TaskCancelled`、失败/完成映射到既有 status 字典；
+> 新增 `/api/export_cancel` 与导出页「取消导出」按钮；`TaskManager.start` 对同任务
+> 重入幂等。NGA 迁移仍按计划推迟。
+
 - 选 `app/export_service.py` 或 `app/search.py` 接入 `TaskManager`；
 - 统一任务状态字段：`id/lane/state/stage/current/total/message/started_at/
   updated_at/cancellable/error_code`；
