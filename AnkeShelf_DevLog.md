@@ -48,6 +48,13 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：P3 DownloadScreen 大屏拆分
+
+- 处理：`DownloadScreen.kt` 从 982 行降至 349 行——登录配置 + 下载/更新拆到
+  `DownloadPanels.kt`，已下载列表/卡片/导出拆到 `DownloadLibraryPanels.kt`
+  （同包 internal；通用 DownloadList / DownloadSection 改 internal）。
+- 验证：`testDebugUnitTest` 106 过 / 1 跳（行为零变化）；`assembleDebug` 通过。
+
 ### 2026-08-14 android：P3 SettingsScreen 大屏拆分
 
 - 处理：`SettingsScreen.kt` 从 1369 行降至 575 行——外观 / 阅读 / 操作·统计·数据·帮助
