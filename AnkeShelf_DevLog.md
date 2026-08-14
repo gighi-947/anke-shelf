@@ -12,7 +12,7 @@
 
 - 功能基线 HEAD：`4e06862`（android: 发布资产摘要接入 Android SOP）；此前功能提交
   （P0 / P1 / P2 / P3 各项）均已推送 `origin/main`。
-- 推送状态：`4e06862` 待推送；工作树干净。
+- 推送状态：已推送 `origin/main`，与远程同步；本次 P4 文档提交待推送；工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows/JS 于 2026-08-14 实跑复核；Android 沿用 2026-08-10 本地报告）：
@@ -47,6 +47,16 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-14 docs：P4 参考仓库研究（首批 5/8）
+
+- 处理：研究 `H:\AnkeShelfReferences` 下已克隆的 5 个仓库（koreader /
+  koreader-sync-server / thorium-reader / foliate-js / calibre），产出
+  `docs/REFERENCE_MATRIX.md`：克隆 commit 固定、分仓库结论、汇总矩阵，
+  以及「text_offset → 多锚点 Locator」演进方向。
+- 结论：模式隔离与“精确锚点 + 摘要”双轨继续；同步需稳定 book_id + 可移植
+  Locator；未来 Locator 结构参考 Readium2；不引入 Readium SDK / CFI 运行时依赖。
+- 验证：纯文档，未跑构建。
 
 ### 2026-08-14 android：发布资产摘要接入 Android SOP
 

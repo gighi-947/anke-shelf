@@ -281,6 +281,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P4：参考项目研究（review2 落地）
 
+> 状态（2026-08-14）：5/8 仓库已克隆并研究（koreader / koreader-sync-server /
+> thorium-reader / foliate-js / calibre），产出 `docs/REFERENCE_MATRIX.md`；
+> readest（早期已研究）/ Kavita / LibreraReader 待克隆补行。
+
 - 网络恢复后浅克隆 8 个参考仓库到 `H:\AnkeShelfReferences`：
   koreader、koreader-sync-server、readest、calibre、thorium-reader、
   foliate-js、Kavita、LibreraReader（当前命令环境断网，待用户提供通道）；
