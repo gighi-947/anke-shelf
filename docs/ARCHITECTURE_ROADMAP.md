@@ -1,8 +1,9 @@
 # AnkeShelf 架构整合路线图（下阶段任务参考）
 
-> 文档日期：2026-08-12（2026-08-13 状态核对）
+> 文档日期：2026-08-12（2026-08-14 状态核对）
 > 分析基线：`main` / `1ea4c95`（分析时点）；2026-08-13 核对：HEAD 已推进至
-> `4810d0c`（docs-only 提交，工作树干净），代码与测试基线无变化。
+> `4810d0c`（docs-only 提交）；2026-08-14 再核对：HEAD 已推进至 `c8f90cf`，
+> P0 / P1 已按本路线图落地（见各节“状态”），工作树干净，尚未推送。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
 > - `H:\AnkeShelf_Architecture_Improvement_Proposal.md`（架构改进提案）
@@ -45,13 +46,13 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| HEAD | `4810d0c`（docs: DevLog 拆分归档与教训文档，新增架构整合路线图；2026-08-13 核对，分析基线 `1ea4c95` 之后仅此 docs-only 提交） |
-| 分支 | `main`，与 `origin/main` 同步，工作树干净 |
-| Windows Python 单测 | 211 项 OK（日志基线） |
-| JS 契约测试 | `textpos` 15 cases + `reader-session` OK |
+| HEAD | `c8f90cf`（win: P1 契约/API 漂移守卫；2026-08-14 核对，P0/P1 已落地） |
+| 分支 | `main`，本地领先 `origin/main` 2 提交（未推送） |
+| Windows Python 单测 | 218 项 OK（2026-08-14 实跑） |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 40 methods + `reader-session` OK |
 | Android JVM 单测 | 90 过 / 1 跳（日志基线） |
 | UI 实机 harness | 92 项 PASS（需桌面 WebView2） |
-| CI | `windows.yml` / `android.yml` / `nightly.yml` |
+| CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
 
 ### 2.2 代码规模热点
 

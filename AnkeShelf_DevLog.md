@@ -7,21 +7,21 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-13）
+## 1. 当前状态（2026-08-14）
 
-- HEAD：`4810d0c`（docs: DevLog 拆分归档与教训文档，新增架构整合路线图），
-  分支 `main`，已推送 GitHub，与 `origin/main` 同步。
-- 旧状态 `1ea4c95` 时点所列的文档重构已在 `4810d0c` 一次性提交完毕，
-  本次文档状态同步（2026-08-13）见“最近流水”首个条目；本次提交后工作树干净。
+- 功能基线 HEAD：`c8f90cf`（win: P1 契约/API 漂移守卫）；本地未推送提交含
+  `b6fba10`（P0）、`c8f90cf`（P1）及本次文档漂移同步，见“最近流水”。
+- 工作树干净；上一文档基线 `4810d0c` 之后新增 P0 / P1 两项实现。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
-- 测试基线（Windows/JS 于 2026-08-13 实跑复核；Android 沿用 2026-08-10 本地报告）：
-  - Windows Python：`python -m unittest discover tests` = 211 项 OK；
+- 测试基线（Windows/JS 于 2026-08-14 实跑复核；Android 沿用 2026-08-10 本地报告）：
+  - Windows Python：`python -m unittest discover tests` = 218 项 OK；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
+    `node contracts/tests/api-contract.test.js`（40 方法一致）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 90 过 / 1 跳；DisciplineTest 在岗；
   - UI 实机 harness：`python -m tests.ui.runner` = 92 项 PASS（需桌面 WebView2）。
-- CI：`windows.yml`、`android.yml`、`nightly.yml`；契约 CI 待按路线图新增。
+- CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
 
 ## 2. 本机环境（Windows 开发机）
 
@@ -42,6 +42,15 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-14 文档漂移检查与同步（本次提交）
+
+- 现象：P0 / P1 落地后，DevLog“当前状态”与路线图仍停留在 `4810d0c`、211 项、
+  “契约 CI 待新增”等旧描述。
+- 处理：同步功能基线 `c8f90cf`、Python 218 项、JS 契约清单（含 api-contract）、
+  CI 含 `contracts.yml`；标记 P0 / P1 已完成状态。
+- 验证：API / 契约守卫实跑全绿（api-contract 40 方法、textpos 15 例、
+  test_api_contract + test_contracts 共 10 项 OK）。
 
 ### 2026-08-14 P1：契约/API 漂移守卫落地
 
@@ -117,10 +126,9 @@
 
 ## 5. 待办与延后项
 
-- P0：Windows v1.2.0 启动崩溃（pythonnet/.NET）——用户侧排查“解除文件锁定 /
-  安装 .NET Framework 4.8”，项目侧加友好提示与文档；
-- P1：契约/API 漂移守卫（contracts CI + 双清单对照）；Android 桥协议版本 +
-  进度事件回放；依赖锁定与构建可复现；首批 ADR；
+- P0：已完成（项目侧友好提示 + 文档，`b6fba10`；未重新打包发行版）。
+- P1：契约/API 漂移守卫已完成（`c8f90cf`）；剩余——Android 桥协议版本 +
+  进度事件回放、依赖锁定与构建可复现、首批 ADR；
 - P2：jsoup 清洗、Android 错误模型/null 清理、Android 诊断闭环；
 - P3：大文件渐进拆分、TaskManager 试点、存储恢复能力、开源治理与仓库卫生；
 - P4：参考仓库克隆（网络恢复后）；第二书源 / SQLite / 同步 / 插件（需求触发）。
