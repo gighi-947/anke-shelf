@@ -90,10 +90,6 @@ import okhttp3.Request
 import java.io.File
 import kotlin.math.roundToInt
 
-private val THEME_CYCLE = listOf("dark", "light", "sepia")
-
-private fun themeColor(hex: String, fallback: Color): Color =
-    runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrDefault(fallback)
 
 /**
  * 阅读页：Compose 外壳 + 安卓专用 WebView 渲染内核（reader-lite.js）。
@@ -369,184 +365,53 @@ fun NativeReaderScreen(
             )
         }
 
-        // 亮度遮罩。
-        if (readerSettings.brightness > 0.0) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = readerSettings.brightness.toFloat().coerceIn(0f, 0.7f))),
-            )
-        }
+        // ?????
+        ReaderBrightnessOverlay(brightness = readerSettings.brightness)
 
-        AnimatedVisibility(
+        ReaderTopBar(
             visible = barsVisible,
-            modifier = Modifier.align(Alignment.TopCenter),
-            enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }),
-            exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(barBg.copy(alpha = 0.96f))
-                    .statusBarsPadding()
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = { saveProgress(); onBack() }) { Text("← 返回", color = fg) }
-                Text(
-                    session.chapterTitle(chapterIndex),
-                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-                    color = fg,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                TextButton(onClick = { showToc = !showToc }) { Text("目录", color = fg) }
-            }
-        }
+            title = session.chapterTitle(chapterIndex),
+            barBg = barBg,
+            fg = fg,
+            onBack = { saveProgress(); onBack() },
+            onToggleToc = { showToc = !showToc },
+        )
 
-        AnimatedVisibility(
+        ReaderBottomBar(
             visible = barsVisible,
-            modifier = Modifier.align(Alignment.BottomCenter),
-            enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }),
-            exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(barBg.copy(alpha = 0.96f))
-                    .navigationBarsPadding()
-                    .padding(horizontal = 4.dp, vertical = 2.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(onClick = { chapterIndex = (chapterIndex - 1).coerceAtLeast(0) }) {
-                        Text("上一章", color = fg)
-                    }
-                    TextButton(onClick = {
-                        onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size - 1).coerceAtLeast(14)))
-                    }) { Text("A-", color = fg) }
-                    TextButton(onClick = {
-                        val next = THEME_CYCLE[(THEME_CYCLE.indexOf(readerSettings.theme) + 1) % THEME_CYCLE.size]
-                        onSettingsPatch(SettingsPatch(theme = next))
-                    }) { Text("主题", color = fg) }
-                    TextButton(onClick = {
-                        onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size + 1).coerceAtMost(28)))
-                    }) { Text("A+", color = fg) }
-                    TextButton(onClick = {
-                        chapterIndex = (chapterIndex + 1).coerceAtMost(session.chapters.lastIndex)
-                    }) { Text("下一章", color = fg) }
-                }
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = {
-                        onSettingsPatch(SettingsPatch(pagination = !readerSettings.pagination))
-                    }) {
-                        Text(if (readerSettings.pagination) "分页" else "滚动", color = fg)
-                    }
-                    Text(
-                        if (readerSettings.pagination && pageInfo.second > 0) {
-                            "第 ${pageInfo.first + 1} / ${pageInfo.second} 页"
-                        } else {
-                            "${(scrollRatio * 100).roundToInt()}%"
-                        },
-                        modifier = Modifier.weight(1f).padding(end = 12.dp),
-                        color = fg,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                    )
-                }
-            }
-        }
+            barBg = barBg,
+            fg = fg,
+            theme = readerSettings.theme,
+            pagination = readerSettings.pagination,
+            pageInfo = pageInfo,
+            scrollRatio = scrollRatio,
+            onPrevChapter = { chapterIndex = (chapterIndex - 1).coerceAtLeast(0) },
+            onNextChapter = { chapterIndex = (chapterIndex + 1).coerceAtMost(session.chapters.lastIndex) },
+            onFontDec = { onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size - 1).coerceAtLeast(14))) },
+            onFontInc = { onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size + 1).coerceAtMost(28))) },
+            onThemeChange = { onSettingsPatch(SettingsPatch(theme = it)) },
+            onTogglePagination = { onSettingsPatch(SettingsPatch(pagination = !readerSettings.pagination)) },
+        )
 
-        // 目录弹层。
-        AnimatedVisibility(
+        ReaderTocDrawer(
             visible = showToc,
-            modifier = Modifier.fillMaxSize(),
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.32f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { showToc = false },
-            )
-        }
-        AnimatedVisibility(
-            visible = showToc,
-            modifier = Modifier.align(Alignment.CenterEnd),
-            enter = slideInHorizontally(initialOffsetX = { it }),
-            exit = slideOutHorizontally(targetOffsetX = { it }),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.82f)
-                    .widthIn(max = 280.dp)
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(12.dp),
-            ) {
-                Text("目录", style = MaterialTheme.typography.titleMedium)
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    itemsIndexed(session.chapters) { i, _ ->
-                        TextButton(onClick = {
-                            saveProgress()
-                            chapterIndex = i
-                            showToc = false
-                        }) {
-                            Text(
-                                session.chapterTitle(i),
-                                color = if (i == chapterIndex) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-        }
+            chapters = session.chapters,
+            currentChapter = chapterIndex,
+            titleFn = { session.chapterTitle(it) },
+            onDismiss = { showToc = false },
+            onSelect = { i -> saveProgress(); chapterIndex = i; showToc = false },
+        )
 
-        // 图片查看（长按打开，×/返回关闭，保存走 SAF）。
         lightboxSrc?.let { src ->
-            var zoom by remember(src) { mutableFloatStateOf(1f) }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.94f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { /* 点空白不退出，防误触 */ },
-            ) {
-                NativeLightboxImage(
-                    src = src,
-                    imageBytes = ::imageBytes,
-                    zoom = zoom,
-                    onZoom = { zoom = it },
-                    modifier = Modifier.fillMaxSize(),
-                )
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp),
-                ) {
-                    IconButton(onClick = {
-                        pendingSaveUrl = src
-                        saveLauncher.launch("AnkeShelf-image.jpg")
-                    }) {
-                        Icon(Icons.Filled.FileDownload, contentDescription = "保存", tint = Color.White)
-                    }
-                    IconButton(onClick = { lightboxSrc = null }) {
-                        Icon(Icons.Filled.Close, contentDescription = "关闭", tint = Color.White)
-                    }
-                }
-            }
+            ReaderLightbox(
+                src = src,
+                onClose = { lightboxSrc = null },
+                onSave = {
+                    pendingSaveUrl = src
+                    saveLauncher.launch("AnkeShelf-image.jpg")
+                },
+                imageBytes = ::imageBytes,
+            )
         }
     }
 
@@ -581,44 +446,3 @@ fun NativeReaderScreen(
     }
 }
 
-@Composable
-private fun NativeLightboxImage(
-    src: String,
-    imageBytes: suspend (String) -> ByteArray?,
-    zoom: Float,
-    onZoom: (Float) -> Unit,
-    modifier: Modifier,
-) {
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, src) {
-        value = withContext(Dispatchers.IO) {
-            imageBytes(src)?.let { bytes ->
-                runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }.getOrNull()
-            }
-        }
-    }
-    val bmp = bitmap
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        if (bmp != null) {
-            Image(
-                bitmap = bmp,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = zoom
-                        scaleY = zoom
-                    }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { onZoom(if (zoom == 1f) 2f else 1f) },
-                contentScale = ContentScale.Fit,
-            )
-        } else {
-            Text("图片加载中…", color = Color.White.copy(alpha = 0.7f))
-        }
-    }
-}

@@ -48,6 +48,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：P3 NativeReaderScreen Chrome 拆分
+
+- 处理：`NativeReaderScreen.kt` 从 624 行降至 448 行——新增 `NativeReaderChrome.kt`：
+  亮度遮罩 / 顶栏 / 底栏 / 目录抽屉 / 图片查看 / 图片组件（BoxScope 扩展，内部
+  THEME_CYCLE + themeColor）；外壳只保留状态、进度写入、WebView 装配与生命周期。
+  进度/生命周期逻辑零改动，UI 块以回调参数上提。
+- 验证：`testDebugUnitTest` 106 过 / 1 跳（行为零变化）；`assembleDebug` 通过。
+
 ### 2026-08-14 android：P3 DownloadScreen 大屏拆分
 
 - 处理：`DownloadScreen.kt` 从 982 行降至 349 行——登录配置 + 下载/更新拆到
