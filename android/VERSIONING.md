@@ -98,7 +98,20 @@
      --title "安科书架 Android vX.Y.Z" --notes "..."
    ```
 
-7. 资产核验（REST API，核对资产名与大小/SHA256 与本地一致）：
+7. 生成发布摘要（仓库根目录执行；随 Release 一并上传 sidecar）：
+
+   ```powershell
+   python scripts/release_manifest.py --version android-vX.Y.Z `
+     --apk dist/AnkeShelf-vX.Y.Z-android.apk `
+     --out dist/AnkeShelf-vX.Y.Z-android.release.txt
+   Get-FileHash -LiteralPath dist/AnkeShelf-vX.Y.Z-android.apk -Algorithm SHA256 | `
+     ForEach-Object { "apk_sha256=$($_.Hash)" } | `
+     Set-Content -Encoding ASCII dist/AnkeShelf-vX.Y.Z-android.apk.sha256
+   ```
+
+   release.txt 含版本 / commit / 数据契约版本 / 构建环境 / APK SHA-256。
+
+8. 资产核验（REST API，核对资产名与大小/SHA256 与本地一致）：
 
    ```powershell
    gh api repos/gighi-947/anke-shelf/releases/tags/android-vX.Y.Z `

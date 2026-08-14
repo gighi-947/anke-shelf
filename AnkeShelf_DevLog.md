@@ -48,6 +48,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：发布资产摘要接入 Android SOP
+
+- 处理：`android/VERSIONING.md` 发布清单新增“生成发布摘要”步骤——用仓库根
+  `scripts/release_manifest.py` 对 `dist/AnkeShelf-vX.Y.Z-android.apk` 生成
+  `.release.txt`（版本/commit/数据契约版本/构建环境/APK SHA-256）与
+  `.apk.sha256` sidecar，随 Release 上传。
+- 验证：对 `dist/AnkeShelf-v1.0.0-android.apk` 实测生成正确。
+
 ### 2026-08-14 win：Windows 前端拆分收官——nga_download.js
 
 - 处理：`nga_download.js` 从 870 行降至 622 行——下载/更新/导出/配置四个面板
