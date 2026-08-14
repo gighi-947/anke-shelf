@@ -221,6 +221,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P3：大型文件渐进拆分
 
+> 状态（2026-08-14）：`reader-lite.js` 已完成模块化——`reader-lite.parts/` 6 个模块
+> （core / geometry / textpos / paging / layout / api）+ 合并脚本 + 字节级一致性守卫，
+> parts 不入 APK。Kotlin 大屏拆分与 Windows 前端拆分待办。
+
 - `SettingsScreen.kt`：路由装配 + 各 Panel 独立文件 + 状态模型独立；
 - `DownloadScreen.kt`：表单/任务状态/已下载列表/进度独立；
 - `NativeReaderScreen.kt`：按会话生命周期、控制条与抽屉、图片查看器、

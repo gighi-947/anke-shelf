@@ -26,6 +26,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Validate reader JS syntax and exports
         run: node --check app/src/main/assets/reader/reader-lite.js
+      - name: Validate reader-lite.js equals parts bundle
+        run: node android/scripts/bundle-reader-lite.js
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
       - name: Assemble debug APK

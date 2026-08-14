@@ -48,6 +48,17 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：P3 reader-lite.js 模块化拆分
+
+- 处理：现役渲染内核按功能边界切成 `reader-lite.parts/` 6 个模块（00-core /
+  10-geometry / 20-textpos / 30-paging / 40-layout / 50-api）；新增
+  `android/scripts/bundle-reader-lite.js`（--write 重生成 / 无参字节级校验）与
+  `contracts/tests/reader-lite-parts.test.js` 一致性守卫；android.yml 增加校验步骤；
+  `androidResources.ignoreAssetsPattern` 使 parts 不进 APK。
+- 验证：parts 拼接与现役文件字节一致（37,327 字节）；node 校验 + bridge-contract 通过；
+  `testDebugUnitTest` 106 过 / 1 跳；`assembleDebug` 通过，APK 内无 parts、
+  `reader-lite.js` 在。
+
 ### 2026-08-14 docs：P3 开源治理收尾（dependabot + CHANGELOG）
 
 - 处理：新增 `.github/dependabot.yml`（pip / gradle / github-actions 每周更新，

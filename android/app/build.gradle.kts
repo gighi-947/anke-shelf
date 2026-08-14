@@ -58,6 +58,11 @@ android {
         compose = true
         buildConfig = true
     }
+
+    // reader-lite.parts 仅作模块化源码（构建/CI 合并校验），不进 APK。
+    androidResources {
+        ignoreAssetsPattern = "reader-lite.parts:"
+    }
 }
 
 kotlin {
