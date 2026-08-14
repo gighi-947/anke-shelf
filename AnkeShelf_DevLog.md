@@ -19,7 +19,7 @@
   - Windows Python：`python -m unittest discover tests` = 229 项 OK
     （本机 Python 3.14 与沙箱 3.12 双环境）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（40 方法一致）、
+    `node contracts/tests/api-contract.test.js`（45 方法一致）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 109 过 / 1 跳；DisciplineTest 在岗；
@@ -47,6 +47,15 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-14 docs：总体完成状况核验（api-contract 基线 40 → 45）
+
+- 处理：对照仓库现状逐项核验里程碑产物与测试基线，修正 DevLog「当前状态」
+  与路线图 §2.1 中过期的 `api-contract 40 方法`（统一备份包新增 3 个 API 后
+  实为 45 方法）；确认治理文件（CONTRIBUTING / SECURITY / CODEOWNERS /
+  ISSUE_TEMPLATE / PR 模板）与 reader.js 注释编码损坏均已修复。
+- 验证：Windows Python 229 项 OK；JS textpos 15 例、api-contract 45 方法、
+  bridge v1、reader-lite parts 6 模块、reader-session 均 OK；Android 109 过 / 1 跳。
 
 ### 2026-08-14 android：统一 task_id（下载/更新/导出/索引 + 诊断包）
 
