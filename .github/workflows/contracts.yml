@@ -34,8 +34,10 @@ jobs:
           python-version: '3.12'
       - name: Install schema validator
         run: pip install jsonschema
-      - name: Node API manifest comparison
-        run: node contracts/tests/api-contract.test.js
+      - name: Node API manifest comparison and launch diagnostics
+        run: |
+          node contracts/tests/api-contract.test.js
+          node contracts/tests/api-contract-launch.test.js
       - name: Node textpos contract
         run: node contracts/tests/textpos.test.js
       - name: Python contract and API contract tests

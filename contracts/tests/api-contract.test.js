@@ -15,6 +15,11 @@ const python = process.env.PYTHON || 'python';
 const script =
   'import json; from app.api import api_manifest; print(json.dumps(api_manifest()))';
 const res = spawnSync(python, ['-c', script], { cwd: ROOT, encoding: 'utf8' });
+if (res.error) {
+  const reason = [res.error.code, res.error.message].filter(Boolean).join(': ');
+  console.error(`无法启动 Python（${python}）：${reason}`);
+  process.exit(1);
+}
 if (res.status !== 0) {
   console.error((res.stderr || res.stdout || '').trim());
   process.exit(1);
