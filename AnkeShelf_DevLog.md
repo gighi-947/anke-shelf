@@ -48,6 +48,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 docs：批次 E 首项（CONTRIBUTING 入口提示 + 对外贡献门槛）
+
+- 处理（按 REVIEW_ACTION_PLAN）：CONTRIBUTING.md 顶部加醒目
+  “开发前必读 AGENTS.md”；外部贡献者只需在 PR 写明改动摘要与验证，
+  DevLog 流水由维护者合并时代写（降低 P2.3 门槛）。
+- 批次 C 标记暂缓：项目无第二 owner，CODEOWNERS 拆分与 branch protection
+  待有第二人后开启。
+- 验证：纯文档改动，未跑构建。
+
 ### 2026-08-14 win/docs：批次 B 合规补齐（P1.4 vendored LICENSE + NOTICE）
 
 - 处理（按 REVIEW_ACTION_PLAN）：`ngapost2md-python/` 补上游 MIT LICENSE

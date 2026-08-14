@@ -1,5 +1,8 @@
 # 参与贡献（Contributing）
 
+> ⚠ 开发前必读 [AGENTS.md](AGENTS.md)——真正的开发铁律（双端边界、
+> 失败显式化、测试纪律、调试五步循环）都在那里，本文件只是入口。
+
 感谢你对安科书架（AnkeShelf）的关注。仓库是单主干 `main` 开发，
 Windows 与 Android 两端独立实现、共享数据契约。
 
@@ -46,13 +49,14 @@ powershell -ExecutionPolicy Bypass -File android/scripts/check-release.ps1 -ApkP
 
 - 提交前缀：`android:` / `win:` / `docs:`；功能分支 `android/<feature>`、`win/<feature>`。
 - 每次改动必须补记 [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)「最近流水」（日期 + 提交 + 现象/结论）。
+  **外部贡献者**只需在 PR 中写明改动摘要与验证结果，DevLog 流水由维护者合并时代写。
 - 涉及 HEAD/版本线/测试基线/CI 清单的改动，收尾跑文档漂移检查并同步非归档文档。
 
 ## Pull Request 清单
 
 - [ ] 说明改动目标、成功标准与验证方式
 - [ ] 相关单测 / 契约守卫 / `DisciplineTest` 通过
-- [ ] DevLog「最近流水」已补记
+- [ ] DevLog「最近流水」已补记（外部贡献者：PR 已写明改动摘要与验证即可，由维护者代写）
 - [ ] 共享文件 / 数据契约字段已做 Diff 影响检查（Windows / Android / CI / 文档）
 - [ ] 无凭据、敏感数据与大体积二进制混入
 

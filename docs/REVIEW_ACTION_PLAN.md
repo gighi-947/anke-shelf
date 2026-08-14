@@ -88,7 +88,10 @@
 - **B4** 更新 `THIRD_PARTY_NOTICES.md`，移除“上游 commit 待钉”待办。
 - 验证：凭据/许可扫描；文档漂移扫描；Python 全量测试不受影响。
 
-### 批次 C：仓库设置（P1.1，需仓库维护者操作）
+### 批次 C：仓库设置（P1.1，⏸ 2026-08-14 暂缓）
+
+> 暂缓原因：本项目无第二维护者，CODEOWNERS 拆模块与 branch protection
+> 需要真实 backup owner；待有第二人后再开启。
 
 - **C1** `.github/CODEOWNERS` 按 Windows / Android / contracts / docs 拆模块，
   并指定 backup owner（文件可先行拆分）。
@@ -107,7 +110,7 @@
   JVM 111 过 / 1 跳；DisciplineTest 在岗。
 - 风险提示：动阅读内核加载链，按阅读器铁律（AGENTS.md §3）执行。
 
-### 批次 E：低优先 / 延后
+### 批次 E：低优先 / 延后（E1 / E2 已于 2026-08-14 完成）
 
 - **E1（P2.2）** CONTRIBUTING.md 顶部醒目标记“开发前必读 AGENTS.md”。
 - **E2（P2.3）** 对外贡献说明：外部 PR 只要求“改动摘要 / 验证”，
