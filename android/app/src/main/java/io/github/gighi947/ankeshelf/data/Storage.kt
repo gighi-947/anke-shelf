@@ -11,6 +11,8 @@ import kotlinx.serialization.json.Json
 
 private val BASE_SECONDS: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+private val CORRUPT_STAMP: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssSSSSSS'Z'")
 
 /** UTC ISO 时间戳（秒级），与桌面 storage.now_iso 同格式（+00:00 偏移）。 */
 fun nowIso(): String =
@@ -59,7 +61,23 @@ inline fun <reified T> readJsonStore(file: File, json: Json = Shelf.json): Store
     return try {
         StoreLoadResult.Ok(json.decodeFromString<T>(text))
     } catch (e: Exception) {
+        isolateCorrupt(file)
         StoreLoadResult.Corrupt(e.toString())
+    }
+}
+
+/** 损坏 JSON 退出权威路径，保留原始字节供诊断或人工恢复。 */
+@PublishedApi
+internal fun isolateCorrupt(file: File): File? {
+    if (!file.exists()) return null
+    val stamp = CORRUPT_STAMP.format(OffsetDateTime.now(ZoneOffset.UTC))
+    val target = File(file.parentFile, "${file.name}.corrupt-$stamp")
+    return try {
+        Files.move(file.toPath(), target.toPath())
+        target
+    } catch (e: Exception) {
+        logWarn("AnkeShelf", "${file.name} 损坏文件隔离失败：$e")
+        null
     }
 }
 

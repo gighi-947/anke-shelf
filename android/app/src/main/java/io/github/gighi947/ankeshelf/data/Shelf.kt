@@ -196,7 +196,7 @@ class ProgressStore(private val progressFile: File) {
         lock.withLock { data = loaded.progress.toMutableMap() }
     }
 
-    fun save() {
+    private fun save() {
         val snapshot = lock.withLock { data.toMap() }
         writeLock.withLock {
             atomicWriteJson(
@@ -231,11 +231,22 @@ class ProgressStore(private val progressFile: File) {
             updated_at = nowIso(),
         )
         lock.withLock { data[bookId] = entry }
-        io.execute { runCatching { save() } }
+        io.execute {
+            writeNow().exceptionOrNull()?.let { error ->
+                logWarn("AnkeShelf", "progress.json 后台写入失败：$error")
+            }
+        }
     }
 
-    /** 立即同步落盘（退出阅读器/切章/退后台前调用），幂等。 */
-    fun flush() = save()
+    /** 立即同步落盘；调用方必须处理失败，不能把退出时写盘错误静默丢弃。 */
+    fun flush(): Result<Unit> = writeNow()
+
+    private fun writeNow(): Result<Unit> = try {
+        save()
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 
     fun remove(bookId: String) {
         lock.withLock {

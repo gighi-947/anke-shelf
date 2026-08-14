@@ -71,33 +71,32 @@ class ChapterProgressTracker(
     fun restoreTotalFor(chapter: Int): Int = synchronized(lock) { state.restoreTotalFor(chapter) }
 
     /** 滚动/页面上报：更新内存，500ms 防抖落盘（对齐桌面 scroll debounce）。 */
-    fun onOffset(chapter: Int, offset: Int, page: Int = -1, total: Int = -1, ratio: Double = -1.0) {
+    fun onOffset(chapter: Int, offset: Int, ratio: Double = -1.0) {
         synchronized(lock) {
             state = ProgressModel.apply(
                 state,
-                ProgressEvent.Scroll(chapter, offset, page, total, ratio, System.currentTimeMillis()),
+                ProgressEvent.Scroll(chapter, offset, ratio, System.currentTimeMillis()),
             ).state
             rescheduleDebounceLocked(chapter)
         }
     }
 
-    /** 换章前刷新旧章 offset：不动页码（该章页码由翻页事件维护）。 */
-    fun onOffsetKeepPage(chapter: Int, offset: Int, ratio: Double = -1.0) {
+    /** 分页换章前刷新旧章文本锚点；页码沿用最后一次翻页事件，滚动比例强制清除。 */
+    fun onPagedAnchor(chapter: Int, offset: Int) {
         synchronized(lock) {
             state = ProgressModel.apply(
                 state,
-                ProgressEvent.ScrollKeepPage(chapter, offset, ratio, System.currentTimeMillis()),
+                ProgressEvent.PagedAnchor(chapter, offset),
             ).state
-            rescheduleDebounceLocked(chapter)
         }
     }
 
     /** 翻页事件：立即落盘（对齐桌面 onPageTurned -> saveProgress），携带页码供精确恢复。 */
-    fun onPageTurn(chapter: Int, offset: Int, page: Int = -1, total: Int = -1, ratio: Double = -1.0) {
+    fun onPageTurn(chapter: Int, offset: Int, page: Int = -1, total: Int = -1) {
         val decision = synchronized(lock) {
             val d = ProgressModel.apply(
                 state,
-                ProgressEvent.PageTurn(chapter, offset, page, total, ratio, System.currentTimeMillis()),
+                ProgressEvent.PageTurn(chapter, offset, page, total, System.currentTimeMillis()),
             )
             state = d.state
             d
@@ -106,11 +105,12 @@ class ChapterProgressTracker(
     }
 
     /** 换章：立即落盘旧章，避免异步 JS 事件在新页加载后被丢弃。 */
-    fun onChapterSwitch(from: Int, to: Int) {
+    fun onChapterSwitch(from: Int) {
         val decision = synchronized(lock) {
+            pending.remove(from)?.cancel(false)
             val d = ProgressModel.apply(
                 state,
-                ProgressEvent.ChapterSwitch(from, to, System.currentTimeMillis()),
+                ProgressEvent.ChapterSwitch(from),
             )
             state = d.state
             d
@@ -123,7 +123,7 @@ class ChapterProgressTracker(
         val decision = synchronized(lock) {
             pending.values.forEach { it.cancel(false) }
             pending.clear()
-            val d = ProgressModel.apply(state, ProgressEvent.Flush(System.currentTimeMillis()))
+            val d = ProgressModel.apply(state, ProgressEvent.Flush)
             state = d.state
             d
         }
@@ -133,10 +133,11 @@ class ChapterProgressTracker(
     /** 屏幕销毁后的延迟关闭：阻止页面销毁期间迟到的桥事件覆盖正确进度。 */
     fun close() {
         synchronized(lock) {
-            state = ProgressModel.apply(state, ProgressEvent.Close(System.currentTimeMillis())).state
+            state = ProgressModel.apply(state, ProgressEvent.Close).state
             pending.values.forEach { it.cancel(false) }
             pending.clear()
         }
+        scheduler.shutdownNow()
     }
 
     private fun rescheduleDebounceLocked(chapter: Int) {

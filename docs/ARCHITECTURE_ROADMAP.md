@@ -6,7 +6,8 @@
 > P0 / P1 已按本路线图落地；随后推进至 `edaf442`（依赖锁定，另含 ADR/治理文档），
 > 再推进至 `ad034b8`（Android 桥协议 + 进度回放）、`d697330`（P2 jsoup 清洗）、
 > `9e84c4c`（P2 错误模型）与 `cb40cee`（P2 诊断闭环）；随后 `96eb2e7`
-> （统一备份包）、`b63809f`（统一 task_id）、`867e7ea`（章节读取失败模型）。
+> （统一备份包）、`b63809f`（统一 task_id）、`867e7ea`（章节读取失败模型），
+> 当前仓库 HEAD 为 `ff2dae9`；Android 数据/阅读链路显式失败修复在工作树待提交。
 > 各节“状态”注明进度。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
@@ -50,11 +51,12 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 功能基线 | `867e7ea`（android: 章节读取失败模型；2026-08-14 核对） |
+| 仓库基线 | `ff2dae9`（当前 Android 修复在工作树待提交；2026-08-14 核对） |
 | 分支 | `main`，与 `origin/main` 同步 |
 | Windows Python 单测 | 230 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 45 methods + `reader-session` OK |
-| Android JVM 单测 | 111 过 / 1 跳（2026-08-14 实跑） |
+| Android JVM 单测 | 117 过 / 1 跳（2026-08-14 强制重跑） |
+| Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 92 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
 
@@ -63,7 +65,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | 文件 | 行数 | 关注点 |
 | --- | --- | --- |
 | `android/.../data/Html5Entities.kt` | 2129 | 机械生成表，正常 |
-| `android/.../ui/reader/WebViewChapterView.kt` | 594 | 桥与宿主 |
+| `android/.../ui/reader/WebViewChapterView.kt` | 605 | 桥与宿主；本轮已审查模式分流增量 |
 | `android/.../ui/shelf/BookshelfScreen.kt` | 591 | 书架页，未拆分 |
 | `android/.../data/NativeBook.kt` | 562 | 原生书数据层 |
 | `android/.../ui/settings/SettingsScreen.kt` | 550 | 已按 Panel 拆分 |
@@ -163,7 +165,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 > 状态（2026-08-14）：已落地——ready 握手携带 `{bridgeVersion: 1, capabilities}`，
 > Kotlin `BridgeProtocol` 校验版本；`ChapterProgressTracker` 决策层下沉为纯函数
 > `ProgressModel`（虚拟时钟），`contracts/fixtures/progress/` 7 份事件序列夹具由
-> Kotlin 回放、JS 桥测试校验握手。真机回归保留。
+> Kotlin 回放、JS 桥测试校验握手。后续审查已把 Scroll / PageTurn /
+> PagedAnchor 的互斥字段收进事件类型，并在 close 释放调度线程；真机回归保留。
 
 - `WebViewChapterView.kt` / `reader-lite.js`：ready 握手增加
   `{bridge_version: 1, capabilities: [...]}`，版本不兼容时明确失败并记诊断；
@@ -220,13 +223,15 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 > 状态（2026-08-14）：核心项已完成——`readJsonStore` / `StoreLoadResult`
 > （Missing / Corrupt / IoError 显式区分，各 store 回退默认并记日志）；
 > `BookRepository` 的 openSession / importEpub / registerNativeDir /
-> registerEpubFile 改返回 `RepoResult`（NotFound / Corrupt / Io / Permission），
+> registerEpubFile 改返回 `RepoResult`（NotFound / Corrupt / Io），
 > UI 用 when 展示 Domain 错误；删除无生产调用方的 `Settings.get(key): Any?`，
-> 统一走类型化 `getAll()`。残余 null 收敛与降级日志保持现状。
+> 统一走类型化 `getAll()`。后续审查已补损坏 JSON `.corrupt-*` 隔离、
+> 搜索索引章节读取失败分支与进度写盘失败诊断；`registerNativeDir` 的元数据
+> 读取失败已与格式损坏分流并通过真机权限回归；残余 null 收敛保持现状。
 
 - `data/Storage.kt` 的 `readJsonOrNull` 拆为显式 `Result`/sealed 错误；
 - `service/BookRepository.kt` 的 `openSession/importEpub/registerNativeDir`
-  返回显式失败类型（损坏/格式/权限/不存在）；
+  返回显式失败类型（损坏/IO/不存在）；
 - `data/Settings.kt`、`data/NgaConfig.kt`、`data/Annotations.kt` 的
   null/异常路径收敛；确有必要的降级（如 `ATOMIC_MOVE` 回退）保留但记日志；
 - `Settings.get(key): Any?` 评估替换为类型化访问或按域查询。

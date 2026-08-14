@@ -87,6 +87,15 @@ class DisciplineTest {
             js.contains("callBridge('saveProgress', state.chapterIndex, o, true, -1, -1, state.scrollRatio)"),
         )
 
+        val model = File(
+            repoRoot,
+            "android/app/src/main/java/io/github/gighi947/ankeshelf/ui/reader/ProgressModel.kt",
+        ).readText()
+        val scrollEvent = model.substringAfter("data class Scroll(").substringBefore(") : ProgressEvent")
+        val pageEvent = model.substringAfter("data class PageTurn(").substringBefore(") : ProgressEvent")
+        assertFalse("Scroll 事件不得携带分页字段", scrollEvent.contains("page") || scrollEvent.contains("total"))
+        assertFalse("PageTurn 事件不得携带滚动比例", pageEvent.contains("ratio"))
+
         for (export in listOf(
             "currentScrollState: currentScrollState",
             "geometry: geometry",

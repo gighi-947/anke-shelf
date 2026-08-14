@@ -93,6 +93,27 @@ class SearchIndexTest {
     }
 
     @Test
+    fun `chapter read failure fails index instead of becoming empty text`() {
+        val session = BookSession(
+            id = "broken-book",
+            title = "损坏书籍",
+            author = "",
+            chapters = listOf(SpineItem(0, "id0", "c0.xhtml")),
+            textFn = { ChapterReadResult.Io("disk unavailable") },
+            titleFn = { "第一章" },
+            closeFn = {},
+        )
+        val idx = SearchIndex(session)
+
+        idx.ensureBuiltSync()
+        val resp = idx.search("安科")
+
+        assertFalse(resp.ready)
+        assertTrue(resp.error.contains("第 1 章"))
+        assertTrue(resp.error.contains("disk unavailable"))
+    }
+
+    @Test
     fun historyDedupesAndKeepsTen() {
         val file = Files.createTempFile("search-history", ".json").toFile()
         try {

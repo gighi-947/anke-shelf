@@ -16,7 +16,7 @@ class ProgressTest {
     fun `set get roundtrip and clamp`() {
         val store = ProgressStore(File(Files.createTempDirectory("progress").toFile(), "progress.json"))
         store.set("a".repeat(32), 3, 1204)
-        store.flush()
+        assertTrue(store.flush().isSuccess)
         store.load()
         val p = store.get("a".repeat(32))
         assertEquals(3, p!!.chapter_index)
@@ -44,7 +44,7 @@ class ProgressTest {
         val file = File(Files.createTempDirectory("progress").toFile(), "progress.json")
         val store = ProgressStore(file)
         store.set("a".repeat(32), 0, 0)
-        store.flush()
+        assertTrue(store.flush().isSuccess)
         val data = Shelf.json.parseToJsonElement(file.readText(Charsets.UTF_8)).jsonObject
         assertEquals(2, data["version"]!!.jsonPrimitive.int)
     }
@@ -53,7 +53,7 @@ class ProgressTest {
     fun `scroll ratio roundtrip and clamp`() {
         val store = ProgressStore(File(Files.createTempDirectory("progress").toFile(), "progress.json"))
         store.set("a".repeat(32), 1, 200, scrollRatio = 0.5)
-        store.flush()
+        assertTrue(store.flush().isSuccess)
         store.load()
         assertEquals(0.5, store.get("a".repeat(32))!!.scroll_ratio, 0.001)
 
@@ -73,6 +73,18 @@ class ProgressTest {
         val reloaded = ProgressStore(file).also { it.load() }
         assertEquals(2, reloaded.get("a".repeat(32))!!.chapter_index)
         assertEquals(777, reloaded.get("a".repeat(32))!!.text_offset)
+    }
+
+    @Test
+    fun `flush reports write failure`() {
+        val dir = Files.createTempDirectory("progress").toFile()
+        val notDirectory = File(dir, "blocked").apply { writeText("file") }
+        val store = ProgressStore(File(notDirectory, "progress.json"))
+        store.set("a".repeat(32), 2, 777)
+
+        val result = store.flush()
+
+        assertTrue(result.isFailure)
     }
 
     @Test

@@ -91,7 +91,7 @@ class ChapterProgressTrackerTest {
         val store = FakeStore()
         val t = tracker(store)
         t.onOffset(0, 111)
-        t.onChapterSwitch(0, 1)
+        t.onChapterSwitch(0)
         assertTrue(store.persisted.any { it.chapter == 0 && it.offset == 111 })
     }
 
@@ -165,5 +165,19 @@ class ChapterProgressTrackerTest {
         t.flush()
         assertEquals(-1.0, t.restoreRatioFor(0), 0.001)
         assertTrue(store.persisted.any { it.chapter == 0 && it.offset == 320 && it.ratio == -1.0 })
+    }
+
+    @Test
+    fun `close shuts down private scheduler`() {
+        val tracker = tracker(FakeStore())
+        tracker.onOffset(0, 100)
+        val field = ChapterProgressTracker::class.java.getDeclaredField("scheduler").apply {
+            isAccessible = true
+        }
+        val scheduler = field.get(tracker) as java.util.concurrent.ScheduledExecutorService
+
+        tracker.close()
+
+        assertTrue(scheduler.isShutdown)
     }
 }

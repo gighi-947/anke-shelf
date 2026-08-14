@@ -22,6 +22,8 @@ data class ProgressState(
     val lastTotal: Map<Int, Int> = emptyMap(),
     val saved: Map<Int, Int> = emptyMap(),
     val savedRatio: Map<Int, Double> = emptyMap(),
+    val savedPage: Map<Int, Int> = emptyMap(),
+    val savedTotal: Map<Int, Int> = emptyMap(),
     val debounceUntil: Map<Int, Long> = emptyMap(),
     val closed: Boolean = false,
 ) {
@@ -31,44 +33,30 @@ data class ProgressState(
     fun restoreTotalFor(chapter: Int): Int = lastTotal[chapter] ?: -1
 }
 
-/** 进度事件：所有写入都带来源语义与虚拟时刻，可离线回放。 */
+/** 进度事件：滚动与分页字段在类型上隔离，可离线回放。 */
 sealed interface ProgressEvent {
-    val at: Long
-
     data class Scroll(
         val chapter: Int,
         val offset: Int,
-        val page: Int = -1,
-        val total: Int = -1,
         val ratio: Double = -1.0,
-        override val at: Long,
+        val at: Long,
     ) : ProgressEvent
 
-    data class ScrollKeepPage(
-        val chapter: Int,
-        val offset: Int,
-        val ratio: Double = -1.0,
-        override val at: Long,
-    ) : ProgressEvent
+    data class PagedAnchor(val chapter: Int, val offset: Int) : ProgressEvent
 
     data class PageTurn(
         val chapter: Int,
         val offset: Int,
         val page: Int = -1,
         val total: Int = -1,
-        val ratio: Double = -1.0,
-        override val at: Long,
+        val at: Long,
     ) : ProgressEvent
 
-    data class ChapterSwitch(
-        val from: Int,
-        val to: Int,
-        override val at: Long,
-    ) : ProgressEvent
+    data class ChapterSwitch(val from: Int) : ProgressEvent
 
-    data class Flush(override val at: Long) : ProgressEvent
-    data class Close(override val at: Long) : ProgressEvent
-    data class DebounceDue(val chapter: Int, override val at: Long) : ProgressEvent
+    data object Flush : ProgressEvent
+    data object Close : ProgressEvent
+    data class DebounceDue(val chapter: Int, val at: Long) : ProgressEvent
 }
 
 data class ProgressDecision(val state: ProgressState, val persists: List<ProgressPersist>)
@@ -101,6 +89,8 @@ object ProgressModel {
             lastTotal = lastTotal,
             saved = lastKnown,
             savedRatio = lastRatio,
+            savedPage = lastPage,
+            savedTotal = lastTotal,
         )
     }
 
@@ -109,35 +99,45 @@ object ProgressModel {
             return ProgressDecision(current, emptyList())
         }
         return when (event) {
-            is ProgressEvent.Close ->
+            ProgressEvent.Close ->
                 ProgressDecision(current.copy(closed = true, debounceUntil = emptyMap()), emptyList())
             is ProgressEvent.Scroll -> scroll(current, event)
-            is ProgressEvent.ScrollKeepPage -> scrollKeepPage(current, event)
+            is ProgressEvent.PagedAnchor -> pagedAnchor(current, event)
             is ProgressEvent.PageTurn -> pageTurn(current, event)
             is ProgressEvent.ChapterSwitch -> chapterSwitch(current, event)
-            is ProgressEvent.Flush -> flush(current)
+            ProgressEvent.Flush -> flush(current)
             is ProgressEvent.DebounceDue -> debounceDue(current, event)
         }
     }
 
     private fun scroll(current: ProgressState, e: ProgressEvent.Scroll): ProgressDecision {
         if (e.offset <= 0) return ProgressDecision(current, emptyList())
-        val next = applyScrollFields(current, e.chapter, e.offset, e.page, e.total, e.ratio)
-        return scheduleDebounce(next, e.chapter, e.at)
-    }
-
-    private fun scrollKeepPage(current: ProgressState, e: ProgressEvent.ScrollKeepPage): ProgressDecision {
-        if (e.offset <= 0) return ProgressDecision(current, emptyList())
         val next = current.copy(
             lastKnown = current.lastKnown + (e.chapter to e.offset),
             lastRatio = applyRatio(current.lastRatio, e.chapter, e.ratio),
+            lastPage = current.lastPage - e.chapter,
+            lastTotal = current.lastTotal - e.chapter,
         )
         return scheduleDebounce(next, e.chapter, e.at)
     }
 
+    private fun pagedAnchor(current: ProgressState, e: ProgressEvent.PagedAnchor): ProgressDecision {
+        if (e.offset <= 0) return ProgressDecision(current, emptyList())
+        val next = current.copy(
+            lastKnown = current.lastKnown + (e.chapter to e.offset),
+            lastRatio = current.lastRatio - e.chapter,
+        )
+        return ProgressDecision(next, emptyList())
+    }
+
     private fun pageTurn(current: ProgressState, e: ProgressEvent.PageTurn): ProgressDecision {
         if (e.offset <= 0) return ProgressDecision(current, emptyList())
-        val next = applyScrollFields(current, e.chapter, e.offset, e.page, e.total, e.ratio)
+        val next = current.copy(
+            lastKnown = current.lastKnown + (e.chapter to e.offset),
+            lastRatio = current.lastRatio - e.chapter,
+            lastPage = applyPage(current.lastPage, e.chapter, e.page),
+            lastTotal = applyTotal(current.lastTotal, e.chapter, e.total),
+        )
         val persist = persistOf(next, e.chapter)
         return ProgressDecision(
             if (persist != null) withSaved(next, persist) else next,
@@ -146,9 +146,10 @@ object ProgressModel {
     }
 
     private fun chapterSwitch(current: ProgressState, e: ProgressEvent.ChapterSwitch): ProgressDecision {
-        val persist = persistOf(current, e.from)
+        val next = current.copy(debounceUntil = current.debounceUntil - e.from)
+        val persist = persistOf(next, e.from)
         return ProgressDecision(
-            if (persist != null) withSaved(current, persist) else current,
+            if (persist != null) withSaved(next, persist) else next,
             listOfNotNull(persist),
         )
     }
@@ -181,7 +182,9 @@ object ProgressModel {
 
     private fun scheduleDebounce(current: ProgressState, chapter: Int, at: Long): ProgressDecision {
         val changed = current.saved[chapter] != current.lastKnown[chapter] ||
-            effectiveRatio(current.savedRatio, chapter) != effectiveRatio(current.lastRatio, chapter)
+            effectiveRatio(current.savedRatio, chapter) != effectiveRatio(current.lastRatio, chapter) ||
+            effectivePage(current.savedPage, chapter) != effectivePage(current.lastPage, chapter) ||
+            effectiveTotal(current.savedTotal, chapter) != effectiveTotal(current.lastTotal, chapter)
         val next = if (changed) {
             current.copy(debounceUntil = current.debounceUntil + (chapter to (at + DEBOUNCE_MS)))
         } else {
@@ -190,31 +193,14 @@ object ProgressModel {
         return ProgressDecision(next, emptyList())
     }
 
-    private fun applyScrollFields(
-        current: ProgressState,
-        chapter: Int,
-        offset: Int,
-        page: Int,
-        total: Int,
-        ratio: Double,
-    ): ProgressState {
-        var next = current.copy(lastKnown = current.lastKnown + (chapter to offset))
-        next = next.copy(lastRatio = applyRatio(next.lastRatio, chapter, ratio))
-        next = if (page >= 0) {
-            next.copy(lastPage = next.lastPage + (chapter to page))
-        } else {
-            next.copy(lastPage = next.lastPage - chapter)
-        }
-        next = if (total > 0) {
-            next.copy(lastTotal = next.lastTotal + (chapter to total))
-        } else {
-            next.copy(lastTotal = next.lastTotal - chapter)
-        }
-        return next
-    }
-
     private fun applyRatio(map: Map<Int, Double>, chapter: Int, ratio: Double): Map<Int, Double> =
         if (ratio in 0.0..1.0) map + (chapter to ratio) else map - chapter
+
+    private fun applyPage(map: Map<Int, Int>, chapter: Int, page: Int): Map<Int, Int> =
+        if (page >= 0) map + (chapter to page) else map - chapter
+
+    private fun applyTotal(map: Map<Int, Int>, chapter: Int, total: Int): Map<Int, Int> =
+        if (total > 0) map + (chapter to total) else map - chapter
 
     private fun persistOf(state: ProgressState, chapter: Int): ProgressPersist? {
         val offset = state.lastKnown[chapter] ?: return null
@@ -222,7 +208,9 @@ object ProgressModel {
         if (offset <= 0) return null
         if (
             state.saved[chapter] == offset &&
-            effectiveRatio(state.savedRatio, chapter) == ratio
+            effectiveRatio(state.savedRatio, chapter) == ratio &&
+            effectivePage(state.savedPage, chapter) == effectivePage(state.lastPage, chapter) &&
+            effectiveTotal(state.savedTotal, chapter) == effectiveTotal(state.lastTotal, chapter)
         ) {
             return null
         }
@@ -236,9 +224,13 @@ object ProgressModel {
     }
 
     private fun effectiveRatio(map: Map<Int, Double>, chapter: Int): Double = map[chapter] ?: -1.0
+    private fun effectivePage(map: Map<Int, Int>, chapter: Int): Int = map[chapter] ?: -1
+    private fun effectiveTotal(map: Map<Int, Int>, chapter: Int): Int = map[chapter] ?: -1
 
     private fun withSaved(state: ProgressState, persist: ProgressPersist): ProgressState = state.copy(
         saved = state.saved + (persist.chapter to persist.offset),
-        savedRatio = state.savedRatio + (persist.chapter to persist.ratio),
+        savedRatio = applyRatio(state.savedRatio, persist.chapter, persist.ratio),
+        savedPage = applyPage(state.savedPage, persist.chapter, persist.page),
+        savedTotal = applyTotal(state.savedTotal, persist.chapter, persist.total),
     )
 }

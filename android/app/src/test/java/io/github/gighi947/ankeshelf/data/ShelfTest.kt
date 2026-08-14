@@ -98,6 +98,11 @@ class ShelfTest {
         shelfFile(dir).writeText("{corrupt", Charsets.UTF_8)
         shelf.load()
         assertEquals(0, shelf.listBooks().size)
+        assertFalse(shelfFile(dir).exists())
+        assertEquals(
+            1,
+            dir.listFiles()?.count { it.name.startsWith("shelf.json.corrupt-") },
+        )
     }
 
     private fun shelfFile(dir: File) = File(dir, "shelf.json")

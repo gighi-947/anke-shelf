@@ -12,10 +12,4 @@ sealed interface ChapterReadResult {
 
     /** 读取 IO 失败（容器已关闭、文件权限等）。 */
     data class Io(val detail: String) : ChapterReadResult
-
-    /** 只关心成功文本的调用点（索引、统计等缺省空串）。 */
-    fun textOrEmpty(): String = when (this) {
-        is Success -> text
-        else -> ""
-    }
 }

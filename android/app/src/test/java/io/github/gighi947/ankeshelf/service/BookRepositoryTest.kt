@@ -5,6 +5,7 @@ import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.ChapterReadResult
 import io.github.gighi947.ankeshelf.data.ProgressStore
 import io.github.gighi947.ankeshelf.data.Shelf
+import io.github.gighi947.ankeshelf.data.TextExtractor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -27,25 +28,30 @@ class BookRepositoryTest {
             val copy = File(tmp, "sample_nav3.epub")
             File(sampleUrl.toURI()).copyTo(copy)
 
-            val rec = repo.registerEpubFile(copy).getOrNull()
+            val registerResult = repo.registerEpubFile(copy)
+            assertTrue(registerResult is RepoResult.Ok)
+            val rec = (registerResult as RepoResult.Ok).value
             assertNotNull(rec)
-            assertTrue(rec!!.chapter_count > 0)
+            assertTrue(rec.chapter_count > 0)
             assertTrue(rec.title.isNotBlank())
 
             val ui = repo.listBooks()
             assertEquals(1, ui.size)
             assertEquals(0.0, ui[0].progressPct, 0.001)
 
-            val session = repo.openSession(rec).getOrNull()!!
+            val openResult = repo.openSession(rec)
+            assertTrue(openResult is RepoResult.Ok)
+            val session = (openResult as RepoResult.Ok).value
             assertEquals(rec.chapter_count, session.chapters.size)
-            assertTrue(session.chapterText(0) is ChapterReadResult.Success)
-            val len = repo.chapterPlainLength(session, 0)
+            val chapter = session.chapterText(0)
+            assertTrue(chapter is ChapterReadResult.Success)
+            val len = TextExtractor.extractDomText((chapter as ChapterReadResult.Success).text).length
             assertTrue(len > 0)
             val offset = BookRepository.offsetForRatio(0.5, len)
             assertTrue(offset in 0..len)
 
             repo.saveProgress(rec.id, 1, offset)
-            progress.flush()
+            assertTrue(progress.flush().isSuccess)
             val p = repo.progressOf(rec.id)!!
             assertEquals(1, p.chapter_index)
             assertEquals(offset, p.text_offset)
@@ -83,6 +89,23 @@ class BookRepositoryTest {
             val bad = File(tmp, "bad.epub")
             bad.writeText("not an epub", Charsets.UTF_8)
             val result = repo.registerEpubFile(bad)
+            assertEquals(BookRepoError.Corrupt, (result as RepoResult.Err).error)
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `register native directory with corrupt metadata reports Corrupt`() {
+        val tmp = kotlin.io.path.createTempDirectory("repo-").toFile()
+        try {
+            val paths = AppPaths(File(tmp, "AnkeShelf")).also { it.ensure() }
+            val repo = BookRepository(paths, Shelf(paths.shelfFile, paths.coversDir), ProgressStore(paths.progressFile))
+            val nativeDir = File(tmp, "native").apply { mkdirs() }
+            File(nativeDir, "meta.json").writeText("{broken", Charsets.UTF_8)
+
+            val result = repo.registerNativeDir(nativeDir, tid = 1)
+
             assertEquals(BookRepoError.Corrupt, (result as RepoResult.Err).error)
         } finally {
             tmp.deleteRecursively()

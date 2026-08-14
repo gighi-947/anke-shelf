@@ -99,9 +99,6 @@ sealed interface RepoResult<out T> {
     data class Err(val error: BookRepoError) : RepoResult<Nothing>
 }
 
-/** 兼容便捷访问：调用方只关心成功值时的解包（UI 需要错误展示时直接用 when）。 */
-fun <T> RepoResult<T>.getOrNull(): T? = (this as? RepoResult.Ok)?.value
-
 /** 书籍仓库：导入/登记/打开/进度（M2 阅读 MVP 核心）。 */
 class BookRepository(
     private val appPaths: AppPaths,
@@ -188,8 +185,10 @@ class BookRepository(
         }
         val book = try {
             NativeBook(dir).open()
-        } catch (_: Exception) {
+        } catch (_: EpubError) {
             return RepoResult.Err(BookRepoError.Corrupt)
+        } catch (e: Exception) {
+            return RepoResult.Err(BookRepoError.Io(e.toString()))
         }
         return try {
             val rec = BookRecord(
@@ -259,10 +258,6 @@ class BookRepository(
             RepoResult.Err(BookRepoError.Io(e.toString()))
         }
     }
-
-    /** 章纯文本长度（text_offset 坐标基准）。 */
-    fun chapterPlainLength(session: BookSession, index: Int): Int =
-        TextExtractor.extractDomText(session.chapterText(index).textOrEmpty()).length
 
     fun saveProgress(
         bookId: String,

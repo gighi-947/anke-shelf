@@ -65,7 +65,7 @@ data class WebViewReaderCallbacks(
     val onBridgeVersionMismatch: (expected: Int, actual: Int) -> Unit = { _, _ -> },
     val onMode: (paged: Boolean) -> Unit = {},
     val onProgress: (chapter: Int, offset: Int, page: Int, total: Int, ratio: Double) -> Unit = { _, _, _, _, _ -> },
-    val onProgressKeepPage: (chapter: Int, offset: Int, ratio: Double) -> Unit = { _, _, _ -> },
+    val onPagedAnchor: (chapter: Int, offset: Int) -> Unit = { _, _ -> },
     val onProgressNow: (chapter: Int, offset: Int, page: Int, total: Int, ratio: Double) -> Unit = { _, _, _, _, _ -> },
     val onScrollMoved: () -> Unit = {},
     val onPageChanged: (chapter: Int, page: Int, total: Int) -> Unit = { _, _, _ -> },
@@ -158,6 +158,7 @@ fun WebViewChapterView(
                     val latch = CountDownLatch(1)
                     var value = 0
                     var ratio = -1.0
+                    var paged = false
                     web.post {
                         web.evaluateJavascript(
                             "(function(){try{return AnkeReader.currentScrollState();}catch(e){return {o:0,r:-1,p:false};}})()",
@@ -165,14 +166,24 @@ fun WebViewChapterView(
                                 val st = runCatching { JSONObject(v ?: "{}") }.getOrNull()
                                 value = st?.optInt("o", 0) ?: 0
                                 ratio = st?.optDouble("r", -1.0) ?: -1.0
+                                paged = st?.optBoolean("p", false) ?: false
                                 latch.countDown()
                             },
                         )
                     }
-                    if (latch.await(300, TimeUnit.MILLISECONDS)) value to ratio else 0 to -1.0
+                    if (latch.await(300, TimeUnit.MILLISECONDS)) {
+                        Triple(value, ratio, paged)
+                    } else {
+                        Triple(0, -1.0, false)
+                    }
                 }
-                // 换章前刷新旧章 offset：保留该章已保存的页码，不能被 -1 清掉。
-                if (captured.first > 0) callbacksRef.value.onProgressKeepPage(old, captured.first, captured.second)
+                if (captured.first > 0) {
+                    if (captured.third) {
+                        callbacksRef.value.onPagedAnchor(old, captured.first)
+                    } else {
+                        callbacksRef.value.onProgress(old, captured.first, -1, -1, captured.second)
+                    }
+                }
             }
             callbacksRef.value.onChapterSwitch(old, chapterIndex)
         }

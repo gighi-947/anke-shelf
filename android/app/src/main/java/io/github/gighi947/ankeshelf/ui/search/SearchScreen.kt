@@ -150,13 +150,17 @@ fun SearchScreen(
                 status = openError?.let { "书籍打开失败：$it" } ?: "请先选择一本书"
                 return@LaunchedEffect
             }
-            if (!idx.isReady()) {
+            val resp = idx.search(q, caseSensitive, wholeWord, PER_CHAPTER)
+            if (!resp.ready) {
+                if (resp.error.isNotEmpty()) {
+                    status = "索引建立失败：${resp.error}"
+                    return@LaunchedEffect
+                }
                 status = "正在建立索引…"
                 delay(600)
                 continue
             }
             status = ""
-            val resp = idx.search(q, caseSensitive, wholeWord, PER_CHAPTER)
             response = resp
             expanded = resp.results.take(5).map { it.chapter_index }.toSet()
             container.searchHistory.add(bookId.orEmpty(), q)

@@ -150,8 +150,9 @@ class NativeBook(val path: File) : Closeable {
         val root = path.absoluteFile
         val metaFile = File(root, NATIVE_META_NAME)
         if (!metaFile.isFile) throw EpubError("不是有效的原生书（缺少 meta.json）")
+        val metaText = metaFile.readText(Charsets.UTF_8)
         val m = try {
-            NATIVE_META_JSON.decodeFromString<NativeMeta>(metaFile.readText(Charsets.UTF_8))
+            NATIVE_META_JSON.decodeFromString<NativeMeta>(metaText)
         } catch (e: Exception) {
             throw EpubError("原生书元数据损坏：${e.message}", e)
         }

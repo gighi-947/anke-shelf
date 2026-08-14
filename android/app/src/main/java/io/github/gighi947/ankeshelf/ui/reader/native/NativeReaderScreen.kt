@@ -72,6 +72,7 @@ import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookSession
+import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.ngaHeaders
 import io.github.gighi947.ankeshelf.ui.reader.extractReaderParts
 import io.github.gighi947.ankeshelf.ui.reader.buildReaderHtml
@@ -248,8 +249,19 @@ fun NativeReaderScreen(
         }
     }
 
+    fun flushProgress(source: String) {
+        try {
+            progressTracker.flush()
+        } catch (e: Exception) {
+            LogEvents.event("progress", "tracker_flush_failed", "source" to source, "error" to e)
+        }
+        container.progress.flush().exceptionOrNull()?.let { error ->
+            LogEvents.event("progress", "flush_failed", "source" to source, "error" to error)
+        }
+    }
+
     fun saveProgress() {
-        progressTracker.flush()
+        flushProgress("reader_action")
     }
 
     // 5 秒心跳统计。
@@ -327,8 +339,8 @@ fun NativeReaderScreen(
                 session = session,
                 container = container,
                 callbacks = WebViewReaderCallbacks(
-                    onProgress = { ch, offset, page, total, ratio ->
-                        progressTracker.onOffset(ch, offset, page, total, ratio)
+                    onProgress = { ch, offset, _, _, ratio ->
+                        progressTracker.onOffset(ch, offset, ratio)
                         if (ch == chapterIndex) {
                             // UI 百分比：全图页直接用 JS 滚动比例，文本页用 text_offset 比例。
                             scrollRatio = if (ratio in 0.0..1.0) {
@@ -340,12 +352,12 @@ fun NativeReaderScreen(
                             }
                         }
                     },
-                    onProgressKeepPage = { ch, offset, ratio ->
-                        progressTracker.onOffsetKeepPage(ch, offset, ratio)
+                    onPagedAnchor = { ch, offset ->
+                        progressTracker.onPagedAnchor(ch, offset)
                     },
-                    onProgressNow = { ch, offset, page, total, ratio ->
+                    onProgressNow = { ch, offset, page, total, _ ->
                         // 翻页/换章立即落盘（不等待 500ms 防抖），退出时进度不落后。
-                        progressTracker.onPageTurn(ch, offset, page, total, ratio)
+                        progressTracker.onPageTurn(ch, offset, page, total)
                     },
                     // 唤出浮动栏后发生新的滚动才自动收起（滚动事件发生时即时通知，
                     // 不等防抖保存回调，避免唤出前的迟到滚动把刚唤出的控制条误收）。
@@ -360,8 +372,8 @@ fun NativeReaderScreen(
                         // 用户翻页时上报），恢复/重排的中间页不会污染已保存进度。
                         if (ch == chapterIndex) pageInfo = page to total
                     },
-                    onChapterSwitch = { from, to -> progressTracker.onChapterSwitch(from, to) },
-                    onFlush = { progressTracker.flush() },
+                    onChapterSwitch = { from, _ -> progressTracker.onChapterSwitch(from) },
+                    onFlush = { flushProgress("webview") },
                     onImageTap = { lightboxSrc = it },
                     onTapZone = { zone ->
                         when (zone) {
@@ -439,15 +451,13 @@ fun NativeReaderScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
                 // 按 Home 退后台/切走：立即落盘，避免进程被杀丢进度（对齐 Legado onPause save）。
-                runCatching { progressTracker.flush() }
-                runCatching { container.progress.flush() }
+                flushProgress("reader_stop")
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            runCatching { progressTracker.flush() }
-            runCatching { container.progress.flush() }
+            flushProgress("reader_dispose")
             // 延迟关闭追踪器：WebView 销毁（+200ms）期间若还有迟到的桥事件，
             // 不应覆盖刚 flush 的正确进度。
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(

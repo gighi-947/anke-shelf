@@ -10,9 +10,9 @@
 
 ## 1. 当前状态（2026-08-14）
 
-- 功能基线 HEAD：`867e7ea`（android: 章节读取失败模型）；此前功能提交
-  （P0 / P1 / P2 / P3 / P4 首批）均已推送 `origin/main`。
-- 推送状态：`867e7ea` 待推送；工作树干净。
+- 仓库 HEAD：`ff2dae9`（docs: 审查材料归档路径同步）；当前工作树为 Android
+  数据/阅读链路显式失败修复，待提交。
+- 推送状态：`main` 与 `origin/main` 同步；当前修复尚未提交/推送。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android 均于 2026-08-14 实跑复核）：
@@ -22,7 +22,8 @@
     `node contracts/tests/api-contract.test.js`（45 方法一致）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node tests/js/reader-session.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 111 过 / 1 跳；DisciplineTest 在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
+  - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 92 项 PASS（需桌面 WebView2）。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
 
@@ -47,6 +48,41 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-14 android：原生书错误分类 + 真机阅读进度回归
+
+- 现象：`NativeBook.open()` 把元数据读取失败和 JSON 解码失败统一包装为
+  `EpubError`，`registerNativeDir()` 又把所有异常统一返回 `Corrupt`，真实 IO /
+  权限失败因此被误报为格式损坏；阅读器进度修复此前仅有 JVM / JS 验证。
+- 处理：元数据读取异常原样上抛，仅将读取成功后的解码异常转换为 `EpubError`；
+  `registerNativeDir()` 与 EPUB / openSession 链路对齐，明确分为
+  `EpubError -> Corrupt`、其他读取异常 `-> Io`；新增真机 chmod 000 回归测试，
+  保留损坏 JSON 仍返回 `Corrupt` 的 JVM 合同测试。
+- 验证：设备测试先红（不可读 `meta.json` 实际得到 `Err(Corrupt)`）后绿；
+  instrumentation 11 / 11 通过。使用设备已有原生书实测滚动保存/退出/连续重进
+  3 次、单页分页保存与重进、分页 -> 滚动字段隔离、含图片章节保存与重进，坐标
+  均稳定；覆盖安装全程使用同证书 `adb install -r`，未卸载/清数据。回归前后均为
+  544 个原生书文件、532 个章节、4 本书，四份 `meta.json` 哈希逐项一致；
+  `testDebugUnitTest assembleDebug assembleRelease --rerun-tasks` 96 个任务全执行成功，
+  `check-release.ps1` 通过（APK 内 reader-lite / 字体哈希与源码一致，无可疑条目）。
+
+### 2026-08-14 android：数据/阅读链路显式失败修复（审查接管首批）
+
+- 现象：Android `StoreLoadResult` 虽区分损坏/IO，但损坏 JSON 仍留在权威路径，
+  后续保存可直接覆盖；搜索用 `textOrEmpty()` 把章节读取失败伪装成空正文；
+  进度退出写盘异常被 `runCatching` 静默吞掉；`ProgressEvent` 仍允许滚动携带
+  page/total、分页携带 ratio；tracker 私有调度线程关闭时未释放。
+- 处理：`readJsonStore` 解析失败先隔离为 `.corrupt-*`；搜索构建仅在所有章节
+  成功读取后进入 Ready，失败返回明确章节与原因并记录 `index_failed`；
+  `ProgressStore.flush()` 返回显式 `Result`，后台/生命周期失败统一记录诊断事件；
+  滚动/分页/分页换章锚点拆成互斥事件类型，换章按 WebView 实际模式分流；
+  `ChapterProgressTracker.close()` 关闭 scheduler；删除仅测试使用且重新折叠失败的
+  `ChapterReadResult.textOrEmpty()` / `RepoResult.getOrNull()` / `chapterPlainLength()`，
+  并补 DisciplineTest 类型守卫。
+- 验证：先补红测（旧代码缺 `flush` 结果/搜索 error，模式污染与 scheduler 未关闭）
+  再修绿；Android JVM 117 过 / 1 跳，`testDebugUnitTest assembleDebug
+  --rerun-tasks` 44 个任务全执行且成功；Python 3.14 全量 230 项 OK（4 跳）；
+  API 45 方法、textpos 15 cases、bridge、reader-lite parts、reader-session 全绿。
 
 ### 2026-08-14 docs：审查材料归档（AnkeShelf_Review_Archive → I: 根目录）
 

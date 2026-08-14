@@ -51,8 +51,6 @@ class ProgressModelTest {
                     "scroll" -> ProgressEvent.Scroll(
                         o.getValue("chapter").jsonPrimitive.int,
                         o.getValue("offset").jsonPrimitive.int,
-                        o["page"]?.jsonPrimitive?.int ?: -1,
-                        o["total"]?.jsonPrimitive?.int ?: -1,
                         o["ratio"]?.jsonPrimitive?.doubleOrNull ?: -1.0,
                         at,
                     )
@@ -61,16 +59,13 @@ class ProgressModelTest {
                         o.getValue("offset").jsonPrimitive.int,
                         o["page"]?.jsonPrimitive?.int ?: -1,
                         o["total"]?.jsonPrimitive?.int ?: -1,
-                        o["ratio"]?.jsonPrimitive?.doubleOrNull ?: -1.0,
                         at,
                     )
                     "switch" -> ProgressEvent.ChapterSwitch(
                         o.getValue("from").jsonPrimitive.int,
-                        o.getValue("to").jsonPrimitive.int,
-                        at,
                     )
-                    "flush" -> ProgressEvent.Flush(at)
-                    "close" -> ProgressEvent.Close(at)
+                    "flush" -> ProgressEvent.Flush
+                    "close" -> ProgressEvent.Close
                     "debounce" -> ProgressEvent.DebounceDue(o.getValue("chapter").jsonPrimitive.int, at)
                     else -> error("$id: 未知事件类型")
                 }
@@ -104,11 +99,63 @@ class ProgressModelTest {
                     for ((chapter, offset) in entries) {
                         assertEquals("$id: reopen #$i restore", offset, fresh.restoreOffsetFor(chapter))
                     }
-                    val flushDecision = ProgressModel.apply(fresh, ProgressEvent.Flush(0))
+                    val flushDecision = ProgressModel.apply(fresh, ProgressEvent.Flush)
                     assertEquals("$id: reopen #$i flush 无重复写入", emptyList<ProgressPersist>(), flushDecision.persists)
                 }
             }
         }
+    }
+
+    @Test
+    fun `page turn cannot persist scroll ratio`() {
+        val decision = ProgressModel.apply(
+            ProgressState(),
+            ProgressEvent.PageTurn(
+                chapter = 0,
+                offset = 100,
+                page = 2,
+                total = 8,
+                at = 0,
+            ),
+        )
+
+        assertEquals(-1.0, decision.persists.single().ratio, 0.001)
+    }
+
+    @Test
+    fun `scroll cannot persist page fields`() {
+        val scrolled = ProgressModel.apply(
+            ProgressState(),
+            ProgressEvent.Scroll(
+                chapter = 0,
+                offset = 100,
+                ratio = 0.6,
+                at = 0,
+            ),
+        ).state
+        val decision = ProgressModel.apply(scrolled, ProgressEvent.DebounceDue(0, 500))
+
+        assertEquals(-1, decision.persists.single().page)
+        assertEquals(-1, decision.persists.single().total)
+        assertEquals(0.6, decision.persists.single().ratio, 0.001)
+    }
+
+    @Test
+    fun `paged anchor preserves page and clears ratio before chapter switch`() {
+        val paged = ProgressModel.apply(
+            ProgressState(),
+            ProgressEvent.PageTurn(chapter = 0, offset = 100, page = 2, total = 8, at = 0),
+        ).state
+        val anchored = ProgressModel.apply(
+            paged.copy(lastRatio = mapOf(0 to 0.5)),
+            ProgressEvent.PagedAnchor(chapter = 0, offset = 120),
+        ).state
+        val decision = ProgressModel.apply(anchored, ProgressEvent.ChapterSwitch(0))
+
+        assertEquals(
+            ProgressPersist(chapter = 0, offset = 120, page = 2, total = 8, ratio = -1.0),
+            decision.persists.single(),
+        )
     }
 
     private fun progressRoot(): File {

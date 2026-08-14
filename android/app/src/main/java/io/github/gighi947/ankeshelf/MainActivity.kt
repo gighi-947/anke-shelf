@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import io.github.gighi947.ankeshelf.ui.AnkeShelfRoot
 import io.github.gighi947.ankeshelf.service.AppContainer
+import io.github.gighi947.ankeshelf.service.LogEvents
 
 class MainActivity : ComponentActivity() {
     private val container: AppContainer by lazy { (application as AnkeShelfApp).container }
@@ -21,6 +22,8 @@ class MainActivity : ComponentActivity() {
     // 按 Home 退到后台也立即落盘进度（防抖窗口内的最后一次位置不丢）。
     override fun onStop() {
         super.onStop()
-        container.progress.flush()
+        container.progress.flush().exceptionOrNull()?.let { error ->
+            LogEvents.event("progress", "flush_failed", "source" to "activity_stop", "error" to error)
+        }
     }
 }

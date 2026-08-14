@@ -26,6 +26,7 @@ data class SearchChapterGroup(
 
 data class SearchResponse(
     val ready: Boolean,
+    val error: String = "",
     val total_hits: Int = 0,
     val hit_chapters: Int = 0,
     val total_chapters: Int = 0,
@@ -48,64 +49,92 @@ class SearchIndex(private val session: BookSession) {
         val text: String,
     )
 
+    private sealed interface BuildResult {
+        data class Ready(val chapters: List<ChapterText>) : BuildResult
+        data class Failed(val message: String) : BuildResult
+    }
+
     private val lock = ReentrantLock()
     private var chapters: List<ChapterText>? = null
     private var building = false
+    private var buildError = ""
 
     val totalChapters: Int get() = session.chapters.size
 
-    fun isReady(): Boolean = lock.withLock { chapters != null }
-
     /** 后台构建索引；重复调用安全。 */
     fun ensureBuilt(scope: CoroutineScope) {
-        lock.withLock {
-            if (chapters != null || building) return
-            building = true
-        }
+        if (!beginBuild()) return
         scope.launch(Dispatchers.Default) {
-            val t0 = System.currentTimeMillis()
-            val list = (0 until session.chapters.size).map { i ->
-                ChapterText(
-                    index = i,
-                    title = session.chapterTitle(i),
-                    text = TextExtractor.extractDomText(session.chapterText(i).textOrEmpty()),
-                )
-            }
-            lock.withLock { chapters = list }
-            LogEvents.event(
-                "search",
-                "index_built",
-                "task_id" to ("search-" + LogEvents.bookIdHash(session.id)),
-                "book_id_hash" to LogEvents.bookIdHash(session.id),
-                "chapters" to list.size,
-                "duration_ms" to (System.currentTimeMillis() - t0),
-            )
+            val startedAt = System.currentTimeMillis()
+            finishBuild(buildChapters(), startedAt)
         }
     }
 
     /** 同步构建（JVM 测试用）。 */
     fun ensureBuiltSync() {
-        lock.withLock {
-            if (chapters != null || building) return
-            building = true
-        }
-        val t0 = System.currentTimeMillis()
-        val list = (0 until session.chapters.size).map { i ->
-            ChapterText(
+        if (!beginBuild()) return
+        val startedAt = System.currentTimeMillis()
+        finishBuild(buildChapters(), startedAt)
+    }
+
+    private fun beginBuild(): Boolean = lock.withLock {
+        if (chapters != null || building) return false
+        building = true
+        buildError = ""
+        true
+    }
+
+    private fun buildChapters(): BuildResult {
+        val list = ArrayList<ChapterText>(session.chapters.size)
+        for (i in session.chapters.indices) {
+            val text = when (val result = session.chapterText(i)) {
+                is ChapterReadResult.Success -> result.text
+                ChapterReadResult.NotFound -> return BuildResult.Failed("第 ${i + 1} 章不存在")
+                is ChapterReadResult.Corrupt ->
+                    return BuildResult.Failed("第 ${i + 1} 章内容损坏：${result.detail}")
+                is ChapterReadResult.Io ->
+                    return BuildResult.Failed("第 ${i + 1} 章读取失败：${result.detail}")
+            }
+            list += ChapterText(
                 index = i,
                 title = session.chapterTitle(i),
-                text = TextExtractor.extractDomText(session.chapterText(i).textOrEmpty()),
+                text = TextExtractor.extractDomText(text),
             )
         }
-        lock.withLock { chapters = list }
-        LogEvents.event(
-            "search",
-            "index_built",
-            "task_id" to ("search-" + LogEvents.bookIdHash(session.id)),
-            "book_id_hash" to LogEvents.bookIdHash(session.id),
-            "chapters" to list.size,
-            "duration_ms" to (System.currentTimeMillis() - t0),
-        )
+        return BuildResult.Ready(list)
+    }
+
+    private fun finishBuild(result: BuildResult, startedAt: Long) {
+        val taskId = "search-" + LogEvents.bookIdHash(session.id)
+        when (result) {
+            is BuildResult.Ready -> {
+                lock.withLock {
+                    chapters = result.chapters
+                    building = false
+                }
+                LogEvents.event(
+                    "search",
+                    "index_built",
+                    "task_id" to taskId,
+                    "book_id_hash" to LogEvents.bookIdHash(session.id),
+                    "chapters" to result.chapters.size,
+                    "duration_ms" to (System.currentTimeMillis() - startedAt),
+                )
+            }
+            is BuildResult.Failed -> {
+                lock.withLock {
+                    buildError = result.message
+                    building = false
+                }
+                LogEvents.event(
+                    "search",
+                    "index_failed",
+                    "task_id" to taskId,
+                    "book_id_hash" to LogEvents.bookIdHash(session.id),
+                    "error" to result.message,
+                )
+            }
+        }
     }
 
     /** 释放底层书籍会话（页面销毁/换书时调用）。 */
@@ -120,8 +149,12 @@ class SearchIndex(private val session: BookSession) {
         perChapter: Int = 50,
         snippetLen: Int = 40,
     ): SearchResponse {
-        val chapters = lock.withLock { chapters }
-            ?: return SearchResponse(ready = false, total_chapters = session.chapters.size)
+        val (chapters, error) = lock.withLock { chapters to buildError }
+        chapters ?: return SearchResponse(
+            ready = false,
+            error = error,
+            total_chapters = session.chapters.size,
+        )
         val q = query.trim()
         if (q.isEmpty()) {
             return SearchResponse(
