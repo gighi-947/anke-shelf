@@ -8,19 +8,23 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-14）
+## 1. 当前状态（2026-08-15）
 
-- 仓库 HEAD：`ff2dae9`（docs: 审查材料归档路径同步）；当前工作树为 Android
-  数据/阅读链路显式失败修复，待提交。
-- 推送状态：`main` 与 `origin/main` 同步；当前修复尚未提交/推送。
+- 仓库代码基线：`f108eda`（win: improve API contract launch diagnostics）；前一提交
+  `0e44ae0` 完成 Android CI bundle 路径修复，本文档同步提交不改变代码基线。
+- 提交批次：Android CI、Contracts 诊断与本文档同步三个提交同批推送；远端精确状态
+  以 `git status --short --branch` 为准。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
-- 测试基线（Windows / JS / Android 均于 2026-08-14 实跑复核）：
+- 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机/UI 基线沿用
+  2026-08-14）：
   - Windows Python：`python -m unittest discover tests` = 230 项 OK
-    （本机 Python 3.14 与沙箱 3.12 双环境）；
+    （本轮本机 Python 3.14；沙箱 3.12 基线沿用 2026-08-14）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（45 方法一致）、
+    `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
+    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 36917 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
@@ -48,6 +52,20 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-15 android/contracts/docs：CI 路径修复 + API 契约启动诊断
+
+- 现象：`android.yml` 已将 `run` 工作目录设为 `android/`，bundle 校验仍调用
+  `android/scripts/bundle-reader-lite.js`，实际解析为不存在的 `android/android/scripts/`，
+  Android CI 会在单测前失败；API 契约守卫的 `spawnSync` 无法启动 Python 时只打印
+  空的 stderr/stdout，表现为无原因退出 1。
+- 处理：`DisciplineTest` 增加 CI bundle 相对路径守卫，workflow 改用
+  `node scripts/bundle-reader-lite.js`；API 契约守卫显式输出 `spawnSync.error` 的错误码、
+  消息与 Python 路径，新增端到端失败诊断测试并接入 `contracts.yml`；同步代码基线与
+  路线图基线。代码提交：`0e44ae0`（Android CI）与 `f108eda`（Contracts 诊断）。
+- 验证：两项修复均先补红测再转绿；bundle 6 个 parts / 36917 字节一致；API 45 方法
+  一致且启动失败诊断用例通过；Windows Python 230 项 OK（4 跳）；Android JVM
+  117 过 / 1 跳，`testDebugUnitTest assembleDebug` 44 个任务成功；`git diff --check` 通过。
 
 ### 2026-08-14 android：原生书错误分类 + 真机阅读进度回归
 

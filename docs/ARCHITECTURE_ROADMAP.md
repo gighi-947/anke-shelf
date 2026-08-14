@@ -1,13 +1,14 @@
 # AnkeShelf 架构整合路线图（下阶段任务参考）
 
-> 文档日期：2026-08-12（2026-08-14 状态核对）
+> 文档日期：2026-08-12（2026-08-15 状态核对）
 > 分析基线：`main` / `1ea4c95`（分析时点）；2026-08-13 核对：HEAD 已推进至
 > `4810d0c`（docs-only 提交）；2026-08-14 再核对：HEAD 已推进至 `c8f90cf`，
 > P0 / P1 已按本路线图落地；随后推进至 `edaf442`（依赖锁定，另含 ADR/治理文档），
 > 再推进至 `ad034b8`（Android 桥协议 + 进度回放）、`d697330`（P2 jsoup 清洗）、
 > `9e84c4c`（P2 错误模型）与 `cb40cee`（P2 诊断闭环）；随后 `96eb2e7`
 > （统一备份包）、`b63809f`（统一 task_id）、`867e7ea`（章节读取失败模型），
-> 当前仓库 HEAD 为 `ff2dae9`；Android 数据/阅读链路显式失败修复在工作树待提交。
+> 当前已验证代码基线为 `f108eda`；包含 Android 数据/阅读链路显式失败修复、
+> Android CI bundle 路径守卫与 API 契约启动失败诊断。
 > 各节“状态”注明进度。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
@@ -51,11 +52,11 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 仓库基线 | `ff2dae9`（当前 Android 修复在工作树待提交；2026-08-14 核对） |
+| 仓库基线 | `f108eda`（CI 路径与契约启动诊断已落地；2026-08-15 核对） |
 | 分支 | `main`，与 `origin/main` 同步 |
 | Windows Python 单测 | 230 项 OK（3.12 / 3.14 双环境实测） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 45 methods + `reader-session` OK |
-| Android JVM 单测 | 117 过 / 1 跳（2026-08-14 强制重跑） |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 45 methods + 启动失败诊断 + `reader-session` OK |
+| Android JVM 单测 | 117 过 / 1 跳（2026-08-15 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 92 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
