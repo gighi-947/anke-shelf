@@ -88,16 +88,18 @@
 - **B4** 更新 `THIRD_PARTY_NOTICES.md`，移除“上游 commit 待钉”待办。
 - 验证：凭据/许可扫描；文档漂移扫描；Python 全量测试不受影响。
 
-### 批次 C：仓库设置（P1.1，⏸ 2026-08-14 暂缓）
+### 批次 C：仓库设置（P1.1；C2 可立即开启，C1 ⏸ 暂缓）
 
-> 暂缓原因：本项目无第二维护者，CODEOWNERS 拆模块与 branch protection
-> 需要真实 backup owner；待有第二人后再开启。
+> C1 暂缓原因：本项目无第二维护者，CODEOWNERS 拆模块需要真实 backup owner，
+> 待有第二人后再开启。C2（branch protection）不依赖第二 owner，
+> 可由维护者在 GitHub Settings 独立开启。
 
-- **C1** `.github/CODEOWNERS` 按 Windows / Android / contracts / docs 拆模块，
-  并指定 backup owner（文件可先行拆分）。
-- **C2** GitHub 仓库 Settings：开启 “Require review from CODEOWNERS”、
-  “Require status checks to pass before merging”、禁直接推送 main。
-- 验证：新 PR 必须满足 review 与 status checks。
+- **C1（⏸ 暂缓）** `.github/CODEOWNERS` 按 Windows / Android / contracts /
+  docs 拆模块，并指定 backup owner（文件可先行拆分）。
+- **C2（可立即开启）** GitHub 仓库 Settings：开启 “Require status checks to
+  pass before merging”、禁直接推送 main（不依赖 CODEOWNERS）；有第二 owner
+  后再加 “Require review from CODEOWNERS”。
+- 验证：新 PR 必须满足 status checks；直接推送 main 被拒绝。
 
 ### 批次 D：中期立项（P2.1，Android WebView 纵深防御）
 
@@ -139,3 +141,19 @@
   收尾文档漂移检查。
 - 涉及共享文件 / 数据契约 / CI 清单时先做 Diff 影响检查，不扩大触发范围。
 - 批次 A / B 可直接开工；C 需用户授权仓库设置；D 单独立项评估后执行。
+
+## 5. 复审（v2）采纳记录（2026-08-14）
+
+复审报告：`H:\AnkeShelf_Review_20260814_v2_ReReview.md`；评级
+工程 A / 维护 A- / 安全 A+ / 合规 A- / 社区 B+，13 项问题 100% 决策闭环。
+核验：行号引用全部精确，状态判定与实际一致。4 项小瑕疵处理：
+
+- 小瑕疵 1：`ankeshelf.spec` datas 补 `ngapost2md-python/LICENSE` +
+  `NOTICE`（AGPL 分发合规）——已落地。
+- 小瑕疵 2：批次 C 拆分 C1（暂缓）/ C2（可立即开）——已落地。
+- 小瑕疵 3：多窗口 token 流转——记录为未来注意点（当前单窗口不阻塞）。
+- 小瑕疵 4：`android/scripts/check-release.ps1` 扩展 APK 内字体
+  SHA-256 与 canonical 源比对——已落地。
+
+中期建议（待排期）：README 加「寻求维护者」小节；P2.1 拆独立 GitHub issue
+（`enhancement` + `security`）跟踪 WebViewAssetLoader 迁移。

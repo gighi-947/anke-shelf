@@ -48,6 +48,22 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win/docs：复审（v2）小瑕疵落地（NOTICE 打包 + 字体 SHA 校验）
+
+- 背景：reviewer 对 `bae2fc2` 复审（评级 A / A- / A+ / A- / B+，13 项
+  100% 决策闭环），提出 4 项小瑕疵。
+- 处理：
+  - `ankeshelf.spec` datas 补 `ngapost2md-python/LICENSE` / `NOTICE`
+    （AGPL 分发合规）；
+  - `android/scripts/check-release.ps1` 扩展 APK 内
+    `assets/fonts/LXGWWenKai-Regular.ttf` SHA-256 与 canonical 源比对
+    （复用 reader-lite.js 模板，防 Gradle UP-TO-DATE 误判）；
+  - action plan 批次 C 拆分：C1（CODEOWNERS）暂缓，C2（branch protection
+    status checks）可立即开启；
+  - 多窗口 token 流转记入计划（当前单窗口不阻塞）。
+- 验证：`check-release.ps1` 对 debug APK 实测 PASS（字体 SHA 匹配）；
+  Python 231 项 OK 不受影响。
+
 ### 2026-08-14 win/android/docs：字体去重（E6 / P3，canonical 源 assets/fonts）
 
 - 处理：双端重复的 LXGW WenKai 字体（SHA-256 相同，各 24.8MB）收敛为单一
