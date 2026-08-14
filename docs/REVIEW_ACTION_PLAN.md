@@ -78,7 +78,7 @@
   - `docs/ARCHITECTURE_ROADMAP.md` §2.2 的 `reader.js` 行更新为现况
     （629 行、乱码已修复）。
 
-### 批次 B：vendored 合规补齐（P1.4，约半天）
+### 批次 B：vendored 合规补齐（P1.4，约半天；✅ 2026-08-14 已完成）
 
 - **B1** `ngapost2md-python/` 补 `LICENSE`（上游 MIT 原文 + 版权声明）。
 - **B2** 补 `NOTICE`：上游 `ludoux/ngapost2md`、commit `e3b9434`（2026-05-30）、

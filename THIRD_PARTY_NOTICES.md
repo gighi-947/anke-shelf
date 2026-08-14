@@ -3,11 +3,11 @@
 ## ngapost2md-python
 
 - 来源：https://github.com/ludoux/ngapost2md （Go 实现）
+- 上游 commit：`e3b94346c805`（2026-05-30，分支 neo）
 - 关系：`ngapost2md-python/` 为独立 Python 重写，下载流程、数据模型与格式规则
   与上游核心部分等价；表情与匿名映射表由上游 Go 源码提取。
-- 许可证：以原仓库 LICENSE 为准。
-- 待办：上游参考的具体 commit/tag 尚未单独记录，依赖治理（路线图 P1 依赖锁定）
-  时一并补钉。
+- 许可证：MIT；上游原文与引用说明见 `ngapost2md-python/LICENSE` 与
+  `ngapost2md-python/NOTICE`。
 
 ## 字体：霞鹜文楷 LXGW WenKai
 

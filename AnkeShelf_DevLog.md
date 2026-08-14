@@ -48,6 +48,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win/docs：批次 B 合规补齐（P1.4 vendored LICENSE + NOTICE）
+
+- 处理（按 REVIEW_ACTION_PLAN）：`ngapost2md-python/` 补上游 MIT LICENSE
+  （Copyright 2020-2026 Lu Chang）与 NOTICE（上游 ludoux/ngapost2md，
+  commit `e3b94346c805`，2026-05-30，分支 neo）；`__version__` 改独立线
+  `0.1.0-ankeshelf`（不再与主项目 v1.2.0 混淆）；README 补「许可证与上游」；
+  THIRD_PARTY_NOTICES 移除“commit 待钉”待办并指向 LICENSE / NOTICE。
+- 验证：`python -m ngapost2md --version` 输出 `v0.1.0-ankeshelf`；
+  主测试 231 项 OK（不受影响）。
+
 ### 2026-08-14 win/android/docs：批次 A 快修（token 安全 / CI 权限 / 模板 / 漂移）
 
 - 处理（按 REVIEW_ACTION_PLAN）：
