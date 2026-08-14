@@ -10,9 +10,10 @@
 
 ## 1. 当前状态（2026-08-14）
 
-- 功能基线 HEAD：`edaf442`（win: 依赖锁定）；本日另完成 P0 友好提示、P1 契约守卫、
-  首批 ADR、开源治理文档、reader.js 乱码修复（提交见“最近流水”）。
-- 推送状态：至 `6f6ee9d` 已推送 `origin/main`；`edaf442` 待推送。工作树干净。
+- 功能基线 HEAD：`ad034b8`（android: P1 阅读桥协议版本握手 + 进度事件回放）；
+  此前功能提交（P0 / P1 契约守卫 / ADR / 治理文档 / reader.js 修复 / 依赖锁定）
+  均已推送 `origin/main`。
+- 推送状态：`ad034b8` 待推送；工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows/JS 于 2026-08-14 实跑复核；Android 沿用 2026-08-10 本地报告）：
@@ -20,8 +21,9 @@
     （本机 Python 3.14 与沙箱 3.12 双环境）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（40 方法一致）、
+    `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node tests/js/reader-session.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 90 过 / 1 跳；DisciplineTest 在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 95 过 / 1 跳；DisciplineTest 在岗；
   - UI 实机 harness：`python -m tests.ui.runner` = 92 项 PASS（需桌面 WebView2）。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
 
