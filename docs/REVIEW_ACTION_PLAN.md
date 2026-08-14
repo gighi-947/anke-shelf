@@ -177,11 +177,11 @@
 | C4 `try import ET` 噪音 | ✅ 已修 | `epub.py` 删除 |
 | C5 三个相同迁移 | ◐ 保留 | 迁移框架属兼容性基础设施，加注释说明 |
 | C6 unreachable return | ✅ 已修 | `system_api.py` 删除 |
-| D1 backup 三件套同构 | ✅ 成立，P1 | 待做：抽 `_pick_and_call` helper |
+| D1 backup 三件套同构 | ✅ 已修 | `system_api.py` 抽 `_pick_and_call`，三件套各剩业务调用 |
 | D2 函数内 import | ✅ 已修 | `system_api.py` 顶部收敛 |
-| D3 `callBridge` helper | ◐ 成立，P2 | 待做：改 JS 后按阅读器铁律回归 |
+| D3 `callBridge` helper | ✅ 已修 | parts 新增 `callBridge`，15+ 处 try/catch 模板压平；DisciplineTest 断言同步；APK 内 JS SHA 校验通过 |
 | D4 `bookshelf.js` 兜底 | ◐ 数量夸大（`\|\| ''` 19 处），P3 | 低优先 |
-| D5 参数校验集中 | ◐ 成立但数量夸大（image_mode 2 处 / `max(0,int(...))` 6 处），P1 | 待做：`normalize_download_params` |
+| D5 参数校验集中 | ✅ 已修（保守子集） | `_param_int` 消除 8 处 `max(0,int(...))` 模板；枚举校验语义两端不同，保持原位 |
 
 快批已落地（C1/C2/C4/C6/B5/D2），验证：Python 230 项 OK（-1 Protocol 测试）、
 Android JVM 111 过 / 1 跳。行为批与重构批按上表待排期。

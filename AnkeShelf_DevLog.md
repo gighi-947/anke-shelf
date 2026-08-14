@@ -48,6 +48,21 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 win/android：重构批落地（D1 backup helper / D5 参数归一化 / D3 callBridge）
+
+- D1：`system_api.py` 抽 `_pick_and_call`（选择 → 取消 → 执行 → 异常映射），
+  backup_create / verify / restore 各剩 1-2 行业务调用。
+- D5：`nga_service.py` 新增 `_param_int` 归一化 helper，消除 8 处
+  `max(0, int(...))` 模板；枚举校验（image_mode / theme / toc_mode）两端
+  语义不同，保持原位不动（保守子集，避免行为变化）。
+- D3：`reader-lite.parts` 新增 `callBridge(name, ...)` helper，压平 15+ 处
+  `try { AnkeReaderBridge.xxx(); } catch (e) {}` 模板（含多行 try 块）；
+  bundle 后 `reader-lite.js` 36917 字节；DisciplineTest 两处结构断言匹配串
+  同步更新（Gradle 对 assets 误判 UP-TO-DATE，`--rerun-tasks` 暴露后修复）。
+- 验证：Python 230 项 OK；JS parts / reader-session / bridge-contract /
+  textpos / api-contract 全绿；JVM 111 过 / 1 跳（强制重跑）；
+  `assembleDebug` 通过；check-release PASS（APK 内 JS / 字体 SHA 一致）。
+
 ### 2026-08-14 win/android：行为批落地（B3 静默吞错 / B4 fullscreen / C3 显式失败）
 
 - 处理（按 review3 计划 §6）：
