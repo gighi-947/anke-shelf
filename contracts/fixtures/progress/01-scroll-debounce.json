@@ -1,0 +1,16 @@
+{
+  "id": "01-scroll-debounce",
+  "description": "滚动 500ms 防抖：连续滚动只落盘最后一次，早到的到期事件被重置后忽略。",
+  "initial": { "chapter": 0, "offset": 0, "stored": null },
+  "events": [
+    { "type": "scroll", "chapter": 0, "offset": 100, "page": -1, "total": -1, "ratio": -1, "at": 0 },
+    { "type": "scroll", "chapter": 0, "offset": 200, "page": -1, "total": -1, "ratio": -1, "at": 250 },
+    { "type": "debounce", "chapter": 0, "at": 500 },
+    { "type": "debounce", "chapter": 0, "at": 750 }
+  ],
+  "expect": {
+    "persists": [
+      { "chapter": 0, "offset": 200, "page": -1, "total": -1, "ratio": -1 }
+    ]
+  }
+}

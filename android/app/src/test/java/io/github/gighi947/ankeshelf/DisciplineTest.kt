@@ -117,4 +117,20 @@ class DisciplineTest {
         assertTrue("page_total 缺省 -1", shelfKt.contains("val page_total: Int = -1"))
         assertTrue("scroll_ratio 缺省 -1.0", shelfKt.contains("val scroll_ratio: Double = -1.0"))
     }
+
+    @Test
+    fun `阅读桥 ready 握手携带版本与能力`() {
+        val js =
+            File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
+        assertTrue("reader-lite.js 必须声明 BRIDGE_VERSION = 1", js.contains("var BRIDGE_VERSION = 1"))
+        assertTrue(
+            "ready 握手必须走结构化 JSON payload",
+            js.contains("AnkeReaderBridge.onReady(JSON.stringify(bridgeReadyPayload()))"),
+        )
+        val kotlin = File(
+            repoRoot,
+            "android/app/src/main/java/io/github/gighi947/ankeshelf/ui/reader/BridgeProtocol.kt",
+        ).readText()
+        assertTrue("Kotlin 侧协议版本必须为 1", kotlin.contains("const val VERSION = 1"))
+    }
 }

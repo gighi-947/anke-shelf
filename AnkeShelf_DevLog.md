@@ -47,6 +47,22 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：P1 阅读桥协议版本握手 + 进度事件回放
+
+- 现象：桥协议无版本握手、`saveProgress` 多位置参数；进度语义散在 tracker 与真实
+  调度器里，历史故障（9.43–9.59）无法离线回放复现。
+- 处理：`reader-lite.js` ready 握手改结构化 payload `{bridgeVersion:1, capabilities}`
+  （新增 `bridgeVersion/bridgeReadyPayload/emitReady` 导出）；新增 `BridgeProtocol.kt`
+  解析校验，不兼容时 `onBridgeVersionMismatch` + 诊断日志；新增纯决策层
+  `ProgressModel.kt`（旧状态+事件→新状态+落盘，虚拟时钟），`ChapterProgressTracker`
+  改为委托模型、仅保留真实调度器与落盘；新增 `contracts/fixtures/progress/` 7 份
+  事件序列夹具（防抖/翻页即时/模式隔离/比例锚点/换章 flush/dispose 迟到/连续重进），
+  `ProgressModelTest` 回放、`bridge-contract.test.js`（Node）校验握手；DisciplineTest
+  增加桥版本纪律。
+- 验证：`testDebugUnitTest` 95 过 / 1 跳（+5）；`assembleDebug` 通过并解包确认 APK 内
+  reader-lite.js 含 bridgeVersion/emitReady；Node bridge-contract OK；真实时间回归
+  `ChapterProgressTrackerTest` 9 条保持通过。
+
 ### 2026-08-14 win：依赖锁定 + 本机 Python 3.14 PATH
 
 - 处理：`requirements.txt` 拆为 `requirements.in` / `requirements-build.in`（人工维护），

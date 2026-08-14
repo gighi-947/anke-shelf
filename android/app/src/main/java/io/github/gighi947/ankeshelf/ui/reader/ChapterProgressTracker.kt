@@ -19,6 +19,9 @@ import java.util.concurrent.TimeUnit
  * - 每章维护“最后一次已知 offset”（内存），恢复时优先内存值，其次磁盘值；
  * - 滚动事件 500ms debounce 落盘；翻页事件立即落盘；换章/退出立即 flush；
  * - 相同 (chapter, offset) 去重，避免无意义的整文件重复写入。
+ *
+ * 决策逻辑全部下沉到 [ProgressModel]（纯函数、虚拟时钟），本类只负责
+ * 真实调度器与落盘执行；事件序列可用 fixtures 离线回放。
  */
 class ChapterProgressTracker(
     private val bookId: String,
@@ -35,142 +38,125 @@ class ChapterProgressTracker(
     ) -> Unit,
 ) {
     private val lock = Any()
-    private val lastKnown = mutableMapOf<Int, Int>()
-    private val lastRatio = mutableMapOf<Int, Double>()
-    private val lastPage = mutableMapOf<Int, Int>()
-    private val lastTotal = mutableMapOf<Int, Int>()
-    private val saved = mutableMapOf<Int, Int>()
-    private val savedRatio = mutableMapOf<Int, Double>()
+    private var state: ProgressState
     private val pending = mutableMapOf<Int, ScheduledFuture<*>>()
     private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
         Thread(r, "progress-debounce").apply { isDaemon = true }
     }
-    @Volatile
-    private var closed = false
 
     init {
-        synchronized(lock) {
-            val stored = restoreFrom(bookId)
-            runCatching {
-                android.util.Log.d(
-                    "AnkeShelf",
-                    "tracker init off=${stored?.text_offset} page=${stored?.page_index} " +
-                        "param off=$initialOffset",
-                )
-            }
-            stored?.let { p ->
-                if (p.chapter_index >= 0 && p.text_offset > 0) {
-                    lastKnown[p.chapter_index] = p.text_offset
-                    if (p.scroll_ratio in 0.0..1.0) {
-                        lastRatio[p.chapter_index] = p.scroll_ratio
-                    }
-                    if (p.page_index >= 0) lastPage[p.chapter_index] = p.page_index
-                    if (p.page_total > 0) lastTotal[p.chapter_index] = p.page_total
-                }
-            }
-            if (initialOffset > 0) lastKnown[initialChapter] = initialOffset
-            saved.putAll(lastKnown)
-            lastRatio.forEach { (ch, r) -> savedRatio[ch] = r }
+        val stored = restoreFrom(bookId)
+        state = ProgressModel.initialState(stored, initialChapter, initialOffset)
+        runCatching {
+            android.util.Log.d(
+                "AnkeShelf",
+                "tracker init off=${stored?.text_offset} page=${stored?.page_index} " +
+                    "param off=$initialOffset",
+            )
         }
     }
 
     /** 某章恢复锚点：先内存（本会话最新），后磁盘持久化值。 */
     fun restoreOffsetFor(chapter: Int): Int = synchronized(lock) {
-        (lastKnown[chapter] ?: 0).coerceAtLeast(0)
+        state.restoreOffsetFor(chapter)
     }
 
     /** 某章滚动模式比例锚点：-1 = 文本锚点；0..1 = 全图页按比例恢复。 */
     fun restoreRatioFor(chapter: Int): Double = synchronized(lock) {
-        lastRatio[chapter] ?: -1.0
+        state.restoreRatioFor(chapter)
     }
 
-    fun restorePageFor(chapter: Int): Int = synchronized(lock) { lastPage[chapter] ?: -1 }
+    fun restorePageFor(chapter: Int): Int = synchronized(lock) { state.restorePageFor(chapter) }
 
-    fun restoreTotalFor(chapter: Int): Int = synchronized(lock) { lastTotal[chapter] ?: -1 }
+    fun restoreTotalFor(chapter: Int): Int = synchronized(lock) { state.restoreTotalFor(chapter) }
 
     /** 滚动/页面上报：更新内存，500ms 防抖落盘（对齐桌面 scroll debounce）。 */
     fun onOffset(chapter: Int, offset: Int, page: Int = -1, total: Int = -1, ratio: Double = -1.0) {
-        if (closed || offset <= 0) return
-        val shouldSchedule = synchronized(lock) {
-            lastKnown[chapter] = offset
-            applyRatioInfo(chapter, ratio)
-            applyPageInfo(chapter, page, total)
-            saved[chapter] != offset || savedRatio[chapter] != lastRatio[chapter]
+        synchronized(lock) {
+            state = ProgressModel.apply(
+                state,
+                ProgressEvent.Scroll(chapter, offset, page, total, ratio, System.currentTimeMillis()),
+            ).state
+            rescheduleDebounceLocked(chapter)
         }
-        if (!shouldSchedule) return
-        pending.remove(chapter)?.cancel(false)
-        pending[chapter] = scheduler.schedule({ persist(chapter) }, 500, TimeUnit.MILLISECONDS)
     }
 
     /** 换章前刷新旧章 offset：不动页码（该章页码由翻页事件维护）。 */
     fun onOffsetKeepPage(chapter: Int, offset: Int, ratio: Double = -1.0) {
-        if (closed || offset <= 0) return
-        val shouldSchedule = synchronized(lock) {
-            lastKnown[chapter] = offset
-            applyRatioInfo(chapter, ratio)
-            saved[chapter] != offset || savedRatio[chapter] != lastRatio[chapter]
+        synchronized(lock) {
+            state = ProgressModel.apply(
+                state,
+                ProgressEvent.ScrollKeepPage(chapter, offset, ratio, System.currentTimeMillis()),
+            ).state
+            rescheduleDebounceLocked(chapter)
         }
-        if (!shouldSchedule) return
-        pending.remove(chapter)?.cancel(false)
-        pending[chapter] = scheduler.schedule({ persist(chapter) }, 500, TimeUnit.MILLISECONDS)
     }
 
     /** 翻页事件：立即落盘（对齐桌面 onPageTurned -> saveProgress），携带页码供精确恢复。 */
     fun onPageTurn(chapter: Int, offset: Int, page: Int = -1, total: Int = -1, ratio: Double = -1.0) {
-        if (closed || offset <= 0) return
-        synchronized(lock) {
-            lastKnown[chapter] = offset
-            applyRatioInfo(chapter, ratio)
-            applyPageInfo(chapter, page, total)
+        val decision = synchronized(lock) {
+            val d = ProgressModel.apply(
+                state,
+                ProgressEvent.PageTurn(chapter, offset, page, total, ratio, System.currentTimeMillis()),
+            )
+            state = d.state
+            d
         }
-        persist(chapter)
-    }
-
-    /** 模式隔离：page<0 表示滚动模式保存，必须清除残留的分页页码。 */
-    private fun applyPageInfo(chapter: Int, page: Int, total: Int) {
-        if (page >= 0) lastPage[chapter] = page else lastPage.remove(chapter)
-        if (total > 0) lastTotal[chapter] = total else lastTotal.remove(chapter)
-    }
-
-    /** 模式隔离：滚动比例只属于滚动模式；ratio<0 时清除，避免残留污染后续恢复。 */
-    private fun applyRatioInfo(chapter: Int, ratio: Double) {
-        if (ratio in 0.0..1.0) lastRatio[chapter] = ratio else lastRatio.remove(chapter)
+        runPersists(decision.persists)
     }
 
     /** 换章：立即落盘旧章，避免异步 JS 事件在新页加载后被丢弃。 */
     fun onChapterSwitch(from: Int, to: Int) {
-        persist(from)
+        val decision = synchronized(lock) {
+            val d = ProgressModel.apply(
+                state,
+                ProgressEvent.ChapterSwitch(from, to, System.currentTimeMillis()),
+            )
+            state = d.state
+            d
+        }
+        runPersists(decision.persists)
     }
 
     /** 退出/退后台/离开页面：取消防抖并立即落盘所有已知章节。 */
     fun flush() {
-        if (closed) return
-        val chapters = synchronized(lock) { lastKnown.keys.toList() }
-        pending.values.forEach { it.cancel(false) }
-        pending.clear()
-        chapters.forEach { persist(it) }
+        val decision = synchronized(lock) {
+            pending.values.forEach { it.cancel(false) }
+            pending.clear()
+            val d = ProgressModel.apply(state, ProgressEvent.Flush(System.currentTimeMillis()))
+            state = d.state
+            d
+        }
+        runPersists(decision.persists)
     }
 
     /** 屏幕销毁后的延迟关闭：阻止页面销毁期间迟到的桥事件覆盖正确进度。 */
     fun close() {
-        closed = true
-        pending.values.forEach { it.cancel(false) }
-        pending.clear()
+        synchronized(lock) {
+            state = ProgressModel.apply(state, ProgressEvent.Close(System.currentTimeMillis())).state
+            pending.values.forEach { it.cancel(false) }
+            pending.clear()
+        }
     }
 
-    private fun persist(chapter: Int) {
-        if (closed) return
-        val offset = synchronized(lock) {
-            val o = lastKnown[chapter] ?: return
-            val r = lastRatio[chapter] ?: -1.0
-            if (o <= 0 || (saved[chapter] == o && savedRatio[chapter] == r)) return
-            saved[chapter] = o
-            savedRatio[chapter] = r
-            o
+    private fun rescheduleDebounceLocked(chapter: Int) {
+        pending.remove(chapter)?.cancel(false)
+        val due = state.debounceUntil[chapter] ?: return
+        val delay = (due - System.currentTimeMillis()).coerceAtLeast(0)
+        pending[chapter] = scheduler.schedule({ onDebounceDue(chapter, due) }, delay, TimeUnit.MILLISECONDS)
+    }
+
+    private fun onDebounceDue(chapter: Int, due: Long) {
+        val decision = synchronized(lock) {
+            pending.remove(chapter)
+            val d = ProgressModel.apply(state, ProgressEvent.DebounceDue(chapter, due))
+            state = d.state
+            d
         }
-        val page = synchronized(lock) { lastPage[chapter] ?: -1 }
-        val total = synchronized(lock) { lastTotal[chapter] ?: -1 }
-        val ratio = synchronized(lock) { lastRatio[chapter] ?: -1.0 }
-        persist(bookId, chapter, offset, page, total, ratio)
+        runPersists(decision.persists)
+    }
+
+    private fun runPersists(persists: List<ProgressPersist>) {
+        persists.forEach { p -> persist(bookId, p.chapter, p.offset, p.page, p.total, p.ratio) }
     }
 }

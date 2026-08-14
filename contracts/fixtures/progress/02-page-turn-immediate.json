@@ -1,0 +1,14 @@
+{
+  "id": "02-page-turn-immediate",
+  "description": "翻页立即落盘（不等防抖）；随后 flush 不产生重复写入。",
+  "initial": { "chapter": 0, "offset": 0, "stored": null },
+  "events": [
+    { "type": "page-turn", "chapter": 0, "offset": 777, "page": 4, "total": 9, "ratio": -1, "at": 100 },
+    { "type": "flush", "at": 200 }
+  ],
+  "expect": {
+    "persists": [
+      { "chapter": 0, "offset": 777, "page": 4, "total": 9, "ratio": -1 }
+    ]
+  }
+}

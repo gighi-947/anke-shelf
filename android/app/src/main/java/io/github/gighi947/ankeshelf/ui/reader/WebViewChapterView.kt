@@ -61,6 +61,7 @@ import org.json.JSONObject
  */
 data class WebViewReaderCallbacks(
     val onReady: () -> Unit = {},
+    val onBridgeVersionMismatch: (expected: Int, actual: Int) -> Unit = { _, _ -> },
     val onMode: (paged: Boolean) -> Unit = {},
     val onProgress: (chapter: Int, offset: Int, page: Int, total: Int, ratio: Double) -> Unit = { _, _, _, _, _ -> },
     val onProgressKeepPage: (chapter: Int, offset: Int, ratio: Double) -> Unit = { _, _, _ -> },
@@ -579,7 +580,25 @@ private class LiteBridge(
     }
 
     @JavascriptInterface
-    fun onReady() {
+    fun onReady(payload: String) {
+        val ready = BridgeProtocol.parseReady(payload)
+        if (ready == null) {
+            Log.e("AnkeShelf", "[bridge] malformed ready payload")
+            main.post { callbacks().onBridgeVersionMismatch(BridgeProtocol.VERSION, -1) }
+            return
+        }
+        Log.d(
+            "AnkeShelf",
+            "[bridge] ready version=${ready.version} capabilities=${ready.capabilities.sorted()}",
+        )
+        if (!BridgeProtocol.isCompatible(ready)) {
+            Log.e(
+                "AnkeShelf",
+                "[bridge] incompatible version=${ready.version} expected=${BridgeProtocol.VERSION}",
+            )
+            main.post { callbacks().onBridgeVersionMismatch(BridgeProtocol.VERSION, ready.version) }
+            return
+        }
         main.post { callbacks().onReady() }
     }
 

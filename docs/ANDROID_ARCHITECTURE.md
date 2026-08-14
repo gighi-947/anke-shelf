@@ -23,8 +23,11 @@ android/
 - `applicationId = io.github.gighi947.ankeshelf`；minSdk 26 / targetSdk 36。
 - 数据格式与桌面完全同构（JSON schema + 原生书目录结构），存
   `filesDir/AnkeShelf/`，原子写，为未来跨端导入留路。
-- 阅读桥：JS 上报 `onReady/saveProgress/onPageChanged/onSelection/log`；
-  Kotlin 下发 `applyTheme/applyTypography/gotoOffset/applyAnnotations/flipPage`。
+- 阅读桥：JS 上报 `onReady({bridgeVersion, capabilities}) / saveProgress /
+  saveProgressNow / pageChanged / requestChapter / openImage / onScrollMoved /
+  onMode / onSettled`；Kotlin 下发 `init / applyTheme / applyTypography / setMode /
+  flipPage / setInsets / gotoOffset / openImageAt / onResize`。ready 握手版本见
+  `ui/reader/BridgeProtocol.kt`（当前 1），不兼容时显式失败并记诊断。
 - 版本：`android-vX.Y.Z` 独立标签与 Release 资产。
 
 ## 必须保留的桌面语义（移植红线）

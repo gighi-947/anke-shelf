@@ -1,0 +1,17 @@
+{
+  "id": "07-reopen-three-times",
+  "description": "连续重进 3 次恢复一致：同一磁盘条目每次重建状态都恢复同一锚点，flush 无重复写入。",
+  "initial": {
+    "chapter": 2,
+    "offset": 123,
+    "stored": { "chapter_index": 2, "text_offset": 123, "page_index": -1, "page_total": -1, "scroll_ratio": -1 }
+  },
+  "events": [
+    { "type": "flush", "at": 0 }
+  ],
+  "expect": {
+    "persists": [],
+    "restore": [ { "chapter": 2, "offset": 123 } ],
+    "reopens": 3
+  }
+}

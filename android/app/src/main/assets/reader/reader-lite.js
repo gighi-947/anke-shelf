@@ -8,6 +8,9 @@
   'use strict';
 
   var MAX_PAGED_TEXT = 800000;
+  // 桥协议版本：ready 握手时与 Kotlin 侧对照，不兼容时显式失败并记诊断。
+  var BRIDGE_VERSION = 1;
+  var BRIDGE_CAPABILITIES = ['paged', 'scroll', 'scrollRatio', 'image', 'settled'];
 
   var state = {
     paged: false,
@@ -616,6 +619,16 @@
   }
 
   /* ---------- Kotlin-facing API ---------- */
+  function bridgeReadyPayload() {
+    return { bridgeVersion: BRIDGE_VERSION, capabilities: BRIDGE_CAPABILITIES.slice() };
+  }
+
+  function emitReady() {
+    try {
+      AnkeReaderBridge.onReady(JSON.stringify(bridgeReadyPayload()));
+    } catch (e) { /* ignore */ }
+  }
+
   function applyTheme(vars) {
     var root = document.documentElement;
     if (vars && vars.bg) root.style.setProperty('--reader-bg', vars.bg);
@@ -977,7 +990,7 @@
         setTimeout(markSettled, 100);
       }
       report(false);
-      try { AnkeReaderBridge.onReady(); } catch (e) { /* ignore */ }
+      emitReady();
     };
     requestAnimationFrame(finish);
     // 最终兜底：字体加载完成后 onResize 已负责定位；此定时器仅在
@@ -1014,5 +1027,8 @@
     geometry: geometry,
     shouldAutoDual: shouldAutoDual,
     buildText: TextPos.build,
+    bridgeVersion: function () { return BRIDGE_VERSION; },
+    bridgeReadyPayload: bridgeReadyPayload,
+    emitReady: emitReady,
   };
 })();

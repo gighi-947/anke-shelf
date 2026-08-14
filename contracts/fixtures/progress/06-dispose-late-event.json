@@ -1,0 +1,14 @@
+{
+  "id": "06-dispose-late-event",
+  "description": "关闭后迟到事件与到期防抖全部忽略，防止销毁期间覆盖正确进度（9.48）。",
+  "initial": { "chapter": 0, "offset": 0, "stored": null },
+  "events": [
+    { "type": "scroll", "chapter": 0, "offset": 123, "page": -1, "total": -1, "ratio": -1, "at": 0 },
+    { "type": "close", "at": 50 },
+    { "type": "scroll", "chapter": 0, "offset": 999, "page": -1, "total": -1, "ratio": -1, "at": 100 },
+    { "type": "debounce", "chapter": 0, "at": 500 }
+  ],
+  "expect": {
+    "persists": []
+  }
+}

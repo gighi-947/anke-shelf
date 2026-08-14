@@ -133,6 +133,11 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P1：Android 阅读桥协议版本 + 进度事件回放
 
+> 状态（2026-08-14）：已落地——ready 握手携带 `{bridgeVersion: 1, capabilities}`，
+> Kotlin `BridgeProtocol` 校验版本；`ChapterProgressTracker` 决策层下沉为纯函数
+> `ProgressModel`（虚拟时钟），`contracts/fixtures/progress/` 7 份事件序列夹具由
+> Kotlin 回放、JS 桥测试校验握手。真机回归保留。
+
 - `WebViewChapterView.kt` / `reader-lite.js`：ready 握手增加
   `{bridge_version: 1, capabilities: [...]}`，版本不兼容时明确失败并记诊断；
 - 新增字段优先使用单个结构化 JSON payload，不再扩大多参数桥方法；

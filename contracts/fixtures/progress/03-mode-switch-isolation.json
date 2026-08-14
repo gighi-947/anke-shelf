@@ -1,0 +1,19 @@
+{
+  "id": "03-mode-switch-isolation",
+  "description": "滚动↔分页交叉切换：滚动保存显式清页码，分页保存显式 ratio=-1，互不污染。",
+  "initial": { "chapter": 0, "offset": 0, "stored": null },
+  "events": [
+    { "type": "scroll", "chapter": 0, "offset": 300, "page": -1, "total": -1, "ratio": -1, "at": 0 },
+    { "type": "debounce", "chapter": 0, "at": 500 },
+    { "type": "page-turn", "chapter": 0, "offset": 320, "page": 3, "total": 10, "ratio": -1, "at": 1000 },
+    { "type": "scroll", "chapter": 0, "offset": 400, "page": -1, "total": -1, "ratio": -1, "at": 2000 },
+    { "type": "debounce", "chapter": 0, "at": 2500 }
+  ],
+  "expect": {
+    "persists": [
+      { "chapter": 0, "offset": 300, "page": -1, "total": -1, "ratio": -1 },
+      { "chapter": 0, "offset": 320, "page": 3, "total": 10, "ratio": -1 },
+      { "chapter": 0, "offset": 400, "page": -1, "total": -1, "ratio": -1 }
+    ]
+  }
+}

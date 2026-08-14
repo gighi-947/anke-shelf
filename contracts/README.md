@@ -15,9 +15,11 @@ contracts/
 ├── annotation/        annotations.json 的 JSON Schema
 ├── settings/          settings.json 的 JSON Schema
 ├── text/              文本规范化用例（HTML → 折叠纯文本 + text_offset 采样点）
-├── tests/             Node 契约测试（textpos / api-contract）
+├── tests/             Node 契约测试（textpos / api-contract / bridge-contract）
 └── fixtures/
     └── native-book/basic-nga/   最小原生书 fixture（meta/floors/chapters + 期望纯文本）
+    └── progress/      进度事件序列夹具（滚动防抖/翻页即时/模式隔离/比例锚点/
+                       换章 flush/dispose 迟到事件/连续重进；Kotlin 决策层消费）
 ```
 
 ## 使用规则
@@ -34,6 +36,9 @@ contracts/
 5. API 清单由机器对照（`contracts/tests/api-contract.test.js` 与
    `tests/test_api_contract.py`）：后端 `app/api` 与前端 `web/js/api-client.js`、
    `bridge.js` MOCKS 必须一一对应；新增 API 必须同时更新 handler、客户端与 MOCK。
+6. 进度事件序列夹具（`contracts/fixtures/progress/`）由 Android 纯决策层
+   `ProgressModel` 消费；JS 桥测试（`bridge-contract.test.js`）校验 ready 握手
+   版本与能力清单。改进度语义先改用例（红），再改实现（绿）。
 
 ## 版本
 
