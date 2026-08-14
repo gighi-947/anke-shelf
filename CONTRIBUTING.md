@@ -14,11 +14,19 @@ Windows 与 Android 两端独立实现、共享数据契约。
 Windows 端：
 
 ```bat
-pip install -r requirements.txt
+pip install -r requirements.lock
 python -m unittest discover tests
 node contracts/tests/api-contract.test.js
 node contracts/tests/textpos.test.js
 python -m tests.make_test_epub        :: 生成测试样本
+```
+
+更新依赖锁（人工维护 `requirements*.in`，锁文件由 pip-tools 生成）：
+
+```bat
+pip install pip-tools
+pip-compile --generate-hashes --output-file requirements.lock requirements.in
+pip-compile --generate-hashes --allow-unsafe --output-file requirements-build.lock requirements-build.in
 ```
 
 Android 端（见 [android/README.md](android/README.md)）：

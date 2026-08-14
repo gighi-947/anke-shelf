@@ -138,14 +138,14 @@ NGA 下载：下载配置与任务控制
 源码运行：
 
 ```bat
-pip install -r requirements.txt
+pip install -r requirements.lock
 python -m app.main
 ```
 
 打包：
 
 ```bat
-pip install pyinstaller
+pip install -r requirements-build.lock
 build.bat
 ```
 

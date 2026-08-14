@@ -1,0 +1,8 @@
+# 运行依赖（人工维护，版本与本地验证基线一致；生成 lock 用 pip-compile）
+# lock 以 CI/发行版 Python 3.12 为基线生成，已验证可在 Python 3.14 安装。
+pywebview==6.2.1
+httpx==0.28.1
+ebooklib==0.20
+curl_cffi==0.16.0
+Pillow==12.2.0
+jsonschema==4.26.0

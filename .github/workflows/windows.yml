@@ -8,7 +8,7 @@ on:
       - 'ngapost2md-python/**'
       - 'tests/**'
       - 'contracts/**'
-      - 'requirements.txt'
+      - 'requirements*'
       - 'ankeshelf.spec'
       - 'run_app.py'
       - '.github/workflows/windows.yml'
@@ -19,7 +19,7 @@ on:
       - 'ngapost2md-python/**'
       - 'tests/**'
       - 'contracts/**'
-      - 'requirements.txt'
+      - 'requirements*'
       - 'ankeshelf.spec'
       - 'run_app.py'
       - '.github/workflows/windows.yml'
@@ -37,7 +37,7 @@ jobs:
           cache: 'pip'
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.lock -r requirements-build.lock
 
       - name: Validate frontend JS syntax
         shell: pwsh

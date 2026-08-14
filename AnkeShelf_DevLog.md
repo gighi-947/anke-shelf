@@ -10,13 +10,14 @@
 
 ## 1. 当前状态（2026-08-14）
 
-- 功能基线 HEAD：`c8f90cf`（win: P1 契约/API 漂移守卫）；本地未推送提交含
-  `b6fba10`（P0）、`c8f90cf`（P1）及本次文档漂移同步，见“最近流水”。
-- 工作树干净；上一文档基线 `4810d0c` 之后新增 P0 / P1 两项实现。
+- 功能基线 HEAD：`edaf442`（win: 依赖锁定）；本日另完成 P0 友好提示、P1 契约守卫、
+  首批 ADR、开源治理文档、reader.js 乱码修复（提交见“最近流水”）。
+- 推送状态：至 `6f6ee9d` 已推送 `origin/main`；`edaf442` 待推送。工作树干净。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows/JS 于 2026-08-14 实跑复核；Android 沿用 2026-08-10 本地报告）：
-  - Windows Python：`python -m unittest discover tests` = 218 项 OK；
+  - Windows Python：`python -m unittest discover tests` = 218 项 OK
+    （本机 Python 3.14 与沙箱 3.12 双环境）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（40 方法一致）、
     `node tests/js/reader-session.test.js` 均 OK；
@@ -26,7 +27,9 @@
 
 ## 2. 本机环境（Windows 开发机）
 
-- Python：`F:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`
+- Python：本机 `F:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe`
+  （3.14.5，已写入用户 PATH，含 Scripts）；沙箱会话兜底
+  `F:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`（3.12.13）。
 - Node：`F:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe`
 - Android 构建：`JAVA_HOME=D:\Android\AndroidStudio\jbr`、
   `GRADLE_USER_HOME=F:\Users\Administrator\.gradle`、
@@ -43,6 +46,15 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-14 win：依赖锁定 + 本机 Python 3.14 PATH
+
+- 处理：`requirements.txt` 拆为 `requirements.in` / `requirements-build.in`（人工维护），
+  经 pip-tools 生成带哈希的 `requirements.lock` / `requirements-build.lock`；PyInstaller
+  移入构建锁；windows.yml / nightly.yml 改为按 lock 安装；README / CONTRIBUTING 同步。
+- 本机环境：Python 3.14.5（pythoncore-3.14-64）已写入用户 PATH；锁以 CI/发行版 3.12
+  为基线生成，实测在 3.14 虚拟环境可安装、全量 218 项单测通过。
+- 验证：3.14 全新 venv 安装 lock → imports OK → `unittest discover tests` 218 项 OK。
 
 ### 2026-08-14 docs：开源治理文档落地
 
