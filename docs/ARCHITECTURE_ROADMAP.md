@@ -153,7 +153,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 > 状态（2026-08-14）：Windows 依赖锁定已完成（requirements.in / requirements-build.in
 > + 带哈希的 lock，CI 用 lock 安装，PyInstaller 移出运行依赖；锁以 3.12 为基线、
-> 实测 3.14 可安装）。Android 侧 APK JS SHA 校验、Java 工具链检查、发布资产摘要待办。
+> 实测 3.14 可安装）；Android 侧 `check-release.ps1` 已增加 APK 内 reader-lite.js
+> SHA-256 比对。Java 工具链检查、发布资产摘要待办。
 
 - `requirements.txt` 拆为 `requirements.in`（人类维护）+ lock 文件
   （或 `pyproject.toml` + uv/pip-tools），CI 与 PyInstaller 使用 lock；

@@ -52,6 +52,31 @@ try {
             }
         }
     }
+    # Guard: the active reader-lite.js inside the APK must match the source file.
+    # Gradle once mis-judged assets as UP-TO-DATE and shipped a stale JS bundle.
+    $sourceJs = Join-Path $PSScriptRoot '..\app\src\main\assets\reader\reader-lite.js'
+    $jsEntry = $zip.Entries |
+        Where-Object { $_.FullName -eq 'assets/reader/reader-lite.js' } |
+        Select-Object -First 1
+    if ($null -eq $jsEntry) {
+        Write-Host "MISSING entry: assets/reader/reader-lite.js"
+        $found = $true
+    } else {
+        $sourceHash = (Get-FileHash -LiteralPath (Resolve-Path -LiteralPath $sourceJs) -Algorithm SHA256).Hash
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        $stream = $jsEntry.Open()
+        try {
+            $apkHash = [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '')
+        } finally {
+            $stream.Dispose()
+            $sha.Dispose()
+        }
+        Write-Host "reader-lite.js SHA256: apk=$apkHash source=$sourceHash"
+        if ($apkHash -ne $sourceHash) {
+            Write-Host "MISMATCH: reader-lite.js in APK differs from source (Gradle UP-TO-DATE mis-judgement?)"
+            $found = $true
+        }
+    }
     $file = Get-Item -LiteralPath $ApkPath
     $hash = Get-FileHash -LiteralPath $ApkPath -Algorithm SHA256
     Write-Host "APK: $($file.FullName)"

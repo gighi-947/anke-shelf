@@ -48,6 +48,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-14 android：check-release.ps1 增加 APK 内 reader-lite.js SHA 校验
+
+- 现象：Gradle 曾误判资产 UP-TO-DATE 导致旧 `reader-lite.js` 入包，此前只能手工解包确认。
+- 处理：`check-release.ps1` 在凭据扫描后提取 APK 内 `assets/reader/reader-lite.js`
+  计算 SHA-256 并与源码比对，不一致即 FAIL；脚本内新增文案保持 ASCII
+  （PowerShell 5.1 对无 BOM UTF-8 中文按 ANSI 误读会破坏解析）。
+- 验证：正常 debug APK → PASS 且双端哈希一致；最小篡改 zip → FAIL（exit 1）。
+
 ### 2026-08-14 android：P3 reader-lite.js 模块化拆分
 
 - 处理：现役渲染内核按功能边界切成 `reader-lite.parts/` 6 个模块（00-core /

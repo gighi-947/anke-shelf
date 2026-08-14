@@ -76,7 +76,9 @@
 2. 更新 `app/build.gradle.kts` 版本号（`versionName` 去掉 `-debug`、`versionCode` 递增），
    同步 README 安卓章节（如有版本引用）与 `AnkeShelf_DevLog.md`。
 3. 构建签名 Release：`gradlew assembleRelease`（无签名文件时可用 debug 包演练流程）。
-4. 凭据扫描（必须通过）：
+4. 凭据扫描 + 渲染内核一致性（必须通过）：`check-release.ps1` 除凭据扫描外，
+   还会比对 APK 内 `assets/reader/reader-lite.js` 与源码 SHA-256，
+   防止 Gradle 误判 UP-TO-DATE 把旧 JS 打进包：
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File android/scripts/check-release.ps1 `
