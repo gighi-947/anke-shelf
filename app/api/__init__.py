@@ -106,5 +106,11 @@ class Api(ApiRegistry):
             file_dialog=file_dialog,
             window_toggle=window_toggle,
         )
+        self._ctx = ctx
         for name, fn in _HANDLERS:
             self.register(name, bind(ctx, fn))
+
+    @property
+    def fullscreen(self) -> bool:
+        """当前沉浸式全屏状态（main.py 关闭窗口时读取，避免把全屏分辨率记为窗口尺寸）。"""
+        return self._ctx.fullscreen

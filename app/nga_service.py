@@ -505,8 +505,8 @@ class NgaService:
             self._books.close(rec.id)
             try:
                 self._books.register(str(native_dir))
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as e:  # noqa: BLE001
+                log.warning("热更新后重新注册书籍失败（打开时将兜底重解析）：%s", e)
         bus.emit("book_updated", book_id=rec.id)
         return new_count
 

@@ -29,6 +29,7 @@ class ApiContext:
     frontend_ready: Optional[threading.Event] = None
     file_dialog: Optional[Callable[[str], list[str]]] = None
     window_toggle: Optional[Callable[[], None]] = None
+    fullscreen: bool = False
 
 
 def bind(ctx: ApiContext, fn: Callable) -> Callable:

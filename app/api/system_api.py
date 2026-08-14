@@ -6,6 +6,8 @@ import subprocess
 import time
 from pathlib import Path
 
+_log = logging.getLogger("app.system")
+
 from .. import __version__
 from ..backup import create_backup, restore_backup, verify_backup
 from ..diagnostics import build_diagnostics
@@ -36,7 +38,7 @@ def toggle_fullscreen(ctx: ApiContext) -> dict:
         return api_error(ErrorCode.SERVICE_UNAVAILABLE, "全屏控制不可用")
     try:
         ctx.window_toggle()
-        ctx._fullscreen = not getattr(ctx, "_fullscreen", False)
+        ctx.fullscreen = not ctx.fullscreen
         return {"ok": True}
     except Exception as e:  # noqa: BLE001
         return api_error(ErrorCode.SERVICE_UNAVAILABLE, str(e))
@@ -156,6 +158,6 @@ def uninstall_and_quit(ctx: ApiContext) -> dict:
             ["powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script],
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        _log.error("启动卸载清理脚本失败（数据目录可能残留）：%s", e)
     os._exit(0)

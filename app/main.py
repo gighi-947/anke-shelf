@@ -202,7 +202,7 @@ def main() -> int:
         # 记忆窗口尺寸（下次启动恢复）
         try:
             # 沉浸式全屏中不把全屏分辨率记成窗口尺寸
-            if not getattr(api, "_fullscreen", False):
+            if not api.fullscreen:
                 size = window.size
                 if size and size[0] >= 640 and size[1] >= 480:
                     settings.update({"window_size": list(size)})

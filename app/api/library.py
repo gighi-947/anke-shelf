@@ -1,4 +1,5 @@
 """书架与书籍：列表 / 导入 / 删除 / 打开。"""
+import logging
 from pathlib import Path
 
 from ..epub import EpubError
@@ -13,6 +14,8 @@ from .common import (
     record_to_dict,
     toc_to_dict,
 )
+
+log = logging.getLogger("app.api.library")
 
 
 def get_shelf(ctx: ApiContext) -> list[dict]:
@@ -99,8 +102,8 @@ def open_book(ctx: ApiContext, book_id: str) -> dict:
                 rec.language = book.language
                 ctx.shelf.upsert(rec)
                 ctx.shelf.save()
-            except EpubError:
-                pass  # 解析失败则沿用旧记录
+            except EpubError as e:
+                log.warning("书籍重新解析失败，沿用旧记录：%s", e)
         rec = ctx.shelf.get(book_id)
 
     progress = ctx.progress.get(book_id)

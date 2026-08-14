@@ -118,6 +118,9 @@ class ApiServiceTest(unittest.TestCase):
         api = self._make_api(BookManager(), window_toggle=lambda: calls.append(1))
         self.assertTrue(api.toggle_fullscreen()["ok"])
         self.assertEqual(calls, [1])
+        self.assertTrue(api.fullscreen)
+        self.assertTrue(api.toggle_fullscreen()["ok"])
+        self.assertFalse(api.fullscreen)
 
         api2 = self._make_api(BookManager())
         self.assertFalse(api2.toggle_fullscreen()["ok"])
