@@ -355,6 +355,7 @@ def start_server(
     covers_dir: Path,
     api: object = None,
     token: str = None,
+    port: int = 0,
 ) -> int:
     """Start the local HTTP server (daemon thread) and return the listening port."""
     EpubHandler.web_dir = web_dir
@@ -363,7 +364,7 @@ def start_server(
     EpubHandler.api = api
     EpubHandler.token = token
 
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), EpubHandler)
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", port), EpubHandler)
     server.daemon_threads = True
     port = server.server_address[1]
     thread = threading.Thread(target=server.serve_forever, daemon=True)

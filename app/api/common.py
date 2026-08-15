@@ -7,6 +7,7 @@ from typing import Callable, Optional
 from .. import dialogs
 from ..book_manager import BookManager
 from ..export_service import ExportService
+from ..gululu_service import GululuService
 from ..nga_service import NgaService
 from ..search import SearchService
 from ..settings import Settings
@@ -26,6 +27,7 @@ class ApiContext:
     stats: Optional["StatsStore"] = None
     nga_service: Optional[NgaService] = None
     export_service: Optional[ExportService] = None
+    gululu_service: Optional[GululuService] = None
     frontend_ready: Optional[threading.Event] = None
     file_dialog: Optional[Callable[[str], list[str]]] = None
     window_toggle: Optional[Callable[[], None]] = None

@@ -1,16 +1,16 @@
 /**
- * 下载 / 导出整合页（参考 Koodo Reader 的 Tab 导航与任务卡片化）：
- * 下载 / 更新 / 导出 / 配置 四个标签页，任务状态实时轮询并带运行指示。
- * 后端：NgaService（下载）+ ExportService（导出），全部走 HTTP API。
+ * 安科下载 / 导出整合页：骨碌碌 / NGA / 更新 / 导出 / 配置标签页，
+ * 后台任务状态实时轮询并带运行指示。
  */
 (function () {
   'use strict';
 
   let selectedFmt = 'both';
-  let activeTab = 'dl-download';
+  let activeTab = 'dl-gululu';
 
   const TABS = [
-    ['dl-download', '下载'],
+    ['dl-gululu', '骨碌碌'],
+    ['dl-download', 'NGA'],
     ['dl-update', '更新'],
     ['dl-export', '导出'],
     ['dl-config', '配置'],
@@ -70,7 +70,7 @@
     back.addEventListener('click', close);
     const title = document.createElement('div');
     title.className = 'settings-title';
-    title.textContent = 'NGA 下载 / 导出';
+    title.textContent = '安科下载 / 导出';
     head.append(back, title);
     el.appendChild(head);
 
@@ -99,6 +99,7 @@
     layout.append(tabs, panels);
     el.appendChild(layout);
 
+    panelById['dl-gululu'].appendChild(GululuDownload.buildSection());
     panelById['dl-download'].appendChild(NgaPanels.buildDownloadSection());
     panelById['dl-update'].appendChild(NgaPanels.buildUpdateSection());
     panelById['dl-export'].appendChild(NgaPanels.buildExportSection());
@@ -591,6 +592,7 @@
     const openBtn = document.getElementById('dl-export-open');
     if (openBtn) openBtn.disabled = true;
     pollDownload(false);
+    GululuDownload.resume();
     pollExport();
     el.classList.remove('hidden');
     if (opts && opts.focusUpdate) {
@@ -609,9 +611,10 @@
     if (el) el.classList.add('hidden');
     stopPolling();
     stopExportPolling();
+    GululuDownload.stop();
   }
 
-  window.NgaPage = { section, fmtBtn, field, input, numInput, select, checkbox, check, val, startDownload, cancelDownload, loadUpdateDefaults, startUpdate, saveConfig, clearConfig, startExport, openExportDest };
+  window.NgaPage = { section, fmtBtn, field, input, numInput, select, checkbox, check, val, makePoller, refreshBooks, startDownload, cancelDownload, loadUpdateDefaults, startUpdate, saveConfig, clearConfig, startExport, openExportDest };
 
   window.NgaDownload = { open, close };
 

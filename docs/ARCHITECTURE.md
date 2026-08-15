@@ -14,6 +14,12 @@ app/                  Python 后端
   annotations.py      标注/书签
   search.py           全文搜索索引（按需构建；按章限量 + 续取 search_more）
   epub.py             自实现 EPUB 解析（container → OPF → spine → 目录）
+  gululu_ast.py       骨碌碌富文本 mark 渲染
+  gululu_source.py    骨碌碌 URL / EPUB dc:identifier 来源识别
+  gululu_comments.py  公开评论分页、子回复、前端最小字段与 EPUB 评论块
+  gululu_immersive.py 音乐/背景/视效正文指令 → 安全 EPUB 语义标记
+  gululu_epub.py      骨碌碌公开 API / AST → 标准 EPUB3
+  gululu_service.py   紧凑导入、在线评论缓存与含评论 EPUB 导出
   native_book.py      原生增量书容器（meta.json + floors.json + chapters/）
   nga_service.py      NGA 下载/热更新服务（单飞任务 + 状态轮询）
   export_service.py   导出（EPUB/Markdown 复制 + 原生书重建 EPUB）
@@ -27,8 +33,10 @@ web/                  前端（纯静态，前后端分离）
     reader.js         阅读核心编排（章节加载/进度/快捷键/交互）
     reader-utils.js / reader-session.js / reader-navigation.js /
     reader-help.js / reader-image.js   reader.js 拆分的常量/会话/换章/帮助/图片模块
+    gululu-comments.js 骨碌碌宿主层在线评论面板 / 只读弹幕
+    gululu-immersive.js 骨碌碌宿主层音乐、氛围背景与动态视效
     paged.js          CSS multi-column 分页核心（单页/自动双页/强制双页）
-    nga_download.js   下载/导出/更新整合页
+    nga_download.js + gululu-download.js   安科下载/导出/更新整合页
     settings.js       独立设置页
     stats.js / sidebar.js / toc.js / annotations.js / fullsearch.js
     bookshelf.js      书架网格/列表
@@ -48,6 +56,14 @@ docs/                 架构与规划文档
   章节由 iframe 加载（同源，可注入样式与交互）。
 - 阅读进度：统一 `text_offset`（纯文本字符偏移），滚动/分页模式都可精确恢复。
 - NGA 下载：下载完成立即构建原生书容器并注册书架；热更新只拉新页、追加新楼层。
+- 骨碌碌导入：公开 API 分批获取 → AST 转 XHTML → `.part` 原子替换紧凑 EPUB
+  → 注册书架；阅读时按当前章节楼层获取评论，Windows 本地缓存 5 分钟，网络失败显式
+  回退最近缓存。评论面板/弹幕均在宿主层，不修改 iframe 正文与 `text_offset`。
+- 骨碌碌沉浸指令：转换器按正文结构识别音乐/背景/视效文本协议 → 仅保留无凭据 HTTPS
+  外链和 EPUB `data-*` 语义标记 → Windows 宿主层读取当前章节标记并呈现音频、背景与
+  Canvas/CSS 效果。运行时不改 iframe DOM，返回书架统一停止并清理。
+- 骨碌碌完整导出：重新获取全量公开评论 → 写入可折叠 XHTML 评论块 → 原子生成独立
+  EPUB；不替换书架副本。两条链路均不写入 NGA / 双端 JSON 字段。
 - 统计：前端 5 秒心跳 + 页面切换上报，后端按天聚合。
 
 ## 关键约定

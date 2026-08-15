@@ -20,7 +20,7 @@
 | Windows 前端 | `web/index.html` → `web/js/app.js` / `bookshelf.js` / `reader.js` | 单页应用；`api-client.js`（Api.<method>()）→ `bridge.js`（Bridge.call） |
 | Android | `MainActivity.kt` → `AnkeShelfApp.kt` → `ui/AnkeShelfRoot.kt` | 手动 DI（`service/AppContainer.kt`）+ 底部四 Tab 路由 |
 
-## 2. NGA 下载与热更新链路
+## 2. 安科下载与更新链路
 
 ```text
 UI 入口 → 下载器 → HTTP 客户端 → 格式化 → 落盘/追加
@@ -29,6 +29,9 @@ UI 入口 → 下载器 → HTTP 客户端 → 格式化 → 落盘/追加
 | 端 | 文件 | 关键职责 |
 | --- | --- | --- |
 | Windows | `web/js/nga_download.js` → `app/nga_service.py` → `ngapost2md-python/ngapost2md/` | 面板、分阶段任务、下载内核（`client.py`/`nga.py`/`format.py`/`format_html.py`/`toc.py`） |
+| Windows | `web/js/gululu-download.js` → `app/api/gululu_api.py` → `app/gululu_service.py` → `app/gululu_epub.py` | 骨碌碌紧凑导入、含评论 EPUB 可选导出、任务进度/取消与原子落盘 |
+| Windows | `web/js/gululu-comments.js` → `app/api/gululu_api.py` → `app/gululu_service.py` → `app/gululu_comments.py` | 当前章节评论按需加载、5 分钟缓存/离线回退、宿主层评论面板与只读弹幕 |
+| Windows | `app/gululu_immersive.py` → EPUB `data-*` → `web/js/gululu-immersive.js` | 正文音乐/背景/视效指令解析，无凭据 HTTPS 校验，宿主层播放器、背景与动态视效 |
 | Windows | `app/native_book.py` | 原生书容器：meta.json + floors.json + chapters/*.xhtml，纯增量追加 |
 | Android | `ui/download/DownloadScreen.kt` → `service/NgaDownloader.kt` / `NgaDownloadService.kt` | 参数表单、前台服务、进度通知、取消清理 |
 | Android | `service/NgaClient.kt` / `NgaHttp.kt` | OkHttp + CookieJar + UA + Referer（图片代理统一入口） |
@@ -50,7 +53,7 @@ UI 入口 → 下载器 → HTTP 客户端 → 格式化 → 落盘/追加
 
 | 端 | 解析 | 导出 |
 | --- | --- | --- |
-| Windows | `app/epub.py`（container → OPF → spine → nav/NCX） | `app/export_service.py` + `app/native_book.py`（重建 EPUB） |
+| Windows | `app/epub.py`（container → OPF → spine → nav/NCX） | `app/export_service.py` + `app/native_book.py`（重建 EPUB）；`app/gululu_epub.py`（骨碌碌公开 API / AST → 标准 EPUB） |
 | Android | `data/Epub.kt` | `data/EpubExporter.kt`（自写 ZIP/OPF）+ `service/NgaExport.kt`（EPUB/Markdown，SAF 保存） |
 | Android | — | `data/NgaMarkdown.kt`（楼层 → Markdown） |
 
@@ -120,5 +123,6 @@ Compose 外壳 → WebView 渲染内核 → CSS/JS 排版 → text_offset
 | Android 跨端对照 | `androidTest/.../ReaderPagedCrossTest.kt`（需设备） |
 | Android 构建 | `gradlew assembleDebug` / `assembleRelease`（需本地 keystore） |
 | Windows 单测 | `python -m unittest discover tests` |
+| 骨碌碌专版调试区 | `tests/gululu_reader_debug/server.py` + `web/`；独立 Windows 阅读壳层，本地产物写入其 `workspace/` |
 | 凭据扫描 | `android/scripts/check-release.ps1` |
 | 发布 | `android/VERSIONING.md`（安卓）、DevLog 5.3（Windows） |

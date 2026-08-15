@@ -156,6 +156,8 @@ class EpubBook:
         self.publisher = ""
         self.description = ""
         self.isbn = ""
+        self.identifier = ""
+        self.source = ""
         self.chapters: list[SpineItem] = []
         self.toc: list[TocEntry] = []
         self.toc_map: dict[str, str] = {}  # href(无 fragment) → 目录标题
@@ -245,15 +247,19 @@ class EpubBook:
         pub = md.find(_q("publisher", NS_DC))
         desc = md.find(_q("description", NS_DC))
         ident = md.find(_q("identifier", NS_DC))
+        source = md.find(_q("source", NS_DC))
         self.title = (title.text or "").strip() if title is not None else ""
         self.author = (creator.text or "").strip() if creator is not None else ""
         self.language = (lang.text or "").strip() if lang is not None else ""
         self.publisher = (pub.text or "").strip() if pub is not None else ""
         self.description = (desc.text or "").strip() if desc is not None else ""
         if ident is not None and ident.text:
+            self.identifier = ident.text.strip()
             t = ident.get("{%s}scheme" % NS_OPF, "").upper()
             if t in ("ISBN", "URI", ""):
-                self.isbn = ident.text.strip()
+                self.isbn = self.identifier
+        if source is not None and source.text:
+            self.source = source.text.strip()
         if not self.title:
             self.title = Path(self.path).stem
 

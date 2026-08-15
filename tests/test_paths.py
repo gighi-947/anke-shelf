@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.paths import APP_DIR_NAME, ensure_data_dir, migrate_legacy_data
+from app.paths import APP_DIR_NAME, ensure_data_dir, gululu_library_dir, migrate_legacy_data
 
 
 class PathsTest(unittest.TestCase):
@@ -58,6 +58,12 @@ class PathsTest(unittest.TestCase):
     def test_ensure_data_dir_creates_new_dir(self):
         ensure_data_dir()
         self.assertTrue((self._root / "AnkeShelf" / "covers").is_dir())
+
+    def test_gululu_library_is_inside_app_data(self):
+        self.assertEqual(
+            gululu_library_dir(),
+            self._root / "AnkeShelf" / "gululu_library",
+        )
 
 
 if __name__ == "__main__":

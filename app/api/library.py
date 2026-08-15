@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ..epub import EpubError
 from ..errors import ErrorCode, api_error
+from ..gululu_source import parse_gululu_identifier
 from ..paths import file_mtime
 from ..shelf import BookRecord, ProgressStore
 from .common import (
@@ -117,11 +118,14 @@ def open_book(ctx: ApiContext, book_id: str) -> dict:
         {"index": c.index, "href": c.href, "title": book.chapter_title(c.index)}
         for c in book.chapters
     ]
+    gululu_source_id = parse_gululu_identifier(getattr(book, "identifier", ""))
     return {
         "id": book_id,
         "title": book.title,
         "author": book.author,
         "nga": bool(rec and rec.nga_tid),
+        "gululu": gululu_source_id is not None,
+        "gululu_source_id": gululu_source_id or 0,
         "chapters": chapters,
         "toc": toc_to_dict(book),
         "progress": progress,

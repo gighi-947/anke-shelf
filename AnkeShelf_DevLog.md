@@ -10,25 +10,25 @@
 
 ## 1. 当前状态（2026-08-15）
 
-- 仓库代码基线：`f108eda`（win: improve API contract launch diagnostics）；前一提交
-  `0e44ae0` 完成 Android CI bundle 路径修复，本文档同步提交不改变代码基线。
+- 仓库 HEAD：`670cecb`（docs: sync CI fix status）；当前功能分支
+  `win/gululu-adapter-research` 在此基础上开发 Windows 骨碌碌 EPUB 适配。
 - 提交批次：Android CI、Contracts 诊断与本文档同步三个提交同批推送；远端精确状态
   以 `git status --short --branch` 为准。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机/UI 基线沿用
   2026-08-14）：
-  - Windows Python：`python -m unittest discover tests` = 230 项 OK
-    （本轮本机 Python 3.14；沙箱 3.12 基线沿用 2026-08-14）；
+  - Windows Python：`python -m unittest discover tests` = 257 项 OK
+    （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（45 方法一致）、
+    `node contracts/tests/api-contract.test.js`（50 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node contracts/tests/reader-lite-parts.test.js`（6 parts / 36917 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
-  - UI 实机 harness：`python -m tests.ui.runner` = 92 项 PASS（需桌面 WebView2）。
+  - UI 实机 harness：`python -m tests.ui.runner` = 94 项 PASS（需桌面 WebView2）。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
 
 ## 2. 本机环境（Windows 开发机）
@@ -52,6 +52,107 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-15 win/docs：骨碌碌无作者章节时按楼层自动分章
+
+- 现象：部分骨碌碌作者未设置章节，公开章节接口会返回成功响应但 `data: null`；转换器
+  原先将其判为格式错误，空章节列表也会把所有楼层放入一个超大 EPUB 章节。
+- 处理：`null` 章节数据现在明确映射为空作者章节；没有任何有效作者章节标记时，从
+  1 楼开始按 NGA 默认粒度每 20 楼生成一个章节，标题使用楼层范围。骨碌碌没有主楼
+  概念，因此 1 楼不单独成章；存在有效作者章节标记时保持原有分章与标题。
+- 验证：新增 `null` 章节合同与 42 楼边界回归测试；Windows Python 全量 257 项 OK
+  （4 跳）。真实测试书 `32203` 的章节接口返回 `data: null`，2299 楼成功生成 115 章，
+  首章“第 1~20 楼”、末章“第 2281~2299 楼”，紧凑 EPUB 约 2.78 MB。
+
+### 2026-08-15 win/docs：骨碌碌音乐、氛围背景与动态视效
+
+- 范围：实现待适配清单第 2 项“音乐与背景特效”，仅修改 Windows；Android、CI、
+  双端 JSON 契约和 API 方法表不变。参考公开用户脚本确认这些能力来自作者写入正文的
+  文本指令，而非骨碌碌 API 独立字段；未保存第三方脚本源码。
+- 转换：新增 `gululu_ast.py` / `gululu_immersive.py`，识别 `<音乐>`、`<自动音乐>`、
+  `<停止音乐>`、`<背景>`、`<移除背景>` 与 `<特效:...>`，将其转换为 EPUB `data-*`
+  语义标记。外链只接受无凭据 HTTPS；未知特效、无效链接和未闭合背景指令显示明确
+  占位。跨章节背景通过零高度初始标记保持，`gululu_epub.py` 为 484 行。
+- 阅读器：新增宿主层播放器、氛围背景层、Canvas 雨/雪/风/雷与 CSS 震动效果，以及
+  音量、自动音乐、背景和视效控制面板。手动音乐随正文按钮播放，自动音乐默认关闭；
+  背景/视效默认开启，系统“减少动态效果”开启时抑制动画。返回书架会停止音乐、清空
+  背景/视效并终止扫描器，所有运行时层均位于 iframe 外，不改正文 DOM。
+- 验证：本机 Python 3.14 与 bundled Python 3.12 均为 255 项 OK（3.14 跳过 4）；
+  API 50 方法、全部 Node 契约和 WebView2 UI harness 94 项通过。正式阅读器 Playwright
+  冒烟确认音乐播放/停止、背景命中、雨效 Canvas 约 5 千个可见像素、评论/弹幕共存、
+  返回书架清理完成；正文长度在效果前后保持 `45 -> 45`，1440px / 430px 截图无
+  溢出，窄屏 `scrollWidth=430`，控制台业务错误为 0。
+
+### 2026-08-15 win/docs：骨碌碌评论第二阶段（默认在线 + 可选完整导出）
+
+- 范围：书架 EPUB 默认不再嵌入评论；评论改为 Windows 正式阅读器按当前章节懒加载，
+  同时保留“导出含评论 EPUB”作为跨阅读器、自包含快照。不修改 Android、CI 或双端
+  JSON 契约。
+- 后端：EPUB 解析器保留 `dc:identifier` / `dc:source`，以 `gululu-<bookId>` 识别
+  来源；评论 API 按楼层分批读取，只向前端/缓存保留昵称、时间、点赞、段落 ID、回复
+  对象和子回复。Windows sidecar 缓存有效期 5 分钟，联网失败时显式返回最近缓存，
+  无缓存则返回明确失败。普通导入 `include_comments=False`；完整导出重新拉取全量评论，
+  原子生成 `gululu-<bookId>-comments.epub`，不替换书架副本。
+- 前端：新增正式阅读器宿主层评论面板、刷新命令和弹幕开关；切章只提取 iframe 中的
+  `floor-*` 锚点，面板打开或弹幕开启时才请求，超长章节每 50 个楼层分批。评论以
+  `textContent` 渲染，面板和弹幕均位于 iframe 外，不参与分页、搜索或 `text_offset`。
+- 验证：Windows Python 252 项 OK；API 50 方法一致。正式阅读器 Playwright 冒烟使用
+  无评论 EPUB，确认内嵌评论 0、在线评论/回复 4、打开面板前后正文文本长度均为 39、
+  弹幕与强制刷新正常；1440px / 430px 截图无文字遮挡，窄屏 `scrollWidth=430`，
+  JavaScript 控制台业务错误为 0。真实书 `66905` 的紧凑导入约 28.5 秒完成 20 章生成
+  与临时书架注册，章节内评论标记为 0；旧的含评论调试 EPUB 仍通过 20 章 / 评论 /
+  弹幕回归。
+  `gululu_epub.py` 提取来源解析后为 488 行。
+
+### 2026-08-15 win/docs：骨碌碌公开评论与专版只读弹幕
+
+- 范围：先实现待适配清单第 1 项“评论/弹幕”。标准 EPUB 继续作为跨端兼容边界；
+  评论数据写入 XHTML，弹幕仅由 Windows 专版调试壳层呈现，不修改双端 JSON 契约，
+  不接入登录、发言、点赞等站点写操作。
+- 处理：匿名客户端增加作品评论、楼层评论与子回复分页抓取，使用
+  `/reader/opus/comment/page`、`/reader/opus/comment/page-children` 和 `platform: 1`；
+  任务进度新增 `comments` 阶段。EPUB 保留昵称、时间、点赞数、段落 ID、回复对象与
+  子回复，内容转义后写入可折叠评论区；正文段落同步保留 `data-paragraph-id`。专版
+  调试阅读器新增独立“评论”与“弹幕”开关，弹幕层位于 iframe 外，不改变正文坐标。
+- 验证：真实测试书 `66905` 生成 20 章、110 个评论块，公开 API 实际返回 2928 条
+  评论/回复（其中子回复 311 条），约 19 秒完成转换；浏览器冒烟检查确认首章评论、
+  弹幕投射、3 页分页、切换第二章和 430px 窄屏无横向溢出，控制台错误为 0。
+  评论 API 契约、子回复、服务透传、HTML 转义与段落锚点回归测试均通过。容量评估：
+  成品 EPUB 约 560 KB；评论 XHTML 原始约 1.15 MB，压缩后估算增加约 158 KB。
+
+### 2026-08-15 win/docs：建立骨碌碌专版阅读器独立调试区
+
+- 现象：骨碌碌 EPUB 导入链路已能端到端运行，后续专版阅读器排版实验需要与正式
+  `app/` / `web/` 代码及 Android 工程隔离，且生成的 EPUB、解包目录、截图和日志
+  不应进入版本库。
+- 处理：新增 `tests/gululu_reader_debug/` 作为 Windows 测试边界内的独立调试区；
+  调试服务器复用现役 EPUB 解析器与骨碌碌转换器，专用 Web 阅读壳层支持目录、
+  滚动/分页、字号、行距、版心与三种主题；`workspace/` 默认忽略生成书籍和日志。
+  可选 Playwright 冒烟检查覆盖桌面/窄屏、正文、切章和分页状态；README 明确实验
+  迁移、固件复用、凭据与跨端边界规则。未修改正式构建、CI 或数据契约。
+- 验证：新增服务器元数据、章节 CSP/UTF-8/base 注入与路径穿越回归测试；Windows
+  Python 247 项 OK（4 跳），工作区忽略规则可由 Git 正确识别，`git diff --check`
+  通过。
+- 排版修复：真实书浏览器冒烟检查发现 EbookLib 自动写出的章节样式链接为
+  `style/main.css`，从 `chapters/` 解析后命中不存在的路径；先补“章节样式 href 必须
+  解析到 ZIP 实际条目”失败测试，再改为显式 `../style/main.css`。调试服务器同时移除
+  被 CSP `base-uri 'none'` 拒绝且不必要的 `<base>` 注入，浏览器控制台错误归零。
+
+### 2026-08-15 win/docs：骨碌碌标准 EPUB 适配首阶段（排版与导入）
+
+- 范围：未来预留 Android 适配，但首阶段只做 Windows；不复用 NGA tid/pid、
+  不修改 `ank-native/1` 或双端 JSON 契约，以标准 EPUB 作为兼容边界。
+- 处理：新增骨碌碌匿名阅读 API 客户端（`platform: 1`，楼层分批获取）、公开书籍
+  URL/ID 解析、递归 AST → XHTML 渲染和 EPUB3 打包；支持段落、标题、在线图片、
+  折叠块、粗体/斜体/删除线/显式文字颜色，未知节点显示占位而不静默丢失；按站点
+  `chapterIndex` 的起始楼层分章。新增 `GululuService` 接入 `TaskManager`，支持
+  单飞、进度、取消、`.part` 原子替换和自动入架；下载页新增默认“骨碌碌”标签，
+  与 NGA / 更新 / 导出 / 配置并列，完成后可直接打开。
+- 测试：先补固件与服务红测再实现转绿；Windows Python 247 项 OK
+  （4 跳）。真实测试书 `66905` 生成 20 章 / 20 项目录，包含 3435 个有效在线图片
+  引用、14 个折叠块；6 个原站无效图片地址显示明确占位，20 个章节 XHTML 全部
+  可按 XML 解析，后台服务真实端到端完成 EPUB 落盘、书架注册和回读；API
+  48 方法一致，WebView2 UI harness 94 项全部通过（含骨碌碌面板/桥接）。
 
 ### 2026-08-15 android/contracts/docs：CI 路径修复 + API 契约启动诊断
 

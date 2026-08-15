@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>骨碌碌专版阅读器</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="app-bar">
+    <button class="icon-button" id="toc-toggle" type="button" title="目录" aria-label="目录">☰</button>
+    <div class="identity">
+      <strong>骨碌碌专版</strong>
+      <span id="book-title">正在载入</span>
+    </div>
+    <div class="app-actions">
+      <label class="select-label" for="theme-select">主题</label>
+      <select id="theme-select" aria-label="阅读主题">
+        <option value="light">纸白</option>
+        <option value="dark">夜间</option>
+        <option value="contrast">高对比</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="toc-panel" id="toc-panel" aria-label="目录">
+      <div class="toc-head">
+        <div>
+          <strong>目录</strong>
+          <span id="book-author"></span>
+        </div>
+        <button class="icon-button compact" id="toc-close" type="button" title="关闭目录" aria-label="关闭目录">×</button>
+      </div>
+      <nav id="chapter-list"></nav>
+    </aside>
+
+    <main class="reader-shell">
+      <section class="reader-stage" id="reader-stage" aria-label="正文">
+        <iframe id="chapter-frame" title="章节正文" sandbox="allow-same-origin"></iframe>
+        <div id="danmaku-layer" aria-hidden="true"></div>
+      </section>
+
+      <footer class="reader-controls">
+        <button class="icon-button" id="previous" type="button" title="上一页或上一章" aria-label="上一页或上一章">←</button>
+        <div class="reading-position">
+          <strong id="chapter-position">-- / --</strong>
+          <span id="page-position"></span>
+        </div>
+        <div class="segmented" role="group" aria-label="阅读模式">
+          <button type="button" data-mode="scroll" aria-pressed="true">滚动</button>
+          <button type="button" data-mode="paged" aria-pressed="false">分页</button>
+        </div>
+        <div class="segmented comment-controls" role="group" aria-label="评论显示">
+          <button id="comments-toggle" type="button" aria-pressed="true">评论</button>
+          <button id="danmaku-toggle" type="button" aria-pressed="false">弹幕</button>
+        </div>
+        <div class="control-group" aria-label="字号">
+          <button class="icon-button compact" id="font-down" type="button" title="减小字号" aria-label="减小字号">A−</button>
+          <output id="font-size">18</output>
+          <button class="icon-button compact" id="font-up" type="button" title="增大字号" aria-label="增大字号">A+</button>
+        </div>
+        <label class="range-control">行距
+          <input id="line-height" type="range" min="1.4" max="2.2" step="0.1" value="1.8">
+        </label>
+        <label class="range-control">版心
+          <input id="content-width" type="range" min="620" max="1080" step="20" value="820">
+        </label>
+        <button class="icon-button" id="next" type="button" title="下一页或下一章" aria-label="下一页或下一章">→</button>
+      </footer>
+    </main>
+  </div>
+
+  <div class="fatal" id="fatal" hidden></div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "code": 200,
+  "data": {
+    "current": 1,
+    "records": [
+      {
+        "childrenComment": null,
+        "childrenNum": 1,
+        "commentStatus": 1,
+        "content": "段落评论",
+        "createTime": "2026-08-15 09:01",
+        "floorId": 962170,
+        "fromUser": {"nickName": "评论者甲", "userId": 101},
+        "id": 9001,
+        "likeNum": 7,
+        "opusId": 66905,
+        "paragraphId": "p1",
+        "parentId": 0,
+        "replyUser": null
+      },
+      {
+        "childrenComment": null,
+        "childrenNum": 0,
+        "commentStatus": 1,
+        "content": "<script>alert(1)</script>\n第二行",
+        "createTime": "2026-08-15 09:02",
+        "floorId": 962170,
+        "fromUser": {"nickName": "评论者乙", "userId": 102},
+        "id": 9002,
+        "likeNum": 0,
+        "opusId": 66905,
+        "paragraphId": 0,
+        "parentId": 0,
+        "replyUser": null
+      }
+    ],
+    "size": 100,
+    "total": 2
+  },
+  "msg": "查询成功"
+}

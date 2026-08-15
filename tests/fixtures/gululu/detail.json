@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "author": {
+      "nickName": "测试作者",
+      "userId": 93001
+    },
+    "authorId": 93001,
+    "bookId": 66905,
+    "cover": {
+      "picUrl": "https://image.gululu.world/test/cover.webp"
+    },
+    "floorNum": 4,
+    "name": "测试安科",
+    "oneLineText": "用于 EPUB 转换测试",
+    "updateTime": "2026-08-14 22:41",
+    "words": 128
+  },
+  "msg": "查询成功"
+}

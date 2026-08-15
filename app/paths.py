@@ -133,3 +133,8 @@ def nga_config_path() -> Path:
 def nga_library_dir() -> Path:
     """NGA 下载库：每帖一个文件夹（ngapost2md 输出目录）。"""
     return data_dir() / "nga_library"
+
+
+def gululu_library_dir() -> Path:
+    """骨碌碌 EPUB 缓存：每本公开书籍一个文件夹。"""
+    return data_dir() / "gululu_library"

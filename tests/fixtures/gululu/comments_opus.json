@@ -1,0 +1,26 @@
+{
+  "code": 200,
+  "data": {
+    "current": 1,
+    "records": [
+      {
+        "childrenComment": null,
+        "childrenNum": 0,
+        "commentStatus": 1,
+        "content": "作品评论",
+        "createTime": "2026-08-15 09:00",
+        "floorId": 0,
+        "fromUser": {"nickName": "作品读者", "userId": 100},
+        "id": 8001,
+        "likeNum": 3,
+        "opusId": 66905,
+        "paragraphId": 0,
+        "parentId": 0,
+        "replyUser": null
+      }
+    ],
+    "size": 100,
+    "total": 1
+  },
+  "msg": "查询成功"
+}
