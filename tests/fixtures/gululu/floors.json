@@ -1,0 +1,105 @@
+{
+  "code": 200,
+  "data": [
+    {
+      "authorId": 93001,
+      "bookId": 66905,
+      "commentNum": 2,
+      "floorNum": 1,
+      "id": 962170,
+      "name": "前言",
+      "paragraphContents": [
+        {
+          "attrs": {"id": "p1"},
+          "content": [
+            {"attrs": null, "content": [], "marks": [], "text": "普通文字", "type": "text"},
+            {"attrs": null, "content": [], "marks": [], "text": "", "type": "hardBreak"},
+            {
+              "attrs": null,
+              "content": [],
+              "marks": [
+                {"attrs": null, "type": "bold"},
+                {"attrs": {"color": "rgb(221, 0, 0)"}, "type": "textStyle"}
+              ],
+              "text": "红色粗体",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        },
+        {
+          "attrs": {"src": "https://image.gululu.world/test/a.webp", "alt": "测试图", "avatar": "false"},
+          "content": [],
+          "type": "image"
+        }
+      ],
+      "updateTime": "2026-08-14 20:00",
+      "words": 10
+    },
+    {
+      "authorId": 93001,
+      "bookId": 66905,
+      "commentNum": 0,
+      "floorNum": 2,
+      "id": 962916,
+      "name": "第一回",
+      "paragraphContents": [
+        {
+          "attrs": {"level": "2"},
+          "content": [
+            {"attrs": null, "content": [], "marks": [{"attrs": null, "type": "italic"}], "text": "幕间", "type": "text"}
+          ],
+          "type": "heading"
+        },
+        {
+          "attrs": {},
+          "content": [
+            {
+              "attrs": {},
+              "content": [
+                {"attrs": null, "content": [], "marks": [{"attrs": null, "type": "strike"}], "text": "折叠内容", "type": "text"}
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "collapsibleBlock"
+        }
+      ],
+      "updateTime": "2026-08-14 20:01",
+      "words": 8
+    },
+    {
+      "authorId": 93001,
+      "bookId": 66905,
+      "commentNum": 0,
+      "floorNum": 3,
+      "id": 963517,
+      "name": "第二回",
+      "paragraphContents": [
+        {"attrs": {}, "content": [], "type": "paragraph"}
+      ],
+      "updateTime": "2026-08-14 20:02",
+      "words": 0
+    },
+    {
+      "authorId": 93001,
+      "bookId": 66905,
+      "commentNum": 0,
+      "floorNum": 4,
+      "id": 964087,
+      "name": "第三回",
+      "paragraphContents": [
+        {
+          "attrs": {},
+          "content": [
+            {"attrs": null, "content": [], "marks": [], "text": "【1D20+4=18】", "type": "text"}
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "updateTime": "2026-08-14 20:03",
+      "words": 12
+    }
+  ],
+  "msg": "查询成功"
+}

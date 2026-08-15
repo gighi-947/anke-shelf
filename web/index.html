@@ -24,8 +24,9 @@
         <input id="shelf-search" type="text" placeholder="搜索书籍…" autocomplete="off" spellcheck="false">
       </div>
       <div class="toolbar-actions">
-        <button id="nga-download-btn" class="btn btn-ghost btn-nga" title="下载 NGA 帖子">
-          <span class="nga-dot"></span>NGA 下载
+        <button id="nga-download-btn" class="btn btn-ghost" title="下载安科">
+          <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-download"></use></svg>
+          下载安科
         </button>
         <button id="theme-btn" class="btn btn-ghost icon-btn" title="切换主题"></button>
         <button id="settings-btn" class="btn btn-ghost icon-btn" title="设置">
@@ -64,10 +65,10 @@
         <svg class="icon" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-books"></use></svg>
       </span>
       <h1>开始你的书库</h1>
-      <p>把 EPUB 文件导入进来，或者从 NGA 下载安科帖子，一站式开始阅读。</p>
+      <p>导入本地 EPUB，或从骨碌碌、NGA 获取安科。</p>
       <div class="empty-actions">
         <button id="empty-import-btn" class="btn btn-primary">导入书籍</button>
-        <button id="empty-nga-btn" class="btn btn-contrast">从 NGA 下载</button>
+        <button id="empty-nga-btn" class="btn btn-contrast">下载安科</button>
       </div>
     </div>
     <div id="shelf-no-match" class="shelf-no-match hidden">没有匹配的书籍</div>
@@ -93,6 +94,12 @@
         <span id="reader-chapter-label" class="reader-chapter-label"></span>
       </div>
       <div class="top-actions">
+        <button id="gululu-immersive-btn" class="top-btn hidden" title="音乐与氛围效果">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-music"></use></svg>
+        </button>
+        <button id="gululu-comments-btn" class="top-btn hidden" title="评论">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-chat"></use></svg>
+        </button>
         <button id="search-page-btn" class="top-btn" title="全文搜索 (Ctrl+F)">
           <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-search"></use></svg>
         </button>
@@ -169,6 +176,8 @@
 
     <!-- 阅读舞台 -->
     <div id="reader-root">
+      <div id="gululu-background-layer" class="gululu-background-layer" aria-hidden="true"></div>
+      <canvas id="gululu-vfx-canvas" class="gululu-vfx-canvas" aria-hidden="true"></canvas>
       <div id="chapter-scroll" class="chapter-scroll">
         <div class="chapter-wrap">
           <iframe id="chapter-frame" class="chapter-frame" title="章节内容"></iframe>
@@ -199,7 +208,68 @@
       <div id="rsvp-box" class="rsvp-box hidden"></div>
       <div id="paragraph-mask" class="paragraph-mask hidden"></div>
       <div id="dual-gutter" class="dual-gutter"></div>
+      <div id="gululu-danmaku-layer" class="gululu-danmaku-layer" aria-hidden="true"></div>
     </div>
+
+    <aside id="gululu-comments-panel" class="gululu-comments-panel hidden" aria-label="骨碌碌评论">
+      <header class="gululu-comments-header">
+        <div>
+          <h2>评论</h2>
+          <p id="gululu-comments-status">按当前章节在线加载</p>
+        </div>
+        <div class="gululu-comments-actions">
+          <button id="gululu-comments-refresh" class="top-btn" title="刷新评论">
+            <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-refresh"></use></svg>
+          </button>
+          <button id="gululu-comments-close" class="top-btn" title="关闭评论">
+            <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-close"></use></svg>
+          </button>
+        </div>
+      </header>
+      <div class="gululu-comments-toolbar">
+        <span>当前章节</span>
+        <label class="gululu-switch">
+          <input id="gululu-danmaku-toggle" type="checkbox">
+          <span class="gululu-switch-track" aria-hidden="true"></span>
+          <span>弹幕</span>
+        </label>
+      </div>
+      <div id="gululu-comments-list" class="gululu-comments-list" aria-live="polite"></div>
+    </aside>
+
+    <aside id="gululu-immersive-panel" class="gululu-immersive-panel hidden" aria-label="音乐与氛围效果">
+      <header class="gululu-comments-header">
+        <div>
+          <h2>音乐与氛围</h2>
+          <p id="gululu-immersive-status">等待正文触发</p>
+        </div>
+        <button id="gululu-immersive-close" class="top-btn" title="关闭音乐与氛围面板">
+          <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-close"></use></svg>
+        </button>
+      </header>
+      <div class="gululu-immersive-controls">
+        <label class="gululu-control-row">
+          <span>自动音乐</span>
+          <span class="gululu-switch"><input id="gululu-auto-music-toggle" type="checkbox"><span class="gululu-switch-track" aria-hidden="true"></span></span>
+        </label>
+        <label class="gululu-control-row">
+          <span>氛围背景</span>
+          <span class="gululu-switch"><input id="gululu-background-toggle" type="checkbox"><span class="gululu-switch-track" aria-hidden="true"></span></span>
+        </label>
+        <label class="gululu-control-row">
+          <span>动态视效</span>
+          <span class="gululu-switch"><input id="gululu-vfx-toggle" type="checkbox"><span class="gululu-switch-track" aria-hidden="true"></span></span>
+        </label>
+        <label class="gululu-volume-row" for="gululu-volume">
+          <span>音乐音量</span>
+          <input id="gululu-volume" type="range" min="0" max="100" step="5">
+        </label>
+        <button id="gululu-stop-music" class="btn gululu-stop-music" type="button">
+          <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-stop"></use></svg>
+          <span>停止音乐</span>
+        </button>
+      </div>
+    </aside>
 
     <!-- 底部状态栏 -->
     <footer id="status-bar" class="status-bar">
@@ -243,6 +313,8 @@
 <script src="/js/stats.js"></script>
 <script src="/js/reader-utils.js"></script>
 <script src="/js/reader-session.js"></script>
+<script src="/js/gululu-comments.js"></script>
+<script src="/js/gululu-immersive.js"></script>
 <script src="/js/reader.js"></script>
 <script src="/js/reader-navigation.js"></script>
 <script src="/js/reader-help.js"></script>
@@ -250,6 +322,7 @@
 <script src="/js/annotations.js"></script>
 <script src="/js/fullsearch.js"></script>
 <script src="/js/nga_download.js"></script>
+<script src="/js/gululu-download.js"></script>
 <script src="/js/nga-download-panels.js"></script>
 </body>
 </html>

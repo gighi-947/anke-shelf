@@ -45,6 +45,11 @@
     nga_cancel: async () => undefined,
     nga_update_book: async () => ({ ok: false, error: '浏览器调试模式：无法更新' }),
     nga_update_defaults: async () => ({ ok: true, tid: 0, author_id: 0, theme: 'light', image_mode: 'online', per_chapter: 20, toc_pid: 0 }),
+    gululu_start_import: async () => ({ ok: false, error: '浏览器调试模式：无法导入' }),
+    gululu_start_export: async () => ({ ok: false, error: '浏览器调试模式：无法导出' }),
+    gululu_get_comments: async () => ({ ok: true, source_id: 0, floors: [], error: '' }),
+    gululu_import_status: async () => ({ running: false, stage: 'idle', detail: '' }),
+    gululu_cancel: async () => ({ ok: false, error: '浏览器调试模式：没有进行中的导入任务' }),
     export_start: async () => ({ ok: false, error: '浏览器调试模式：无法导出' }),
     export_status: async () => ({ running: false, stage: 'idle', detail: '', files: [], dest: '', error: '' }),
     export_open_dest: async () => ({ ok: false, error: '浏览器调试模式' }),
@@ -76,6 +81,9 @@
     import_books: 300000,
     pick_font_file: 180000,
     nga_start_download: 60000,
+    gululu_start_import: 60000,
+    gululu_start_export: 60000,
+    gululu_get_comments: 60000,
     export_annotations: 30000,
   };
   const DEFAULT_TIMEOUT = 10000;

@@ -7,7 +7,7 @@
 > 再推进至 `ad034b8`（Android 桥协议 + 进度回放）、`d697330`（P2 jsoup 清洗）、
 > `9e84c4c`（P2 错误模型）与 `cb40cee`（P2 诊断闭环）；随后 `96eb2e7`
 > （统一备份包）、`b63809f`（统一 task_id）、`867e7ea`（章节读取失败模型），
-> 当前已验证代码基线为 `f108eda`；包含 Android 数据/阅读链路显式失败修复、
+> 当前主干 HEAD 为 `670cecb`；包含 Android 数据/阅读链路显式失败修复、
 > Android CI bundle 路径守卫与 API 契约启动失败诊断。
 > 各节“状态”注明进度。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
@@ -52,13 +52,13 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 仓库基线 | `f108eda`（CI 路径与契约启动诊断已落地；2026-08-15 核对） |
-| 分支 | `main`，与 `origin/main` 同步 |
-| Windows Python 单测 | 230 项 OK（3.12 / 3.14 双环境实测） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 45 methods + 启动失败诊断 + `reader-session` OK |
+| 仓库基线 | `670cecb`（CI 路径与契约启动诊断及文档同步已落地；2026-08-15 核对） |
+| 分支 | `main` 与 `origin/main` 同步；骨碌碌适配在 `win/gululu-adapter-research` 验证 |
+| Windows Python 单测 | 主干 230 项 OK；骨碌碌功能分支 257 项 OK（3.14 / bundled 3.12 实测） |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 50 methods + 启动失败诊断 + `reader-session` OK |
 | Android JVM 单测 | 117 过 / 1 跳（2026-08-15 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
-| UI 实机 harness | 92 项 PASS（需桌面 WebView2） |
+| UI 实机 harness | 94 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
 
 ### 2.2 代码规模热点
@@ -76,7 +76,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | `android/.../ui/download/DownloadScreen.kt` | 338 | 已拆分面板 |
 | `android/.../assets/reader/reader-lite.js` | 977 | 现役渲染内核（parts 模块化） |
 | `web/js/reader.js` | 589 | 核心编排（乱码注释已修复） |
-| `web/js/nga_download.js` | 569 | 已拆 nga-download-panels |
+| `web/js/nga_download.js` | 625 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
 | `app/nga_service.py` | 524 | 下载/更新/清理语义集中 |
 | `web/js/settings.js` | 166 | 已拆 settings-ui / settings-panels |
 | `web/css/reader.css` | 1314 | 样式，暂不处理 |

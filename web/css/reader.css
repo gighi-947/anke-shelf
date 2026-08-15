@@ -221,6 +221,202 @@
 .tab-btn.active { color: var(--base-content); background: color-mix(in srgb, var(--base-300) 85%, transparent); }
 .tab-btn .tab-label { font-size: 10px; line-height: 1; }
 
+/* ---- 骨碌碌在线评论（宿主层，不参与 iframe 排版） ---- */
+.gululu-comments-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 44;
+  width: min(380px, 88vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--base-200);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  color: var(--base-content);
+}
+
+.gululu-immersive-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  width: min(340px, 88vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--base-200);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  color: var(--base-content);
+}
+
+.gululu-immersive-controls { padding: 6px 14px 20px; }
+.gululu-control-row,
+.gululu-volume-row {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.gululu-control-row:has(input:disabled) { color: var(--muted); }
+.gululu-volume-row { align-items: flex-start; flex-direction: column; padding: 12px 0; gap: 8px; }
+.gululu-volume-row input { width: 100%; accent-color: var(--primary); }
+.gululu-stop-music { width: 100%; margin-top: 14px; justify-content: center; gap: 7px; }
+
+.gululu-comments-header {
+  min-height: 60px;
+  padding: 10px 8px 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.gululu-comments-header h2 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.gululu-comments-header p {
+  margin: 2px 0 0;
+  max-width: 245px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.gululu-comments-header p.error { color: var(--error); }
+.gululu-comments-actions { display: flex; gap: 2px; flex-shrink: 0; }
+
+.gululu-comments-toolbar {
+  min-height: 42px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.gululu-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--base-content);
+  cursor: pointer;
+  user-select: none;
+}
+
+.gululu-switch input { position: absolute; opacity: 0; pointer-events: none; }
+
+.gululu-switch-track {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--base-content) 22%, transparent);
+  transition: background 0.15s;
+}
+
+.gululu-switch-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--base-100);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s;
+}
+
+.gululu-switch input:checked + .gululu-switch-track { background: var(--primary); }
+.gululu-switch input:checked + .gululu-switch-track::after { transform: translateX(14px); }
+.gululu-switch input:focus-visible + .gululu-switch-track { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.gululu-comments-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 14px 20px;
+}
+
+.gululu-comments-empty {
+  margin: 0;
+  padding: 28px 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.gululu-comments-empty.error { color: var(--error); }
+
+.gululu-comment-floor { padding: 14px 0 4px; }
+.gululu-comment-floor + .gululu-comment-floor { border-top: 1px solid var(--border); }
+
+.gululu-comment-floor h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.gululu-comment-warning,
+.gululu-comment-empty {
+  margin: 6px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.gululu-comment-warning { color: var(--warning); }
+
+.gululu-online-comment {
+  padding: 10px 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.gululu-online-comment header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 8px;
+}
+
+.gululu-online-comment header strong { font-size: 12px; }
+.gululu-online-comment header span { color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+
+.gululu-online-comment > p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.gululu-online-comment.child {
+  margin-left: 12px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+
 /* 目录 */
 .toc-tree { padding: 10px 8px; font-size: 13px; }
 .toc-tree ul { list-style: none; margin: 0; padding: 0; }
@@ -618,6 +814,105 @@
   background: var(--base-100);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.gululu-background-layer,
+.gululu-vfx-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.gululu-background-layer {
+  z-index: 0;
+  opacity: 0;
+  background-position: center;
+  background-size: cover;
+  transition: opacity 800ms ease;
+}
+
+.gululu-background-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--reader-bg) 70%, transparent);
+}
+
+#reader-root.gululu-background-active .gululu-background-layer { opacity: 1; }
+#reader-root.gululu-background-active .chapter-frame { background: transparent; }
+.gululu-vfx-canvas { z-index: 12; }
+.chapter-scroll { position: relative; z-index: 1; }
+
+#reader-root.gululu-vfx-flash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 13;
+  pointer-events: none;
+  animation: gululu-vfx-flash 900ms ease-out;
+}
+
+#reader-root.gululu-vfx-quake .chapter-scroll { animation: gululu-vfx-quake 120ms linear infinite; }
+@keyframes gululu-vfx-flash {
+  0%, 34%, 100% { background: transparent; }
+  12%, 46% { background: rgb(255 255 255 / 70%); }
+}
+@keyframes gululu-vfx-quake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(2px, -1px); }
+  50% { transform: translate(-2px, 1px); }
+  75% { transform: translate(1px, 2px); }
+}
+
+.gululu-danmaku-layer {
+  position: absolute;
+  inset: 44px 0 38px;
+  z-index: 18;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.gululu-danmaku-layer.active { opacity: 1; }
+
+.gululu-danmaku-item {
+  --danmaku-top: 10px;
+  --danmaku-duration: 15s;
+  position: absolute;
+  top: var(--danmaku-top);
+  left: 100%;
+  max-width: min(70vw, 560px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--base-100) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--base-content) 18%, transparent);
+  box-shadow: var(--shadow-sm);
+  color: var(--reader-fg);
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: gululu-danmaku-move var(--danmaku-duration) linear forwards;
+}
+
+@keyframes gululu-danmaku-move {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100vw - 100%)); }
+}
+
+@media (max-width: 520px) {
+  .gululu-comments-panel { width: 100%; }
+  .gululu-immersive-panel { width: 100%; }
+  .gululu-comments-header p { max-width: 68vw; }
+  .gululu-danmaku-item { max-width: 86vw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gululu-danmaku-item { animation-duration: 24s; }
+  .gululu-background-layer { transition: none; }
+  #reader-root.gululu-vfx-quake .chapter-scroll { animation: none; }
 }
 .settings-title { font-size: 14px; font-weight: 600; }
 .settings-layout {

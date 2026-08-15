@@ -5,7 +5,17 @@
 """
 from .common import ApiContext, bind
 from .registry import ApiRegistry
-from . import annotation_api, library, nga_api, reader, search_api, settings_api, stats_api, system_api
+from . import (
+    annotation_api,
+    gululu_api,
+    library,
+    nga_api,
+    reader,
+    search_api,
+    settings_api,
+    stats_api,
+    system_api,
+)
 
 _HANDLERS = (
     # 系统 / 窗口 / 版本
@@ -56,6 +66,12 @@ _HANDLERS = (
     ("nga_start_download", nga_api.nga_start_download),
     ("nga_download_status", nga_api.nga_download_status),
     ("nga_cancel", nga_api.nga_cancel),
+    # 骨碌碌标准 EPUB 导入
+    ("gululu_start_import", gululu_api.gululu_start_import),
+    ("gululu_start_export", gululu_api.gululu_start_export),
+    ("gululu_get_comments", gululu_api.gululu_get_comments),
+    ("gululu_import_status", gululu_api.gululu_import_status),
+    ("gululu_cancel", gululu_api.gululu_cancel),
     # 设置与字体
     ("get_fonts", settings_api.get_fonts),
     ("pick_font_file", settings_api.pick_font_file),
@@ -87,6 +103,7 @@ class Api(ApiRegistry):
         stats=None,
         nga_service=None,
         export_service=None,
+        gululu_service=None,
         frontend_ready=None,
         file_dialog=None,
         window_toggle=None,
@@ -102,6 +119,7 @@ class Api(ApiRegistry):
             stats=stats,
             nga_service=nga_service,
             export_service=export_service,
+            gululu_service=gululu_service,
             frontend_ready=frontend_ready,
             file_dialog=file_dialog,
             window_toggle=window_toggle,

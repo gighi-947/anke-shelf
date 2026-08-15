@@ -110,9 +110,17 @@ def main() -> int:
         await new Promise(r => setTimeout(r, 800));
         const dpanel = document.getElementById('download-view');
         L('nga_panel:' + (!dpanel.classList.contains('hidden') && document.getElementById('nga-tid') ? 1 : 0));
+        L('gululu_panel:' + (
+          document.getElementById('dl-panel-dl-gululu').classList.contains('active') &&
+          document.getElementById('gululu-source') &&
+          document.getElementById('gululu-start') &&
+          document.getElementById('gululu-export') ? 1 : 0
+        ));
         L('nga_reopen_no_jump:' + (App.state.view === 'shelf' ? 1 : 0));
         const dlTabs = document.querySelectorAll('#download-view .download-tab');
-        L('dl_tabs:' + (dlTabs.length === 4 ? 1 : 0));
+        L('dl_tabs:' + (dlTabs.length === 5 ? 1 : 0));
+        const gululuStatus = await Bridge.call('gululu_import_status');
+        L('gululu_bridge:' + (gululuStatus && gululuStatus.stage === 'idle' ? 1 : 0));
         document.querySelector('#download-view .download-tab[data-tab="dl-config"]').click();
         await new Promise(r => setTimeout(r, 50));
         L('dl_tab_config:' + (document.getElementById('dl-panel-dl-config').classList.contains('active') ? 1 : 0));
@@ -713,6 +721,8 @@ def main() -> int:
             results['init'] = bool(int(get('init') or 0))
             results['default_scroll'] = bool(int(get('default_scroll') or 0))
             results['nga_panel'] = bool(int(get('nga_panel') or 0))
+            results['gululu_panel'] = bool(int(get('gululu_panel') or 0))
+            results['gululu_bridge'] = bool(int(get('gululu_bridge') or 0))
             results['nga_reopen_no_jump'] = bool(int(get('nga_reopen_no_jump') or 0))
             results['dl_tabs'] = bool(int(get('dl_tabs') or 0))
             results['dl_tab_config'] = bool(int(get('dl_tab_config') or 0))
@@ -763,7 +773,8 @@ def main() -> int:
                  'fs_expand', 'fs_load_more', 'fs_jump', 'ctrl_f',
                  'lightbox', 'recent', 'list_view',
                  'sort_control', 'dual_auto', 'dual_off', 'table_wrap', 'frame_fit',
-                 'nga_panel', 'nga_reopen_no_jump', 'update_panel', 'update_defaults',
+                  'nga_panel', 'gululu_panel', 'gululu_bridge',
+                  'nga_reopen_no_jump', 'update_panel', 'update_defaults',
                  'update_btn', 'toc_mode_ui', 'scroll_no_page_btn',
                  'dl_tabs', 'dl_tab_config',
                  'nga_bridge', 'nga_flag', 'nga_style', 'dark_bg_ok', 'rapid_flip_ok']:

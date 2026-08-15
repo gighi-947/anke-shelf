@@ -276,6 +276,8 @@
             }
             Toc.highlight(index);
             document.getElementById('reader-chapter-label').textContent = ch.title || '';
+            if (window.GululuComments) GululuComments.onChapterLoaded(doc);
+            if (window.GululuImmersive) GululuImmersive.onChapterLoaded(doc);
             this.updateProgressUI();
             resolve();
           });

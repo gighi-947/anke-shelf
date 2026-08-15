@@ -97,7 +97,7 @@
     status.append(stage, track, text);
     wrap.appendChild(status);
 
-    return section('帖子下载', wrap);
+    return section('NGA 帖子下载', wrap);
   }
 
   function buildUpdateSection() {

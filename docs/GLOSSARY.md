@@ -15,6 +15,9 @@
 | 骰子 | 帖内掷骰排版块（NGA 特色） | NGA 排版还原，渲染层（reader-lite.js / paged.js） |
 | tid | NGA 帖子 ID | 下载参数；`BookRecord.nga_tid` |
 | pid | NGA 楼层/回复 ID | `NativeFloor.pid`、搜索/标注引用 |
+| bookId / floorId（骨碌碌） | 骨碌碌书籍 / 楼层的稳定 ID；不得写入 NGA 的 tid / pid 字段 | Windows `app/gululu_source.py` / `gululu_comments.py`；EPUB 用 `gululu-<bookId>` 标识来源 |
+| 紧凑 EPUB / 含评论 EPUB | 前者不嵌评论、阅读时按需加载；后者为跨阅读器查看而写入导出时的公开评论快照 | Windows `gululu_service.py` 的 import / export 两条任务链路 |
+| 沉浸指令（骨碌碌） | 作者写入正文的音乐、背景或视效文本协议；导入后成为 inert `data-*` 语义标记，由 Windows 宿主层呈现 | `app/gululu_immersive.py` / `web/js/gululu-immersive.js` |
 | 热更新 / 增量更新 | 只拉新增楼层追加，不重下旧内容 | Windows `app/native_book.py`；Android `NgaDownloader`（append 模式） |
 | 原生书 | NGA 帖子的运行时容器（meta+floors+chapters） | Windows `app/native_book.py`；Android `data/NativeBook.kt` |
 | 每章楼层数 | 按多少楼切一章 | 下载参数 `per_chapter`；`NativeMeta.per_chapter` |

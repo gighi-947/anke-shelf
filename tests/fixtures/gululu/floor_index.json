@@ -1,0 +1,10 @@
+{
+  "code": 200,
+  "data": [
+    {"floorId": 962170, "floorNum": 1, "name": "前言"},
+    {"floorId": 962916, "floorNum": 2, "name": "第一回"},
+    {"floorId": 963517, "floorNum": 3, "name": "第二回"},
+    {"floorId": 964087, "floorNum": 4, "name": "第三回"}
+  ],
+  "msg": "查询成功"
+}

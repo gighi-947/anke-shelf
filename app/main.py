@@ -86,12 +86,15 @@ from .annotations import AnnotationStore
 from .api import Api
 from .book_manager import BookManager
 from .export_service import ExportService
+from .gululu_service import GululuService
 from .nga_config import ensure_nga_config
 from .nga_service import NgaService
 from .paths import (
     annotations_path,
     covers_dir,
     ensure_data_dir,
+    file_mtime,
+    gululu_library_dir,
     nga_library_dir,
     progress_path,
     settings_path,
@@ -124,7 +127,7 @@ def main() -> int:
     from .events import bus
 
     def _on_book_updated(book_id: str) -> None:
-        """NGA 下载/热更新后：若书在缓存中，按 revision 刷新全文索引（惰性重建）。"""
+        """下载/热更新后：若书在缓存中，按 revision 刷新全文索引（惰性重建）。"""
         if books.has(book_id):
             search_svc.refresh_if_stale(books.open(book_id))
 
@@ -135,6 +138,7 @@ def main() -> int:
     stats.load()
     ensure_nga_config()
     nga_library_dir().mkdir(parents=True, exist_ok=True)
+    gululu_library_dir().mkdir(parents=True, exist_ok=True)
 
     def _register_nga_book(path: str) -> str:
         """下载完成后注册到书架；返回 book_id。"""
@@ -163,6 +167,30 @@ def main() -> int:
         return book.id
 
     nga_svc = NgaService(_register_nga_book, shelf=shelf, books=books)
+
+    def _register_gululu_book(path: str) -> str:
+        """骨碌碌 EPUB 生成完成后注册到标准书架。"""
+        from pathlib import Path
+
+        from .shelf import BookRecord
+
+        book = books.register(path)
+        rec = BookRecord(
+            id=book.id,
+            path=book.path,
+            title=book.title,
+            author=book.author,
+            language=book.language,
+            chapter_count=len(book.chapters),
+            file_size=Path(path).stat().st_size,
+            file_mtime=file_mtime(path),
+            cover_rel=shelf.extract_cover(book),
+        )
+        shelf.upsert(rec)
+        shelf.save()
+        return book.id
+
+    gululu_svc = GululuService(_register_gululu_book)
     export_svc = ExportService(shelf)
     frontend_ready = threading.Event()
     api = Api(
@@ -174,6 +202,7 @@ def main() -> int:
         annotations=annotations,
         stats=stats,
         nga_service=nga_svc,
+        gululu_service=gululu_svc,
         export_service=export_svc,
         frontend_ready=frontend_ready,
         window_toggle=lambda: window.toggle_fullscreen(),

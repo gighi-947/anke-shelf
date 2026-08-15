@@ -1,0 +1,12 @@
+{
+  "code": 200,
+  "data": {
+    "chapterIndex": [
+      {"floor": 2, "title": "第一章"},
+      {"floor": 4, "title": "第二章"}
+    ],
+    "enable": true,
+    "opusId": 66905
+  },
+  "msg": "查询成功"
+}
