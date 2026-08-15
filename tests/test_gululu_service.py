@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from app.api import Api
 from app.book_manager import BookManager
-from app.gululu_epub import GululuCancelled, GululuSnapshot
+from app.gululu_epub import GululuBuildResult, GululuCancelled, GululuSnapshot
 from app.gululu_service import GululuService
 from app.search import SearchService
 from app.settings import Settings
@@ -112,19 +112,29 @@ class GululuServiceTest(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertFalse(self.service.status()["running"])
 
+    def test_invalid_image_mode_does_not_start(self):
+        result = self.service.start("66905", "cached")
+        self.assertFalse(result["ok"])
+        self.assertIn("图片模式", result["error"])
+        self.assertFalse(self.service.status()["running"])
+
     def test_success_writes_atomically_and_registers(self):
         build_args = {}
 
         def fake_build(**kwargs):
             build_args.update(kwargs)
-            Path(kwargs["output_path"]).write_bytes(b"new epub")
-            return Path(kwargs["output_path"])
+            path = Path(kwargs["output_path"])
+            path.write_bytes(b"new epub")
+            return GululuBuildResult(path, kwargs["image_mode"], 3, 2, ("one failed",))
 
         with patch("app.gululu_service.gululu_library_dir", return_value=self.root), \
                 patch("app.gululu_service.GululuClient", return_value=_FakeClient()), \
                 patch("app.gululu_service.build_epub", side_effect=fake_build), \
                 patch("app.gululu_service.threading.Thread", _ImmediateThread):
-            result = self.service.start("https://www.gululu.world/book/66905")
+            result = self.service.start(
+                "https://www.gululu.world/book/66905",
+                "embedded",
+            )
 
         self.assertTrue(result["ok"])
         target = self.root / "66905" / "post.epub"
@@ -132,10 +142,16 @@ class GululuServiceTest(unittest.TestCase):
         self.assertFalse((self.root / "66905" / "post.epub.part").exists())
         self.assertEqual(self.registered, [str(target)])
         self.assertEqual(build_args["comments_by_floor"], {})
+        self.assertEqual(build_args["image_mode"], "embedded")
         self.assertEqual(_FakeClient.fetch_calls, [(66905, False)])
         status = self.service.status()
         self.assertEqual(status["stage"], "done")
         self.assertEqual(status["book_id"], "book-id")
+        self.assertEqual(status["image_mode"], "embedded")
+        self.assertEqual(status["image_total"], 3)
+        self.assertEqual(status["image_embedded"], 2)
+        self.assertEqual(status["image_failed"], 1)
+        self.assertIn("失败 1 张已显示占位", status["detail"])
 
     def test_failure_preserves_previous_complete_epub(self):
         target = self.root / "66905" / "post.epub"
@@ -177,8 +193,12 @@ class GululuServiceTest(unittest.TestCase):
 
     def test_api_delegates_start_status_and_cancel(self):
         fake = types.SimpleNamespace(
-            start=lambda source: {"ok": True, "source": source},
-            start_export=lambda source: {"ok": True, "export": source},
+            start=lambda source, image_mode="online": {
+                "ok": True, "source": source, "image_mode": image_mode,
+            },
+            start_export=lambda source, image_mode="online": {
+                "ok": True, "export": source, "image_mode": image_mode,
+            },
             get_comments=lambda source, floor_ids, refresh=False: {
                 "ok": True,
                 "source": source,
@@ -205,8 +225,12 @@ class GululuServiceTest(unittest.TestCase):
             gululu_service=fake,
         )
 
-        self.assertEqual(api.gululu_start_import("66905")["source"], "66905")
-        self.assertEqual(api.gululu_start_export("66905")["export"], "66905")
+        imported = api.gululu_start_import("66905", "embedded")
+        self.assertEqual(imported["source"], "66905")
+        self.assertEqual(imported["image_mode"], "embedded")
+        exported = api.gululu_start_export("66905", "none")
+        self.assertEqual(exported["export"], "66905")
+        self.assertEqual(exported["image_mode"], "none")
         comments = api.gululu_get_comments(66905, [962170], True)
         self.assertEqual(comments["floor_ids"], [962170])
         self.assertTrue(comments["refresh"])
@@ -243,8 +267,9 @@ class GululuServiceTest(unittest.TestCase):
 
         def fake_build(**kwargs):
             build_args.update(kwargs)
-            Path(kwargs["output_path"]).write_bytes(b"full epub")
-            return Path(kwargs["output_path"])
+            path = Path(kwargs["output_path"])
+            path.write_bytes(b"full epub")
+            return GululuBuildResult(path, kwargs["image_mode"], 0, 0)
 
         with patch("app.gululu_service.GululuClient", return_value=_FakeClient()), \
                 patch("app.gululu_service.build_epub", side_effect=fake_build), \

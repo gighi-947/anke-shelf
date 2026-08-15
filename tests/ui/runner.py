@@ -113,6 +113,7 @@ def main() -> int:
         L('gululu_panel:' + (
           document.getElementById('dl-panel-dl-gululu').classList.contains('active') &&
           document.getElementById('gululu-source') &&
+          document.getElementById('gululu-image-mode') &&
           document.getElementById('gululu-start') &&
           document.getElementById('gululu-export') ? 1 : 0
         ));

@@ -264,6 +264,98 @@ class TestGululuAstRenderer(unittest.TestCase):
 
 
 class TestBuildGululuEpub(unittest.TestCase):
+    def test_none_image_mode_omits_images_without_fetching(self):
+        floors = _fixture("floors.json")["data"]
+        calls = []
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "no-images.epub"
+            result = build_epub(
+                detail=_fixture("detail.json")["data"],
+                floor_index=_fixture("floor_index.json")["data"],
+                chapter_index=_fixture("chapter_index.json")["data"]["chapterIndex"],
+                floors=floors,
+                output_path=target,
+                image_mode="none",
+                image_fetcher=lambda url: calls.append(url),
+            )
+
+            self.assertEqual(result.image_mode, "none")
+            self.assertGreater(result.image_total, 0)
+            self.assertEqual(result.image_embedded, 0)
+            self.assertEqual(calls, [])
+            with zipfile.ZipFile(target) as zf:
+                chapters = b"".join(
+                    zf.read(name)
+                    for name in zf.namelist()
+                    if name.startswith("EPUB/chapters/")
+                ).decode("utf-8")
+                self.assertIn("[图片已省略]", chapters)
+                self.assertNotIn("https://image.gululu.world/", chapters)
+
+    def test_embedded_images_are_packaged_and_failures_become_placeholders(self):
+        floors = _fixture("floors.json")["data"]
+        for floor in floors:
+            floor["paragraphContents"] = [{
+                "type": "paragraph",
+                "content": [{"type": "text", "text": "正文"}],
+            }]
+        image_url = "https://image.gululu.world/test/offline.png"
+        floors[0]["paragraphContents"] = [{
+            "type": "image",
+            "attrs": {"src": image_url, "alt": "离线图"},
+        }]
+        png = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+            b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "embedded.epub"
+            result = build_epub(
+                detail=_fixture("detail.json")["data"],
+                floor_index=_fixture("floor_index.json")["data"],
+                chapter_index=_fixture("chapter_index.json")["data"]["chapterIndex"],
+                floors=floors,
+                output_path=target,
+                image_mode="embedded",
+                image_fetcher=lambda url: (png, "image/png"),
+            )
+
+            self.assertEqual(result.image_total, 1)
+            self.assertEqual(result.image_embedded, 1)
+            self.assertEqual(result.image_failures, ())
+            with zipfile.ZipFile(target) as zf:
+                image_names = [name for name in zf.namelist() if name.startswith("EPUB/images/")]
+                self.assertEqual(len(image_names), 1)
+                self.assertEqual(zf.read(image_names[0]), png)
+                chapter = zf.read("EPUB/chapters/chapter_0001.xhtml").decode("utf-8")
+                self.assertIn('src="../images/', chapter)
+                self.assertNotIn(image_url, chapter)
+
+            failed = Path(tmp) / "failed.epub"
+
+            def fail_fetch(url):
+                raise httpx.ConnectError("offline")
+
+            failed_result = build_epub(
+                detail=_fixture("detail.json")["data"],
+                floor_index=_fixture("floor_index.json")["data"],
+                chapter_index=_fixture("chapter_index.json")["data"]["chapterIndex"],
+                floors=floors,
+                output_path=failed,
+                image_mode="embedded",
+                image_fetcher=fail_fetch,
+            )
+            self.assertEqual(failed_result.image_total, 1)
+            self.assertEqual(failed_result.image_embedded, 0)
+            self.assertEqual(len(failed_result.image_failures), 1)
+            self.assertIn("offline", failed_result.image_failures[0])
+            with zipfile.ZipFile(failed) as zf:
+                chapter = zf.read("EPUB/chapters/chapter_0001.xhtml").decode("utf-8")
+                self.assertIn("[图片已省略]", chapter)
+                self.assertNotIn(image_url, chapter)
+
     def test_empty_author_chapters_fall_back_to_nga_floor_groups(self):
         floor_index = [
             {"floorId": number, "floorNum": number, "name": f"文稿 {number}"}
