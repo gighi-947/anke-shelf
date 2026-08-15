@@ -72,7 +72,7 @@ def main() -> int:
     nga_svc = NgaService(_register_nga_book)
     api = Api(books=books, shelf=shelf, progress=progress, settings=settings,
               search=search, annotations=ann, stats=stats, nga_service=nga_svc,
-              window_toggle=lambda: None)
+              window_toggle=lambda _entering: None)
     token = "ui-test-token"
     port = start_server(PROJECT / "web", books, covers, api=api, token=token)
     book = books.register(str(SAMPLE))
@@ -187,6 +187,26 @@ def main() -> int:
         await new Promise(r => setTimeout(r, 200));
         const m2 = Paged.measure();
         L('page_next:' + (m2.current === m.current + 1 ? 1 : 0));
+        const resizeOffset = Paged.currentAnchorOffset();
+        Paged.onResize();
+        await new Promise(r => setTimeout(r, 200));
+        const resized = Paged.measure();
+        const resizedOffset = Paged.currentAnchorOffset();
+        L('paged_resize_position:' + (
+          resizeOffset > 0 && resized.current > 0 && resizedOffset > 0 ? 1 : 0
+        ));
+        const pagedBodyStyle = getComputedStyle(activeDoc().body);
+        L('paged_edge_clip:' + (
+          pagedBodyStyle.clipPath && pagedBodyStyle.clipPath !== 'none' ? 1 : 0
+        ));
+        const nowrapProbe = activeDoc().createElement('span');
+        nowrapProbe.style.whiteSpace = 'nowrap';
+        nowrapProbe.textContent = '单行过长文本'.repeat(200);
+        activeDoc().body.appendChild(nowrapProbe);
+        L('paged_long_line_wrap:' + (
+          getComputedStyle(nowrapProbe).whiteSpace === 'normal' ? 1 : 0
+        ));
+        nowrapProbe.remove();
         // 标注
         await Bridge.call('save_annotation', '__BID__', 2, 500, 560, '引力波源位于遥远的星系中心', 'yellow', '');
         await Annotations.refresh();
@@ -648,6 +668,9 @@ def main() -> int:
             results['diff_js_py'] = bool(lens_str) and [int(x) for x in lens_str.split(',')] == py_lens
             results['pages'] = bool(int(get('pages') or 0))
             results['page_next'] = bool(int(get('page_next') or 0))
+            results['paged_resize_position'] = bool(int(get('paged_resize_position') or 0))
+            results['paged_edge_clip'] = bool(int(get('paged_edge_clip') or 0))
+            results['paged_long_line_wrap'] = bool(int(get('paged_long_line_wrap') or 0))
             results['marks'] = bool(int(get('marks') or 0))
             results['bookmark'] = bool(int(get('bm') or 0))
             results['code_highlight'] = bool(int(get('codehl') or 0))
@@ -749,7 +772,8 @@ def main() -> int:
     all_ok = True
     for name in ['init', 'default_scroll', 'diff_js_py', 'contract_text_cases',
                  'contract_js_points', 'contract_js_astral_utf16',
-                 'pages', 'page_next',
+                  'pages', 'page_next', 'paged_resize_position', 'paged_edge_clip',
+                  'paged_long_line_wrap',
                  'marks', 'bookmark',
                  'code_highlight', 'stats', 'stats_modal', 'stats_default_all',
                  'stats_book_cards', 'stats_side_tab', 'stats_side_total',

@@ -52,13 +52,13 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 仓库基线 | `670cecb`（CI 路径与契约启动诊断及文档同步已落地；2026-08-15 核对） |
-| 分支 | `main` 与 `origin/main` 同步；骨碌碌适配在 `win/gululu-adapter-research` 验证 |
-| Windows Python 单测 | 主干 230 项 OK；骨碌碌功能分支 257 项 OK（3.14 / bundled 3.12 实测） |
+| 仓库基线 | `670cecb`；骨碌碌分支已同步阅读器修复 `334392e`（2026-08-15 核对） |
+| 分支 | `win/gululu-adapter-research`，Windows 骨碌碌 EPUB 与专版阅读器验证 |
+| Windows Python 单测 | 骨碌碌功能分支 259 项 OK（3.14 / bundled 3.12 实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 50 methods + 启动失败诊断 + `reader-session` OK |
 | Android JVM 单测 | 117 过 / 1 跳（2026-08-15 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
-| UI 实机 harness | 94 项 PASS（需桌面 WebView2） |
+| UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
 
 ### 2.2 代码规模热点
