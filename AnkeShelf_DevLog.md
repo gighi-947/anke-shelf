@@ -17,7 +17,7 @@
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机基线沿用
   2026-08-14）：
-  - Windows Python：`python -m unittest discover tests` = 279 项 OK
+  - Windows Python：`python -m unittest discover tests` = 280 项 OK
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
@@ -52,6 +52,17 @@
 
 ## 4. 最近流水
 
+### 2026-08-15 win/contracts/docs：PR #13 契约清单最小依赖修复
+
+- 现象：PR #13 的 Windows 3.12/3.13/3.14 测试与 PyInstaller 打包全部通过，
+  Contracts CI 只安装 `jsonschema`，加载 `app.api.api_manifest` 时却因服务类型和秘密
+  解密器的顶层导入继续加载 `httpx` / `cryptography`，在产品依赖不完整的契约环境失败。
+- 修复：`GululuService` 仅在 `TYPE_CHECKING` 下导入；秘密解密器延迟到实际调用
+  `gululu_decrypt_secret` 时导入。新增子进程回归测试，主动屏蔽 `httpx` 与
+  `cryptography`，验证 API 清单仍可独立加载；产品运行与解密行为不变。
+- 验证：修复前新测试稳定失败，修复后 API/契约定向 19 项通过（4 跳）、Node API
+  合同与启动失败诊断通过；Windows 全量基线更新为 280 项。
+
 ### 2026-08-15 win/docs：骨碌碌追加式增量热更新
 
 - 范围：Windows 骨碌碌面板新增“检查更新”，不修改 Android、CI、共享 JSON 契约；
@@ -66,7 +77,7 @@
   `gululu_client.py`、`gululu_comment_service.py`、`gululu_update.py`；
   `gululu_service.py` 收敛至 498 行，保留任务状态、取消与事件编排。
 - 验证：修复前红测确认“双重登记失败会丢失原错误”，修复后同时保留替换与恢复上下文；
-  系统 Python 3.14 与 bundled Python 3.12 均 279 项 OK（3.14 跳过 4），全部 Node 合同、
+  系统 Python 3.14 与 bundled Python 3.12 均 280 项 OK（3.14 跳过 4），全部 Node 合同、
   `reader-session` 与 WebView2 UI harness 97 项通过。真实书 `63299` 的 48 楼临时基线二次
   检查只请求 3 个索引接口，正文接口 0 次、`rebuild=False`；本机 `32203` 旧 EPUB 的
   2299 个楼层与远端严格一致，验证旧书迁移前提。真实用户书架未写入。

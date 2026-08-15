@@ -1,6 +1,5 @@
 """骨碌碌标准 EPUB 导入。"""
 from ..errors import ErrorCode, api_error
-from ..gululu_assistant import GululuSecretError, decrypt_cryptojs_secret
 from .common import ApiContext
 
 
@@ -52,6 +51,8 @@ def gululu_decrypt_secret(
     cipher: str,
     password: str,
 ) -> dict:
+    from ..gululu_assistant import GululuSecretError, decrypt_cryptojs_secret
+
     del ctx
     try:
         normalized_source = int(source_id)

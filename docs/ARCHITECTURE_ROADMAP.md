@@ -54,7 +54,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | --- | --- |
 | 分支同步基线 | 与 `main` 的共同基线 `670cecb`；骨碌碌分支已包含分页裁剪、沉浸保位与窗口状态修复（2026-08-15 核对） |
 | 分支 | `win/gululu-adapter-research`，Windows 骨碌碌 EPUB、图片三态与追加式增量热更新验证 |
-| Windows Python 单测 | 骨碌碌功能分支 279 项 OK（3.14：4 跳；bundled 3.12：全量通过） |
+| Windows Python 单测 | 骨碌碌功能分支 280 项 OK（3.14：4 跳；bundled 3.12：全量通过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 52 methods + 启动失败诊断 + `reader-session` OK |
 | Android JVM 单测 | 117 过 / 1 跳（2026-08-15 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
