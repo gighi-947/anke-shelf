@@ -42,6 +42,7 @@ async function openBook(page) {
   await page.evaluate(async () => {
     const books = await Api.getShelf();
     await App.showReader(books[0].id);
+    await Reader.loadChapter(0, 0);
   });
   await page.frameLocator('#chapter-frame').locator('.gululu-floor').first().waitFor();
 }
@@ -68,6 +69,22 @@ async function inspectDesktop(browser) {
   assert(await page.locator('#gululu-comments-btn').isVisible(), '评论按钮不可见');
   assert(await page.locator('#gululu-immersive-btn').isVisible(), '沉浸效果按钮不可见');
 
+  const secretCue = page.frameLocator('#chapter-frame').locator('.gululu-secret-cue').first();
+  const clueCue = page.frameLocator('#chapter-frame').locator('.gululu-clue-cue').first();
+  await secretCue.waitFor();
+  await clueCue.waitFor();
+  await secretCue.click();
+  await page.waitForFunction(() => document.querySelector('.toast')?.textContent.includes('尚未找到线索'));
+  await clueCue.click();
+  await page.waitForFunction(() => document.querySelector('.toast')?.textContent.includes('线索已记录'));
+  await secretCue.click();
+  await page.locator('.gululu-secret-modal').waitFor();
+  const secretText = await page.locator('.gululu-secret-plaintext').textContent();
+  assert(secretText === '风雪之后，炉火仍在。', `秘密解锁内容错误：${secretText}`);
+  const afterSecret = await page.evaluate(() => App.state.textCtx.text.length);
+  assert(before === afterSecret, `秘密解锁改变正文坐标：${before} -> ${afterSecret}`);
+  await page.locator('.gululu-secret-close').click();
+
   const musicCue = page.frameLocator('#chapter-frame').locator('.gululu-music-cue').first();
   await musicCue.waitFor();
   await musicCue.click();
@@ -81,6 +98,7 @@ async function inspectDesktop(browser) {
     return visible;
   });
   assert(canvasPixels > 0, '雨效画布没有绘制可见像素');
+  await page.evaluate(() => App.setBarsVisible(true));
   await page.locator('#gululu-immersive-btn').click();
   assert(await page.locator('#gululu-immersive-panel').isVisible(), '沉浸效果面板未打开');
   assert(!(await page.locator('#gululu-auto-music-toggle').isChecked()), '自动音乐不应默认开启');
@@ -114,12 +132,21 @@ async function inspectDesktop(browser) {
   assert(cleanup.sourceId === 0 && !cleanup.playing && !cleanup.effect,
     `返回书架后沉浸效果未清理：${JSON.stringify(cleanup)}`);
   await page.close();
-  return { embedded, comments, before, after, afterImmersive, canvasPixels, danmaku, cleanup, errors };
+  return { embedded, comments, before, after, afterSecret, afterImmersive,
+    secretText, canvasPixels, danmaku, cleanup, errors };
 }
 
 async function inspectNarrow(browser) {
   const page = await browser.newPage({ viewport: { width: 430, height: 800 } });
   await openBook(page);
+  const narrowFrame = page.frameLocator('#chapter-frame');
+  await narrowFrame.locator('.gululu-clue-cue').first().click();
+  await narrowFrame.locator('.gululu-secret-cue').first().click();
+  const secretModal = await page.locator('.gululu-secret-modal').boundingBox();
+  assert(secretModal && secretModal.x >= -1 && secretModal.width <= 431,
+    `窄屏秘密弹窗错误：${JSON.stringify(secretModal)}`);
+  await page.locator('.gululu-secret-close').click();
+  await page.evaluate(() => App.setBarsVisible(true));
   await page.locator('#gululu-immersive-btn').click();
   const immersivePanel = await page.locator('#gululu-immersive-panel').boundingBox();
   assert(immersivePanel && immersivePanel.x >= -1 && immersivePanel.width <= 431,
@@ -129,15 +156,29 @@ async function inspectNarrow(browser) {
   await page.locator('#gululu-comments-btn').click();
   await page.locator('.gululu-online-comment').first().waitFor();
   const panel = await page.locator('#gululu-comments-panel').boundingBox();
+  const chapterLayout = await page.frameLocator('#chapter-frame').locator('body').evaluate(() => {
+    const doc = document;
+    const sample = doc.querySelector('[data-paragraph-id="overflow-regression"] span');
+    return {
+      clientWidth: doc.documentElement.clientWidth,
+      scrollWidth: doc.documentElement.scrollWidth,
+      bodyColor: getComputedStyle(doc.body).color,
+      sampleColor: sample ? getComputedStyle(sample).color : '',
+    };
+  });
   const overflow = await page.evaluate(() => ({
     width: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
   }));
   assert(panel && panel.x >= -1 && panel.width <= 431, `窄屏评论面板错误：${JSON.stringify(panel)}`);
   assert(overflow.scrollWidth <= overflow.width, '窄屏页面出现横向溢出');
+  assert(chapterLayout.scrollWidth <= chapterLayout.clientWidth,
+    `窄屏正文出现横向溢出：${JSON.stringify(chapterLayout)}`);
+  assert(chapterLayout.sampleColor === chapterLayout.bodyColor,
+    `骨碌碌默认黑字未适配主题：${JSON.stringify(chapterLayout)}`);
   await page.screenshot({ path: path.join(outputDir, 'formal-comments-narrow.png'), fullPage: true });
   await page.close();
-  return { panel, immersivePanel, overflow };
+  return { panel, immersivePanel, secretModal, overflow, chapterLayout };
 }
 
 (async () => {

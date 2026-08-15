@@ -7,6 +7,8 @@ import re
 import urllib.parse
 from dataclasses import dataclass
 
+from .gululu_assistant import prepare_assistant_nodes
+
 
 _MANUAL_MUSIC = re.compile(
     r"^\s*<音乐>\s*(.*?)\s*[♪♫]\s*(.*?)\s*</音乐结束>\s*$",
@@ -42,6 +44,7 @@ _VFX_NAMES = {
     "stop": "stop",
     "clear": "stop",
 }
+_DIRECTIVE_PADDING = " \t\r\n\u00a0\u200b\ufeff\u3000"
 
 
 @dataclass(frozen=True)
@@ -76,6 +79,10 @@ def _node_text(node: dict) -> str:
     if not isinstance(content, list):
         return ""
     return "".join(_node_text(child) for child in content if isinstance(child, dict))
+
+
+def _directive_text(node: dict) -> str:
+    return _node_text(node).strip(_DIRECTIVE_PADDING)
 
 
 def _directive_error(message: str) -> dict:
@@ -115,7 +122,7 @@ def render_immersive_node(node_type: str, attrs: dict) -> str | None:
     if node_type == "gululuBackgroundClear":
         return (
             '<span class="gululu-immersive-marker" '
-            'data-gululu-background-clear="true" aria-hidden="true"></span>'
+            'data-gululu-background-clear="true" aria-hidden="true"><wbr/></span>'
         )
     if node_type == "gululuDirectiveError":
         message = html.escape(str(attrs.get("message") or "沉浸指令不可用"))
@@ -138,7 +145,7 @@ def prepare_immersive_floor(nodes: object) -> ImmersiveFloor:
             continue
         node = copy.deepcopy(source)
         node_type = str(node.get("type") or "")
-        text = _node_text(node).strip() if node_type == "paragraph" else ""
+        text = _directive_text(node) if node_type == "paragraph" else ""
 
         music = _AUTO_MUSIC.fullmatch(text) or _MANUAL_MUSIC.fullmatch(text)
         if music:
@@ -198,4 +205,8 @@ def prepare_immersive_floor(nodes: object) -> ImmersiveFloor:
 
     if in_background:
         output.append(_directive_error("背景指令缺少结束标记"))
-    return ImmersiveFloor(output, vfx=vfx, background_update=background_update)
+    return ImmersiveFloor(
+        prepare_assistant_nodes(output),
+        vfx=vfx,
+        background_update=background_update,
+    )

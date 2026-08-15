@@ -110,14 +110,14 @@
     });
   }
 
-  /** 把章节内“黑/白类”的显式内联文字色重映射为主题默认色。
+  /** 把来源章节内“黑/白类”的显式内联文字色重映射为主题默认色。
    *
-   * NGA 帖子转 EPUB 时，彩色字（[color=red] 等）和默认字是分离的：
+   * NGA / 骨碌碌转 EPUB 时，彩色字和默认字是分离的：
    * 默认字由 body 继承，彩色字是独立的内联颜色。这里只处理计算后
    * 接近纯黑/纯白（无色相）的内联颜色；红色/蓝色等彩色和中间灰
    * （如 NGA 的 gray/silver）一律保留，保证安科彩色精髓不被破坏。
    */
-  function remapNgaDefaultColors(doc) {
+  function remapDefaultColors(doc) {
     if (!doc || !doc.body) return;
     const target = 'var(--reader-fg)';
 
@@ -163,6 +163,7 @@
 
   let scrollDebounceTimer = null;
   let sliderTimer = null;
+  let imageLayoutFrame = 0;
   let loadToken = 0;
   let loadResolve = null;
 
@@ -191,6 +192,8 @@
       App.state.chapterIndex = index;
       this.session.enterChapter(index, textOffset || 0);
       App.state.textCtx = null;
+      if (imageLayoutFrame) cancelAnimationFrame(imageLayoutFrame);
+      imageLayoutFrame = 0;
       const token = ++loadToken;
 
       const ch = book.chapters[index];
@@ -231,14 +234,19 @@
           if (!paged && window.__readerHugeChapter__) {
             try { Toast.show('本章内容较大，已自动切换为滚动阅读'); } catch (e) { /* ignore */ }
           }
+          let textDomChanged = false;
           try {
-            if (window.CodeHighlight) CodeHighlight.highlightBlocks(doc);
+            if (window.CodeHighlight) {
+              textDomChanged = CodeHighlight.highlightBlocks(doc) > 0 || textDomChanged;
+            }
           } catch (e) { /* ignore */ }
           try {
-            if (window.Annotations) Annotations.injectForChapter(doc);
+            if (window.Annotations) {
+              textDomChanged = Annotations.injectForChapter(doc) > 0 || textDomChanged;
+            }
           } catch (e) { /* ignore */ }
           // 注入高亮/代码高亮 span 后重建坐标，保证 text_offset 与注入后的 DOM 对齐。
-          App.state.textCtx = TextPos.build(doc);
+          if (textDomChanged) App.state.textCtx = TextPos.build(doc);
           try {
             if (window.Annotations) Annotations.bindSelection(doc);
           } catch (e) { /* ignore */ }
@@ -246,9 +254,24 @@
           bindDocInteractions(doc);
           // 焦点在 iframe 内时也能响应全局快捷键（热键在阅读正文中生效）。
           doc.addEventListener('keydown', Reader.onKeyDown);
-          if (App.state.book && App.state.book.nga) remapNgaDefaultColors(doc);
+          if (App.state.book && (App.state.book.nga || App.state.book.gululu)) {
+            remapDefaultColors(doc);
+          }
           if (paged) Paged.prepare(doc);
-          const onImgChange = () => { if (Paged.isActive()) Paged.onResize(); else syncHeight(); };
+          if (paged) {
+            doc.querySelectorAll('img[loading="lazy"]').forEach((img) => {
+              img.loading = 'eager';
+            });
+          }
+          const onImgChange = () => {
+            if (imageLayoutFrame) return;
+            imageLayoutFrame = requestAnimationFrame(() => {
+              imageLayoutFrame = 0;
+              if (token !== loadToken) return;
+              if (Paged.isActive()) Paged.onResize();
+              else syncHeight();
+            });
+          };
           doc.querySelectorAll('img').forEach((img) => {
             img.addEventListener('load', onImgChange);
           });
@@ -278,6 +301,7 @@
             document.getElementById('reader-chapter-label').textContent = ch.title || '';
             if (window.GululuComments) GululuComments.onChapterLoaded(doc);
             if (window.GululuImmersive) GululuImmersive.onChapterLoaded(doc);
+            if (window.GululuSecrets) GululuSecrets.onChapterLoaded(doc);
             this.updateProgressUI();
             resolve();
           });
@@ -302,7 +326,9 @@
       const doc = frameEl().contentDocument;
       if (doc) {
         applyOverrides(doc);
-        if (App.state.book && App.state.book.nga) remapNgaDefaultColors(doc);
+        if (App.state.book && (App.state.book.nga || App.state.book.gululu)) {
+          remapDefaultColors(doc);
+        }
       }
       this.applyLayout();
       requestAnimationFrame(() => {

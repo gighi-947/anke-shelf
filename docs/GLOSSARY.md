@@ -18,6 +18,7 @@
 | bookId / floorId（骨碌碌） | 骨碌碌书籍 / 楼层的稳定 ID；不得写入 NGA 的 tid / pid 字段 | Windows `app/gululu_source.py` / `gululu_comments.py`；EPUB 用 `gululu-<bookId>` 标识来源 |
 | 紧凑 EPUB / 含评论 EPUB | 前者不嵌评论、阅读时按需加载；后者为跨阅读器查看而写入导出时的公开评论快照 | Windows `gululu_service.py` 的 import / export 两条任务链路 |
 | 沉浸指令（骨碌碌） | 作者写入正文的音乐、背景或视效文本协议；导入后成为 inert `data-*` 语义标记，由 Windows 宿主层呈现 | `app/gululu_immersive.py` / `web/js/gululu-immersive.js` |
+| 秘密 / 线索（骨碌碌全能助手） | `<秘密>[名称]密文` 与 `<发现秘密>[名称]密码` 协议；EPUB 只保存惰性标记，线索按书号存本机，明文按需解密且不进入正文坐标 | `app/gululu_assistant.py` / `web/js/gululu-secrets.js` / `gululu_decrypt_secret` |
 | 热更新 / 增量更新 | 只拉新增楼层追加，不重下旧内容 | Windows `app/native_book.py`；Android `NgaDownloader`（append 模式） |
 | 原生书 | NGA 帖子的运行时容器（meta+floors+chapters） | Windows `app/native_book.py`；Android `data/NativeBook.kt` |
 | 每章楼层数 | 按多少楼切一章 | 下载参数 `per_chapter`；`NativeMeta.per_chapter` |

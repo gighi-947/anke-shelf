@@ -746,6 +746,34 @@
 .btn-danger { border-color: var(--error); color: var(--error); }
 .btn-danger:hover { border-color: var(--error); color: var(--error); background: color-mix(in srgb, var(--error) 10%, transparent); }
 
+.gululu-secret-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: min(78vh, 680px);
+  width: min(560px, 90vw);
+}
+.gululu-secret-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+.gululu-secret-plaintext {
+  background: var(--base-100);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--base-content);
+  flex: 1;
+  font: inherit;
+  line-height: 1.7;
+  margin: 0;
+  min-height: 80px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+.gululu-secret-close { min-width: 72px; }
+
 /* ---- 视图菜单 ---- */
 .view-menu {
   position: fixed;
@@ -907,6 +935,13 @@
   .gululu-immersive-panel { width: 100%; }
   .gululu-comments-header p { max-width: 68vw; }
   .gululu-danmaku-item { max-width: 86vw; }
+  .gululu-secret-overlay { align-items: flex-end; }
+  .gululu-secret-modal {
+    border-radius: 12px 12px 0 0;
+    max-height: 82vh;
+    max-width: none;
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

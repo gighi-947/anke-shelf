@@ -14,6 +14,9 @@ from app.shelf import BookRecord, ProgressStore, Shelf
 from app.stats import StatsStore
 
 SAMPLE = Path(__file__).parent / "sample" / "sample_nav3.epub"
+CRYPTOJS_CIPHER = (
+    "U2FsdGVkX1+5H7Gx48HorblxhULBPlXtE11y6qTOMa4caaekW4/fZFQlbBlH2/p8"
+)
 
 
 class ApiServiceTest(unittest.TestCase):
@@ -125,6 +128,19 @@ class ApiServiceTest(unittest.TestCase):
 
         api2 = self._make_api(BookManager())
         self.assertFalse(api2.toggle_fullscreen()["ok"])
+
+    def test_gululu_secret_decrypt_is_explicit(self):
+        api = self._make_api(BookManager())
+        result = api.gululu_decrypt_secret(
+            63299,
+            "炉心",
+            CRYPTOJS_CIPHER,
+            "薪火-63299",
+        )
+        self.assertEqual(result["plaintext"], "风雪之后，炉火仍在。")
+        failed = api.gululu_decrypt_secret(63299, "炉心", CRYPTOJS_CIPHER, "错误密码")
+        self.assertFalse(failed["ok"])
+        self.assertIn("密码错误或秘密数据损坏", failed["error"])
 
     def test_nga_clear_config_removes_credentials(self):
         with patch("app.nga_config.data_dir", return_value=self.root), \

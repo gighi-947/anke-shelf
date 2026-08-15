@@ -23,6 +23,9 @@ DEBUG_ROOT = Path(__file__).resolve().parent
 WORKSPACE = DEBUG_ROOT / "workspace"
 FIXTURES = DEBUG_ROOT.parent / "fixtures" / "gululu"
 TOKEN = "gululu-formal-debug"
+CRYPTOJS_CIPHER = (
+    "U2FsdGVkX1+5H7Gx48HorblxhULBPlXtE11y6qTOMa4caaekW4/fZFQlbBlH2/p8"
+)
 
 
 def _fixture(name: str):
@@ -46,6 +49,25 @@ def _compact_epub() -> Path:
         ]},
         {"type": "paragraph", "attrs": {}, "content": [
             {"type": "text", "text": "<特效:下雨>", "attrs": None, "marks": [], "content": []},
+        ]},
+        {"type": "paragraph", "attrs": {}, "content": [
+            {"type": "text", "text": f"<秘密>[炉心]{CRYPTOJS_CIPHER}</秘密>", "attrs": None, "marks": [], "content": []},
+        ]},
+        {"type": "paragraph", "attrs": {}, "content": [
+            {"type": "text", "text": "<发现秘密>[炉心]薪火-63299</发现秘密>", "attrs": None, "marks": [], "content": []},
+        ]},
+        {"type": "paragraph", "attrs": {"id": "overflow-regression"}, "content": [
+            {"type": "text", "text": "1-2 自己回去休息", "marks": [
+                {"type": "textStyle", "attrs": {"color": "rgb(0, 0, 0)"}},
+            ]},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "3-4 自己回去休息，同时让小伞也回去休息（好感+d3）", "marks": [
+                {"type": "textStyle", "attrs": {"color": "rgb(0, 0, 0)"}},
+            ]},
+            {"type": "hardBreak"},
+            {"type": "text", "text": "9 不管小伞，自己在外面修炼战斗（旧伤-d2）", "marks": [
+                {"type": "textStyle", "attrs": {"color": "rgb(0, 0, 0)"}},
+            ]},
         ]},
     ]
     build_epub(

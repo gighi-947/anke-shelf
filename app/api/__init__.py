@@ -70,6 +70,7 @@ _HANDLERS = (
     ("gululu_start_import", gululu_api.gululu_start_import),
     ("gululu_start_export", gululu_api.gululu_start_export),
     ("gululu_get_comments", gululu_api.gululu_get_comments),
+    ("gululu_decrypt_secret", gululu_api.gululu_decrypt_secret),
     ("gululu_import_status", gululu_api.gululu_import_status),
     ("gululu_cancel", gululu_api.gululu_cancel),
     # 设置与字体
