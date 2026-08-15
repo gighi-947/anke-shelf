@@ -53,12 +53,12 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | 项 | 现状 |
 | --- | --- |
 | 仓库基线 | `f108eda`（CI 路径与契约启动诊断已落地；2026-08-15 核对） |
-| 分支 | `main`，与 `origin/main` 同步 |
-| Windows Python 单测 | 230 项 OK（3.12 / 3.14 双环境实测） |
+| 分支 | `win/reader-pagination-fullscreen-fix`，基于 `main` 修复 Windows 阅读器本体 |
+| Windows Python 单测 | 232 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 45 methods + 启动失败诊断 + `reader-session` OK |
 | Android JVM 单测 | 117 过 / 1 跳（2026-08-15 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
-| UI 实机 harness | 92 项 PASS（需桌面 WebView2） |
+| UI 实机 harness | 95 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
 
 ### 2.2 代码规模热点

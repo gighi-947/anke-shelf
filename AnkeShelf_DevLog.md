@@ -16,10 +16,10 @@
   以 `git status --short --branch` 为准。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
-- 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机/UI 基线沿用
+- 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机基线沿用
   2026-08-14）：
-  - Windows Python：`python -m unittest discover tests` = 230 项 OK
-    （本轮本机 Python 3.14；沙箱 3.12 基线沿用 2026-08-14）；
+  - Windows Python：`python -m unittest discover tests` = 232 项 OK
+    （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（45 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
@@ -28,7 +28,7 @@
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
-  - UI 实机 harness：`python -m tests.ui.runner` = 92 项 PASS（需桌面 WebView2）。
+  - UI 实机 harness：`python -m tests.ui.runner` = 95 项 PASS（需桌面 WebView2）。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
 
 ## 2. 本机环境（Windows 开发机）
@@ -52,6 +52,25 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-15 win/docs：分页边缘裁剪与沉浸模式保位/窗口状态修复
+
+- 现象：CSS 多栏分页的默认阅读边距 40px 大于列间距 28px，相邻列会提前 12px 进入
+  iframe 视口，导致页边缘漏出相邻页文字；正文显式 `nowrap` 时会跨列溢出。进入或
+  退出沉浸模式触发连续重排，页首锚点在宽版面被吸入第 0 页；pywebview 6.2.1 的
+  WinForms 后端退出全屏时固定写入 `Normal`，不会恢复进入前的最大化状态。
+- 处理：分页正文按左右阅读边距增加 paint clipping，并强制普通文本容器恢复可换行；
+  窗口重排改用页面约 45% 高度处的视觉锚点，连续 ResizeObserver 合并后再按统一布局
+  坐标恢复；全屏 API 显式传递进入/退出状态，宿主记录最大化事件并在退出后按原状态
+  恢复。正常进度保存仍使用既有页首 `text_offset`，数据契约未变。
+- 验证：四项修复均先补红测；Python 3.14 / bundled 3.12 全量 232 项 OK（3.14 跳 4），
+  API 45 方法与全部 Node 契约通过；WebView2 UI 95 项全部 PASS，其中新增分页重排保位、
+  边缘裁剪和超长单行换行三项。Android、CI 与双端 JSON 契约未修改。
+- release：以 bundled Python 3.12.13 / PyInstaller 6.21.0 重建目录版
+  `dist/AnkeShelf-v1.2.0.zip`（45,016,525 字节，SHA-256
+  `60D17F6716F15251197471D36D45DAF1EF437FF23A8053E8694FFE96663D112D`）；包内
+  `paged.js` / `reader-utils.js` 与源码哈希一致，pythonnet 运行时 99 个文件齐全，
+  凭据/调试产物扫描与 EXE 启动冒烟测试通过。
 
 ### 2026-08-15 android/contracts/docs：CI 路径修复 + API 契约启动诊断
 

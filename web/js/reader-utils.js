@@ -57,6 +57,14 @@
       column-width: var(--col-px, 600px) !important;
       column-gap: var(--gap-px, 28px) !important;
       column-fill: auto !important;
+      clip-path: inset(0 var(--margin-px, 40px)) !important;
+    }
+    body :where(p, div, span, li, td, th, blockquote, h1, h2, h3, h4, h5, h6) {
+      overflow-wrap: anywhere !important;
+      word-break: break-word !important;
+    }
+    body :where([nowrap], [class*="nowrap"], [style*="white-space"][style*="nowrap"]) {
+      white-space: normal !important;
     }
     pre { white-space: pre-wrap !important; word-break: break-all; }
     img, video {

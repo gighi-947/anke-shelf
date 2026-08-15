@@ -108,7 +108,7 @@ def main() -> int:
     nga_svc = NgaService(lambda p: "")
     api = Api(books=books, shelf=shelf, progress=progress, settings=settings,
               search=search, annotations=ann, stats=stats, nga_service=nga_svc,
-              window_toggle=lambda: None)
+              window_toggle=lambda _entering: None)
     port = start_server(PROJECT / "web", books, covers, api=api, token="real-nga")
 
     window = webview.create_window(
