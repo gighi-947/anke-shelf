@@ -10,10 +10,10 @@
 
 ## 1. 当前状态（2026-08-15）
 
-- 仓库代码基线：`f108eda`（win: improve API contract launch diagnostics）；前一提交
-  `0e44ae0` 完成 Android CI bundle 路径修复，本文档同步提交不改变代码基线。
-- 提交批次：Android CI、Contracts 诊断与本文档同步三个提交同批推送；远端精确状态
-  以 `git status --short --branch` 为准。
+- 仓库代码基线：`334392e`（win: fix pagination clipping and fullscreen restore）；
+  基于 `670cecb`（docs: sync CI fix status）创建 Windows 阅读器修复分支。
+- 提交批次：分页边缘裁剪、沉浸模式保位与窗口状态恢复同批提交；远端精确状态以
+  `git status --short --branch` 为准。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机基线沿用
@@ -62,7 +62,8 @@
 - 处理：分页正文按左右阅读边距增加 paint clipping，并强制普通文本容器恢复可换行；
   窗口重排改用页面约 45% 高度处的视觉锚点，连续 ResizeObserver 合并后再按统一布局
   坐标恢复；全屏 API 显式传递进入/退出状态，宿主记录最大化事件并在退出后按原状态
-  恢复。正常进度保存仍使用既有页首 `text_offset`，数据契约未变。
+  恢复。正常进度保存仍使用既有页首 `text_offset`，数据契约未变。代码提交：
+  `334392e`。
 - 验证：四项修复均先补红测；Python 3.14 / bundled 3.12 全量 232 项 OK（3.14 跳 4），
   API 45 方法与全部 Node 契约通过；WebView2 UI 95 项全部 PASS，其中新增分页重排保位、
   边缘裁剪和超长单行换行三项。Android、CI 与双端 JSON 契约未修改。

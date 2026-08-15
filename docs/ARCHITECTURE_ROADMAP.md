@@ -52,7 +52,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 仓库基线 | `f108eda`（CI 路径与契约启动诊断已落地；2026-08-15 核对） |
+| 仓库基线 | `334392e`（Windows 分页裁剪与全屏恢复修复已落地；2026-08-15 核对） |
 | 分支 | `win/reader-pagination-fullscreen-fix`，基于 `main` 修复 Windows 阅读器本体 |
 | Windows Python 单测 | 232 项 OK（3.12 / 3.14 双环境实测） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 45 methods + 启动失败诊断 + `reader-session` OK |
@@ -102,9 +102,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### P0：修复当前用户报错（发行包启动崩溃）
 
-> 状态（2026-08-14）：项目侧“友好提示 + 文档”已落地（`app/startup_errors.py`、
+> 状态（2026-08-15）：项目侧“友好提示 + 文档”已落地（`app/startup_errors.py`、
 > `app/main.py` 捕获 `RuntimeError`、README / 使用说明补充 .NET 4.8 与“解除锁定”）；
-> 用户已自行修复本机环境，本轮未重新打包 / 替换 v1.2.0 发行资产。
+> 用户已自行修复本机环境；本地 `AnkeShelf-v1.2.0.zip` 已随 Windows 阅读器修复重建，
+> GitHub v1.2.0 正式 Release 资产尚未替换。
 
 - 现象：`Failed to resolve Python.Runtime.Loader.Initialize from
   ...\pythonnet\runtime\Python.Runtime.dll`，pywebview winforms 两次加载
@@ -123,7 +124,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
   - `README.md`、`使用说明.txt`：写明 .NET Framework 4.8 要求与
     “右键 zip → 属性 → 解除锁定”步骤；
   - `ankeshelf.spec` / `windows.yml`：打包后自检 pythonnet 运行时完整；
-  - 视情况重打并替换 v1.2.0 发行资产。
+  - 正式发布时视情况替换 GitHub v1.2.0 Release 资产。
 - 预期目标：用户可启动；无法启动时得到明确、可执行的修复指引。
 
 ### P0（新）：章节读取失败模型（BookSession 契约收紧）
