@@ -1,5 +1,7 @@
 """API 契约漂移守卫（P1）：后端 _HANDLERS ↔ 前端 api-client.js ↔ bridge.js MOCKS。"""
 import re
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -29,6 +31,30 @@ def _bridge_mock_names() -> set[str]:
 
 
 class ApiContractTest(unittest.TestCase):
+    def test_manifest_load_does_not_require_product_network_or_crypto_packages(self):
+        script = r'''
+import importlib.abc
+import sys
+
+class BlockProductPackages(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split(".", 1)[0] in {"httpx", "cryptography"}:
+            raise ModuleNotFoundError(f"blocked optional product package: {fullname}")
+        return None
+
+sys.meta_path.insert(0, BlockProductPackages())
+from app.api import api_manifest
+assert api_manifest()
+'''
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=PROJECT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr or result.stdout)
+
     def test_backend_handlers_covered_by_client(self):
         backend = {item["name"] for item in api_manifest()}
         client = _client_method_names()
