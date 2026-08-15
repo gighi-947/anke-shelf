@@ -10,9 +10,9 @@
 
 ## 1. 当前状态（2026-08-15）
 
-- 当前功能分支：`win/gululu-adapter-research`，与 `main` 的共同基线为 `670cecb`；
-  已完成 Windows 骨碌碌全能助手、真实书 `63299` 排版/性能适配、图片三态与追加式
-  增量热更新。精确提交与远端状态以 `git log` / `git status` 为准。
+- 当前开发基线：`main`；Windows 骨碌碌适配已通过 PR #13 以 rebase 方式并入主干
+  （合并基线 `4b77ded`），包含全能助手、真实书 `63299` 排版/性能适配、图片三态与
+  追加式增量热更新。精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机基线沿用
@@ -51,6 +51,15 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-15 win/docs：PR #13 骨碌碌适配并入主干
+
+- 合并门槛：提交 `e3fc194` 的两轮 Contracts CI 均通过；Windows CI 在 Python
+  3.12/3.13/3.14 的两轮矩阵均通过，3.12 PyInstaller 打包与产物上传成功。
+- 合并：PR #13 以 rebase 方式并入 `main`，GitHub 合并基线为 `4b77ded`；本地
+  `main` 已通过 `git pull --ff-only` 同步。远端功能分支暂保留，未打标签、未发布新版。
+- 漂移检查：Windows Python 基线 280 项、API 合同 52 方法、四个 workflow 与当前仓库
+  一致；README 版本仍为 Windows v1.2.0 / Android v1.0.0，无需修改版本线。
 
 ### 2026-08-15 win/contracts/docs：PR #13 契约清单最小依赖修复
 

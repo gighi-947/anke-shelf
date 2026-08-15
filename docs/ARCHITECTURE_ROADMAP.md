@@ -7,8 +7,9 @@
 > 再推进至 `ad034b8`（Android 桥协议 + 进度回放）、`d697330`（P2 jsoup 清洗）、
 > `9e84c4c`（P2 错误模型）与 `cb40cee`（P2 诊断闭环）；随后 `96eb2e7`
 > （统一备份包）、`b63809f`（统一 task_id）、`867e7ea`（章节读取失败模型），
-> 当前主干 HEAD 为 `670cecb`；包含 Android 数据/阅读链路显式失败修复、
-> Android CI bundle 路径守卫与 API 契约启动失败诊断。
+> 随后主干推进至 `670cecb`，包含 Android 数据/阅读链路显式失败修复、
+> Android CI bundle 路径守卫与 API 契约启动失败诊断；2026-08-15 Windows 骨碌碌
+> 适配经 PR #13 以 rebase 方式并入主干，合并基线为 `4b77ded`。
 > 各节“状态”注明进度。
 > 当前版本：Windows v1.2.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
@@ -52,9 +53,9 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 分支同步基线 | 与 `main` 的共同基线 `670cecb`；骨碌碌分支已包含分页裁剪、沉浸保位与窗口状态修复（2026-08-15 核对） |
-| 分支 | `win/gululu-adapter-research`，Windows 骨碌碌 EPUB、图片三态与追加式增量热更新验证 |
-| Windows Python 单测 | 骨碌碌功能分支 280 项 OK（3.14：4 跳；bundled 3.12：全量通过） |
+| 主干状态 | PR #13 已并入 `main`（合并基线 `4b77ded`）；包含分页裁剪、沉浸保位与窗口状态修复（2026-08-15 核对） |
+| 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
+| Windows Python 单测 | 主干合并基线 280 项 OK（3.14：4 跳；bundled 3.12：全量通过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 52 methods + 启动失败诊断 + `reader-session` OK |
 | Android JVM 单测 | 117 过 / 1 跳（2026-08-15 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
