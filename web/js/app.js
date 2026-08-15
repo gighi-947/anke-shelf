@@ -174,6 +174,7 @@
       if (window.SettingsPage) SettingsPage.close();
       if (window.GululuComments) GululuComments.close();
       if (window.GululuImmersive) GululuImmersive.close();
+      if (window.GululuSecrets) GululuSecrets.close();
       document.title = '安科书架';
     },
 
@@ -201,6 +202,7 @@
         if (window.Assist) Assist.setBrightness(state.settings.brightness || 0);
         if (window.GululuComments) GululuComments.setBook(data);
         if (window.GululuImmersive) GululuImmersive.setBook(data);
+        if (window.GululuSecrets) GululuSecrets.setBook(data);
         const p = data.progress || { chapter_index: 0, text_offset: 0 };
         await Reader.loadChapter(p.chapter_index, p.text_offset || 0);
       } catch (e) {

@@ -58,12 +58,15 @@
 
   window.CodeHighlight = {
     highlightBlocks(doc) {
+      let changed = 0;
       doc.querySelectorAll('pre code').forEach((code) => {
         const cls = (code.className || '').match(/(?:language-)?([\w+-]+)/);
         if (!cls) return;
         code.innerHTML = highlight(code.textContent);
         code.classList.add('syntax');
+        changed += 1;
       });
+      return changed;
     },
   };
 })();

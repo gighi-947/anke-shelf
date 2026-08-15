@@ -4,7 +4,7 @@
 GULULU_EPUB_CSS = """body { line-height:1.8; margin:0 1em; }
 .book-meta { color:#777; font-size:.9em; margin:0 0 1.2em; }
 .chapter-title { font-size:1.5em; margin:.5em 0 1em; }
-.gululu-floor { margin:0 0 1.5em; }
+.gululu-floor { box-sizing:border-box; margin:0 0 1.5em; padding-right:.5em; }
 .floor-head { border-bottom:1px solid #aaa; font-size:.86em; padding:.35em 0;
   margin:0 0 .8em; break-after:avoid; }
 .floor-number { font-weight:700; }
@@ -26,6 +26,12 @@ GULULU_EPUB_CSS = """body { line-height:1.8; margin:0 1em; }
 .gululu-directive-error { border:1px dashed #aaa; color:#777; padding:.5em; }
 .gululu-fold { border-left:3px solid #aaa; margin:.8em 0; padding:.2em 0 .2em .8em; }
 .gululu-fold summary { cursor:pointer; font-weight:700; break-after:avoid; }
+.gululu-secret-cue, .gululu-clue-cue { border:1px solid #aaa; border-radius:6px;
+  background:transparent; color:inherit; cursor:pointer; font:inherit; margin:.25em 0;
+  max-width:100%; overflow-wrap:anywhere; padding:.45em .65em; }
+.gululu-clue-cue { border-style:dashed; }
+.gululu-jump-floor { display:inline-block; margin:.35em 0; }
+.gululu-sensitive-unavailable { border:1px dashed #aaa; color:#777; padding:.5em; }
 .gululu-comments { border-top:1px solid #bbb; margin:1em 0 0; padding-top:.5em; }
 .gululu-comments > summary { cursor:pointer; font-weight:700; }
 .gululu-comment-list { margin:.6em 0 0; }

@@ -51,6 +51,7 @@
     ['gululu_start_import', 'gululuStartImport'],
     ['gululu_start_export', 'gululuStartExport'],
     ['gululu_get_comments', 'gululuGetComments'],
+    ['gululu_decrypt_secret', 'gululuDecryptSecret'],
     ['gululu_import_status', 'gululuImportStatus'],
     ['gululu_cancel', 'gululuCancel'],
     ['get_fonts', 'getFonts'],

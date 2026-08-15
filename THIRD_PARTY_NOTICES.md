@@ -17,6 +17,12 @@
   发行包以 `web/fonts/weidqczfkyxk.ttf` 逻辑名提供，Android APK 以
   `assets/fonts/LXGWWenKai-Regular.ttf` 打包）。
 
+## PyCA cryptography
+
+- 来源：https://github.com/pyca/cryptography
+- 用途：Windows 端兼容解密骨碌碌全能助手生成的 CryptoJS AES 秘密内容。
+- 版本：49.0.0；许可证：Apache-2.0 OR BSD-3-Clause。
+
 ## 设计参考（思路借鉴，独立实现）
 
 凡直接对照算法、几何公式或数据结构处，源码注释均已标注出处：

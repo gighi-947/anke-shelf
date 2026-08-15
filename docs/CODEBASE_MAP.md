@@ -32,6 +32,7 @@ UI 入口 → 下载器 → HTTP 客户端 → 格式化 → 落盘/追加
 | Windows | `web/js/gululu-download.js` → `app/api/gululu_api.py` → `app/gululu_service.py` → `app/gululu_epub.py` | 骨碌碌紧凑导入、含评论 EPUB 可选导出、任务进度/取消与原子落盘 |
 | Windows | `web/js/gululu-comments.js` → `app/api/gululu_api.py` → `app/gululu_service.py` → `app/gululu_comments.py` | 当前章节评论按需加载、5 分钟缓存/离线回退、宿主层评论面板与只读弹幕 |
 | Windows | `app/gululu_immersive.py` → EPUB `data-*` → `web/js/gululu-immersive.js` | 正文音乐/背景/视效指令解析，无凭据 HTTPS 校验，宿主层播放器、背景与动态视效 |
+| Windows | `app/gululu_assistant.py` → `app/gululu_ast.py` → EPUB `data-*` → `web/js/gululu-secrets.js` → `app/api/gululu_api.py` | 全能助手折叠/秘密/线索协议；线索本地保存，CryptoJS AES 按需解密，明文只在宿主弹窗展示 |
 | Windows | `app/native_book.py` | 原生书容器：meta.json + floors.json + chapters/*.xhtml，纯增量追加 |
 | Android | `ui/download/DownloadScreen.kt` → `service/NgaDownloader.kt` / `NgaDownloadService.kt` | 参数表单、前台服务、进度通知、取消清理 |
 | Android | `service/NgaClient.kt` / `NgaHttp.kt` | OkHttp + CookieJar + UA + Referer（图片代理统一入口） |
@@ -123,6 +124,6 @@ Compose 外壳 → WebView 渲染内核 → CSS/JS 排版 → text_offset
 | Android 跨端对照 | `androidTest/.../ReaderPagedCrossTest.kt`（需设备） |
 | Android 构建 | `gradlew assembleDebug` / `assembleRelease`（需本地 keystore） |
 | Windows 单测 | `python -m unittest discover tests` |
-| 骨碌碌专版调试区 | `tests/gululu_reader_debug/server.py` + `web/`；独立 Windows 阅读壳层，本地产物写入其 `workspace/` |
+| 骨碌碌专版调试区 | `tests/gululu_reader_debug/server.py` + `formal_server.py` + `web/`；独立壳层与正式阅读器 Playwright，本地产物写入其 `workspace/` |
 | 凭据扫描 | `android/scripts/check-release.ps1` |
 | 发布 | `android/VERSIONING.md`（安卓）、DevLog 5.3（Windows） |

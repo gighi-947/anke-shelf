@@ -5,11 +5,11 @@ import argparse
 import html
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable, Optional
+from typing import Callable, Optional
 
 import httpx
 
-from .gululu_ast import render_marks
+from .gululu_ast import render_ast
 from .gululu_comments import (
     fetch_comment_scopes,
     fetch_comments_by_floor,
@@ -18,9 +18,7 @@ from .gululu_comments import (
 from .gululu_epub_styles import GULULU_EPUB_CSS
 from .gululu_immersive import (
     ImmersiveFloor,
-    background_attribute,
     prepare_immersive_floor,
-    render_immersive_node,
 )
 from .gululu_source import parse_book_id, parse_gululu_identifier
 
@@ -193,76 +191,6 @@ class GululuClient:
             raise GululuApiError(str(exc)) from exc
 
 
-def render_ast(
-    nodes: Iterable[dict],
-    *,
-    image_resolver: Optional[Callable[[str], str]] = None,
-    strict: bool = False,
-) -> str:
-    """递归转换骨碌碌正文 AST；未知节点默认显示占位，strict 时显式失败。"""
-    resolver = image_resolver or (lambda url: url)
-
-    def render_children(node: dict) -> str:
-        content = node.get("content")
-        if not isinstance(content, list):
-            return ""
-        return "".join(render_node(child) for child in content if isinstance(child, dict))
-
-    def render_node(node: dict) -> str:
-        node_type = str(node.get("type") or "")
-        attrs = node.get("attrs") if isinstance(node.get("attrs"), dict) else {}
-        immersive_html = render_immersive_node(node_type, attrs)
-        if immersive_html is not None:
-            return immersive_html
-        if node_type == "text":
-            return render_marks(str(node.get("text") or ""), node.get("marks"))
-        if node_type == "hardBreak":
-            return "<br/>"
-        if node_type == "paragraph":
-            content = render_children(node)
-            paragraph_id = attrs.get("id")
-            paragraph_attr = ""
-            if paragraph_id not in (None, ""):
-                paragraph_attr = (
-                    f' data-paragraph-id="{html.escape(str(paragraph_id), quote=True)}"'
-                )
-            if content:
-                return f"<p{paragraph_attr}>{content}</p>"
-            return f'<p class="empty-paragraph"{paragraph_attr}>&#160;</p>'
-        if node_type == "heading":
-            try:
-                source_level = int(attrs.get("level", 2))
-            except (TypeError, ValueError):
-                source_level = 2
-            level = min(6, max(3, source_level + 1))
-            return f"<h{level}>{render_children(node)}</h{level}>"
-        if node_type == "image":
-            source = str(attrs.get("src") or "").strip()
-            if not source.startswith("https://"):
-                return '<p class="image-unavailable">[图片地址不可用]</p>'
-            resolved = resolver(source)
-            if not resolved:
-                return '<p class="image-omitted">[图片已省略]</p>'
-            alt = html.escape(str(attrs.get("alt") or "图片"))
-            image = f'<img src="{html.escape(resolved)}" alt="{alt}"/>'
-            if str(attrs.get("avatar") or "").lower() == "true":
-                image = f'<span class="avatar-image">{image}</span>'
-            background_attr = background_attribute(attrs)
-            return f'<figure class="gululu-image"{background_attr}>{image}</figure>'
-        if node_type == "collapsibleBlock":
-            return (
-                '<details class="gululu-fold" open="open">'
-                "<summary>折叠内容</summary>"
-                f'{render_children(node)}</details>'
-            )
-        if strict:
-            raise GululuFormatError(f"暂不支持的骨碌碌正文节点：{node_type or 'unknown'}")
-        label = html.escape(node_type or "unknown")
-        return f'<div class="unsupported-node">[暂不支持的内容：{label}]</div>'
-
-    return "".join(render_node(node) for node in nodes if isinstance(node, dict))
-
-
 def _chapter_groups(
     floor_index: list[dict],
     chapter_index: list[dict],
@@ -318,12 +246,13 @@ def _floor_html(
     floor: dict,
     comments: list[dict],
     immersive: Optional[ImmersiveFloor] = None,
+    jump_floor_resolver: Optional[Callable[[int], str]] = None,
 ) -> str:
     floor_num = int(index_item.get("floorNum") or floor.get("floorNum") or 0)
     floor_id = int(index_item.get("floorId") or floor.get("id") or 0)
     title = html.escape(str(index_item.get("name") or floor.get("name") or ""))
     immersive = immersive or prepare_immersive_floor(floor.get("paragraphContents") or [])
-    body = render_ast(immersive.nodes)
+    body = render_ast(immersive.nodes, jump_floor_resolver=jump_floor_resolver)
     effect_attr = (
         f' data-gululu-vfx="{html.escape(immersive.vfx, quote=True)}"'
         if immersive.vfx else ""
@@ -368,6 +297,15 @@ def build_epub(
     author_data = detail.get("author") if isinstance(detail.get("author"), dict) else {}
     author = str(author_data.get("nickName") or "").strip()
     groups = _chapter_groups(floor_index, chapter_index, floors)
+    floor_targets: dict[int, str] = {}
+    for chapter_number, (_, chapter_floors) in enumerate(groups, 1):
+        for index_item, floor in chapter_floors:
+            floor_number = int(index_item.get("floorNum") or floor.get("floorNum") or 0)
+            floor_id = int(index_item.get("floorId") or floor.get("id") or 0)
+            if floor_number > 0 and floor_id > 0:
+                floor_targets[floor_number] = (
+                    f"chapter_{chapter_number:04d}.xhtml#floor-{floor_id}"
+                )
     comments_by_floor = comments_by_floor or {}
     immersive_by_floor = {
         int(floor.get("id") or 0): prepare_immersive_floor(floor.get("paragraphContents") or [])
@@ -424,7 +362,7 @@ def build_epub(
             parts.append(
                 '<span class="gululu-immersive-marker" '
                 f'data-gululu-background-initial="{html.escape(chapter_background, quote=True)}" '
-                'aria-hidden="true"></span>'
+                'aria-hidden="true"><wbr/></span>'
             )
         for item, floor in chapter_floors:
             floor_id = int(item.get("floorId") or 0)
@@ -434,6 +372,7 @@ def build_epub(
                 floor,
                 comments_by_floor.get(floor_id, []),
                 immersive,
+                floor_targets.get,
             ))
             if immersive.background_update is not None:
                 active_background = immersive.background_update

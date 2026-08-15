@@ -175,7 +175,11 @@ class TestGululuAstRenderer(unittest.TestCase):
         html = render_ast(floors[0]["paragraphContents"] + floors[1]["paragraphContents"])
         self.assertIn('<p data-paragraph-id="p1">普通文字<br/>', html)
         self.assertIn('<span style="color:rgb(221, 0, 0)"><strong>红色粗体</strong></span>', html)
-        self.assertIn('<img src="https://image.gululu.world/test/a.webp" alt="测试图"/>', html)
+        self.assertIn(
+            '<img src="https://image.gululu.world/test/a.webp" alt="测试图" '
+            'loading="lazy" decoding="async"/>',
+            html,
+        )
         self.assertIn("<h3><em>幕间</em></h3>", html)
         self.assertIn('<details class="gululu-fold" open="open">', html)
         self.assertIn("<del>折叠内容</del>", html)
@@ -222,6 +226,28 @@ class TestGululuAstRenderer(unittest.TestCase):
         self.assertIn('data-gululu-background-clear="true"', rendered)
         self.assertIn('data-gululu-music-stop="true"', rendered)
         self.assertNotIn("&lt;特效", rendered)
+
+    def test_immersive_directives_ignore_editor_invisible_padding(self):
+        nodes = [
+            {"type": "paragraph", "content": [{"type": "text", "text": (
+                "\u3000\u3000\u200b<自动音乐>Frostpunk Theme "
+                "♪https://media.example/theme.mp3</自动音乐结束>\u200b\u200b"
+            )}]},
+            {"type": "paragraph", "content": [
+                {"type": "text", "text": "\u200b<特效:下雪>\u200b"},
+            ]},
+            {"type": "paragraph", "content": [
+                {"type": "text", "text": "\u200b<停止音乐>\u200b"},
+            ]},
+        ]
+
+        prepared = prepare_immersive_floor(nodes)
+        rendered = render_ast(prepared.nodes)
+
+        self.assertEqual(prepared.vfx, "snow")
+        self.assertIn('data-gululu-music-auto="true"', rendered)
+        self.assertIn('data-gululu-music-stop="true"', rendered)
+        self.assertNotIn("&lt;自动音乐&gt;", rendered)
 
     def test_immersive_external_urls_require_credential_free_https(self):
         self.assertEqual(safe_https_url("https://media.example/a.mp3"), "https://media.example/a.mp3")
@@ -313,6 +339,10 @@ class TestBuildGululuEpub(unittest.TestCase):
                 'data-gululu-background-initial="https://image.example/scene.webp"',
                 second,
             )
+            self.assertNotRegex(
+                second,
+                r'<span class="gululu-immersive-marker"[^>]*/>',
+            )
 
     def test_builds_importable_epub_with_source_chapter_groups(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -321,11 +351,17 @@ class TestBuildGululuEpub(unittest.TestCase):
             floor_comments[0]["childrenComment"] = _fixture(
                 "comments_children_9001.json"
             )["data"]["records"]
+            floors = _fixture("floors.json")["data"]
+            floors[0]["paragraphContents"].append({
+                "type": "jumpFloorComponent",
+                "attrs": {"floorNumber": 2, "description": "跳至第一回"},
+                "content": [],
+            })
             build_epub(
                 detail=_fixture("detail.json")["data"],
                 floor_index=_fixture("floor_index.json")["data"],
                 chapter_index=_fixture("chapter_index.json")["data"]["chapterIndex"],
-                floors=_fixture("floors.json")["data"],
+                floors=floors,
                 comments_by_floor={
                     0: _fixture("comments_opus.json")["data"]["records"],
                     962170: floor_comments,
@@ -358,6 +394,11 @@ class TestBuildGululuEpub(unittest.TestCase):
                 css = zf.read("EPUB/style/main.css").decode("utf-8")
                 self.assertIn("max-width:100%", css)
                 self.assertIn("break-inside:avoid", css)
+                first = zf.read("EPUB/chapters/chapter_0001.xhtml").decode("utf-8")
+                self.assertIn(
+                    'href="chapter_0002.xhtml#floor-962916"',
+                    first,
+                )
                 chapters = [name for name in zf.namelist() if name.startswith("EPUB/chapters/")]
                 entries = set(zf.namelist())
                 self.assertEqual(len(chapters), 3)

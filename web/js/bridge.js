@@ -48,6 +48,7 @@
     gululu_start_import: async () => ({ ok: false, error: '浏览器调试模式：无法导入' }),
     gululu_start_export: async () => ({ ok: false, error: '浏览器调试模式：无法导出' }),
     gululu_get_comments: async () => ({ ok: true, source_id: 0, floors: [], error: '' }),
+    gululu_decrypt_secret: async () => ({ ok: false, error: '浏览器调试模式：无法解锁秘密' }),
     gululu_import_status: async () => ({ running: false, stage: 'idle', detail: '' }),
     gululu_cancel: async () => ({ ok: false, error: '浏览器调试模式：没有进行中的导入任务' }),
     export_start: async () => ({ ok: false, error: '浏览器调试模式：无法导出' }),

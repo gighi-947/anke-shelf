@@ -10,18 +10,17 @@
 
 ## 1. 当前状态（2026-08-15）
 
-- 仓库 HEAD：`670cecb`（docs: sync CI fix status）；当前功能分支
-  `win/gululu-adapter-research` 在此基础上开发 Windows 骨碌碌 EPUB 适配。
-- 提交批次：Android CI、Contracts 诊断与本文档同步三个提交同批推送；远端精确状态
-  以 `git status --short --branch` 为准。
+- 当前功能分支：`win/gululu-adapter-research`；已同步 `fb55a0b`
+  （win: fix pagination clipping and fullscreen restore），并完成 Windows 骨碌碌全能助手
+  协议与真实书 `63299` 排版/性能适配。精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机基线沿用
   2026-08-14）：
-  - Windows Python：`python -m unittest discover tests` = 259 项 OK
+  - Windows Python：`python -m unittest discover tests` = 267 项 OK
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（50 方法一致）、
+    `node contracts/tests/api-contract.test.js`（51 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node contracts/tests/reader-lite-parts.test.js`（6 parts / 36917 字节）、
@@ -52,6 +51,33 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-15 win/docs：骨碌碌全能助手秘密、真实书排版与图片首屏提速
+
+- 范围：继续待适配清单，支持全能助手文本折叠、秘密与线索；参考公开脚本确认协议为
+  `<秘密>[名称]CryptoJS AES 密文</秘密>` / `<发现秘密>[名称]密码</发现秘密>`，未保存
+  第三方源码。不修改 Android、CI 或双端 JSON 契约。
+- 转换/API：新增 `gululu_assistant.py`，把折叠、秘密、线索及已知
+  `jumpFloorComponent` / `sensitive` 节点转成安全 XHTML；兼容 CryptoJS/OpenSSL
+  salted AES，AES 实现使用锁定的 `cryptography==49.0.0`。新增
+  `gululu_decrypt_secret`，API 合同由 50 增至 51；第三方声明已同步。
+- 阅读器：新增 `gululu-secrets.js`。线索按 `bookId + title` 存本机，秘密点击时才向
+  Python 解密，明文以 `textContent` 显示在 iframe 外弹窗，不写回正文 DOM。430px
+  底部弹窗、Esc/遮罩关闭、换书/返回书架清理均纳入正式 Playwright。
+- 真实书修复：`63299` 的音乐/特效指令含 U+200B 零宽边界，现会先归一化再匹配；
+  EbookLib 空沉浸 `span` 自闭合在 `text/html` 下吞掉后续正文，改为带无文本坐标的
+  `wbr` 子节点。骨碌碌显式近黑/近白字随阅读主题映射，彩色字保留；楼层增加 0.5em
+  字形安全余量，修复自定义字体下 366/369 的窄屏横向溢出。
+- 加载性能：生成图片使用原生 lazy + async decode，滚动模式不再等待全章图片；图片
+  高度同步按动画帧合并，无代码高亮/标注时不重复构建 TextPos。1345 图延迟基准中，
+  请求数 `1347 -> 9`、换章 `3618ms -> 2602ms`；剩余耗时主要是 39 楼超大 DOM 的解析
+  与首轮布局，保留作者章节边界，未擅自拆章。
+- 验证：真实 `63299` 为 48 楼、3 阅读章、52 折叠、38 自动音乐、8 停止音乐、45
+  背景、1 清除背景、1 特效、2 个可点击跳楼链接、1 敏感节点、1557 图，未知节点与原始协议泄漏
+  均为 0，XHTML 全可解析；`66905` 为 109 楼/20 章，`32203` 为 2299 楼/115 回退章。
+  Python 3.14 与 bundled 3.12 均 267 项 OK；Node API 51 方法及全部合同通过；WebView2
+  harness 97 项 PASS。正式 Playwright 确认秘密明文正确且正文长度 `123 -> 123`，
+  430px 宿主 430/430、正文 366/366，控制台业务错误为 0。
 
 ### 2026-08-15 win/docs：骨碌碌无作者章节时按楼层自动分章
 

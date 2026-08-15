@@ -45,9 +45,10 @@
   /** 注入当前章高亮 mark（reader.js onload 时调用，必须在 TextPos 重建前）。 */
   function injectForChapter(doc) {
     const ctx = App.state.textCtx;
-    if (!ctx) return;
+    if (!ctx) return 0;
     const list = state.highlights.filter((h) => h.chapter_index === App.state.chapterIndex);
     for (const h of list) wrap(ctx, doc, h);
+    return list.length;
   }
 
   /** 把区间文本包成连续 mark（跨节点安全）。
