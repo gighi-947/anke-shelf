@@ -3,7 +3,7 @@
   'use strict';
 
   const {
-    section, field, input, checkbox, check, val, makePoller, refreshBooks,
+    section, field, input, select, checkbox, check, val, makePoller, refreshBooks,
   } = window.NgaPage;
   const poller = makePoller();
 
@@ -26,6 +26,11 @@
 
     const options = document.createElement('div');
     options.className = 'nga-form-row';
+    options.appendChild(field('图片', select('gululu-image-mode', [
+      ['online', '在线图片'],
+      ['embedded', '内嵌图片'],
+      ['none', '不含图片'],
+    ])));
     options.appendChild(field('完成后打开', checkbox('gululu-open-after', true)));
     wrap.appendChild(options);
 
@@ -77,7 +82,10 @@
       return;
     }
     try {
-      const result = await Api.gululuStartImport(source);
+      const result = await Api.gululuStartImport(
+        source,
+        val('gululu-image-mode') || 'online',
+      );
       if (!result.ok) {
         Toast.show(result.error || '启动失败', true);
         if (result.error && result.error.includes('已有')) resume(true);
@@ -107,7 +115,10 @@
       return;
     }
     try {
-      const result = await Api.gululuStartExport(source);
+      const result = await Api.gululuStartExport(
+        source,
+        val('gululu-image-mode') || 'online',
+      );
       if (!result.ok) {
         if (!result.cancelled) Toast.show(result.error || '启动导出失败', true);
         return;
@@ -145,6 +156,8 @@
     if (start) start.disabled = !!running;
     if (exportButton) exportButton.disabled = !!running;
     if (cancel) cancel.disabled = !running;
+    const imageMode = document.getElementById('gululu-image-mode');
+    if (imageMode) imageMode.disabled = !!running;
     const tab = document.querySelector('.download-tab[data-tab="dl-gululu"]');
     if (tab) tab.classList.toggle('running', !!running);
   }
@@ -156,7 +169,8 @@
     if (!stage || !fill || !text) return;
     const labels = {
       idle: '当前无导入任务', metadata: '读取书籍信息', index: '读取目录',
-      floors: '获取楼层', comments: '获取评论', epub: '生成 EPUB', register: '加入书架',
+      floors: '获取楼层', comments: '获取评论', images: '内嵌图片',
+      epub: '生成 EPUB', register: '加入书架',
       done: '完成', cancelled: '已取消', error: '失败',
     };
     stage.textContent = labels[status.stage] || status.stage || '';
@@ -172,9 +186,15 @@
     if (status.stage === 'done') {
       if (status.action === 'export') {
         const file = status.files && status.files[0] ? `：${status.files[0]}` : '';
-        Toast.show('含评论 EPUB 已导出' + file);
+        const warning = status.image_failed > 0
+          ? `，${status.image_failed} 张图片失败并显示占位`
+          : '';
+        Toast.show('含评论 EPUB 已导出' + file + warning, status.image_failed > 0);
       } else {
-        Toast.show('骨碌碌 EPUB 已加入书架');
+        const warning = status.image_failed > 0
+          ? `，${status.image_failed} 张图片失败并显示占位`
+          : '';
+        Toast.show('骨碌碌 EPUB 已加入书架' + warning, status.image_failed > 0);
         refreshBooks();
         if (check('gululu-open-after') && status.book_id) {
           NgaDownload.close();

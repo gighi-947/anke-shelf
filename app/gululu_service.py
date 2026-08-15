@@ -10,10 +10,12 @@ from . import dialogs
 from .events import bus
 from .gululu_comments import comment_to_public
 from .gululu_epub import (
+    GululuBuildResult,
     GululuCancelled,
     GululuClient,
     build_epub,
 )
+from .gululu_images import normalize_image_mode
 from .gululu_source import parse_book_id
 from .logutil import log_event
 from .paths import gululu_library_dir
@@ -55,15 +57,20 @@ class GululuService:
             "action": "",
             "files": [],
             "dest": "",
+            "image_mode": "online",
+            "image_total": 0,
+            "image_embedded": 0,
+            "image_failed": 0,
         }
 
     def status(self) -> dict:
         with self._lock:
             return dict(self._status)
 
-    def start(self, source: str | int) -> dict:
+    def start(self, source: str | int, image_mode: str = "online") -> dict:
         try:
             source_id = parse_book_id(source)
+            normalized_image_mode = normalize_image_mode(image_mode)
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
         task_id = f"gululu-{uuid.uuid4().hex[:12]}"
@@ -84,20 +91,25 @@ class GululuService:
                 action="import",
                 files=[],
                 dest="",
+                image_mode=normalized_image_mode,
+                image_total=0,
+                image_embedded=0,
+                image_failed=0,
             )
         thread = threading.Thread(
             target=self._run_task,
-            args=(source_id, task_id),
+            args=(source_id, normalized_image_mode, task_id),
             daemon=True,
             name="gululu-import",
         )
         thread.start()
         return {"ok": True, "task_id": task_id}
 
-    def start_export(self, source: str | int) -> dict:
+    def start_export(self, source: str | int, image_mode: str = "online") -> dict:
         """生成一份包含当前公开评论的独立 EPUB，不修改书架副本。"""
         try:
             source_id = parse_book_id(source)
+            normalized_image_mode = normalize_image_mode(image_mode)
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
         dest = self._folder_picker()
@@ -121,10 +133,14 @@ class GululuService:
                 action="export",
                 files=[],
                 dest=str(dest),
+                image_mode=normalized_image_mode,
+                image_total=0,
+                image_embedded=0,
+                image_failed=0,
             )
         thread = threading.Thread(
             target=self._run_export_task,
-            args=(source_id, Path(dest), task_id),
+            args=(source_id, Path(dest), normalized_image_mode, task_id),
             daemon=True,
             name="gululu-export",
         )
@@ -139,7 +155,7 @@ class GululuService:
         self._tasks.cancel(task_id)
         return {"ok": True}
 
-    def _run_task(self, source_id: int, task_id: str) -> None:
+    def _run_task(self, source_id: int, image_mode: str, task_id: str) -> None:
         def on_progress(item: TaskProgress) -> None:
             self._set(
                 stage=item.stage,
@@ -152,7 +168,7 @@ class GululuService:
             status = self._tasks.run(
                 self.LANE,
                 task_id,
-                lambda report: self._run(source_id, task_id, report),
+                lambda report: self._run(source_id, image_mode, task_id, report),
                 on_progress=on_progress,
             )
             if status == TaskStatus.CANCELLED:
@@ -164,7 +180,13 @@ class GululuService:
                 if self._current_task == task_id:
                     self._current_task = None
 
-    def _run_export_task(self, source_id: int, dest: Path, task_id: str) -> None:
+    def _run_export_task(
+        self,
+        source_id: int,
+        dest: Path,
+        image_mode: str,
+        task_id: str,
+    ) -> None:
         def on_progress(item: TaskProgress) -> None:
             self._set(
                 stage=item.stage,
@@ -177,7 +199,13 @@ class GululuService:
             status = self._tasks.run(
                 self.LANE,
                 task_id,
-                lambda report: self._run_export(source_id, dest, task_id, report),
+                lambda report: self._run_export(
+                    source_id,
+                    dest,
+                    image_mode,
+                    task_id,
+                    report,
+                ),
                 on_progress=on_progress,
             )
             if status == TaskStatus.CANCELLED:
@@ -189,7 +217,7 @@ class GululuService:
                 if self._current_task == task_id:
                     self._current_task = None
 
-    def _run(self, source_id: int, task_id: str, report) -> None:
+    def _run(self, source_id: int, image_mode: str, task_id: str, report) -> None:
         folder = gululu_library_dir() / str(source_id)
         target = folder / "post.epub"
         partial = folder / "post.epub.part"
@@ -211,13 +239,14 @@ class GululuService:
                     include_comments=False,
                 )
             update("epub", 0, 0, "正在生成 EPUB")
-            build_epub(
+            result = build_epub(
                 detail=snapshot.detail,
                 floor_index=snapshot.floor_index,
                 chapter_index=snapshot.chapter_index,
                 floors=snapshot.floors,
                 comments_by_floor=snapshot.comments_by_floor,
                 output_path=partial,
+                image_mode=image_mode,
                 progress=update,
                 cancel=cancelled,
             )
@@ -226,15 +255,20 @@ class GululuService:
             partial.replace(target)
             update("register", 0, 0, "正在加入书架")
             book_id = self._book_register(str(target))
+            detail = self._completion_detail("导入完成", result)
             self._set(
                 running=False,
                 stage="done",
                 current=1,
                 total=1,
-                detail="导入完成",
+                detail=detail,
                 error="",
                 book_id=book_id,
+                image_total=result.image_total,
+                image_embedded=result.image_embedded,
+                image_failed=len(result.image_failures),
             )
+            self._log_image_failures(source_id, result)
             bus.emit("book_updated", book_id=book_id)
             log_event(log, "gululu", "import_done", book_id=book_id, source_id=source_id)
         except (GululuCancelled, TaskCancelled):
@@ -247,7 +281,14 @@ class GululuService:
             self._set(running=False, stage="error", detail="", error=str(exc), book_id="")
             raise
 
-    def _run_export(self, source_id: int, dest: Path, task_id: str, report) -> None:
+    def _run_export(
+        self,
+        source_id: int,
+        dest: Path,
+        image_mode: str,
+        task_id: str,
+        report,
+    ) -> None:
         target = dest / f"gululu-{source_id}-comments.epub"
         partial = dest / f"gululu-{source_id}-comments.epub.part"
 
@@ -268,13 +309,14 @@ class GululuService:
                     include_comments=True,
                 )
             update("epub", 0, 0, "正在生成含评论 EPUB")
-            build_epub(
+            result = build_epub(
                 detail=snapshot.detail,
                 floor_index=snapshot.floor_index,
                 chapter_index=snapshot.chapter_index,
                 floors=snapshot.floors,
                 comments_by_floor=snapshot.comments_by_floor,
                 output_path=partial,
+                image_mode=image_mode,
                 progress=update,
                 cancel=cancelled,
             )
@@ -286,12 +328,16 @@ class GululuService:
                 stage="done",
                 current=1,
                 total=1,
-                detail="导出完成",
+                detail=self._completion_detail("导出完成", result),
                 error="",
                 files=[target.name],
                 dest=str(dest),
                 action="export",
+                image_total=result.image_total,
+                image_embedded=result.image_embedded,
+                image_failed=len(result.image_failures),
             )
+            self._log_image_failures(source_id, result)
             log_event(log, "gululu", "export_done", source_id=source_id)
         except (GululuCancelled, TaskCancelled):
             partial.unlink(missing_ok=True)
@@ -420,6 +466,26 @@ class GululuService:
         path = self._comment_cache_path(source_id, floor_id)
         path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_json(path, payload)
+
+    @staticmethod
+    def _completion_detail(prefix: str, result: GululuBuildResult) -> str:
+        if result.image_mode != "embedded":
+            return prefix
+        failed = len(result.image_failures)
+        return (
+            f"{prefix}；已内嵌图片 {result.image_embedded}/{result.image_total}"
+            + (f"，失败 {failed} 张已显示占位" if failed else "")
+        )
+
+    @staticmethod
+    def _log_image_failures(source_id: int, result: GululuBuildResult) -> None:
+        if result.image_failures:
+            log.warning(
+                "骨碌碌图片内嵌部分失败 source_id=%s failed=%s first=%s",
+                source_id,
+                len(result.image_failures),
+                result.image_failures[0],
+            )
 
     def _set(self, **values) -> None:
         with self._lock:

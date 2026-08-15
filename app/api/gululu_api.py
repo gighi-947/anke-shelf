@@ -4,16 +4,24 @@ from ..gululu_assistant import GululuSecretError, decrypt_cryptojs_secret
 from .common import ApiContext
 
 
-def gululu_start_import(ctx: ApiContext, source: str) -> dict:
+def gululu_start_import(
+    ctx: ApiContext,
+    source: str,
+    image_mode: str = "online",
+) -> dict:
     if ctx.gululu_service is None:
         return api_error(ErrorCode.SERVICE_UNAVAILABLE, "骨碌碌导入服务不可用")
-    return ctx.gululu_service.start(source)
+    return ctx.gululu_service.start(source, image_mode)
 
 
-def gululu_start_export(ctx: ApiContext, source: str) -> dict:
+def gululu_start_export(
+    ctx: ApiContext,
+    source: str,
+    image_mode: str = "online",
+) -> dict:
     if ctx.gululu_service is None:
         return api_error(ErrorCode.SERVICE_UNAVAILABLE, "骨碌碌导出服务不可用")
-    return ctx.gululu_service.start_export(source)
+    return ctx.gululu_service.start_export(source, image_mode)
 
 
 def gululu_get_comments(

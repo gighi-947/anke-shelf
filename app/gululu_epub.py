@@ -20,6 +20,14 @@ from .gululu_immersive import (
     ImmersiveFloor,
     prepare_immersive_floor,
 )
+from .gululu_images import (
+    GululuImageCancelled,
+    ImageBatch,
+    ImageFetcher,
+    collect_image_urls,
+    normalize_image_mode,
+    prepare_embedded_images,
+)
 from .gululu_source import parse_book_id, parse_gululu_identifier
 
 
@@ -53,6 +61,15 @@ class GululuSnapshot:
     chapter_index: list[dict]
     floors: list[dict]
     comments_by_floor: dict[int, list[dict]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class GululuBuildResult:
+    path: Path
+    image_mode: str
+    image_total: int
+    image_embedded: int
+    image_failures: tuple[str, ...] = ()
 
 
 class GululuClient:
@@ -246,13 +263,18 @@ def _floor_html(
     floor: dict,
     comments: list[dict],
     immersive: Optional[ImmersiveFloor] = None,
+    image_resolver: Optional[Callable[[str], str]] = None,
     jump_floor_resolver: Optional[Callable[[int], str]] = None,
 ) -> str:
     floor_num = int(index_item.get("floorNum") or floor.get("floorNum") or 0)
     floor_id = int(index_item.get("floorId") or floor.get("id") or 0)
     title = html.escape(str(index_item.get("name") or floor.get("name") or ""))
     immersive = immersive or prepare_immersive_floor(floor.get("paragraphContents") or [])
-    body = render_ast(immersive.nodes, jump_floor_resolver=jump_floor_resolver)
+    body = render_ast(
+        immersive.nodes,
+        image_resolver=image_resolver,
+        jump_floor_resolver=jump_floor_resolver,
+    )
     effect_attr = (
         f' data-gululu-vfx="{html.escape(immersive.vfx, quote=True)}"'
         if immersive.vfx else ""
@@ -281,9 +303,11 @@ def build_epub(
     floors: list[dict],
     comments_by_floor: Optional[dict[int, list[dict]]] = None,
     output_path: str | Path,
+    image_mode: str = "online",
+    image_fetcher: Optional[ImageFetcher] = None,
     progress: Optional[Callable[[str, int, int, str], None]] = None,
     cancel: Optional[Callable[[], bool]] = None,
-) -> Path:
+) -> GululuBuildResult:
     """把已获取的数据快照打包为现有 Windows 阅读器可导入的 EPUB3。"""
     from ebooklib import epub
 
@@ -294,6 +318,10 @@ def build_epub(
         raise GululuFormatError("骨碌碌书籍详情缺少 bookId 或 name") from exc
     if not title:
         raise GululuFormatError("骨碌碌书名为空")
+    try:
+        normalized_image_mode = normalize_image_mode(image_mode)
+    except ValueError as exc:
+        raise GululuFormatError(str(exc)) from exc
     author_data = detail.get("author") if isinstance(detail.get("author"), dict) else {}
     author = str(author_data.get("nickName") or "").strip()
     groups = _chapter_groups(floor_index, chapter_index, floors)
@@ -312,6 +340,37 @@ def build_epub(
         for floor in floors
         if isinstance(floor, dict)
     }
+    image_urls = collect_image_urls(floors)
+    image_batch = ImageBatch((), ())
+    if normalized_image_mode == "embedded":
+        def on_image_progress(current: int, total: int, ok: int, failed: int) -> None:
+            if progress is not None:
+                progress(
+                    "images",
+                    current,
+                    total,
+                    f"正在内嵌图片 {current}/{total}（成功 {ok}，失败 {failed}）",
+                )
+
+        try:
+            image_batch = prepare_embedded_images(
+                image_urls,
+                fetcher=image_fetcher,
+                progress=on_image_progress,
+                cancel=cancel,
+            )
+        except GululuImageCancelled as exc:
+            raise GululuCancelled(str(exc)) from exc
+    embedded_sources = {
+        item.source_url: f"../{item.file_name}"
+        for item in image_batch.resources
+    }
+    if normalized_image_mode == "online":
+        image_resolver = lambda url: url
+    elif normalized_image_mode == "none":
+        image_resolver = lambda url: ""
+    else:
+        image_resolver = embedded_sources.get
 
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -333,6 +392,14 @@ def build_epub(
         content=GULULU_EPUB_CSS,
     )
     book.add_item(style)
+    for resource in image_batch.resources:
+        uid = "gululu-image-" + Path(resource.file_name).stem
+        book.add_item(epub.EpubImage(
+            uid=uid,
+            file_name=resource.file_name,
+            media_type=resource.media_type,
+            content=resource.content,
+        ))
     chapters = []
     total_groups = len(groups)
     active_background = ""
@@ -372,6 +439,7 @@ def build_epub(
                 floor,
                 comments_by_floor.get(floor_id, []),
                 immersive,
+                image_resolver,
                 floor_targets.get,
             ))
             if immersive.background_update is not None:
@@ -402,7 +470,16 @@ def build_epub(
         epub.write_epub(str(target), book)
     except (OSError, ValueError) as exc:
         raise GululuFormatError(f"写入 EPUB 失败：{exc}") from exc
-    return target
+    return GululuBuildResult(
+        path=target,
+        image_mode=normalized_image_mode,
+        image_total=len(image_urls),
+        image_embedded=len(image_batch.resources),
+        image_failures=tuple(
+            f"{item.source_url}: {item.error}"
+            for item in image_batch.failures
+        ),
+    )
 
 
 def download_epub(source: str | int, output_path: str | Path) -> Path:
@@ -417,7 +494,7 @@ def download_epub(source: str | int, output_path: str | Path) -> Path:
         floors=snapshot.floors,
         comments_by_floor=snapshot.comments_by_floor,
         output_path=output_path,
-    )
+    ).path
 
 
 def main(argv: Optional[list[str]] = None) -> int:

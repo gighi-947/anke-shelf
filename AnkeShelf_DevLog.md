@@ -17,7 +17,7 @@
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机基线沿用
   2026-08-14）：
-  - Windows Python：`python -m unittest discover tests` = 267 项 OK
+  - Windows Python：`python -m unittest discover tests` = 270 项 OK
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（51 方法一致）、
@@ -51,6 +51,20 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-15 win/docs：骨碌碌正文图片在线、内嵌与不含三态
+
+- 范围：继续待适配清单中的离线图片，仅修改 Windows；Android、CI、共享 JSON 契约、
+  API 方法表均不变。导入与含评论导出新增“在线图片 / 内嵌图片 / 不含图片”选择，默认
+  保持在线，避免现有用户在未选择时得到体积显著增大的 EPUB。
+- 实现：新增 `gululu_images.py`，递归收集并去重正文图片 URL；内嵌模式只接受 HTTPS，
+  6 路并发下载、单图限制 25 MB，并以文件签名识别 JPEG/PNG/GIF/WebP/AVIF。成功资源
+  写入 EPUB `images/`，失败资源转正文明确占位；结构化构建结果把成功/失败数传到任务
+  状态和完成提示，不静默回退在线。音乐、背景与视效媒体继续保持在线。
+- 测试：先补内嵌参数、服务传递和失败占位红测，再实现转绿；补“不含图片不发请求”
+  业务不变量。系统 Python 3.14 与 bundled Python 3.12 均 270 项 OK（3.14 跳过 4），
+  Node 合同全部通过，WebView2 UI harness 97 项 PASS。真实书 `63299` 检出 1556 个唯一
+  正文图片 URL，抽取首张 291278 字节 WebP 完成真实 HTTPS 下载与格式校验。
 
 ### 2026-08-15 win/docs：骨碌碌全能助手秘密、真实书排版与图片首屏提速
 

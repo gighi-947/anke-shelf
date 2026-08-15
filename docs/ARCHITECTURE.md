@@ -19,6 +19,7 @@ app/                  Python 后端
   gululu_source.py    骨碌碌 URL / EPUB dc:identifier 来源识别
   gululu_comments.py  公开评论分页、子回复、前端最小字段与 EPUB 评论块
   gululu_immersive.py 音乐/背景/视效正文指令 → 安全 EPUB 语义标记
+  gululu_images.py    正文图片三态、HTTPS 并发下载、格式校验与显式失败摘要
   gululu_epub.py      骨碌碌公开 API / AST → 标准 EPUB3
   gululu_service.py   紧凑导入、在线评论缓存与含评论 EPUB 导出
   native_book.py      原生增量书容器（meta.json + floors.json + chapters/）
@@ -68,8 +69,11 @@ docs/                 架构与规划文档
   `data-*` 标记。线索按 `bookId + title` 保存在本机，点击秘密时通过
   `gululu_decrypt_secret` 调用 PyCA cryptography 兼容解开 CryptoJS/OpenSSL salted
   AES，明文仅用 `textContent` 放入宿主层弹窗，不写回正文 DOM。
-- 骨碌碌图片：生成 EPUB 时写入 `loading="lazy" decoding="async"`；滚动模式先完成
-  首屏排版，分页模式切回 eager 并按图片到达合并重排。作者章节边界保持不变。
+- 骨碌碌图片：导入/含评论导出均支持在线、内嵌、不含三态，默认在线。内嵌模式只接受
+  HTTPS 位图，6 路并发、单图 25 MB 上限，按文件签名识别格式；失败图片转明确占位，
+  失败数写入任务状态而不静默回退在线。在线图片写入 `loading="lazy" decoding="async"`；
+  滚动模式先完成首屏排版，分页模式切回 eager 并按图片到达合并重排。音乐与背景媒体
+  仍保持在线，作者章节边界保持不变。
 - 骨碌碌完整导出：重新获取全量公开评论 → 写入可折叠 XHTML 评论块 → 原子生成独立
   EPUB；不替换书架副本。两条链路均不写入 NGA / 双端 JSON 字段。
 - 统计：前端 5 秒心跳 + 页面切换上报，后端按天聚合。
