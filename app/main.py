@@ -82,6 +82,39 @@ def _pin_webview_zoom(window) -> None:
         pass
 
 
+def _make_window_fullscreen_toggle(window):
+    """保留进入全屏前的最大化状态，规避 WinForms 退出全屏强制 Normal。"""
+    state = {
+        "maximized": bool(getattr(window, "maximized", False)),
+        "restore_maximized": False,
+        "transition": False,
+    }
+
+    def on_maximized() -> None:
+        if not state["transition"]:
+            state["maximized"] = True
+
+    def on_restored() -> None:
+        if not state["transition"]:
+            state["maximized"] = False
+
+    window.events.maximized += on_maximized
+    window.events.restored += on_restored
+
+    def toggle(entering: bool) -> None:
+        if entering:
+            state["restore_maximized"] = state["maximized"]
+        state["transition"] = True
+        try:
+            window.toggle_fullscreen()
+            if not entering and state["restore_maximized"]:
+                window.maximize()
+        finally:
+            state["transition"] = False
+
+    return toggle
+
+
 from .annotations import AnnotationStore
 from .api import Api
 from .book_manager import BookManager
@@ -193,6 +226,13 @@ def main() -> int:
     gululu_svc = GululuService(_register_gululu_book)
     export_svc = ExportService(shelf)
     frontend_ready = threading.Event()
+    window_fullscreen_toggle = None
+
+    def _toggle_window_fullscreen(entering: bool) -> None:
+        if window_fullscreen_toggle is None:
+            raise RuntimeError("窗口尚未就绪")
+        window_fullscreen_toggle(entering)
+
     api = Api(
         books=books,
         shelf=shelf,
@@ -205,7 +245,7 @@ def main() -> int:
         gululu_service=gululu_svc,
         export_service=export_svc,
         frontend_ready=frontend_ready,
-        window_toggle=lambda: window.toggle_fullscreen(),
+        window_toggle=_toggle_window_fullscreen,
     )
     token = secrets.token_urlsafe(16)
     port = start_server(web_dir(), books, covers_dir(), api=api, token=token)
@@ -225,6 +265,7 @@ def main() -> int:
         # 在部分机器上会导致整窗未响应；隐藏期可完全规避。
         hidden=True,
     )
+    window_fullscreen_toggle = _make_window_fullscreen_toggle(window)
     window.events.loaded += lambda: _pin_webview_zoom(window)
 
     def on_closing() -> None:

@@ -48,7 +48,7 @@ def toggle_fullscreen(ctx: ApiContext) -> dict:
     if ctx.window_toggle is None:
         return api_error(ErrorCode.SERVICE_UNAVAILABLE, "全屏控制不可用")
     try:
-        ctx.window_toggle()
+        ctx.window_toggle(not ctx.fullscreen)
         ctx.fullscreen = not ctx.fullscreen
         return {"ok": True}
     except Exception as e:  # noqa: BLE001

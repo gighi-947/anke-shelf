@@ -30,7 +30,7 @@ class ApiContext:
     gululu_service: Optional[GululuService] = None
     frontend_ready: Optional[threading.Event] = None
     file_dialog: Optional[Callable[[str], list[str]]] = None
-    window_toggle: Optional[Callable[[], None]] = None
+    window_toggle: Optional[Callable[[bool], None]] = None
     fullscreen: bool = False
 
 

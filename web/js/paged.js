@@ -14,6 +14,8 @@
 
   const frameEl = () => document.getElementById('chapter-frame');
   const stageEl = () => document.getElementById('reader-root');
+  let resizeFrame = 0;
+  let resizeAnchor = null;
 
   function isActive() {
     return !!(App.state.settings && App.state.settings.pagination && !window.__readerHugeChapter__);
@@ -269,6 +271,7 @@
     if (!doc || !ctx) return 0;
     const point = TextPos.plainToPoint(ctx, offset);
     if (!point) return 0;
+    doc.body.scrollLeft = 0;
     const range = doc.createRange();
     range.setStart(point.node, point.charIndex);
     range.collapse(true);
@@ -286,32 +289,73 @@
     return page;
   }
 
-  /** 当前页首可见文本 → text_offset。
-   * caretRangeFromPoint 取的是视口坐标：分页 body overflow:hidden，
-   * 视口始终显示当前列内容，x 取正文起始（padding 处）即可。 */
+  /** 当前跨的首列 → text_offset。横向多栏滚动时 WebView2 的 caretRangeFromPoint
+   * 不稳定，临时回到布局原点后按 offset 二分其所在列。 */
   function currentOffset() {
     const doc = frameEl().contentDocument;
     const ctx = App.state.textCtx;
     if (!doc || !ctx) return 0;
+    const m = measure();
+    const targetColumn = m.current * m.step;
+    if (!m.advance || targetColumn <= 0) return 0;
     const cs = getComputedStyle(doc.body);
     const M = parseFloat(cs.paddingLeft) || 0;
-    const x = Math.max(2, Math.min(M + 2, doc.body.clientWidth - 2));
-    const y = 16;
-    const off = TextPos.currentOffsetFromPoint(ctx, x, y);
-    return off === null ? 0 : off;
+    const previousScroll = doc.body.scrollLeft;
+    doc.body.scrollLeft = 0;
+    try {
+      let low = 0;
+      let high = ctx.text.length;
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        const point = TextPos.plainToPoint(ctx, mid);
+        if (!point) { high = mid; continue; }
+        const range = doc.createRange();
+        range.setStart(point.node, point.charIndex);
+        range.collapse(true);
+        const rect = range.getBoundingClientRect();
+        const column = Math.max(0, Math.round((rect.left - M) / m.advance));
+        if (column < targetColumn) low = mid + 1;
+        else high = mid;
+      }
+      return low;
+    } finally {
+      doc.body.scrollLeft = previousScroll;
+    }
+  }
+
+  /** 窗口重排使用页面中线附近的视觉锚点，避免版面变宽后页首锚点被吸入首页。 */
+  function currentAnchorOffset() {
+    const doc = frameEl().contentDocument;
+    const ctx = App.state.textCtx;
+    if (!doc || !ctx) return 0;
+    const cs = getComputedStyle(doc.body);
+    const margin = parseFloat(cs.paddingLeft) || 0;
+    const columnWidth = parseFloat(cs.columnWidth) || 0;
+    const x = Math.max(2, Math.min(
+      margin + columnWidth * 0.5,
+      doc.body.clientWidth - 2,
+    ));
+    const y = Math.max(2, Math.min(doc.body.clientHeight * 0.45, doc.body.clientHeight - 2));
+    const offset = TextPos.currentOffsetFromPoint(ctx, x, y);
+    return offset === null ? currentOffset() : offset;
   }
 
   /** 重置分页（字号/主题/窗口变化后）：重测 + 按当前 offset 保位。 */
   function onResize() {
     if (!isActive()) return;
-    const offset = currentOffset();
+    const offset = currentAnchorOffset();
+    if (resizeAnchor === null || offset > 0) resizeAnchor = offset;
     const doc = frameEl().contentDocument;
     prepare(doc);
-    // 等重排后定位
-    requestAnimationFrame(() => {
+    // 全屏切换会连续触发多次 ResizeObserver；保留首次有效锚点并合并重排。
+    if (resizeFrame) cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      const anchor = resizeAnchor;
+      resizeFrame = 0;
+      resizeAnchor = null;
       normalizeTallTables(doc);
       measure();
-      if (offset > 0) gotoOffset(offset);
+      if (anchor > 0) gotoOffset(anchor);
       Reader.updateProgressUI();
     });
   }
@@ -369,6 +413,7 @@
     isPageBlank,
     gotoOffset,
     currentOffset,
+    currentAnchorOffset,
     onResize,
     setupInteraction,
     normalizeTallTables,
