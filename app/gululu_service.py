@@ -1,14 +1,13 @@
 """骨碌碌 EPUB 后台导入服务：单飞、进度、取消、原子落盘与自动入架。"""
 import logging
 import threading
-import time
 import uuid
 from pathlib import Path
 from typing import Callable, Optional
 
 from . import dialogs
 from .events import bus
-from .gululu_comments import comment_to_public
+from .gululu_comment_service import GululuCommentService
 from .gululu_epub import (
     GululuBuildResult,
     GululuCancelled,
@@ -17,16 +16,12 @@ from .gululu_epub import (
 )
 from .gululu_images import normalize_image_mode
 from .gululu_source import parse_book_id
+from .gululu_update import book_id_for_target, execute_update, replace_and_register, write_baseline
 from .logutil import log_event
 from .paths import gululu_library_dir
-from .storage import atomic_write_json, load_json_file, now_iso
 from .tasks import TaskCancelled, TaskManager, TaskProgress, TaskStatus
 
 log = logging.getLogger("gululu_service")
-
-_COMMENT_CACHE_TTL_SECONDS = 300
-_MAX_COMMENT_SCOPES = 64
-
 
 class GululuService:
     """把公开骨碌碌书籍转换为标准 EPUB 并注册到现有 Windows 书架。"""
@@ -38,10 +33,18 @@ class GululuService:
         book_register: Callable[[str], str],
         task_manager: Optional[TaskManager] = None,
         folder_picker: Optional[Callable[[], str]] = None,
+        shelf=None,
+        books=None,
     ) -> None:
         self._book_register = book_register
         self._tasks = task_manager or TaskManager(lanes={self.LANE: 1})
         self._folder_picker = folder_picker or dialogs.pick_folder
+        self._shelf = shelf
+        self._books = books
+        self._comments = GululuCommentService(
+            lambda: gululu_library_dir(),
+            lambda: GululuClient(),
+        )
         self._lock = threading.Lock()
         self._current_task: Optional[str] = None
         self._status = {
@@ -61,6 +64,8 @@ class GululuService:
             "image_total": 0,
             "image_embedded": 0,
             "image_failed": 0,
+            "new_count": 0,
+            "baseline_initialized": False,
         }
 
     def status(self) -> dict:
@@ -95,6 +100,8 @@ class GululuService:
                 image_total=0,
                 image_embedded=0,
                 image_failed=0,
+                new_count=0,
+                baseline_initialized=False,
             )
         thread = threading.Thread(
             target=self._run_task,
@@ -137,12 +144,57 @@ class GululuService:
                 image_total=0,
                 image_embedded=0,
                 image_failed=0,
+                new_count=0,
+                baseline_initialized=False,
             )
         thread = threading.Thread(
             target=self._run_export_task,
             args=(source_id, Path(dest), normalized_image_mode, task_id),
             daemon=True,
             name="gululu-export",
+        )
+        thread.start()
+        return {"ok": True, "task_id": task_id}
+
+    def start_update(self, source: str | int, image_mode: str = "online") -> dict:
+        try:
+            source_id = parse_book_id(source)
+            normalized_image_mode = normalize_image_mode(image_mode)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+        target = gululu_library_dir() / str(source_id) / "post.epub"
+        if not target.is_file():
+            return {"ok": False, "error": "本机没有可更新的骨碌碌 EPUB，请先完成导入"}
+        task_id = f"gululu-update-{uuid.uuid4().hex[:12]}"
+        if not self._tasks.start(self.LANE, task_id):
+            return {"ok": False, "error": "已有骨碌碌任务在运行"}
+        with self._lock:
+            self._current_task = task_id
+            self._status.update(
+                running=True,
+                stage="update",
+                current=0,
+                total=0,
+                detail="正在检查更新",
+                error="",
+                book_id=book_id_for_target(self._shelf, target),
+                source_id=source_id,
+                task_id=task_id,
+                action="update",
+                files=[],
+                dest="",
+                image_mode=normalized_image_mode,
+                image_total=0,
+                image_embedded=0,
+                image_failed=0,
+                new_count=0,
+                baseline_initialized=False,
+            )
+        thread = threading.Thread(
+            target=self._run_update_task,
+            args=(source_id, normalized_image_mode, task_id),
+            daemon=True,
+            name="gululu-update",
         )
         thread.start()
         return {"ok": True, "task_id": task_id}
@@ -156,29 +208,10 @@ class GululuService:
         return {"ok": True}
 
     def _run_task(self, source_id: int, image_mode: str, task_id: str) -> None:
-        def on_progress(item: TaskProgress) -> None:
-            self._set(
-                stage=item.stage,
-                current=item.current,
-                total=item.total,
-                detail=item.message,
-            )
-
-        try:
-            status = self._tasks.run(
-                self.LANE,
-                task_id,
-                lambda report: self._run(source_id, image_mode, task_id, report),
-                on_progress=on_progress,
-            )
-            if status == TaskStatus.CANCELLED:
-                self._set(running=False, stage="cancelled", detail="已取消", error="")
-            elif status == TaskStatus.FAILED and self.status()["stage"] != "error":
-                self._set(running=False, stage="error", detail="")
-        finally:
-            with self._lock:
-                if self._current_task == task_id:
-                    self._current_task = None
+        self._run_managed_task(
+            task_id,
+            lambda report: self._run(source_id, image_mode, task_id, report),
+        )
 
     def _run_export_task(
         self,
@@ -187,6 +220,20 @@ class GululuService:
         image_mode: str,
         task_id: str,
     ) -> None:
+        self._run_managed_task(
+            task_id,
+            lambda report: self._run_export(
+                source_id, dest, image_mode, task_id, report
+            ),
+        )
+
+    def _run_update_task(self, source_id: int, image_mode: str, task_id: str) -> None:
+        self._run_managed_task(
+            task_id,
+            lambda report: self._run_update(source_id, image_mode, task_id, report),
+        )
+
+    def _run_managed_task(self, task_id: str, worker: Callable) -> None:
         def on_progress(item: TaskProgress) -> None:
             self._set(
                 stage=item.stage,
@@ -199,13 +246,7 @@ class GululuService:
             status = self._tasks.run(
                 self.LANE,
                 task_id,
-                lambda report: self._run_export(
-                    source_id,
-                    dest,
-                    image_mode,
-                    task_id,
-                    report,
-                ),
+                worker,
                 on_progress=on_progress,
             )
             if status == TaskStatus.CANCELLED:
@@ -252,9 +293,16 @@ class GululuService:
             )
             if cancelled():
                 raise GululuCancelled("骨碌碌导入已取消")
-            partial.replace(target)
+            book_id = replace_and_register(
+                target,
+                partial,
+                task_id,
+                book_register=self._book_register,
+                shelf=self._shelf,
+                books=self._books,
+            )
             update("register", 0, 0, "正在加入书架")
-            book_id = self._book_register(str(target))
+            write_baseline(folder / "snapshot.json", source_id, snapshot, image_mode)
             detail = self._completion_detail("导入完成", result)
             self._set(
                 running=False,
@@ -279,6 +327,73 @@ class GululuService:
             partial.unlink(missing_ok=True)
             log.exception("骨碌碌 EPUB 导入失败")
             self._set(running=False, stage="error", detail="", error=str(exc), book_id="")
+            raise
+
+    def _run_update(
+        self,
+        source_id: int,
+        image_mode: str,
+        task_id: str,
+        report,
+    ) -> None:
+        folder = gululu_library_dir() / str(source_id)
+        partial = folder / "post.epub.part"
+
+        def cancelled() -> bool:
+            return self._tasks.is_cancelled(task_id)
+
+        def update(stage: str, current: int, total: int, detail: str) -> None:
+            report(TaskProgress(current=current, total=total, stage=stage, message=detail))
+
+        try:
+            partial.unlink(missing_ok=True)
+            executed = execute_update(
+                source_id=source_id,
+                image_mode=image_mode,
+                task_id=task_id,
+                folder=folder,
+                client_factory=GululuClient,
+                build_epub=build_epub,
+                book_register=self._book_register,
+                shelf=self._shelf,
+                books=self._books,
+                progress=update,
+                cancel=cancelled,
+            )
+            result = executed.build_result
+            self._set(
+                running=False,
+                stage="done",
+                current=1,
+                total=1,
+                detail=executed.detail,
+                error="",
+                book_id=executed.book_id,
+                new_count=executed.new_count,
+                baseline_initialized=executed.baseline_initialized,
+                image_total=result.image_total if result else 0,
+                image_embedded=result.image_embedded if result else 0,
+                image_failed=len(result.image_failures) if result else 0,
+            )
+            if result is not None:
+                self._log_image_failures(source_id, result)
+                bus.emit("book_updated", book_id=executed.book_id)
+                log_event(
+                    log,
+                    "gululu",
+                    "update_done",
+                    book_id=executed.book_id,
+                    source_id=source_id,
+                    new_count=executed.new_count,
+                )
+        except (GululuCancelled, TaskCancelled):
+            partial.unlink(missing_ok=True)
+            self._set(running=False, stage="cancelled", detail="已取消", error="")
+            raise TaskCancelled(task_id)
+        except Exception as exc:  # noqa: BLE001 - converted to explicit task failure
+            partial.unlink(missing_ok=True)
+            log.exception("骨碌碌 EPUB 更新失败")
+            self._set(running=False, stage="error", detail="", error=str(exc))
             raise
 
     def _run_export(
@@ -356,116 +471,7 @@ class GululuService:
         *,
         refresh: bool = False,
     ) -> dict:
-        """按楼层读取在线评论；网络失败时显式返回最近一次有效缓存。"""
-        try:
-            source_id = parse_book_id(source)
-            scopes = self._validate_scopes(floor_ids)
-        except ValueError as exc:
-            return {"ok": False, "error": str(exc), "floors": []}
-
-        cached = {floor_id: self._read_comment_cache(source_id, floor_id) for floor_id in scopes}
-        pending = [
-            floor_id
-            for floor_id in scopes
-            if refresh or cached[floor_id] is None or not cached[floor_id]["fresh"]
-        ]
-        network_error = ""
-        if pending:
-            try:
-                with GululuClient() as client:
-                    fetched = client.fetch_comments(source_id, pending)
-                for floor_id in pending:
-                    comments = [comment_to_public(item) for item in fetched.get(floor_id, [])]
-                    payload = {
-                        "version": 1,
-                        "source_id": source_id,
-                        "floor_id": floor_id,
-                        "fetched_at": now_iso(),
-                        "comments": comments,
-                    }
-                    self._write_comment_cache(source_id, floor_id, payload)
-                    cached[floor_id] = {"payload": payload, "fresh": True}
-            except Exception as exc:  # noqa: BLE001 - converted to explicit API result below
-                network_error = str(exc)
-                log.warning(
-                    "骨碌碌在线评论读取失败 source_id=%s floors=%s: %s",
-                    source_id,
-                    pending,
-                    exc,
-                )
-
-        floors = []
-        hard_errors = []
-        for floor_id in scopes:
-            item = cached.get(floor_id)
-            if item is None:
-                error = network_error or "评论缓存不可用"
-                hard_errors.append(f"{floor_id}: {error}")
-                floors.append({
-                    "floor_id": floor_id,
-                    "comments": [],
-                    "cached": False,
-                    "stale": False,
-                    "fetched_at": "",
-                    "error": error,
-                })
-                continue
-            payload = item["payload"]
-            was_pending = floor_id in pending
-            stale = bool(network_error and was_pending)
-            floors.append({
-                "floor_id": floor_id,
-                "comments": payload["comments"],
-                "cached": not was_pending or stale,
-                "stale": stale,
-                "fetched_at": payload["fetched_at"],
-                "error": network_error if stale else "",
-            })
-        return {
-            "ok": not hard_errors,
-            "source_id": source_id,
-            "floors": floors,
-            "error": "; ".join(hard_errors),
-        }
-
-    @staticmethod
-    def _validate_scopes(floor_ids: list[int]) -> list[int]:
-        if not isinstance(floor_ids, list):
-            raise ValueError("评论楼层列表格式错误")
-        scopes = list(dict.fromkeys(floor_ids))
-        if not scopes or len(scopes) > _MAX_COMMENT_SCOPES:
-            raise ValueError(f"单次评论请求必须包含 1-{_MAX_COMMENT_SCOPES} 个楼层")
-        if any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in scopes):
-            raise ValueError("评论楼层 ID 格式错误")
-        return scopes
-
-    @staticmethod
-    def _comment_cache_path(source_id: int, floor_id: int) -> Path:
-        return gululu_library_dir() / str(source_id) / "comments" / f"{floor_id}.json"
-
-    def _read_comment_cache(self, source_id: int, floor_id: int) -> Optional[dict]:
-        path = self._comment_cache_path(source_id, floor_id)
-        payload = load_json_file(path)
-        if not isinstance(payload, dict):
-            return None
-        if (
-            payload.get("version") != 1
-            or payload.get("source_id") != source_id
-            or payload.get("floor_id") != floor_id
-            or not isinstance(payload.get("fetched_at"), str)
-            or not isinstance(payload.get("comments"), list)
-        ):
-            return None
-        try:
-            fresh = time.time() - path.stat().st_mtime <= _COMMENT_CACHE_TTL_SECONDS
-        except OSError:
-            fresh = False
-        return {"payload": payload, "fresh": fresh}
-
-    def _write_comment_cache(self, source_id: int, floor_id: int, payload: dict) -> None:
-        path = self._comment_cache_path(source_id, floor_id)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_json(path, payload)
+        return self._comments.get_comments(source, floor_ids, refresh=refresh)
 
     @staticmethod
     def _completion_detail(prefix: str, result: GululuBuildResult) -> str:

@@ -69,6 +69,7 @@ _HANDLERS = (
     # 骨碌碌标准 EPUB 导入
     ("gululu_start_import", gululu_api.gululu_start_import),
     ("gululu_start_export", gululu_api.gululu_start_export),
+    ("gululu_start_update", gululu_api.gululu_start_update),
     ("gululu_get_comments", gululu_api.gululu_get_comments),
     ("gululu_decrypt_secret", gululu_api.gululu_decrypt_secret),
     ("gululu_import_status", gululu_api.gululu_import_status),

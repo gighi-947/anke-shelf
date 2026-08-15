@@ -10,8 +10,20 @@ from unittest.mock import patch
 
 from app.api import Api
 from app.book_manager import BookManager
-from app.gululu_epub import GululuBuildResult, GululuCancelled, GululuSnapshot
+from app.gululu_epub import (
+    GululuBuildResult,
+    GululuCancelled,
+    GululuIndex,
+    GululuSnapshot,
+    build_epub,
+)
 from app.gululu_service import GululuService
+from app.gululu_update import (
+    BaselineOk,
+    load_baseline,
+    replace_and_register,
+    write_baseline,
+)
 from app.search import SearchService
 from app.settings import Settings
 from app.shelf import ProgressStore, Shelf
@@ -152,6 +164,202 @@ class GululuServiceTest(unittest.TestCase):
         self.assertEqual(status["image_embedded"], 2)
         self.assertEqual(status["image_failed"], 1)
         self.assertIn("失败 1 张已显示占位", status["detail"])
+        baseline = load_baseline(self.root / "66905" / "snapshot.json", 66905)
+        self.assertIsInstance(baseline, BaselineOk)
+        self.assertEqual(baseline.image_mode, "embedded")
+
+    def test_incremental_update_fetches_only_new_floors_and_replaces_epub(self):
+        folder = self.root / "66905"
+        folder.mkdir(parents=True)
+        target = folder / "post.epub"
+        target.write_bytes(b"old epub")
+        baseline_snapshot = _snapshot()
+        write_baseline(folder / "snapshot.json", 66905, baseline_snapshot, "online")
+        new_index_item = {"floorId": 999001, "floorNum": 5, "name": "新增楼层"}
+        new_floor = {
+            "id": 999001,
+            "floorNum": 5,
+            "name": "新增楼层",
+            "paragraphContents": [{
+                "type": "paragraph",
+                "content": [{"type": "text", "text": "新增正文"}],
+            }],
+        }
+        remote = GululuIndex(
+            detail={**baseline_snapshot.detail, "name": "测试安科·更新"},
+            floor_index=[*baseline_snapshot.floor_index, new_index_item],
+            chapter_index=baseline_snapshot.chapter_index,
+        )
+        fetched = []
+
+        class IncrementalClient(_FakeClient):
+            def fetch_index(self, book_id, **kwargs):
+                return remote
+
+            def fetch_floors(self, book_id, floor_ids, **kwargs):
+                fetched.append(list(floor_ids))
+                return [new_floor]
+
+        def fake_build(**kwargs):
+            self.assertEqual([item["id"] for item in kwargs["floors"]][-1], 999001)
+            path = Path(kwargs["output_path"])
+            path.write_bytes(b"updated epub")
+            return GululuBuildResult(path, kwargs["image_mode"], 0, 0)
+
+        with patch("app.gululu_service.gululu_library_dir", return_value=self.root), \
+                patch("app.gululu_service.GululuClient", return_value=IncrementalClient()), \
+                patch("app.gululu_service.build_epub", side_effect=fake_build), \
+                patch("app.gululu_service.threading.Thread", _ImmediateThread):
+            result = self.service.start_update("66905", "online")
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(fetched, [[999001]])
+        self.assertEqual(target.read_bytes(), b"updated epub")
+        self.assertEqual(self.service.status()["action"], "update")
+        self.assertEqual(self.service.status()["new_count"], 1)
+        self.assertEqual(self.service.status()["detail"], "已更新 1 楼")
+        baseline = load_baseline(folder / "snapshot.json", 66905)
+        self.assertIsInstance(baseline, BaselineOk)
+        self.assertEqual(len(baseline.snapshot.floors), 5)
+
+    def test_incremental_update_without_new_floors_does_not_rebuild(self):
+        folder = self.root / "66905"
+        folder.mkdir(parents=True)
+        target = folder / "post.epub"
+        target.write_bytes(b"unchanged epub")
+        baseline_snapshot = _snapshot()
+        write_baseline(folder / "snapshot.json", 66905, baseline_snapshot, "online")
+        remote = GululuIndex(
+            baseline_snapshot.detail,
+            baseline_snapshot.floor_index,
+            baseline_snapshot.chapter_index,
+        )
+        case = self
+
+        class CurrentClient(_FakeClient):
+            def fetch_index(self, book_id, **kwargs):
+                return remote
+
+            def fetch_floors(self, book_id, floor_ids, **kwargs):
+                case.fail("没有新增楼层时不应请求正文")
+
+        with patch("app.gululu_service.gululu_library_dir", return_value=self.root), \
+                patch("app.gululu_service.GululuClient", return_value=CurrentClient()), \
+                patch("app.gululu_service.build_epub") as build, \
+                patch("app.gululu_service.threading.Thread", _ImmediateThread):
+            result = self.service.start_update("66905", "online")
+
+        self.assertTrue(result["ok"])
+        build.assert_not_called()
+        self.assertEqual(target.read_bytes(), b"unchanged epub")
+        self.assertEqual(self.service.status()["new_count"], 0)
+        self.assertEqual(self.service.status()["detail"], "已是最新")
+
+    def test_legacy_epub_without_baseline_initializes_once_without_rebuild(self):
+        folder = self.root / "66905"
+        folder.mkdir(parents=True)
+        target = folder / "post.epub"
+        snapshot = _snapshot()
+        build_epub(
+            detail=snapshot.detail,
+            floor_index=snapshot.floor_index,
+            chapter_index=snapshot.chapter_index,
+            floors=snapshot.floors,
+            output_path=target,
+            image_mode="none",
+        )
+        original = target.read_bytes()
+
+        with patch("app.gululu_service.gululu_library_dir", return_value=self.root), \
+                patch("app.gululu_service.GululuClient", return_value=_FakeClient()), \
+                patch("app.gululu_service.build_epub") as rebuild, \
+                patch("app.gululu_service.threading.Thread", _ImmediateThread):
+            result = self.service.start_update("66905", "none")
+
+        self.assertTrue(result["ok"])
+        rebuild.assert_not_called()
+        self.assertEqual(target.read_bytes(), original)
+        self.assertTrue(self.service.status()["baseline_initialized"])
+        self.assertEqual(self.service.status()["detail"], "已是最新；已建立增量基线")
+        self.assertIsInstance(load_baseline(folder / "snapshot.json", 66905), BaselineOk)
+
+    def test_failed_registration_restores_previous_epub_and_cache(self):
+        folder = self.root / "66905"
+        folder.mkdir(parents=True)
+        target = folder / "post.epub"
+        partial = folder / "post.epub.part"
+        target.write_bytes(b"old readable epub")
+        partial.write_bytes(b"new invalid epub")
+        record = types.SimpleNamespace(id="stable-id", path=str(target))
+
+        class FakeShelf:
+            def list_books(self):
+                return [record]
+
+        class FakeBooks:
+            def __init__(self):
+                self.closed = []
+
+            def close(self, book_id):
+                self.closed.append(book_id)
+
+        books = FakeBooks()
+        calls = []
+
+        def register(path):
+            calls.append(Path(path).read_bytes())
+            if len(calls) == 1:
+                raise RuntimeError("new book invalid")
+            return "stable-id"
+
+        with self.assertRaisesRegex(RuntimeError, "new book invalid"):
+            replace_and_register(
+                target,
+                partial,
+                "rollback-test",
+                book_register=register,
+                shelf=FakeShelf(),
+                books=books,
+            )
+
+        self.assertEqual(target.read_bytes(), b"old readable epub")
+        self.assertEqual(calls, [b"new invalid epub", b"old readable epub"])
+        self.assertEqual(books.closed, ["stable-id", "stable-id"])
+        self.assertFalse((folder / "post.epub.backup-rollback-test").exists())
+
+    def test_failed_registration_reports_recovery_registration_failure(self):
+        folder = self.root / "66905"
+        folder.mkdir(parents=True)
+        target = folder / "post.epub"
+        partial = folder / "post.epub.part"
+        target.write_bytes(b"old readable epub")
+        partial.write_bytes(b"new invalid epub")
+        record = types.SimpleNamespace(id="stable-id", path=str(target))
+
+        class FakeShelf:
+            def list_books(self):
+                return [record]
+
+        def register(path):
+            if Path(path).read_bytes() == b"new invalid epub":
+                raise RuntimeError("new book invalid")
+            raise RuntimeError("old book registration failed")
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "new book invalid.*old book registration failed",
+        ):
+            replace_and_register(
+                target,
+                partial,
+                "rollback-test",
+                book_register=register,
+                shelf=FakeShelf(),
+                books=None,
+            )
+
+        self.assertEqual(target.read_bytes(), b"old readable epub")
+        self.assertFalse((folder / "post.epub.backup-rollback-test").exists())
 
     def test_failure_preserves_previous_complete_epub(self):
         target = self.root / "66905" / "post.epub"
@@ -199,6 +407,9 @@ class GululuServiceTest(unittest.TestCase):
             start_export=lambda source, image_mode="online": {
                 "ok": True, "export": source, "image_mode": image_mode,
             },
+            start_update=lambda source, image_mode="online": {
+                "ok": True, "update": source, "image_mode": image_mode,
+            },
             get_comments=lambda source, floor_ids, refresh=False: {
                 "ok": True,
                 "source": source,
@@ -231,6 +442,8 @@ class GululuServiceTest(unittest.TestCase):
         exported = api.gululu_start_export("66905", "none")
         self.assertEqual(exported["export"], "66905")
         self.assertEqual(exported["image_mode"], "none")
+        updated = api.gululu_start_update("66905", "online")
+        self.assertEqual(updated["update"], "66905")
         comments = api.gululu_get_comments(66905, [962170], True)
         self.assertEqual(comments["floor_ids"], [962170])
         self.assertTrue(comments["refresh"])

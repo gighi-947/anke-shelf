@@ -52,10 +52,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 分支同步基线 | `fb55a0b`；骨碌碌分支已同步分页裁剪、沉浸保位与窗口状态修复（2026-08-15 核对） |
-| 分支 | `win/gululu-adapter-research`，Windows 骨碌碌 EPUB 与专版阅读器验证 |
-| Windows Python 单测 | 骨碌碌功能分支 270 项 OK（3.14：4 跳；bundled 3.12：全量通过） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 51 methods + 启动失败诊断 + `reader-session` OK |
+| 分支同步基线 | 与 `main` 的共同基线 `670cecb`；骨碌碌分支已包含分页裁剪、沉浸保位与窗口状态修复（2026-08-15 核对） |
+| 分支 | `win/gululu-adapter-research`，Windows 骨碌碌 EPUB、图片三态与追加式增量热更新验证 |
+| Windows Python 单测 | 骨碌碌功能分支 279 项 OK（3.14：4 跳；bundled 3.12：全量通过） |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 52 methods + 启动失败诊断 + `reader-session` OK |
 | Android JVM 单测 | 117 过 / 1 跳（2026-08-15 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
@@ -77,7 +77,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | `android/.../assets/reader/reader-lite.js` | 977 | 现役渲染内核（parts 模块化） |
 | `web/js/reader.js` | 655 | 核心编排；本轮审查确认仍是单一阅读生命周期，后续只在出现第二个真实调用边界时拆分 |
 | `web/js/nga_download.js` | 625 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
-| `app/gululu_epub.py` | 516 | EPUB 编排；图片下载/校验已独立至 gululu_images.py，暂不机械拆 CLI |
+| `app/gululu_service.py` | 498 | 导入/导出/更新任务状态、取消与事件编排；客户端、评论缓存和增量更新已拆分 |
+| `app/gululu_update.py` | 406 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
 | `app/nga_service.py` | 524 | 下载/更新/清理语义集中 |
 | `web/js/settings.js` | 166 | 已拆 settings-ui / settings-panels |
 | `web/css/reader.css` | 1683 | 样式，暂不处理 |

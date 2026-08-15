@@ -50,6 +50,7 @@
     ['nga_cancel', 'ngaCancel'],
     ['gululu_start_import', 'gululuStartImport'],
     ['gululu_start_export', 'gululuStartExport'],
+    ['gululu_start_update', 'gululuStartUpdate'],
     ['gululu_get_comments', 'gululuGetComments'],
     ['gululu_decrypt_secret', 'gululuDecryptSecret'],
     ['gululu_import_status', 'gululuImportStatus'],
