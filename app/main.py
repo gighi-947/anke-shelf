@@ -223,7 +223,11 @@ def main() -> int:
         shelf.save()
         return book.id
 
-    gululu_svc = GululuService(_register_gululu_book)
+    gululu_svc = GululuService(
+        _register_gululu_book,
+        shelf=shelf,
+        books=books,
+    )
     export_svc = ExportService(shelf)
     frontend_ready = threading.Event()
     window_fullscreen_toggle = None

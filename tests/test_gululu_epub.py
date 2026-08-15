@@ -47,6 +47,34 @@ class TestParseBookId(unittest.TestCase):
 
 
 class TestGululuClient(unittest.TestCase):
+    def test_index_and_selected_floor_fetch_are_separable(self):
+        seen_batches = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path.endswith("/detail/66905"):
+                return httpx.Response(200, json=_fixture("detail.json"))
+            if request.url.path.endswith("/index-list/66905"):
+                return httpx.Response(200, json=_fixture("floor_index.json"))
+            if request.url.path.endswith("/chapter-index"):
+                return httpx.Response(200, json=_fixture("chapter_index.json"))
+            batch = json.loads(request.content)
+            seen_batches.append(batch)
+            payload = _fixture("floors.json")
+            payload["data"] = [item for item in payload["data"] if item["id"] in batch]
+            return httpx.Response(200, json=payload)
+
+        http = httpx.Client(
+            base_url="https://backend.gululu.world",
+            transport=httpx.MockTransport(handler),
+        )
+        with GululuClient(http=http) as client:
+            index = client.fetch_index(66905)
+            floors = client.fetch_floors(66905, [962916])
+
+        self.assertEqual(len(index.floor_index), 4)
+        self.assertEqual([item["id"] for item in floors], [962916])
+        self.assertEqual(seen_batches, [[962916]])
+
     def test_fetch_snapshot_uses_public_reader_contract(self):
         responses = {
             ("GET", "/reader/opus/detail/66905"): _fixture("detail.json"),

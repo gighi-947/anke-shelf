@@ -24,6 +24,16 @@ def gululu_start_export(
     return ctx.gululu_service.start_export(source, image_mode)
 
 
+def gululu_start_update(
+    ctx: ApiContext,
+    source: str,
+    image_mode: str = "online",
+) -> dict:
+    if ctx.gululu_service is None:
+        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "骨碌碌更新服务不可用")
+    return ctx.gululu_service.start_update(source, image_mode)
+
+
 def gululu_get_comments(
     ctx: ApiContext,
     source_id: int,

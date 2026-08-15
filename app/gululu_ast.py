@@ -128,7 +128,7 @@ def render_ast(
                 f'{render_children(node)}</details>'
             )
         if strict:
-            from .gululu_epub import GululuFormatError
+            from .gululu_client import GululuFormatError
             raise GululuFormatError(f"暂不支持的骨碌碌正文节点：{node_type or 'unknown'}")
         label = html.escape(node_type or "unknown")
         return f'<div class="unsupported-node">[暂不支持的内容：{label}]</div>'

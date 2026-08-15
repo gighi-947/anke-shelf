@@ -10,17 +10,17 @@
 
 ## 1. 当前状态（2026-08-15）
 
-- 当前功能分支：`win/gululu-adapter-research`；已同步 `fb55a0b`
-  （win: fix pagination clipping and fullscreen restore），并完成 Windows 骨碌碌全能助手
-  协议与真实书 `63299` 排版/性能适配。精确提交与远端状态以 `git log` / `git status` 为准。
+- 当前功能分支：`win/gululu-adapter-research`，与 `main` 的共同基线为 `670cecb`；
+  已完成 Windows 骨碌碌全能助手、真实书 `63299` 排版/性能适配、图片三态与追加式
+  增量热更新。精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机基线沿用
   2026-08-14）：
-  - Windows Python：`python -m unittest discover tests` = 270 项 OK
+  - Windows Python：`python -m unittest discover tests` = 279 项 OK
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（51 方法一致）、
+    `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node contracts/tests/reader-lite-parts.test.js`（6 parts / 36917 字节）、
@@ -51,6 +51,25 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-15 win/docs：骨碌碌追加式增量热更新
+
+- 范围：Windows 骨碌碌面板新增“检查更新”，不修改 Android、CI、共享 JSON 契约；
+  `gululu_start_update` 加入 Python / JS API 合同，方法数由 51 增至 52。
+- 实现：公开客户端拆出目录与正文独立请求；首次导入在
+  `gululu_library/<bookId>/snapshot.json` 保存 Windows 私有基线。后续完整读取书籍详情、
+  楼层索引和章节索引，只对旧楼层 ID 的严格后缀调用正文接口；无新增且图片模式未变时
+  返回“已是最新”，不重建 EPUB。远端旧楼删除、重排或替换明确报冲突并要求完整重导。
+  旧版 EPUB 首次检查从 `floor-*` 锚点核对远端历史并一次性建基线。EPUB 替换前关闭现有
+  缓存并留临时备份，登记失败恢复旧文件；路径派生书籍 ID 不变，因此进度与标注继续关联。
+- 结构：公开 API 客户端、在线评论缓存、增量计划/合并/替换分别落入
+  `gululu_client.py`、`gululu_comment_service.py`、`gululu_update.py`；
+  `gululu_service.py` 收敛至 498 行，保留任务状态、取消与事件编排。
+- 验证：修复前红测确认“双重登记失败会丢失原错误”，修复后同时保留替换与恢复上下文；
+  系统 Python 3.14 与 bundled Python 3.12 均 279 项 OK（3.14 跳过 4），全部 Node 合同、
+  `reader-session` 与 WebView2 UI harness 97 项通过。真实书 `63299` 的 48 楼临时基线二次
+  检查只请求 3 个索引接口，正文接口 0 次、`rebuild=False`；本机 `32203` 旧 EPUB 的
+  2299 个楼层与远端严格一致，验证旧书迁移前提。真实用户书架未写入。
 
 ### 2026-08-15 win/docs：骨碌碌正文图片在线、内嵌与不含三态
 

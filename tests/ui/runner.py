@@ -115,6 +115,7 @@ def main() -> int:
           document.getElementById('gululu-source') &&
           document.getElementById('gululu-image-mode') &&
           document.getElementById('gululu-start') &&
+          document.getElementById('gululu-update') &&
           document.getElementById('gululu-export') ? 1 : 0
         ));
         L('nga_reopen_no_jump:' + (App.state.view === 'shelf' ? 1 : 0));

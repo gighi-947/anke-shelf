@@ -41,6 +41,11 @@
     start.id = 'gululu-start';
     start.textContent = '生成并导入';
     start.addEventListener('click', startImport);
+    const update = document.createElement('button');
+    update.className = 'btn';
+    update.id = 'gululu-update';
+    update.append(Icons.icon('refresh', 16), document.createTextNode(' 检查更新'));
+    update.addEventListener('click', startUpdate);
     const cancel = document.createElement('button');
     cancel.className = 'btn';
     cancel.id = 'gululu-cancel';
@@ -52,7 +57,7 @@
     exportButton.id = 'gululu-export';
     exportButton.append(Icons.icon('download', 16), document.createTextNode(' 导出含评论 EPUB'));
     exportButton.addEventListener('click', startExport);
-    actions.append(start, exportButton, cancel);
+    actions.append(start, update, exportButton, cancel);
     wrap.appendChild(actions);
 
     const status = document.createElement('div');
@@ -108,6 +113,29 @@
     }
   }
 
+  async function startUpdate() {
+    const source = val('gululu-source');
+    if (!parseBookId(source)) {
+      Toast.show('请输入已导入的骨碌碌书籍 ID 或链接', true);
+      return;
+    }
+    try {
+      const result = await Api.gululuStartUpdate(
+        source,
+        val('gululu-image-mode') || 'online',
+      );
+      if (!result.ok) {
+        Toast.show(result.error || '更新启动失败', true);
+        if (result.error && result.error.includes('已有')) resume(true);
+        return;
+      }
+      setRunning(true);
+      resume(true);
+    } catch (error) {
+      Toast.show('更新启动失败：' + (error.message || error), true);
+    }
+  }
+
   async function startExport() {
     const source = val('gululu-source');
     if (!parseBookId(source)) {
@@ -151,9 +179,11 @@
 
   function setRunning(running) {
     const start = document.getElementById('gululu-start');
+    const update = document.getElementById('gululu-update');
     const exportButton = document.getElementById('gululu-export');
     const cancel = document.getElementById('gululu-cancel');
     if (start) start.disabled = !!running;
+    if (update) update.disabled = !!running;
     if (exportButton) exportButton.disabled = !!running;
     if (cancel) cancel.disabled = !running;
     const imageMode = document.getElementById('gululu-image-mode');
@@ -168,7 +198,7 @@
     const text = document.getElementById('gululu-progress-text');
     if (!stage || !fill || !text) return;
     const labels = {
-      idle: '当前无导入任务', metadata: '读取书籍信息', index: '读取目录',
+      idle: '当前无导入任务', update: '检查更新', metadata: '读取书籍信息', index: '读取目录',
       floors: '获取楼层', comments: '获取评论', images: '内嵌图片',
       epub: '生成 EPUB', register: '加入书架',
       done: '完成', cancelled: '已取消', error: '失败',
@@ -184,7 +214,13 @@
   function onFinished(status) {
     setRunning(false);
     if (status.stage === 'done') {
-      if (status.action === 'export') {
+      if (status.action === 'update') {
+        const warning = status.image_failed > 0
+          ? `；${status.image_failed} 张图片失败并显示占位`
+          : '';
+        Toast.show((status.detail || '更新完成') + warning, status.image_failed > 0);
+        refreshBooks();
+      } else if (status.action === 'export') {
         const file = status.files && status.files[0] ? `：${status.files[0]}` : '';
         const warning = status.image_failed > 0
           ? `，${status.image_failed} 张图片失败并显示占位`

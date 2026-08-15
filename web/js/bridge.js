@@ -47,6 +47,7 @@
     nga_update_defaults: async () => ({ ok: true, tid: 0, author_id: 0, theme: 'light', image_mode: 'online', per_chapter: 20, toc_pid: 0 }),
     gululu_start_import: async () => ({ ok: false, error: '浏览器调试模式：无法导入' }),
     gululu_start_export: async () => ({ ok: false, error: '浏览器调试模式：无法导出' }),
+    gululu_start_update: async () => ({ ok: false, error: '浏览器调试模式：无法更新' }),
     gululu_get_comments: async () => ({ ok: true, source_id: 0, floors: [], error: '' }),
     gululu_decrypt_secret: async () => ({ ok: false, error: '浏览器调试模式：无法解锁秘密' }),
     gululu_import_status: async () => ({ running: false, stage: 'idle', detail: '' }),
@@ -84,6 +85,7 @@
     nga_start_download: 60000,
     gululu_start_import: 60000,
     gululu_start_export: 60000,
+    gululu_start_update: 60000,
     gululu_get_comments: 60000,
     export_annotations: 30000,
   };
