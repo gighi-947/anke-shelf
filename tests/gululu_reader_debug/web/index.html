@@ -13,14 +13,6 @@
       <strong>骨碌碌专版</strong>
       <span id="book-title">正在载入</span>
     </div>
-    <div class="app-actions">
-      <label class="select-label" for="theme-select">主题</label>
-      <select id="theme-select" aria-label="阅读主题">
-        <option value="light">纸白</option>
-        <option value="dark">夜间</option>
-        <option value="contrast">高对比</option>
-      </select>
-    </div>
   </header>
 
   <div class="layout">
@@ -39,6 +31,81 @@
       <section class="reader-stage" id="reader-stage" aria-label="正文">
         <iframe id="chapter-frame" title="章节正文" sandbox="allow-same-origin"></iframe>
         <div id="danmaku-layer" aria-hidden="true"></div>
+
+        <div class="quick-menu" id="quick-menu" hidden>
+          <button class="quick-command" id="quick-menu-toc" type="button">目录</button>
+          <button class="quick-command" id="quick-menu-danmaku" type="button" aria-pressed="false">弹幕</button>
+          <button class="quick-command" id="quick-menu-settings" type="button">阅读设置</button>
+        </div>
+
+        <nav class="quick-actions" id="quick-actions" aria-label="快捷操作">
+          <button class="quick-action" id="quick-comments" type="button" title="本章评论" aria-label="本章评论">☵</button>
+          <button class="quick-action" id="quick-settings" type="button" title="阅读设置" aria-label="阅读设置">⚙</button>
+          <button class="quick-action primary" id="quick-menu-toggle" type="button" title="更多操作"
+            aria-label="更多操作" aria-controls="quick-menu" aria-expanded="false">＋</button>
+        </nav>
+
+        <aside class="tool-panel settings-panel" id="settings-panel" aria-label="阅读设置" hidden>
+          <header class="panel-head">
+            <div>
+              <h2>阅读设置</h2>
+              <span>骨碌碌专版</span>
+            </div>
+            <button class="icon-button compact" id="settings-close" type="button" title="关闭设置" aria-label="关闭设置">×</button>
+          </header>
+          <div class="panel-body">
+            <label class="setting-row" for="theme-select">
+              <span>阅读主题</span>
+              <select id="theme-select" aria-label="阅读主题">
+                <option value="light">纸白</option>
+                <option value="dark">夜间</option>
+                <option value="contrast">高对比</option>
+              </select>
+            </label>
+            <div class="setting-row">
+              <span>阅读模式</span>
+              <div class="segmented" role="group" aria-label="阅读模式">
+                <button type="button" data-mode="scroll" aria-pressed="true">滚动</button>
+                <button type="button" data-mode="paged" aria-pressed="false">分页</button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <span>字号</span>
+              <div class="control-group" aria-label="字号">
+                <button class="icon-button compact" id="font-down" type="button" title="减小字号" aria-label="减小字号">A−</button>
+                <output id="font-size">18</output>
+                <button class="icon-button compact" id="font-up" type="button" title="增大字号" aria-label="增大字号">A+</button>
+              </div>
+            </div>
+            <label class="setting-stack" for="line-height">
+              <span>行距 <output id="line-height-value">1.8</output></span>
+              <input id="line-height" type="range" min="1.4" max="2.2" step="0.1" value="1.8">
+            </label>
+            <label class="setting-stack" for="content-width">
+              <span>版心 <output id="content-width-value">820</output></span>
+              <input id="content-width" type="range" min="620" max="1080" step="20" value="820">
+            </label>
+            <div class="setting-row">
+              <span>楼末评论</span>
+              <button class="toggle-button" id="comments-toggle" type="button" aria-pressed="false">关闭</button>
+            </div>
+            <div class="setting-row">
+              <span>评论弹幕</span>
+              <button class="toggle-button" id="danmaku-toggle" type="button" aria-pressed="false">关闭</button>
+            </div>
+          </div>
+        </aside>
+
+        <aside class="comments-drawer" id="comments-drawer" aria-label="本章评论" hidden>
+          <header class="panel-head">
+            <div>
+              <h2 id="comments-title">本章评论</h2>
+              <span id="comments-status">按楼层查看</span>
+            </div>
+            <button class="icon-button compact" id="comments-close" type="button" title="关闭评论" aria-label="关闭评论">×</button>
+          </header>
+          <div class="comments-list" id="comments-list"></div>
+        </aside>
       </section>
 
       <footer class="reader-controls">
@@ -47,25 +114,6 @@
           <strong id="chapter-position">-- / --</strong>
           <span id="page-position"></span>
         </div>
-        <div class="segmented" role="group" aria-label="阅读模式">
-          <button type="button" data-mode="scroll" aria-pressed="true">滚动</button>
-          <button type="button" data-mode="paged" aria-pressed="false">分页</button>
-        </div>
-        <div class="segmented comment-controls" role="group" aria-label="评论显示">
-          <button id="comments-toggle" type="button" aria-pressed="true">评论</button>
-          <button id="danmaku-toggle" type="button" aria-pressed="false">弹幕</button>
-        </div>
-        <div class="control-group" aria-label="字号">
-          <button class="icon-button compact" id="font-down" type="button" title="减小字号" aria-label="减小字号">A−</button>
-          <output id="font-size">18</output>
-          <button class="icon-button compact" id="font-up" type="button" title="增大字号" aria-label="增大字号">A+</button>
-        </div>
-        <label class="range-control">行距
-          <input id="line-height" type="range" min="1.4" max="2.2" step="0.1" value="1.8">
-        </label>
-        <label class="range-control">版心
-          <input id="content-width" type="range" min="620" max="1080" step="20" value="820">
-        </label>
         <button class="icon-button" id="next" type="button" title="下一页或下一章" aria-label="下一页或下一章">→</button>
       </footer>
     </main>

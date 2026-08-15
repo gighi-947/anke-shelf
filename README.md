@@ -11,7 +11,7 @@ Windows 另支持把骨碌碌公开书籍转换为标准 EPUB。两端共享同�
 
 | 平台 | 当前版本 | 技术栈 | 发布标签 | 安装包 |
 | --- | --- | --- | --- | --- |
-| Windows 桌面端 | **v1.3.0** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
+| Windows 桌面端 | **v1.3.1** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
 | Android 手机端 | **v1.0.0** | Kotlin + Jetpack Compose（正文用安卓专用 WebView 渲染内核） | `android-vX.Y.Z` | `AnkeShelf-vX.Y.Z-android.apk` |
 
 > 跨平台开发日志见 [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)；两端架构说明见
@@ -34,7 +34,7 @@ Windows 另支持把骨碌碌公开书籍转换为标准 EPUB。两端共享同�
 
 ## ✨ 功能特性
 
-### Windows 桌面端（v1.3.0）
+### Windows 桌面端（v1.3.1）
 
 - **骨碌碌 EPUB 导入**：顶栏「下载安科」→「骨碌碌」粘贴书籍 ID / 链接，
   后台分批获取楼层、按站点目录分章并自动加入书架；支持取消、进度反馈和完成后打开，
@@ -42,8 +42,10 @@ Windows 另支持把骨碌碌公开书籍转换为标准 EPUB。两端共享同�
   缓存、离线回退和只读弹幕，不改变正文坐标。需要跨阅读器查看时可单独“导出含评论
   EPUB”。作者写入正文的音乐、氛围背景和雨/雪/风/雷/震动指令会在 Windows 阅读器
   以宿主层效果呈现；全能助手的文本折叠、线索与 AES 秘密协议也会转换，线索按书号
-  保存在本机，秘密点击时才解密并在正文外显示，不改变分页和阅读坐标。自动音乐默认
-  关闭，背景和视效可单独停用；正文图片可选在线、内嵌或不含，在线模式在滚动阅读时
+  保存在本机，秘密点击时才解密并在正文外显示，不改变分页和阅读坐标。专版阅读页将
+  目录、评论、书签、音乐与氛围、骰点揭示和阅读设置作为一级入口；支持骰点遮罩、按楼
+  迷雾、点击音效与批量揭示，自动音乐默认开启，背景和视效可单独停用。正文图片可选
+  在线、内嵌或不含，在线模式在滚动阅读时
   按视口懒加载。已导入作品可“检查更新”：完整核对远端目录，只获取末尾新增楼层正文，
   无新增时不重建 EPUB；旧楼被删除、重排或替换会明确要求完整重导。旧版 EPUB 首次检查
   会建立本机增量基线，替换保持原书籍 ID、进度和标注。音乐与氛围媒体仍为在线外链
@@ -121,7 +123,7 @@ NGA 下载：登录配置、下载 / 更新、已下载管理
 ![阅读页·浅色](docs/screenshots/android/android-reader-light.jpg)
 阅读页（浅色）：掷骰结果与插图原样还原
 
-### Windows（v1.3.0）
+### Windows（v1.3.1）
 
 ![书架主页](docs/screenshots/bookshelf.png)
 书架：网格视图、最近阅读与安科下载入口
@@ -245,7 +247,7 @@ gradlew.bat compileDebugAndroidTestKotlin :: 仪器测试编译
 
 ## 📦 版本与发布
 
-- **版本线分离**：Windows 用 `vX.Y.Z`（当前 v1.3.0）；Android 用
+- **版本线分离**：Windows 用 `vX.Y.Z`（当前 v1.3.1）；Android 用
   `android-vX.Y.Z`（当前 v1.0.0），唯一版本定义在
   `android/app/build.gradle.kts`。
 - **标签与资产**：`vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；`android-vX.Y.Z` +

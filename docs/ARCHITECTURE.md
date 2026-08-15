@@ -15,7 +15,7 @@ app/                  Python 后端
   search.py           全文搜索索引（按需构建；按章限量 + 续取 search_more）
   epub.py             自实现 EPUB 解析（container → OPF → spine → 目录）
   gululu_ast.py       骨碌碌富文本 mark 渲染
-  gululu_assistant.py 全能助手折叠/秘密/线索协议与 CryptoJS AES 兼容解密
+  gululu_assistant.py 全能助手折叠/秘密/线索/引用/骰点/迷雾协议与 CryptoJS AES 解密
   gululu_source.py    骨碌碌 URL / EPUB dc:identifier 来源识别
   gululu_comments.py  公开评论分页、子回复、前端最小字段与 EPUB 评论块
   gululu_immersive.py 音乐/背景/视效正文指令 → 安全 EPUB 语义标记
@@ -36,6 +36,7 @@ web/                  前端（纯静态，前后端分离）
     reader-utils.js / reader-session.js / reader-navigation.js /
     reader-help.js / reader-image.js   reader.js 拆分的常量/会话/换章/帮助/图片模块
     gululu-comments.js 骨碌碌宿主层在线评论面板 / 只读弹幕
+    gululu-assistant-reader.js 骨碌碌骰点/迷雾/折叠配置、解锁状态与点击音效
     gululu-immersive.js 骨碌碌宿主层音乐、氛围背景与动态视效
     gululu-secrets.js 骨碌碌线索本地状态、按需解密与宿主层秘密弹窗
     paged.js          CSS multi-column 分页核心（单页/自动双页/强制双页）
@@ -65,8 +66,10 @@ docs/                 架构与规划文档
 - 骨碌碌沉浸指令：转换器按正文结构识别音乐/背景/视效文本协议 → 仅保留无凭据 HTTPS
   外链和 EPUB `data-*` 语义标记 → Windows 宿主层读取当前章节标记并呈现音频、背景与
   Canvas/CSS 效果。运行时不改 iframe DOM，返回书架统一停止并清理。
-- 骨碌碌全能助手：折叠协议直接转换为 XHTML `details`；秘密密文与线索转换为 inert
-  `data-*` 标记。线索按 `bookId + title` 保存在本机，点击秘密时通过
+- 骨碌碌全能助手：折叠、文本引用、骰点和迷雾在导入期转换为稳定 XHTML / `data-*`
+  语义标记；运行时只切换遮罩/可见状态，不重写正文，保证 `text_offset` 不漂移。同书
+  引用落 EPUB 楼层锚点，跨书引用回公开网页。秘密密文与线索保持 inert；线索按
+  `bookId + title` 保存在本机，点击秘密时通过
   `gululu_decrypt_secret` 调用 PyCA cryptography 兼容解开 CryptoJS/OpenSSL salted
   AES，明文仅用 `textContent` 放入宿主层弹窗，不写回正文 DOM。
 - 骨碌碌图片：导入/含评论导出均支持在线、内嵌、不含三态，默认在线。内嵌模式只接受

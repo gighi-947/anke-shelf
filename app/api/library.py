@@ -1,5 +1,6 @@
 """书架与书籍：列表 / 导入 / 删除 / 打开。"""
 import logging
+import re
 from pathlib import Path
 
 from ..epub import EpubError
@@ -19,10 +20,20 @@ from .common import (
 log = logging.getLogger("app.api.library")
 
 
+def _gululu_source_id_from_path(path: str) -> int:
+    target = Path(path)
+    if target.name.casefold() == "post.epub" and target.parent.name.isdigit():
+        return int(target.parent.name)
+    match = re.fullmatch(r"gululu-(\d+)(?:-comments)?\.epub", target.name, re.IGNORECASE)
+    return int(match.group(1)) if match else 0
+
+
 def get_shelf(ctx: ApiContext) -> list[dict]:
     out = []
     for rec in ctx.shelf.list_books():
         d = record_to_dict(rec)
+        d["gululu_source_id"] = _gululu_source_id_from_path(rec.path)
+        d["gululu"] = bool(d["gululu_source_id"])
         p = ctx.progress.get(rec.id)
         clen = ctx.search.chapter_len(rec.id, p.get("chapter_index", 0)) if p else None
         d["progress_pct"] = progress_pct(p, rec.chapter_count, clen)

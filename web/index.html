@@ -175,7 +175,7 @@
     </aside>
 
     <!-- 阅读舞台 -->
-    <div id="reader-root">
+    <div id="reader-root" aria-busy="false">
       <div id="gululu-background-layer" class="gululu-background-layer" aria-hidden="true"></div>
       <canvas id="gululu-vfx-canvas" class="gululu-vfx-canvas" aria-hidden="true"></canvas>
       <div id="chapter-scroll" class="chapter-scroll">
@@ -209,6 +209,9 @@
       <div id="paragraph-mask" class="paragraph-mask hidden"></div>
       <div id="dual-gutter" class="dual-gutter"></div>
       <div id="gululu-danmaku-layer" class="gululu-danmaku-layer" aria-hidden="true"></div>
+      <div id="reader-loading-mask" class="reader-loading-mask hidden" role="status" aria-live="polite">
+        <span>加载中…</span>
+      </div>
     </div>
 
     <aside id="gululu-comments-panel" class="gululu-comments-panel hidden" aria-label="骨碌碌评论">
@@ -227,7 +230,13 @@
         </div>
       </header>
       <div class="gululu-comments-toolbar">
-        <span>当前章节</span>
+        <label class="gululu-comments-mode-label" for="gululu-comments-mode">
+          <span>显示</span>
+          <select id="gululu-comments-mode" class="gululu-comments-mode">
+            <option value="panel">侧边面板</option>
+            <option value="inline">楼末折叠</option>
+          </select>
+        </label>
         <label class="gululu-switch">
           <input id="gululu-danmaku-toggle" type="checkbox">
           <span class="gululu-switch-track" aria-hidden="true"></span>
@@ -270,6 +279,42 @@
         </button>
       </div>
     </aside>
+
+    <div id="gululu-quick-shell" class="gululu-quick-shell hidden">
+      <div id="gululu-quick-menu" class="gululu-quick-menu hidden" role="menu" aria-label="更多操作">
+        <button id="gululu-quick-fullscreen" class="gululu-quick-command" type="button" role="menuitem">
+          <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-expand"></use></svg>
+          <span>全屏</span>
+        </button>
+        <button id="gululu-reset-assistant" class="gululu-quick-command" type="button" role="menuitem">
+          <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-trash"></use></svg>
+          <span>重置阅读解锁</span>
+        </button>
+      </div>
+      <nav id="gululu-quick-actions" class="gululu-quick-actions" aria-label="骨碌碌快捷操作">
+        <button id="gululu-quick-toc" class="gululu-quick-action" type="button" title="目录" aria-label="目录" aria-controls="sidebar">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-toc"></use></svg>
+        </button>
+        <button id="gululu-quick-comments" class="gululu-quick-action" type="button" title="评论" aria-label="评论" aria-controls="gululu-comments-panel" aria-expanded="false">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-chat"></use></svg>
+        </button>
+        <button id="gululu-quick-bookmark" class="gululu-quick-action" type="button" title="书签" aria-label="在当前位置添加或删除书签" aria-pressed="false">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-bookmark"></use></svg>
+        </button>
+        <button id="gululu-quick-immersive" class="gululu-quick-action" type="button" title="音乐与氛围" aria-label="音乐与氛围" aria-controls="gululu-immersive-panel" aria-expanded="false">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-music"></use></svg>
+        </button>
+        <button id="gululu-quick-reveal-dice" class="gululu-quick-action" type="button" title="揭示接下来的骰点" aria-label="揭示接下来的骰点">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-dice"></use></svg>
+        </button>
+        <button id="gululu-quick-settings" class="gululu-quick-action" type="button" title="阅读设置" aria-label="阅读设置" aria-controls="view-menu" aria-expanded="false">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-gear"></use></svg>
+        </button>
+        <button id="gululu-quick-more-toggle" class="gululu-quick-action" type="button" title="更多操作" aria-label="更多操作" aria-controls="gululu-quick-menu" aria-expanded="false">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-dots"></use></svg>
+        </button>
+      </nav>
+    </div>
 
     <!-- 底部状态栏 -->
     <footer id="status-bar" class="status-bar">
@@ -314,6 +359,7 @@
 <script src="/js/reader-utils.js"></script>
 <script src="/js/reader-session.js"></script>
 <script src="/js/gululu-comments.js"></script>
+<script src="/js/gululu-assistant-reader.js"></script>
 <script src="/js/gululu-immersive.js"></script>
 <script src="/js/gululu-secrets.js"></script>
 <script src="/js/reader.js"></script>

@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  const { BASE_OVERRIDE, NGA_OVERRIDE, PAGINATION_OVERRIDE } = ReaderUtils;
+  const { BASE_OVERRIDE, NGA_OVERRIDE, GULULU_OVERRIDE, PAGINATION_OVERRIDE } = ReaderUtils;
 
   const scroller = () => document.getElementById('chapter-scroll');
   const frameEl = () => document.getElementById('chapter-frame');
@@ -35,14 +35,15 @@
     const v = readVars();
     const isNga = !!(App.state.book && App.state.book.nga);
     let css = isNga ? NGA_OVERRIDE : BASE_OVERRIDE;
+    if (App.state.book && App.state.book.gululu) css += GULULU_OVERRIDE;
     if (Paged.isActive()) css += PAGINATION_OVERRIDE;
     css = ReaderUtils.fontFaceCss() + css;
     el.textContent = css
-      .replace('var(--reader-font-family, "Segoe UI", "Microsoft YaHei", serif)', ReaderUtils.resolveFamily())
-      .replace('var(--reader-font-size, 18px)', v.fontSize)
-      .replace('var(--reader-line-height, 1.8)', v.lineHeight)
-      .replace('var(--reader-fg, #222)', v.fg)
-      .replace('var(--reader-accent, #77bbee)', v.accent);
+      .replaceAll('var(--reader-font-family, "Segoe UI", "Microsoft YaHei", serif)', ReaderUtils.resolveFamily())
+      .replaceAll('var(--reader-font-size, 18px)', v.fontSize)
+      .replaceAll('var(--reader-line-height, 1.8)', v.lineHeight)
+      .replaceAll('var(--reader-fg, #222)', v.fg)
+      .replaceAll('var(--reader-accent, #77bbee)', v.accent);
   }
 
   function syncHeight() {
@@ -64,12 +65,41 @@
       if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
       ev.preventDefault();
       try {
-        const abs = new URL(href, a.baseURI).pathname;
+        const url = new URL(href, a.baseURI);
+        const abs = url.pathname;
         const prefix = '/book/' + App.state.bookId + '/';
         if (abs.startsWith(prefix)) {
           const target = decodeURIComponent(abs.slice(prefix.length));
           const idx = App.state.book.chapters.findIndex((c) => c.href === target);
-          if (idx !== -1) Reader.loadChapter(idx, 0);
+          if (idx !== -1) {
+            Reader.loadChapter(idx, 0).then(() => {
+              if (!url.hash) return;
+              const targetDoc = frameEl().contentDocument;
+              const anchorId = decodeURIComponent(url.hash.slice(1));
+              const anchor = targetDoc && targetDoc.getElementById(anchorId);
+              if (!anchor || !App.state.textCtx) return;
+              const walker = targetDoc.createTreeWalker(anchor, NodeFilter.SHOW_TEXT);
+              let anchorText = walker.nextNode();
+              while (anchorText && !anchorText.data.trim()) anchorText = walker.nextNode();
+              if (!anchorText) return;
+              const range = targetDoc.createRange();
+              const charIndex = anchorText.data.search(/\S/);
+              range.setStart(anchorText, Math.max(0, charIndex));
+              range.collapse(true);
+              const offsets = TextPos.rangeToOffsets(App.state.textCtx, range);
+              if (!offsets) return;
+              const offset = offsets[0];
+              if (window.Paged && Paged.isActive()) Paged.gotoOffset(offset);
+              else restoreOffset(offset, targetDoc);
+              const session = Reader.ensureSession();
+              session.setPosition(offset);
+              Api.saveProgress(App.state.bookId, App.state.chapterIndex, offset);
+              session.markSaved();
+              Reader.updateProgressUI();
+            });
+          }
+        } else if (url.protocol === 'https:') {
+          window.open(url.href, '_blank', 'noopener,noreferrer');
         }
       } catch (e) { /* ignore non-URL hrefs */ }
     });
@@ -161,11 +191,28 @@
     el.scrollTop = Math.max(0, rect.top);
   }
 
+  function waitForLayoutReady(doc, paged) {
+    const deadline = Date.now() + 5000;
+    return new Promise((resolve) => {
+      const check = () => {
+        const fontsReady = !doc.fonts || doc.fonts.status !== 'loading';
+        const imagesReady = !paged || Array.from(doc.images || []).every((img) => img.complete);
+        if ((fontsReady && imagesReady) || Date.now() >= deadline) {
+          resolve();
+          return;
+        }
+        setTimeout(check, 50);
+      };
+      check();
+    });
+  }
+
   let scrollDebounceTimer = null;
   let sliderTimer = null;
   let imageLayoutFrame = 0;
   let loadToken = 0;
   let loadResolve = null;
+  let loadingMaskTimer = 0;
 
   window.Reader = {
     ensureSession() {
@@ -179,10 +226,26 @@
       return this.session;
     },
 
+    setLoading(loading) {
+      clearTimeout(loadingMaskTimer);
+      loadingMaskTimer = 0;
+      const root = document.getElementById('reader-root');
+      const mask = document.getElementById('reader-loading-mask');
+      if (root) root.setAttribute('aria-busy', String(!!loading));
+      if (mask) mask.classList.toggle('hidden', !loading);
+      if (loading) {
+        loadingMaskTimer = setTimeout(() => {
+          loadingMaskTimer = 0;
+          Reader.setLoading(false);
+        }, 5000);
+      }
+    },
+
     async loadChapter(index, textOffset) {
       this.ensureSession();
       const book = App.state.book;
       if (!book || index < 0 || index >= book.chapters.length) return;
+      this.setLoading(true);
 
       const prevBook = App.state.bookId;
       const prevIndex = App.state.chapterIndex;
@@ -283,8 +346,7 @@
               onImgChange();
             }
           }, true);
-          const fonts = doc.fonts ? doc.fonts.ready : Promise.resolve();
-          fonts.then(() => {
+          waitForLayoutReady(doc, paged).then(() => {
             if (token !== loadToken) return;
             this.applyLayout();
             if (paged) {
@@ -300,8 +362,10 @@
             Toc.highlight(index);
             document.getElementById('reader-chapter-label').textContent = ch.title || '';
             if (window.GululuComments) GululuComments.onChapterLoaded(doc);
+            if (window.GululuAssistantReader) GululuAssistantReader.onChapterLoaded(doc);
             if (window.GululuImmersive) GululuImmersive.onChapterLoaded(doc);
             if (window.GululuSecrets) GululuSecrets.onChapterLoaded(doc);
+            if (window.App && App.syncGululuBookmark) App.syncGululuBookmark();
             this.updateProgressUI();
             resolve();
           });
@@ -314,6 +378,7 @@
         };
         frame.src = target;
       });
+      if (token === loadToken) this.setLoading(false);
     },
 
     applyMode() {
@@ -346,7 +411,7 @@
       const doc = frameEl().contentDocument;
       const ctx = App.state.textCtx;
       if (!doc || !ctx) return 0;
-      const x = Math.max(2, scroller().clientWidth / 2);
+      const x = Math.max(2, frameEl().clientWidth / 2);
       const y = scroller().scrollTop + 8;
       const off = TextPos.currentOffsetFromPoint(ctx, x, y);
       return off === null ? 0 : off;
@@ -548,13 +613,14 @@
       this.updateProgressUI();
     },
 
-    toggleBookmarkAtCurrent() {
-      if (!App.state.bookId || App.state.chapterIndex < 0) return;
+    async toggleBookmarkAtCurrent() {
+      if (!App.state.bookId || App.state.chapterIndex < 0) return null;
       const offset = this.currentOffset();
       if (window.Annotations && Annotations.toggleBookmark) {
-        Annotations.toggleBookmark(App.state.chapterIndex, offset);
+        return Annotations.toggleBookmark(App.state.chapterIndex, offset);
       } else {
         Toast.show('Bookmarks are available after the annotations module loads');
+        return null;
       }
     },
 

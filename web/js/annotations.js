@@ -248,13 +248,22 @@
       await Api.deleteBookmark( App.state.bookId, existing.id);
       state.bookmarks = state.bookmarks.filter((b) => b.id !== existing.id);
       Toast.show('已删除书签');
+      renderSidebar();
+      return false;
     } else {
       const r = await Api.addBookmark( App.state.bookId, chapterIndex, offset, text);
-      if (r && r.error) { Toast.show(r.error, true); return; }
+      if (r && r.error) { Toast.show(r.error, true); return null; }
       state.bookmarks.push(r);
       Toast.show('已添加书签');
+      renderSidebar();
+      return true;
     }
-    renderSidebar();
+  }
+
+  function isBookmarked(chapterIndex, offset) {
+    return state.bookmarks.some(
+      (bookmark) => bookmark.chapter_index === chapterIndex && Math.abs(bookmark.offset - offset) < 80,
+    );
   }
 
   // ================= 侧栏 =================
@@ -381,6 +390,7 @@
     injectForChapter,
     bindSelection,
     toggleBookmark,
+    isBookmarked,
     hideToolbar,
   };
 

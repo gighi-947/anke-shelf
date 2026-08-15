@@ -18,8 +18,13 @@
   const RE_WS_CHAR = /\s/;
 
   function isSkipNode(node) {
-    const p = node.parentElement;
-    return p && (p.tagName === 'SCRIPT' || p.tagName === 'STYLE');
+    let p = node.parentElement;
+    while (p) {
+      if (p.tagName === 'SCRIPT' || p.tagName === 'STYLE' ||
+          p.hasAttribute('data-textpos-exclude')) return true;
+      p = p.parentElement;
+    }
+    return false;
   }
 
   /**

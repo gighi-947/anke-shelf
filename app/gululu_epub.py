@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from .gululu_ast import render_ast
+from .gululu_assistant import prepare_reader_experience_nodes
 from .gululu_comments import (
     render_comment_block,
 )
@@ -106,15 +107,17 @@ def _floor_html(
     immersive: Optional[ImmersiveFloor] = None,
     image_resolver: Optional[Callable[[str], str]] = None,
     jump_floor_resolver: Optional[Callable[[int], str]] = None,
+    source_book_id: int = 0,
 ) -> str:
     floor_num = int(index_item.get("floorNum") or floor.get("floorNum") or 0)
     floor_id = int(index_item.get("floorId") or floor.get("id") or 0)
     title = html.escape(str(index_item.get("name") or floor.get("name") or ""))
     immersive = immersive or prepare_immersive_floor(floor.get("paragraphContents") or [])
     body = render_ast(
-        immersive.nodes,
+        prepare_reader_experience_nodes(immersive.nodes, floor_id),
         image_resolver=image_resolver,
         jump_floor_resolver=jump_floor_resolver,
+        source_book_id=source_book_id,
     )
     effect_attr = (
         f' data-gululu-vfx="{html.escape(immersive.vfx, quote=True)}"'
@@ -282,6 +285,7 @@ def build_epub(
                 immersive,
                 image_resolver,
                 floor_targets.get,
+                book_id,
             ))
             if immersive.background_update is not None:
                 active_background = immersive.background_update

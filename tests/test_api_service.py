@@ -108,7 +108,7 @@ class ApiServiceTest(unittest.TestCase):
 
     def test_get_version(self):
         api = self._make_api(BookManager())
-        self.assertEqual(api.get_version(), "1.3.0")
+        self.assertEqual(api.get_version(), "1.3.1")
 
     def test_open_book_error_code(self):
         api = self._make_api(BookManager())

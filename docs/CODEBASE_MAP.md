@@ -32,7 +32,7 @@ UI 入口 → 下载器 → HTTP 客户端 → 格式化 → 落盘/追加
 | Windows | `web/js/gululu-download.js` → `app/api/gululu_api.py` → `app/gululu_service.py` → `app/gululu_client.py` / `app/gululu_update.py` / `app/gululu_images.py` / `app/gululu_epub.py` | 骨碌碌紧凑导入、append-only 增量热更新、正文图片在线/内嵌/不含三态、含评论 EPUB 可选导出、任务进度/取消与可恢复替换 |
 | Windows | `web/js/gululu-comments.js` → `app/api/gululu_api.py` → `app/gululu_service.py` → `app/gululu_comment_service.py` / `app/gululu_comments.py` | 当前章节评论按需加载、5 分钟缓存/离线回退、宿主层评论面板与只读弹幕 |
 | Windows | `app/gululu_immersive.py` → EPUB `data-*` → `web/js/gululu-immersive.js` | 正文音乐/背景/视效指令解析，无凭据 HTTPS 校验，宿主层播放器、背景与动态视效 |
-| Windows | `app/gululu_assistant.py` → `app/gululu_ast.py` → EPUB `data-*` → `web/js/gululu-secrets.js` → `app/api/gululu_api.py` | 全能助手折叠/秘密/线索协议；线索本地保存，CryptoJS AES 按需解密，明文只在宿主弹窗展示 |
+| Windows | `app/gululu_assistant.py` → `app/gululu_ast.py` → EPUB `data-*` → `web/js/gululu-assistant-reader.js` / `gululu-secrets.js` → `app/api/gululu_api.py` | 全能助手折叠/引用/骰点/迷雾/秘密/线索协议；书内解锁持久化，CryptoJS AES 按需解密，明文只在宿主弹窗展示 |
 | Windows | `app/native_book.py` | 原生书容器：meta.json + floors.json + chapters/*.xhtml，纯增量追加 |
 | Android | `ui/download/DownloadScreen.kt` → `service/NgaDownloader.kt` / `NgaDownloadService.kt` | 参数表单、前台服务、进度通知、取消清理 |
 | Android | `service/NgaClient.kt` / `NgaHttp.kt` | OkHttp + CookieJar + UA + Referer（图片代理统一入口） |

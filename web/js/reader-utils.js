@@ -44,6 +44,38 @@
     table { max-width: 100%; }
   `;
 
+  // 骨碌碌沿用 NGA 楼层卡片的几何结构，但颜色由当前阅读器主题提供。
+  const GULULU_OVERRIDE = `
+    .gululu-floor {
+      border: 1px solid color-mix(in srgb, var(--reader-fg, #222) 18%, transparent) !important;
+      border-left: 4px solid color-mix(in srgb, var(--reader-accent, #77bbee) 52%, var(--reader-fg, #222)) !important;
+      border-radius: 2px !important;
+      box-sizing: border-box !important;
+      margin: 14px 0 !important;
+      padding: 12px 14px !important;
+      background: color-mix(in srgb, var(--reader-accent, #77bbee) 3%, transparent) !important;
+    }
+    .gululu-floor > .floor-head {
+      align-items: baseline !important;
+      border-bottom: 1px dotted color-mix(in srgb, var(--reader-fg, #222) 18%, transparent) !important;
+      color: color-mix(in srgb, var(--reader-fg, #222) 62%, transparent) !important;
+      display: flex !important;
+      font-size: .82em !important;
+      gap: .55em !important;
+      margin: 0 0 8px !important;
+      padding: 0 0 6px !important;
+    }
+    .gululu-floor > .floor-head .floor-number {
+      color: color-mix(in srgb, var(--reader-accent, #77bbee) 52%, var(--reader-fg, #222)) !important;
+      font-weight: 700 !important;
+    }
+    .gululu-floor > .floor-head .floor-title {
+      flex: 1 !important;
+      min-width: 0 !important;
+      overflow-wrap: anywhere !important;
+    }
+  `;
+
   const PAGINATION_OVERRIDE = `
     html, body {
       height: 100% !important;
@@ -76,11 +108,11 @@
     p { margin: 0.45em 0 !important; }
     /* NGA 楼层/表格/引用等必须允许跨页拆分：楼层里的长表格常超过一页高度，
        若整栋楼禁止分页，表格会整体溢出列边界，导致页面出界与错位。 */
-    .nga-floor, .nga-quote, .nga-comment, blockquote, table, details {
+    .nga-floor, .gululu-floor, .nga-quote, .nga-comment, blockquote, table, details {
       margin: 10px 0 !important;
       break-inside: auto !important;
     }
-    .nga-floor { padding: 10px 12px !important; }
+    .nga-floor, .gululu-floor { padding: 10px 12px !important; }
     table { max-width: 100% !important; }
     td, th {
       max-width: 100% !important;
@@ -146,6 +178,7 @@
   window.ReaderUtils = {
     BASE_OVERRIDE,
     NGA_OVERRIDE,
+    GULULU_OVERRIDE,
     PAGINATION_OVERRIDE,
     HELP_SHORTCUTS,
     HELP_ACTIONS,

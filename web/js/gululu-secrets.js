@@ -149,9 +149,20 @@
     state.sourceId = 0;
   }
 
+  function resetBook() {
+    if (!state.sourceId) return;
+    const clues = loadClues();
+    delete clues[String(state.sourceId)];
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(clues)); } catch (error) {
+      Toast.show('无法重置秘密线索', true);
+    }
+    closeModal();
+  }
+
   window.GululuSecrets = {
     setBook,
     onChapterLoaded,
+    resetBook,
     close,
     snapshot: () => ({
       sourceId: state.sourceId,

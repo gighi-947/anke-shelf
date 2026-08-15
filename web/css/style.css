@@ -449,7 +449,8 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.book-row-title .nga-badge { position: static; font-size: 9px; padding: 1px 5px; flex-shrink: 0; }
+.book-row-title .nga-badge,
+.book-row-title .gululu-badge { position: static; font-size: 9px; padding: 1px 5px; flex-shrink: 0; }
 .book-row-author {
   font-size: 11px;
   color: var(--muted);
@@ -547,7 +548,8 @@ html, body {
   overflow: hidden;
 }
 
-.nga-badge {
+.nga-badge,
+.gululu-badge {
   position: absolute;
   top: 8px;
   left: 8px;
@@ -561,6 +563,9 @@ html, body {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   z-index: 2;
 }
+
+.gululu-badge { background: var(--success); color: #ffffff; }
+.recent-cover .gululu-badge { top: 5px; left: 5px; }
 
 .book-meta { padding-top: 8px; }
 .book-title {

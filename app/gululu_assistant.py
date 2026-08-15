@@ -6,6 +6,7 @@ import binascii
 import copy
 import hashlib
 import html
+import re
 from typing import Callable, Iterable
 
 from cryptography.hazmat.primitives import padding
@@ -16,6 +17,16 @@ MAX_SECRET_TITLE = 120
 MAX_SECRET_PASSWORD = 1024
 MAX_SECRET_CIPHER = 131072
 _INVISIBLE = " \t\r\n\u200b\ufeff"
+_DICE_CHAIN = re.compile(
+    r"((?:【?)\d+[dD]\d+(?:[^=\r\n]*?=\s*【?[\d.]+】?)+)([^\r\n]*)",
+    re.IGNORECASE,
+)
+_DICE_RESULT = re.compile(r"(=\s*【?)([\d.]+)(】?)")
+_QUOTE_START = re.compile(r'^<引用\s+id="(\d+)"\s+floor="(\d+)">$')
+_INLINE_QUOTE = re.compile(
+    r'<引用\s+id="(\d+)"\s+floor="(\d+)">(.*?)</引用>',
+    re.DOTALL,
+)
 
 
 class GululuSecretError(ValueError):
@@ -40,6 +51,16 @@ def _directive_error(message: str) -> dict:
 
 
 def _inline_protocol_at(text: str, start: int) -> tuple[int, dict] | None:
+    quote = _INLINE_QUOTE.match(text, start)
+    if quote:
+        return quote.end(), {
+            "type": "gululuAssistantQuote",
+            "attrs": {
+                "bookId": int(quote.group(1)),
+                "floorNumber": int(quote.group(2)),
+            },
+            "content": [{"type": "text", "text": quote.group(3)}],
+        }
     prefixes = (
         ("<发现秘密>", "</发现秘密>", "gululuSecretClue"),
         ("<秘密>", "</秘密>", "gululuSecret"),
@@ -125,6 +146,7 @@ def prepare_assistant_nodes(nodes: Iterable[dict]) -> list[dict]:
         if isinstance(node, dict)
         for item in _prepare_inline(node)
     ]
+    prepared = _prepare_quote_blocks(prepared)
     output: list[dict] = []
     folds: list[dict] = []
 
@@ -165,11 +187,142 @@ def prepare_assistant_nodes(nodes: Iterable[dict]) -> list[dict]:
     return output
 
 
+def _text_fragment(source: dict, text: str) -> dict:
+    fragment = copy.deepcopy(source)
+    fragment["text"] = text
+    return fragment
+
+
+def _dice_group_node(source: dict, match: re.Match[str], group_id: str) -> dict:
+    chain = match.group(1)
+    suffix = match.group(2)
+    content: list[dict] = []
+    cursor = 0
+    for result in _DICE_RESULT.finditer(chain):
+        before = chain[cursor:result.start()] + result.group(1)
+        if before:
+            content.append(_text_fragment(source, before))
+        content.append({
+            "type": "gululuDiceValue",
+            "attrs": {"groupId": group_id},
+            "content": [_text_fragment(source, result.group(2))],
+        })
+        if result.group(3):
+            content.append(_text_fragment(source, result.group(3)))
+        cursor = result.end()
+    if cursor < len(chain):
+        content.append(_text_fragment(source, chain[cursor:]))
+    if suffix:
+        content.append({
+            "type": "gululuDiceSuffix",
+            "attrs": {"groupId": group_id},
+            "content": [_text_fragment(source, suffix)],
+        })
+    return {
+        "type": "gululuDiceGroup",
+        "attrs": {"groupId": group_id},
+        "content": content,
+    }
+
+
+def _prepare_dice_node(node: dict, floor_id: int, counter: list[int]) -> tuple[list[dict], list[str]]:
+    if str(node.get("type") or "") == "text":
+        text = str(node.get("text") or "")
+        output: list[dict] = []
+        groups: list[str] = []
+        cursor = 0
+        for match in _DICE_CHAIN.finditer(text):
+            if match.start() > cursor:
+                output.append(_text_fragment(node, text[cursor:match.start()]))
+            group_id = f"{floor_id}-g-{counter[0]}"
+            counter[0] += 1
+            output.append(_dice_group_node(node, match, group_id))
+            groups.append(group_id)
+            cursor = match.end()
+        if cursor < len(text):
+            output.append(_text_fragment(node, text[cursor:]))
+        return (output or [copy.deepcopy(node)]), groups
+
+    prepared = copy.deepcopy(node)
+    content = prepared.get("content")
+    groups: list[str] = []
+    if isinstance(content, list):
+        prepared_content: list[dict] = []
+        for child in content:
+            if not isinstance(child, dict):
+                continue
+            children, child_groups = _prepare_dice_node(child, floor_id, counter)
+            prepared_content.extend(children)
+            groups.extend(child_groups)
+        prepared["content"] = prepared_content
+    return [prepared], groups
+
+
+def prepare_reader_experience_nodes(nodes: Iterable[dict], floor_id: int) -> list[dict]:
+    """Add stable dice groups and fog locks without changing visible text."""
+    output: list[dict] = []
+    active_lock = ""
+    counter = [0]
+    for source in nodes:
+        if not isinstance(source, dict):
+            continue
+        prepared, groups = _prepare_dice_node(source, floor_id, counter)
+        for node in prepared:
+            if active_lock:
+                output.append({
+                    "type": "gululuFogBlock",
+                    "attrs": {"groupId": active_lock},
+                    "content": [node],
+                })
+            else:
+                output.append(node)
+        if groups:
+            active_lock = groups[-1]
+    return output
+
+
+def _prepare_quote_blocks(nodes: list[dict]) -> list[dict]:
+    output: list[dict] = []
+    index = 0
+    while index < len(nodes):
+        node = nodes[index]
+        text = _node_text(node).strip(_INVISIBLE)
+        start = _QUOTE_START.fullmatch(text)
+        if not start:
+            if text == "</引用>":
+                output.append(_directive_error("引用结束标记没有对应的开始标记"))
+            else:
+                output.append(node)
+            index += 1
+            continue
+
+        closing = index + 1
+        while closing < len(nodes):
+            if _node_text(nodes[closing]).strip(_INVISIBLE) == "</引用>":
+                break
+            closing += 1
+        if closing >= len(nodes):
+            output.append(_directive_error("引用指令缺少结束标记"))
+            index += 1
+            continue
+        output.append({
+            "type": "gululuAssistantQuote",
+            "attrs": {
+                "bookId": int(start.group(1)),
+                "floorNumber": int(start.group(2)),
+            },
+            "content": nodes[index + 1:closing],
+        })
+        index = closing + 1
+    return output
+
+
 def render_assistant_node(
     node_type: str,
     attrs: dict,
     render_children: Callable[[], str],
     jump_floor_resolver: Callable[[int], str] | None = None,
+    source_book_id: int = 0,
 ) -> str | None:
     title = str(attrs.get("title") or "").strip()
     if node_type == "gululuSecret":
@@ -192,6 +345,51 @@ def render_assistant_node(
             f'<summary>{html.escape(title or "折叠内容")}</summary>'
             f'{render_children()}</details>'
         )
+    if node_type == "gululuDiceGroup":
+        group_id = html.escape(str(attrs.get("groupId") or ""), quote=True)
+        return (
+            f'<span class="gululu-dice-group" data-gululu-dice-group="{group_id}">'
+            f'{render_children()}</span>'
+        )
+    if node_type == "gululuDiceValue":
+        group_id = html.escape(str(attrs.get("groupId") or ""), quote=True)
+        return (
+            '<span class="gululu-dice-value" role="button" tabindex="0" '
+            f'data-gululu-dice-group="{group_id}" aria-label="揭示骰点结果">'
+            f'{render_children()}</span>'
+        )
+    if node_type == "gululuDiceSuffix":
+        group_id = html.escape(str(attrs.get("groupId") or ""), quote=True)
+        return (
+            f'<span class="gululu-dice-suffix" data-gululu-dice-group="{group_id}">'
+            f'{render_children()}</span>'
+        )
+    if node_type == "gululuFogBlock":
+        group_id = html.escape(str(attrs.get("groupId") or ""), quote=True)
+        return (
+            f'<div class="gululu-fog-block" data-gululu-fog-lock="{group_id}">'
+            f'{render_children()}</div>'
+        )
+    if node_type == "gululuAssistantQuote":
+        try:
+            book_id = int(attrs.get("bookId"))
+            floor_number = int(attrs.get("floorNumber"))
+        except (TypeError, ValueError):
+            book_id = 0
+            floor_number = 0
+        href = ""
+        if book_id > 0 and floor_number > 0:
+            if book_id == source_book_id and jump_floor_resolver:
+                href = jump_floor_resolver(floor_number) or ""
+            elif book_id != source_book_id:
+                href = f"https://www.gululu.world/book/{book_id}?floorSort={floor_number}"
+        content = render_children()
+        if href:
+            return (
+                '<a class="gululu-assistant-quote" '
+                f'href="{html.escape(href, quote=True)}">{content}</a>'
+            )
+        return f'<blockquote class="gululu-assistant-quote">{content}</blockquote>'
     if node_type == "jumpFloorComponent":
         try:
             floor_number = int(attrs.get("floorNumber"))

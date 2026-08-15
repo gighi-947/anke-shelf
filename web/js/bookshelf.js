@@ -14,6 +14,14 @@
     return (App.state.settings && App.state.settings.shelf_sort) || 'recent';
   }
 
+  function gululuBadge(book) {
+    if (!Number(book && book.gululu_source_id)) return null;
+    const badge = document.createElement('span');
+    badge.className = 'gululu-badge';
+    badge.textContent = '骨碌碌';
+    return badge;
+  }
+
   window.Shelf = {
     _renderToken: 0,
 
@@ -104,6 +112,8 @@
       img.addEventListener('error', () => img.remove(), { once: true });
       if (book.cover_url) img.src = book.cover_url;
       cover.appendChild(img);
+      const badge = gululuBadge(book);
+      if (badge) cover.appendChild(badge);
 
       const title = document.createElement('span');
       title.className = 'recent-title';
@@ -160,6 +170,8 @@
         badge.textContent = 'NGA';
         main.appendChild(badge);
       }
+      const sourceBadge = gululuBadge(book);
+      if (sourceBadge) main.appendChild(sourceBadge);
       main.appendChild(cover);
 
       const actions = this._actions(book);
@@ -224,6 +236,8 @@
         badge.textContent = 'NGA';
         title.appendChild(badge);
       }
+      const sourceBadge = gululuBadge(book);
+      if (sourceBadge) title.appendChild(sourceBadge);
       const titleText = document.createElement('span');
       titleText.textContent = book.title || '(No Title)';
       title.appendChild(titleText);

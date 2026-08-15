@@ -33,7 +33,8 @@ def _fixture(name: str):
 
 
 def _compact_epub() -> Path:
-    target = WORKSPACE / "formal-compact.epub"
+    target = WORKSPACE / "66905" / "post.epub"
+    target.parent.mkdir(parents=True, exist_ok=True)
     floors = _fixture("floors.json")["data"]
     first_floor = floors[0]["paragraphContents"]
     first_floor[1:2] = [
@@ -56,6 +57,27 @@ def _compact_epub() -> Path:
         {"type": "paragraph", "attrs": {}, "content": [
             {"type": "text", "text": "<发现秘密>[炉心]薪火-63299</发现秘密>", "attrs": None, "marks": [], "content": []},
         ]},
+        {"type": "paragraph", "attrs": {}, "content": [
+            {"type": "text", "text": '<引用 id="66905" floor="3">', "attrs": None, "marks": [], "content": []},
+        ]},
+        {"type": "paragraph", "attrs": {}, "content": [
+            {"type": "text", "text": "跳到第一章第三楼", "attrs": None, "marks": [], "content": []},
+        ]},
+        {"type": "paragraph", "attrs": {}, "content": [
+            {"type": "text", "text": "</引用>", "attrs": None, "marks": [], "content": []},
+        ]},
+        {"type": "paragraph", "attrs": {"id": "dice-regression"}, "content": [
+            {"type": "text", "text": "判定：【1D20+4=18】大成功", "attrs": None, "marks": [], "content": []},
+        ]},
+        {"type": "paragraph", "attrs": {"id": "fog-regression"}, "content": [
+            {"type": "text", "text": "迷雾后的正文", "attrs": None, "marks": [], "content": []},
+        ]},
+        {"type": "paragraph", "attrs": {"id": "dice-batch-regression"}, "content": [
+            {"type": "text", "text": "第二次判定：1D6=4", "attrs": None, "marks": [], "content": []},
+        ]},
+        {"type": "paragraph", "attrs": {"id": "fog-batch-regression"}, "content": [
+            {"type": "text", "text": "第二层迷雾后的正文", "attrs": None, "marks": [], "content": []},
+        ]},
         {"type": "paragraph", "attrs": {"id": "overflow-regression"}, "content": [
             {"type": "text", "text": "1-2 自己回去休息", "marks": [
                 {"type": "textStyle", "attrs": {"color": "rgb(0, 0, 0)"}},
@@ -70,6 +92,18 @@ def _compact_epub() -> Path:
             ]},
         ]},
     ]
+    floors[1]["paragraphContents"].extend(
+        {
+            "type": "paragraph",
+            "attrs": {"id": f"paged-fullscreen-regression-{index}"},
+            "content": [{
+                "type": "text",
+                "text": f"分页沉浸式进度回归段落 {index}：窗口尺寸变化后仍应停留在当前阅读位置。",
+                "marks": [],
+            }],
+        }
+        for index in range(1, 81)
+    )
     build_epub(
         detail=_fixture("detail.json")["data"],
         floor_index=_fixture("floor_index.json")["data"],
@@ -81,18 +115,51 @@ def _compact_epub() -> Path:
     return target
 
 
+def _nga_isolation_epub() -> Path:
+    from ebooklib import epub
+
+    target = WORKSPACE / "nga-isolation.epub"
+    book = epub.EpubBook()
+    book.set_identifier("nga-isolation-fixture")
+    book.set_title("NGA 隔离测试")
+    book.set_language("zh-CN")
+    chapter = epub.EpubHtml(title="隔离章", file_name="chapter.xhtml", lang="zh-CN")
+    chapter.content = (
+        '<html><head><title>隔离章</title></head><body>'
+        '<h1>NGA 隔离测试</h1>'
+        '<section class="gululu-floor" id="floor-999">'
+        '<header class="floor-head"><span class="floor-number">第 1 楼</span></header>'
+        '<button class="gululu-music-cue" data-gululu-music-url="https://media.example/leak.mp3">'
+        '<span class="gululu-music-title">不应播放</span></button>'
+        '<button class="gululu-secret-cue" data-secret-title="不应打开">不应打开</button>'
+        '</section></body></html>'
+    )
+    book.add_item(chapter)
+    book.add_item(epub.EpubNcx())
+    book.add_item(epub.EpubNav())
+    book.spine = [chapter]
+    epub.write_epub(str(target), book)
+    return target
+
+
 class _FakeGululuService:
     def __init__(self) -> None:
         floor_comments = _fixture("comments_floor_962170.json")["data"]["records"]
         floor_comments[0]["childrenComment"] = _fixture(
             "comments_children_9001.json"
         )["data"]["records"]
+        second_floor_comment = comment_to_public(floor_comments[0])
+        second_floor_comment.update({"id": 9102, "content": "第一章第二楼评论"})
+        third_floor_comment = comment_to_public(floor_comments[0])
+        third_floor_comment.update({"id": 9103, "content": "第一章第三楼评论"})
         self._comments = {
             0: [
                 comment_to_public(item)
                 for item in _fixture("comments_opus.json")["data"]["records"]
             ],
             962170: [comment_to_public(item) for item in floor_comments],
+            962916: [second_floor_comment],
+            963517: [third_floor_comment],
         }
 
     def get_comments(self, source_id, floor_ids, refresh=False):
@@ -124,8 +191,8 @@ def create_app() -> tuple[Api, BookManager, Path]:
     covers.mkdir(parents=True, exist_ok=True)
     books = BookManager()
     book = books.register(str(_compact_epub()))
+    nga_book = books.register(str(_nga_isolation_epub()))
     shelf = Shelf(data / "shelf.json", covers)
-    shelf.load()
     shelf.upsert(BookRecord(
         id=book.id,
         path=book.path,
@@ -133,6 +200,15 @@ def create_app() -> tuple[Api, BookManager, Path]:
         author=book.author,
         language=book.language,
         chapter_count=len(book.chapters),
+    ))
+    shelf.upsert(BookRecord(
+        id=nga_book.id,
+        path=nga_book.path,
+        title=nga_book.title,
+        author=nga_book.author,
+        language=nga_book.language,
+        chapter_count=len(nga_book.chapters),
+        nga_tid=999,
     ))
     shelf.save()
     progress = ProgressStore(data / "progress.json")

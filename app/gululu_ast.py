@@ -58,6 +58,7 @@ def render_ast(
     *,
     image_resolver: Optional[Callable[[str], str]] = None,
     jump_floor_resolver: Optional[Callable[[int], str]] = None,
+    source_book_id: int = 0,
     strict: bool = False,
 ) -> str:
     """Recursively convert the known Gululu rich-text AST to safe XHTML."""
@@ -77,6 +78,7 @@ def render_ast(
             attrs,
             lambda: render_children(node),
             jump_floor_resolver,
+            source_book_id,
         )
         if assistant_html is not None:
             return assistant_html

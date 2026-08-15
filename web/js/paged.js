@@ -14,7 +14,7 @@
 
   const frameEl = () => document.getElementById('chapter-frame');
   const stageEl = () => document.getElementById('reader-root');
-  let resizeFrame = 0;
+  let resizeTimer = 0;
   let resizeAnchor = null;
 
   function isActive() {
@@ -340,24 +340,42 @@
     return offset === null ? currentOffset() : offset;
   }
 
+  /** 宿主窗口切换全屏前冻结页首锚点，避免浏览器先清空横向滚动再触发 resize。 */
+  function beginViewportResize(anchorOffset) {
+    if (!isActive()) return;
+    const explicit = Number(anchorOffset);
+    const offset = Number.isFinite(explicit) && explicit >= 0 ? explicit : currentOffset();
+    resizeAnchor = offset > 0 ? offset : currentAnchorOffset();
+    if (resizeTimer) {
+      clearTimeout(resizeTimer);
+      resizeTimer = 0;
+    }
+  }
+
+  function cancelViewportResize() {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = 0;
+    resizeAnchor = null;
+  }
+
   /** 重置分页（字号/主题/窗口变化后）：重测 + 按当前 offset 保位。 */
   function onResize() {
     if (!isActive()) return;
     const offset = currentAnchorOffset();
-    if (resizeAnchor === null || offset > 0) resizeAnchor = offset;
+    if (resizeAnchor === null || (resizeAnchor <= 0 && offset > 0)) resizeAnchor = offset;
     const doc = frameEl().contentDocument;
     prepare(doc);
-    // 全屏切换会连续触发多次 ResizeObserver；保留首次有效锚点并合并重排。
-    if (resizeFrame) cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(() => {
+    // 全屏切换会跨多个渲染帧触发 ResizeObserver；等尺寸稳定后再恢复首次有效锚点。
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
       const anchor = resizeAnchor;
-      resizeFrame = 0;
+      resizeTimer = 0;
       resizeAnchor = null;
       normalizeTallTables(doc);
       measure();
       if (anchor > 0) gotoOffset(anchor);
       Reader.updateProgressUI();
-    });
+    }, 120);
   }
 
   /** 绑定 iframe 文档内交互（滚轮翻页、滑动）。 */
@@ -414,6 +432,8 @@
     gotoOffset,
     currentOffset,
     currentAnchorOffset,
+    beginViewportResize,
+    cancelViewportResize,
     onResize,
     setupInteraction,
     normalizeTallTables,

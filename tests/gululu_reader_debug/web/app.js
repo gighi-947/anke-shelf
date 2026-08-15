@@ -12,7 +12,7 @@
     lineHeight: 1.8,
     contentWidth: 820,
     theme: 'light',
-    commentsVisible: true,
+    commentsVisible: false,
     danmakuEnabled: false,
   };
 
@@ -87,7 +87,14 @@
       details { border-color:${palette.line} !important; }
       summary { color:${palette.accent}; }
       body.__debug_comments_hidden__ .gululu-comments { display:none !important; }
+      .gululu-floor { box-sizing:border-box; margin:14px 0 !important; border:1px solid ${palette.line}; border-left:4px solid color-mix(in srgb, ${palette.accent} 52%, ${palette.text}); border-radius:2px; padding:12px 14px; background:color-mix(in srgb, ${palette.bg} 97%, ${palette.accent}); box-decoration-break:clone; }
+      .floor-head { display:flex; align-items:baseline; gap:.55em; margin:0 0 8px !important; padding:0 0 6px !important; border-bottom-style:dotted !important; font-size:.82em; }
+      .floor-number { color:color-mix(in srgb, ${palette.accent} 52%, ${palette.text}) !important; font-weight:700; }
+      .floor-title { min-width:0; flex:1; }
       .floor-head, .book-meta { color:${palette.muted} !important; border-color:${palette.line} !important; }
+      .gululu-debug-comment-button { flex:0 0 auto; border:1px solid ${palette.line}; border-radius:4px; padding:4px 8px; background:transparent; color:${palette.accent}; cursor:pointer; font:inherit; font-size:12px; }
+      .gululu-debug-comment-button:hover { background:color-mix(in srgb, ${palette.accent} 10%, transparent); }
+      .gululu-debug-comment-button:focus-visible { outline:2px solid ${palette.accent}; outline-offset:2px; }
       #__gululu_debug_flow__ { box-sizing:border-box; }
     `;
     const scrollCss = `
@@ -99,11 +106,35 @@
       html, body { height:100vh; margin:0 !important; overflow-y:hidden !important; overflow-x:auto !important; scroll-behavior:smooth; }
       #__gululu_debug_flow__ { height:100vh; padding:34px clamp(28px, 6vw, 72px) 42px; column-width:calc(100vw - clamp(56px, 12vw, 144px)); column-gap:clamp(56px, 12vw, 144px); column-fill:auto; }
       #__gululu_debug_flow__ > * { break-inside:auto; }
-      #__gululu_debug_flow__ > figure, #__gululu_debug_flow__ > details, .gululu-floor { break-inside:avoid; }
+      #__gululu_debug_flow__ > figure, #__gululu_debug_flow__ > details { break-inside:avoid; }
     `;
     style.textContent = common + (state.mode === 'paged' ? pagedCss : scrollCss);
     doc.body.classList.toggle('__debug_comments_hidden__', !state.commentsVisible);
+    installFloorCommentButtons(doc);
     requestAnimationFrame(() => updatePageMetrics(resetPage));
+  }
+
+  function installFloorCommentButtons(doc) {
+    doc.querySelectorAll('.gululu-floor[id^="floor-"]').forEach((floor) => {
+      const head = floor.querySelector('.floor-head');
+      if (!head || head.querySelector('.gululu-debug-comment-button')) return;
+      const floorId = Number(floor.id.slice('floor-'.length));
+      const count = floor.querySelectorAll('.gululu-comment').length;
+      const number = floor.querySelector('.floor-number');
+      const button = doc.createElement('button');
+      button.type = 'button';
+      button.className = 'gululu-debug-comment-button';
+      button.dataset.floorId = String(floorId);
+      button.setAttribute('data-textpos-exclude', 'true');
+      button.textContent = `评论 ${count}`;
+      button.setAttribute('aria-label', `${number ? number.textContent.trim() : '当前楼层'}评论`);
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openComments(floorId, button);
+      });
+      head.appendChild(button);
+    });
   }
 
   function currentCommentTexts() {
@@ -112,6 +143,105 @@
     return Array.from(doc.querySelectorAll('.gululu-comment-text'))
       .map((item) => item.textContent.trim().replace(/\s+/g, ' '))
       .filter(Boolean);
+  }
+
+  let panelReturnFocus = null;
+
+  function setQuickMenu(open) {
+    const menu = document.getElementById('quick-menu');
+    const toggle = document.getElementById('quick-menu-toggle');
+    menu.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.textContent = open ? '×' : '＋';
+  }
+
+  function closeSettings(restoreFocus) {
+    const panel = document.getElementById('settings-panel');
+    if (panel.hidden) return;
+    panel.hidden = true;
+    if (restoreFocus && panelReturnFocus) panelReturnFocus.focus();
+    panelReturnFocus = null;
+  }
+
+  function closeComments(restoreFocus) {
+    const drawer = document.getElementById('comments-drawer');
+    if (drawer.hidden) return;
+    drawer.hidden = true;
+    if (restoreFocus && panelReturnFocus) panelReturnFocus.focus();
+    panelReturnFocus = null;
+  }
+
+  function openSettings(trigger) {
+    closeComments(false);
+    setQuickMenu(false);
+    panelReturnFocus = trigger || document.getElementById('quick-settings');
+    const panel = document.getElementById('settings-panel');
+    panel.hidden = false;
+    document.getElementById('settings-close').focus();
+  }
+
+  function renderCommentDrawer(floorId) {
+    const list = document.getElementById('comments-list');
+    const status = document.getElementById('comments-status');
+    const doc = currentDocument();
+    list.replaceChildren();
+    if (!doc) {
+      status.textContent = '章节尚未载入';
+      return;
+    }
+    const floors = Array.from(doc.querySelectorAll('.gululu-floor[id^="floor-"]'))
+      .filter((floor) => floorId == null || Number(floor.id.slice('floor-'.length)) === floorId);
+    let total = 0;
+    floors.forEach((floor) => {
+      const section = document.createElement('section');
+      section.className = 'comment-floor';
+      const heading = document.createElement('h3');
+      const number = floor.querySelector('.floor-number')?.textContent.trim() || '楼层';
+      const title = floor.querySelector('.floor-title')?.textContent.trim() || '';
+      heading.textContent = title ? `${number} · ${title}` : number;
+      section.appendChild(heading);
+      const articles = Array.from(floor.querySelectorAll('.gululu-comment'));
+      total += articles.length;
+      if (!articles.length) {
+        const empty = document.createElement('p');
+        empty.className = 'comment-empty';
+        empty.textContent = '暂无评论';
+        section.appendChild(empty);
+      } else {
+        articles.forEach((source) => {
+          const article = document.createElement('article');
+          article.className = 'drawer-comment';
+          const head = document.createElement('header');
+          const author = document.createElement('strong');
+          author.textContent = source.querySelector('.gululu-comment-head strong')?.textContent.trim() || '匿名用户';
+          const meta = document.createElement('span');
+          meta.textContent = source.querySelector('.gululu-comment-head span')?.textContent.trim() || '';
+          const body = document.createElement('p');
+          body.textContent = source.querySelector('.gululu-comment-text')?.textContent.trim() || '';
+          head.append(author, meta);
+          article.append(head, body);
+          section.appendChild(article);
+        });
+      }
+      list.appendChild(section);
+    });
+    if (!floors.length) {
+      const empty = document.createElement('p');
+      empty.className = 'comments-empty';
+      empty.textContent = '本章没有可关联的评论楼层';
+      list.appendChild(empty);
+    }
+    status.textContent = floorId == null ? `${floors.length} 个楼层 · ${total} 条` : `${total} 条评论`;
+  }
+
+  function openComments(floorId, trigger) {
+    closeSettings(false);
+    setQuickMenu(false);
+    panelReturnFocus = trigger || document.getElementById('quick-comments');
+    renderCommentDrawer(floorId == null ? null : Number(floorId));
+    const drawer = document.getElementById('comments-drawer');
+    drawer.hidden = false;
+    document.getElementById('comments-close').focus();
   }
 
   function stopDanmaku() {
@@ -141,8 +271,12 @@
     const available = currentCommentTexts().length > 0;
     const commentsButton = document.getElementById('comments-toggle');
     const danmakuButton = document.getElementById('danmaku-toggle');
+    const quickComments = document.getElementById('quick-comments');
+    const quickDanmaku = document.getElementById('quick-menu-danmaku');
     commentsButton.disabled = !available;
     danmakuButton.disabled = !available;
+    quickComments.disabled = !available;
+    quickDanmaku.disabled = !available;
     if (!available || !state.danmakuEnabled) return;
     shootDanmaku();
     danmakuTimer = setInterval(shootDanmaku, 1100);
@@ -192,11 +326,12 @@
     state.chapter = index;
     state.page = 0;
     stopDanmaku();
+    closeComments(false);
     const chapter = state.book.chapters[index];
     frame.src = `/book/${encodedHref(chapter.href)}`;
     markActiveChapter();
     updatePosition();
-    if (window.innerWidth <= 960) toggleToc(false);
+    toggleToc(false);
   }
 
   function movePage(direction) {
@@ -228,17 +363,28 @@
 
   function setCommentsVisible(visible) {
     state.commentsVisible = visible;
-    document.getElementById('comments-toggle').setAttribute('aria-pressed', String(visible));
+    const button = document.getElementById('comments-toggle');
+    button.setAttribute('aria-pressed', String(visible));
+    button.textContent = visible ? '开启' : '关闭';
     applyReaderLayout(false);
   }
 
   function setDanmaku(enabled) {
     state.danmakuEnabled = enabled;
-    document.getElementById('danmaku-toggle').setAttribute('aria-pressed', String(enabled));
+    const button = document.getElementById('danmaku-toggle');
+    const quick = document.getElementById('quick-menu-danmaku');
+    button.setAttribute('aria-pressed', String(enabled));
+    button.textContent = enabled ? '开启' : '关闭';
+    quick.setAttribute('aria-pressed', String(enabled));
     syncDanmaku();
   }
 
   function toggleToc(open) {
+    if (open) {
+      closeSettings(false);
+      closeComments(false);
+      setQuickMenu(false);
+    }
     document.getElementById('toc-panel').classList.toggle('open', open);
   }
 
@@ -292,10 +438,12 @@
   });
   document.getElementById('line-height').addEventListener('input', (event) => {
     state.lineHeight = Number(event.target.value);
+    document.getElementById('line-height-value').textContent = state.lineHeight.toFixed(1);
     applyReaderLayout(false);
   });
   document.getElementById('content-width').addEventListener('input', (event) => {
     state.contentWidth = Number(event.target.value);
+    document.getElementById('content-width-value').textContent = String(state.contentWidth);
     applyReaderLayout(false);
   });
   document.getElementById('theme-select').addEventListener('change', (event) => setTheme(event.target.value));
@@ -307,6 +455,39 @@
   });
   document.getElementById('toc-toggle').addEventListener('click', () => toggleToc(true));
   document.getElementById('toc-close').addEventListener('click', () => toggleToc(false));
+  document.getElementById('quick-menu-toggle').addEventListener('click', () => {
+    setQuickMenu(document.getElementById('quick-menu').hidden);
+  });
+  document.getElementById('quick-settings').addEventListener('click', (event) => {
+    openSettings(event.currentTarget);
+  });
+  document.getElementById('quick-comments').addEventListener('click', (event) => {
+    openComments(null, event.currentTarget);
+  });
+  document.getElementById('quick-menu-settings').addEventListener('click', () => {
+    openSettings(document.getElementById('quick-menu-toggle'));
+  });
+  document.getElementById('quick-menu-toc').addEventListener('click', () => toggleToc(true));
+  document.getElementById('quick-menu-danmaku').addEventListener('click', () => {
+    setDanmaku(!state.danmakuEnabled);
+    setQuickMenu(false);
+    document.getElementById('quick-menu-toggle').focus();
+  });
+  document.getElementById('settings-close').addEventListener('click', () => closeSettings(true));
+  document.getElementById('comments-close').addEventListener('click', () => closeComments(true));
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (!document.getElementById('settings-panel').hidden) closeSettings(true);
+    else if (!document.getElementById('comments-drawer').hidden) closeComments(true);
+    else if (!document.getElementById('quick-menu').hidden) {
+      setQuickMenu(false);
+      document.getElementById('quick-menu-toggle').focus();
+    } else if (document.getElementById('toc-panel').classList.contains('open')) {
+      toggleToc(false);
+      document.getElementById('toc-toggle').focus();
+    }
+  });
 
   let resizeTimer = null;
   window.addEventListener('resize', () => {

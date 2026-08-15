@@ -3,11 +3,12 @@
   'use strict';
 
   const STORAGE_KEY = 'ankeshelf.gululu.immersive.v1';
-  const DEFAULTS = { autoMusic: false, backgrounds: true, vfx: true, volume: 0.45 };
+  const DEFAULTS = { autoMusic: true, backgrounds: true, vfx: true, volume: 0.45 };
   const state = {
     sourceId: 0,
     doc: null,
     panelOpen: false,
+    returnFocus: null,
     prefs: loadPreferences(),
     audio: null,
     audioCue: null,
@@ -30,7 +31,7 @@
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
       const savedVolume = Number(saved.volume);
       return {
-        autoMusic: saved.autoMusic === true,
+        autoMusic: saved.autoMusic !== false,
         backgrounds: saved.backgrounds !== false,
         vfx: saved.vfx !== false,
         volume: Number.isFinite(savedVolume)
@@ -129,9 +130,32 @@
       requestAnimationFrame(fade);
     } catch (error) {
       if (generation !== state.audioGeneration) return;
-      stopMusic({ silent: true, immediate: true });
       const blocked = error && error.name === 'NotAllowedError';
-      setStatus(blocked ? `点击“${title}”开始播放` : `音乐加载失败：${title}`, true);
+      if (blocked) {
+        setStatus(`点击页面继续播放：${title}`, true);
+        const resume = async () => {
+          if (state.audio !== audio || generation !== state.audioGeneration) return;
+          try {
+            await audio.play();
+            setStatus(`自动音乐：${title}`);
+            const startedAt = performance.now();
+            const fade = () => {
+              if (state.audio !== audio || generation !== state.audioGeneration) return;
+              const progress = Math.min(1, (performance.now() - startedAt) / 600);
+              audio.volume = state.prefs.volume * progress;
+              if (progress < 1) requestAnimationFrame(fade);
+            };
+            requestAnimationFrame(fade);
+          } catch (resumeError) { /* wait for another explicit cue click */ }
+        };
+        ['click', 'keydown', 'touchstart'].forEach((type) => {
+          document.addEventListener(type, resume, { once: true });
+          if (state.doc) state.doc.addEventListener(type, resume, { once: true });
+        });
+      } else {
+        stopMusic({ silent: true, immediate: true });
+        setStatus(`音乐加载失败：${title}`, true);
+      }
     }
   }
 
@@ -333,6 +357,10 @@
   }
 
   function bindChapter(doc) {
+    if (!state.sourceId || !doc) {
+      state.doc = null;
+      return;
+    }
     state.doc = doc;
     state.playedAuto = new WeakSet();
     applyBackground('');
@@ -347,6 +375,10 @@
       event.preventDefault();
       stopMusic();
     });
+    doc.addEventListener('mouseover', (event) => {
+      const floor = event.target.closest('.gululu-floor');
+      if (floor) applyVfx(floor.dataset.gululuVfx || '');
+    });
     scanChapter();
   }
 
@@ -357,25 +389,36 @@
     stopMusic({ silent: true, immediate: true });
     applyBackground('');
     stopVfx();
-    el('gululu-immersive-btn').classList.toggle('hidden', !state.sourceId);
+    el('gululu-immersive-btn').classList.add('hidden');
     clearInterval(state.scanTimer);
     state.scanTimer = state.sourceId ? setInterval(scanChapter, 250) : null;
   }
 
-  function togglePanel(force) {
-    if (!state.sourceId) return;
+  function togglePanel(force, trigger, restoreFocus) {
+    if (!state.sourceId && force !== false) return;
+    const wasOpen = state.panelOpen;
     state.panelOpen = typeof force === 'boolean' ? force : !state.panelOpen;
+    if (state.panelOpen && trigger) state.returnFocus = trigger;
     el('gululu-immersive-panel').classList.toggle('hidden', !state.panelOpen);
     el('gululu-immersive-btn').classList.toggle('active', state.panelOpen);
-    if (state.panelOpen && window.GululuComments && GululuComments.closePanel) {
-      GululuComments.closePanel();
+    const quick = el('gululu-quick-immersive');
+    if (quick) {
+      quick.classList.toggle('active', state.panelOpen);
+      quick.setAttribute('aria-expanded', String(state.panelOpen));
     }
+    if (state.panelOpen) {
+      if (window.App && App.setGululuQuickMenu) App.setGululuQuickMenu(false, false);
+      if (window.ViewMenu) ViewMenu.close(false);
+      if (window.GululuComments && GululuComments.closePanel) GululuComments.closePanel();
+    }
+    if (wasOpen && !state.panelOpen && restoreFocus && state.returnFocus) {
+      state.returnFocus.focus();
+    }
+    if (!state.panelOpen) state.returnFocus = null;
   }
 
-  function closePanel() {
-    state.panelOpen = false;
-    el('gululu-immersive-panel').classList.add('hidden');
-    el('gululu-immersive-btn').classList.remove('active');
+  function closePanel(restoreFocus) {
+    togglePanel(false, null, !!restoreFocus);
   }
 
   function applyControls() {
@@ -388,8 +431,10 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     applyControls();
-    el('gululu-immersive-btn').addEventListener('click', () => togglePanel());
-    el('gululu-immersive-close').addEventListener('click', closePanel);
+    el('gululu-immersive-btn').addEventListener('click', (event) => {
+      togglePanel(undefined, event.currentTarget, true);
+    });
+    el('gululu-immersive-close').addEventListener('click', () => closePanel(true));
     el('gululu-stop-music').addEventListener('click', () => stopMusic());
     el('gululu-auto-music-toggle').addEventListener('change', (event) => {
       state.prefs.autoMusic = event.target.checked;
@@ -413,12 +458,16 @@
     });
     state.reducedMotion.addEventListener('change', () => { applyControls(); scanChapter(); });
     window.addEventListener('resize', () => { resizeCanvas(); scanChapter(); });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && state.panelOpen) closePanel(true);
+    });
   });
 
   window.GululuImmersive = {
     setBook,
     onChapterLoaded: bindChapter,
     closePanel,
+    togglePanel: (trigger) => togglePanel(undefined, trigger, true),
     close: () => {
       closePanel();
       clearInterval(state.scanTimer);
@@ -432,10 +481,12 @@
     },
     snapshot: () => ({
       sourceId: state.sourceId,
+      panelOpen: state.panelOpen,
       playing: !!state.audio,
       backgroundUrl: state.backgroundUrl,
       effect: state.effect,
       reducedMotion: state.reducedMotion.matches,
+      prefs: { ...state.prefs },
     }),
   };
 })();

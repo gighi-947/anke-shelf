@@ -90,7 +90,36 @@
       if (topBar) topBar.classList.toggle('bar-visible', !!(on || pinned));
       if (statusBar) statusBar.classList.toggle('bar-visible', !!(on || pinned));
       // 顶栏收起时同步收起其二级菜单卡片，避免卡片悬空残留
-      if (!on && !pinned && window.ViewMenu) ViewMenu.close();
+      if (!on && !pinned && window.ViewMenu) {
+        const menu = document.getElementById('view-menu');
+        if (!menu || !menu.classList.contains('gululu-quick-anchor')) ViewMenu.close();
+      }
+    },
+
+    setGululuQuickVisible(visible) {
+      const shell = document.getElementById('gululu-quick-shell');
+      if (shell) shell.classList.toggle('hidden', !visible);
+      document.getElementById('reader-view').classList.toggle('gululu-reader', !!visible);
+      if (!visible) this.setGululuQuickMenu(false, false);
+    },
+
+    setGululuQuickMenu(open, restoreFocus) {
+      const menu = document.getElementById('gululu-quick-menu');
+      const toggle = document.getElementById('gululu-quick-more-toggle');
+      if (!menu || !toggle) return;
+      const wasOpen = !menu.classList.contains('hidden');
+      menu.classList.toggle('hidden', !open);
+      toggle.classList.toggle('active', !!open);
+      toggle.setAttribute('aria-expanded', String(!!open));
+      if (!open && wasOpen && restoreFocus) toggle.focus();
+    },
+
+    syncGululuBookmark() {
+      const button = document.getElementById('gululu-quick-bookmark');
+      if (!button || !window.Annotations || !Annotations.isBookmarked || state.chapterIndex < 0) return;
+      const active = Annotations.isBookmarked(state.chapterIndex, Reader.currentOffset());
+      button.setAttribute('aria-pressed', String(active));
+      button.classList.toggle('active', active);
     },
 
     /** 翻页/换章操作后立即收起顶/底栏（固定显示时除外）。 */
@@ -117,8 +146,15 @@
 
     /** 沉浸式阅读：切换宿主窗口全屏；进入时收起顶/底栏。 */
     async toggleImmersive() {
+      const entering = !state.immersive;
+      const preservePage = window.Paged && Paged.isActive();
+      if (preservePage) {
+        if (entering) Reader.saveProgress();
+        Paged.beginViewportResize(Reader.ensureSession().textOffset);
+      }
       const r = await this._toggleFullscreenBridge();
       if (!r || r.ok === false) {
+        if (preservePage) Paged.cancelViewportResize();
         Toast.show((r && r.error) || '全屏切换失败', true);
         return;
       }
@@ -127,18 +163,25 @@
       if (state.immersive) {
         Toast.show('已进入沉浸式阅读，按 Esc 或 F11 退出');
       }
+      if (preservePage) requestAnimationFrame(() => Paged.onResize());
     },
 
     /** 退出沉浸式阅读（返回书架 / Esc 时调用）。 */
     async exitImmersive() {
       if (!state.immersive) return;
+      const preservePage = window.Paged && Paged.isActive();
+      if (preservePage) {
+        Paged.beginViewportResize(Reader.ensureSession().textOffset);
+      }
       const r = await this._toggleFullscreenBridge();
       if (!r || r.ok === false) {
+        if (preservePage) Paged.cancelViewportResize();
         Toast.show((r && r.error) || '退出全屏失败', true);
         return;
       }
       state.immersive = false;
       this._applyImmersiveState();
+      if (preservePage && state.view === 'reader') requestAnimationFrame(() => Paged.onResize());
     },
 
     async _toggleFullscreenBridge() {
@@ -159,6 +202,11 @@
         btn.title = state.immersive ? '退出沉浸式阅读' : '沉浸式阅读（全屏）';
         btn.classList.toggle('active', state.immersive);
       }
+      const quickFullscreen = document.getElementById('gululu-quick-fullscreen');
+      if (quickFullscreen) {
+        quickFullscreen.classList.toggle('active', state.immersive);
+        quickFullscreen.setAttribute('aria-pressed', String(state.immersive));
+      }
     },
 
     showShelf() {
@@ -170,9 +218,11 @@
       this.setBarsVisible(false);
       Sidebar.close();
       ViewMenu.close();
+      this.setGululuQuickVisible(false);
       if (window.FullSearch) FullSearch.close();
       if (window.SettingsPage) SettingsPage.close();
       if (window.GululuComments) GululuComments.close();
+      if (window.GululuAssistantReader) GululuAssistantReader.close();
       if (window.GululuImmersive) GululuImmersive.close();
       if (window.GululuSecrets) GululuSecrets.close();
       document.title = '安科书架';
@@ -193,6 +243,7 @@
         document.getElementById('reader-view').classList.remove('hidden');
         document.getElementById('reader-book-title').textContent = data.title || '';
         document.title = data.title || 'Reading';
+        this.setGululuQuickVisible(Number(data.gululu_source_id) > 0);
         this.setBarsVisible(true);
         if (window.Sidebar) Sidebar.renderBookCard(data);
         Toc.render(data.toc);
@@ -201,6 +252,7 @@
         if (window.Stats) Stats.start();
         if (window.Assist) Assist.setBrightness(state.settings.brightness || 0);
         if (window.GululuComments) GululuComments.setBook(data);
+        if (window.GululuAssistantReader) GululuAssistantReader.setBook(data);
         if (window.GululuImmersive) GululuImmersive.setBook(data);
         if (window.GululuSecrets) GululuSecrets.setBook(data);
         const p = data.progress || { chapter_index: 0, text_offset: 0 };
@@ -254,11 +306,74 @@
         Sidebar.close();
       });
 
-      document.getElementById('view-menu-btn').addEventListener('click', () => ViewMenu.toggle());
+      document.getElementById('view-menu-btn').addEventListener('click', () => {
+        this.setGululuQuickMenu(false, false);
+        if (window.GululuComments) GululuComments.closePanel();
+        if (window.GululuImmersive) GululuImmersive.closePanel();
+        ViewMenu.toggle();
+      });
       document.getElementById('bars-pin-btn').addEventListener('click', () => this.toggleBarsPinned());
       document.getElementById('fullscreen-btn').addEventListener('click', () => this.toggleImmersive());
       document.getElementById('bookmark-btn').addEventListener('click', () => {
         Reader.toggleBookmarkAtCurrent();
+      });
+
+      document.getElementById('gululu-quick-comments').addEventListener('click', (event) => {
+        this.setGululuQuickMenu(false, false);
+        ViewMenu.close(false);
+        if (window.GululuImmersive) GululuImmersive.closePanel();
+        if (window.GululuComments) GululuComments.togglePanel(event.currentTarget);
+      });
+      document.getElementById('gululu-quick-settings').addEventListener('click', (event) => {
+        this.setGululuQuickMenu(false, false);
+        if (window.GululuComments) GululuComments.closePanel();
+        if (window.GululuImmersive) GululuImmersive.closePanel();
+        ViewMenu.toggle({ anchor: 'gululu', returnFocus: event.currentTarget });
+      });
+      document.getElementById('gululu-quick-more-toggle').addEventListener('click', () => {
+        const menu = document.getElementById('gululu-quick-menu');
+        const opening = menu.classList.contains('hidden');
+        if (opening) {
+          ViewMenu.close(false);
+          if (window.GululuComments) GululuComments.closePanel();
+          if (window.GululuImmersive) GululuImmersive.closePanel();
+        }
+        this.setGululuQuickMenu(opening, false);
+      });
+      document.getElementById('gululu-quick-toc').addEventListener('click', () => {
+        this.setGululuQuickMenu(false, false);
+        Sidebar.switchTab('toc');
+        if (!Sidebar.isOpen()) Sidebar.toggle();
+      });
+      document.getElementById('gululu-quick-bookmark').addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        const active = await Reader.toggleBookmarkAtCurrent();
+        if (typeof active === 'boolean') {
+          button.setAttribute('aria-pressed', String(active));
+          button.classList.toggle('active', active);
+        }
+      });
+      document.getElementById('gululu-quick-immersive').addEventListener('click', (event) => {
+        this.setGululuQuickMenu(false, false);
+        ViewMenu.close(false);
+        if (window.GululuComments) GululuComments.closePanel();
+        if (window.GululuImmersive) {
+          GululuImmersive.togglePanel(event.currentTarget);
+        }
+      });
+      document.getElementById('gululu-quick-reveal-dice').addEventListener('click', () => {
+        if (window.GululuAssistantReader) GululuAssistantReader.revealNext10();
+      });
+      document.getElementById('gululu-quick-fullscreen').addEventListener('click', () => {
+        this.setGululuQuickMenu(false, false);
+        this.toggleImmersive();
+      });
+      document.getElementById('gululu-reset-assistant').addEventListener('click', () => {
+        this.setGululuQuickMenu(false, false);
+        if (!window.confirm('重置本书的骰点揭示和秘密线索？阅读进度与书签不会受影响。')) return;
+        if (window.GululuAssistantReader) GululuAssistantReader.resetBook();
+        if (window.GululuSecrets && GululuSecrets.resetBook) GululuSecrets.resetBook();
+        Toast.show('已重置本书阅读解锁');
       });
 
       window.addEventListener('beforeunload', () => Reader.saveProgress());
@@ -274,14 +389,27 @@
           }
         }
       });
+      document.addEventListener('keydown', (e) => {
+        const menu = document.getElementById('gululu-quick-menu');
+        if (e.key !== 'Escape' || !menu || menu.classList.contains('hidden')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.setGululuQuickMenu(false, true);
+      });
 
       document.addEventListener('click', (e) => {
         if (state.view !== 'reader') return;
         const vm = document.getElementById('view-menu');
         if (vm && !vm.classList.contains('hidden') &&
             !e.target.closest('#view-menu-btn') &&
+            !e.target.closest('#gululu-quick-settings') &&
             !e.target.closest('.view-menu')) {
           ViewMenu.close();
+        }
+        const quickMenu = document.getElementById('gululu-quick-menu');
+        if (quickMenu && !quickMenu.classList.contains('hidden') &&
+            !e.target.closest('#gululu-quick-shell')) {
+          this.setGululuQuickMenu(false, false);
         }
       });
     },

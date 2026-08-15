@@ -19,6 +19,8 @@ from app.gululu_epub import (
     parse_gululu_identifier,
     render_ast,
 )
+from app.gululu_epub_styles import GULULU_EPUB_CSS
+from app.gululu_assistant import prepare_assistant_nodes, prepare_reader_experience_nodes
 from app.gululu_immersive import prepare_immersive_floor, safe_https_url
 
 
@@ -290,8 +292,69 @@ class TestGululuAstRenderer(unittest.TestCase):
         self.assertIn("音乐链接不可用", rendered)
         self.assertNotIn("javascript:", rendered)
 
+    def test_dice_results_and_following_fog_are_stable_semantic_nodes(self):
+        nodes = [
+            {"type": "paragraph", "content": [
+                {"type": "text", "text": "判定：【1D20+4=18】大成功"},
+            ]},
+            {"type": "paragraph", "content": [
+                {"type": "text", "text": "只有揭示骰点后才能看到这里"},
+            ]},
+            {"type": "image", "attrs": {"src": "https://image.example/fog.webp"}},
+        ]
+
+        prepared = prepare_reader_experience_nodes(
+            prepare_assistant_nodes(nodes),
+            floor_id=962170,
+        )
+        rendered = render_ast(prepared)
+
+        self.assertIn('data-gululu-dice-group="962170-g-0"', rendered)
+        self.assertIn('class="gululu-dice-value"', rendered)
+        self.assertIn('class="gululu-dice-suffix"', rendered)
+        self.assertEqual(rendered.count('data-gululu-fog-lock="962170-g-0"'), 2)
+        self.assertIn("只有揭示骰点后才能看到这里", rendered)
+        self.assertNotIn("&lt;骰", rendered)
+
+    def test_assistant_text_quotes_resolve_same_book_and_cross_book_targets(self):
+        nodes = [
+            {"type": "paragraph", "content": [
+                {"type": "text", "text": '<引用 id="66905" floor="2">'},
+            ]},
+            {"type": "paragraph", "content": [{"type": "text", "text": "同书引用"}]},
+            {"type": "paragraph", "content": [{"type": "text", "text": "</引用>"}]},
+            {"type": "paragraph", "content": [{"type": "text", "text": (
+                '<引用 id="63299" floor="8">跨书引用</引用>'
+            )}]},
+        ]
+
+        prepared = prepare_reader_experience_nodes(
+            prepare_assistant_nodes(nodes),
+            floor_id=962170,
+        )
+        rendered = render_ast(
+            prepared,
+            jump_floor_resolver=lambda floor: f"chapter_0002.xhtml#floor-{floor}",
+            source_book_id=66905,
+        )
+
+        self.assertIn('href="chapter_0002.xhtml#floor-2"', rendered)
+        self.assertIn('href="https://www.gululu.world/book/63299?floorSort=8"', rendered)
+        self.assertIn("同书引用", rendered)
+        self.assertIn("跨书引用", rendered)
+        self.assertNotIn("&lt;引用", rendered)
+
 
 class TestBuildGululuEpub(unittest.TestCase):
+    def test_floor_cards_follow_nga_reader_geometry(self):
+        self.assertIn(
+            ".gululu-floor { border:1px solid #e0e0e0; border-left:4px solid #6f8d87;",
+            GULULU_EPUB_CSS,
+        )
+        self.assertIn("padding:12px 14px; margin:14px 0; border-radius:2px;", GULULU_EPUB_CSS)
+        self.assertIn("border-bottom:1px dotted #e0e0e0;", GULULU_EPUB_CSS)
+        self.assertIn(".floor-number { color:#6f8d87; font-weight:700; }", GULULU_EPUB_CSS)
+
     def test_none_image_mode_omits_images_without_fetching(self):
         floors = _fixture("floors.json")["data"]
         calls = []
