@@ -13,7 +13,7 @@
 - 当前开发基线：`main`；Windows 骨碌碌适配已通过 PR #13 以 rebase 方式并入主干
   （合并基线 `4b77ded`），包含全能助手、真实书 `63299` 排版/性能适配、图片三态与
   追加式增量热更新。精确提交与远端状态以 `git log` / `git status` 为准。
-- 版本线：Windows `v1.2.0`（已发布，AnkeShelf-v1.2.0.zip）；
+- 版本线：Windows `v1.3.0`（本轮正式发布，AnkeShelf-v1.3.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机基线沿用
   2026-08-14）：
@@ -51,6 +51,18 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-15 win/docs：Windows v1.3.0 正式发布
+
+- 版本：Windows 版本源、浏览器调试 MOCK、版本测试与现役文档由 v1.2.0 更新为
+  v1.3.0；Android 版本线与代码不变。
+- 内容：发布 PR #13 已并入主干的骨碌碌公开书籍导入、在线评论与含评论导出、全能助手
+  内容、沉浸效果、图片三态和追加式增量更新；同时包含分页裁剪与沉浸退出保位修复。
+- 本地门禁：系统 Python 3.14 为 280 项通过（4 跳），bundled Python 3.12 为 280 项
+  全过；前端 JS 语法、全部 Node 契约与 `reader-session` 通过，WebView2 UI harness
+  97 项通过。
+- 资产：正式包名 `AnkeShelf-v1.3.0.zip`；从同一版本提交的主干 CI 干净构建产物发布，
+  同步保留 release manifest 与 SHA-256 校验文件，不修改 Android 标签或发行资产。
 
 ### 2026-08-15 win/docs：PR #13 骨碌碌适配并入主干
 

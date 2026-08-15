@@ -72,7 +72,7 @@
     get_stats: async () => ({ book: {}, global: {} }),
     open_data_dir: async () => ({ ok: false, error: '浏览器调试模式' }),
     uninstall_and_quit: async () => ({ ok: false }),
-    get_version: async () => '1.2.0',
+    get_version: async () => '1.3.0',
     toggle_fullscreen: async () => ({ ok: false, error: '浏览器调试模式' }),
     on_frontend_ready: async () => undefined,
     log_frontend: async () => undefined,
