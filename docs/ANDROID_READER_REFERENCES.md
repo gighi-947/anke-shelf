@@ -1,5 +1,9 @@
 # 安卓阅读器参考项目调研（2026-08）
 
+> **状态（2026-08-16 核对）：调研与实施记录，非现役规范。** 其中分页落地
+> （reader-lite.js、双页判定、ReaderPagedCrossTest）已实现并保持现役；
+> 后续参考仓库研究见 [REFERENCE_MATRIX.md](REFERENCE_MATRIX.md)（P4）。
+
 ## 背景
 
 桌面端 AnkeShelf 的 EPUB 解析与阅读器参考了 **Readest**（`app/epub.py` 注释与

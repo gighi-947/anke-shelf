@@ -88,7 +88,7 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   （Windows / Android / CI / 文档），逐项核对后再提交。
 - **文档漂移检查**：任何涉及 HEAD / 版本线 / 测试基线 / CI 清单的改动，收尾时
   必须把非归档文档（DevLog「当前状态」、路线图基线、
-  README（重点核对版本表与系统要求）、VERSIONING、contracts README 等）
+  README（重点核对版本表与系统要求）、VERSIONING、contracts README、使用说明.txt、nga-post-template.bbcode 等）
   同步到仓库实际状态，并跑一次漂移扫描：用
   `git rev-parse HEAD`、最新测试计数、`.github/workflows/*.yml` 清单逐一对照
   文档声明；`docs/DEVLOG_ARCHIVE.md` 等归档只保留历史，不改写。

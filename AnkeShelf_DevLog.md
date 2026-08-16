@@ -54,6 +54,36 @@
 
 ## 4. 最近流水
 
+### 2026-08-16 docs：文档治理评估与整理（冗余/漂移清理）
+
+- 评估：4 组并行盘点 docs/ 与入口文档（入口治理 / 架构契约 / Android / 审查规划），
+  结论——文档分层总体健康（入口 / 现役规范 / 契约 / 日志三层 / 归档 / 审查记录），
+  无过度冗余；主要问题为事实多源重复（版本表 7 处、命令 5 处、纪律 4 处，当前一致）
+  与少量漂移。
+- 整理（外科手术式，仅动问题点）：
+  - `使用说明.txt`：版本 v1.2.0 → v1.3.1；第 40 行过时描述“暂不包含离线图片和
+    骨碌碌热更新”更新为图片三态 + 检查更新现状；
+  - `docs/DATA_CONTRACT.md` §7：加权威指针（原生书字段明细/不变量以
+    NATIVE_BOOK_FORMAT.md 为唯一权威，本节为摘要），消除字段级重复；
+  - `AGENTS.md` 文档漂移检查清单补 `使用说明.txt`、`nga-post-template.bbcode`
+    （此前未纳入，使用说明漂移即治理盲点所致）；
+  - `docs/ANDROID_UI_PLAN.md`、`docs/ANDROID_READER_REFERENCES.md`：补“状态”
+    标注（M4 已验收/调研记录，非现役规范），与其余历史文档状态纪律对齐。
+- 评估结论（不整理项）：ADR 五份为“为何决定”重申（职责不同，保留）；ARCHITECTURE
+  与 CODEBASE_MAP 粒度不同（保留）；REVIEW_ACTION_PLAN 与 ARCHITECTURE_ROADMAP
+  待办重复列项（建议后续以路线图 P0–P4 为主基线，整改计划改指针）；历史审查文档
+  按纪律保留不删。
+- 验证：纯文档改动，未跑构建；`git status` 见修改清单。
+
+### 2026-08-16 docs：落盘接手维护手册 + 修正 SECURITY.md 版本漂移
+
+- 处理：新增 `docs/MAINTENANCE_GUIDE.md`（接手维护者进场参考：双端架构、数据契约、
+  测试/CI 基线、构建发布流程、开发纪律、已知风险、维护任务速查）；修正
+  `SECURITY.md` 支持版本表 Windows 行 v1.2.0 → v1.3.1（Android 行不变，仍为
+  android-v1.0.0）。
+- 验证：纯文档改动，未跑构建；`git status` 仅 SECURITY.md 修改 + MAINTENANCE_GUIDE.md
+  新增（+ DevLog 本条）。
+
 ### 2026-08-15 win/docs：Windows v1.3.1 正式发布
 
 - 版本：Windows 版本源、前端调试 MOCK、版本测试与现役文档由 v1.3.0 更新为 v1.3.1；

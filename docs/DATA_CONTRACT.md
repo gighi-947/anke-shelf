@@ -129,6 +129,9 @@
 
 ## 7. 原生书容器（NGA 连载热更新格式）
 
+> 权威规范见 [NATIVE_BOOK_FORMAT.md](NATIVE_BOOK_FORMAT.md)——字段明细、核心
+> 不变量与迁移规则以该文档为唯一权威，本节仅为契约摘要。
+
 目录：`<帖子目录>/book/`，格式标识 `format = "ank-native/1"`。
 
 ### meta.json
