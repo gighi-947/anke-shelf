@@ -124,8 +124,9 @@ def render_ast(
             background_attr = background_attribute(attrs)
             return f'<figure class="gululu-image"{background_attr}>{image}</figure>'
         if node_type == "collapsibleBlock":
+            # 默认折叠（浏览器 <details> 未带 open 即收起），对齐站点行为
             return (
-                '<details class="gululu-fold" open="open">'
+                '<details class="gululu-fold">'
                 "<summary>折叠内容</summary>"
                 f'{render_children(node)}</details>'
             )

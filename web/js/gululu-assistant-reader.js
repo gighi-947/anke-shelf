@@ -132,7 +132,19 @@
     saveUnlocked();
     playDiceSound();
     applyState();
+    restoreReadingPosition();
     return changed;
+  }
+
+  /** 解锁/重置改变正文布局（迷雾块显隐）后，保持当前阅读文本位置。 */
+  function restoreReadingPosition() {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!state.doc) return;
+      if (window.Reader && Reader.currentOffset && Reader.seekToOffset) {
+        const off = Reader.currentOffset();
+        Reader.seekToOffset(off);
+      }
+    }));
   }
 
   function revealGroup(group, wholeFloor) {
@@ -152,6 +164,27 @@
     const groups = allGroups(state.doc).filter((group) => !state.unlocked.has(group)).slice(0, 10);
     const count = revealGroups(groups);
     Toast.show(count ? `已揭示 ${count} 组骰点` : '本章没有未揭示的骰点');
+    return count;
+  }
+
+  /** 解锁下一组未揭示的骰点。 */
+  function revealNextOne() {
+    if (!state.doc) return 0;
+    const groups = allGroups(state.doc).filter((group) => !state.unlocked.has(group));
+    if (!groups.length) {
+      Toast.show('本章骰点已全部解锁');
+      return 0;
+    }
+    revealGroups([groups[0]]);
+    return 1;
+  }
+
+  /** 一次性解锁当前章节全部骰点组。 */
+  function revealAll() {
+    if (!state.doc) return 0;
+    const groups = allGroups(state.doc).filter((group) => !state.unlocked.has(group));
+    const count = revealGroups(groups);
+    Toast.show(count ? `已解锁本章全部 ${count} 组骰点` : '本章骰点已全部解锁');
     return count;
   }
 
@@ -201,11 +234,32 @@
     if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
   }
 
-  function resetBook() {
+  /** 重置当前章节的骰点揭示（从解锁集合移除本章组）。 */
+  function resetChapterDice() {
+    if (!state.sourceId || !state.doc) return;
+    const chapterGroups = allGroups(state.doc);
+    let removed = 0;
+    chapterGroups.forEach((group) => {
+      if (state.unlocked.has(group)) { state.unlocked.delete(group); removed += 1; }
+    });
+    if (!removed) {
+      Toast.show('本章没有已解锁的骰点');
+      return;
+    }
+    saveUnlocked();
+    applyState();
+    restoreReadingPosition();
+    Toast.show(`已重置本章 ${removed} 组骰点揭示`);
+  }
+
+  /** 重置全书骰点揭示。 */
+  function resetAllDice() {
     if (!state.sourceId) return;
     try { localStorage.removeItem(unlockedKey()); } catch (error) { /* optional */ }
     state.unlocked = new Set();
     applyState();
+    restoreReadingPosition();
+    Toast.show('已重置全书骰点揭示');
   }
 
   function close() {
@@ -220,7 +274,10 @@
     onChapterLoaded,
     setPreferences,
     revealNext10,
-    resetBook,
+    revealNextOne,
+    revealAll,
+    resetChapterDice,
+    resetAllDice,
     close,
     snapshot: () => ({
       sourceId: state.sourceId,

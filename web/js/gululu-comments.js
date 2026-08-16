@@ -13,6 +13,7 @@
     selectedFloorId: null,
     displayMode: 'panel',
     returnFocus: null,
+    anchorOffset: null,
     danmaku: false,
     danmakuTimer: null,
     danmakuCursor: 0,
@@ -35,6 +36,7 @@
   function setBook(book) {
     state.sourceId = Number(book && book.gululu_source_id) || 0;
     state.panelOpen = false;
+    state.anchorOffset = null;
     state.danmaku = false;
     resetChapter();
     el('gululu-comments-btn').classList.add('hidden');
@@ -46,7 +48,6 @@
       quick.setAttribute('aria-expanded', 'false');
     }
     el('gululu-danmaku-toggle').checked = false;
-    el('gululu-comments-mode').value = state.displayMode;
   }
 
   function onChapterLoaded(doc) {
@@ -116,6 +117,30 @@
       .gululu-inline-comment-body { margin:.3em 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
       .gululu-inline-comment.child { margin-left:.8em; }
       .gululu-inline-comment-empty { margin:.65em 0; opacity:.66; }
+      /* 段落级评论徽标与正文高亮（均带 data-textpos-exclude，不进坐标） */
+      .gululu-paragraph-comment-badge {
+        display:inline-flex; align-items:center; justify-content:center;
+        min-width:1.45em; height:1.45em; margin-left:.45em; padding:0 .32em;
+        border:1px solid color-mix(in srgb, currentColor 26%, transparent);
+        border-radius:999px; background:transparent; color:inherit;
+        font:inherit; font-size:.72em; line-height:1; vertical-align:middle;
+        cursor:pointer;
+      }
+      .gululu-paragraph-comment-badge:hover,
+      .gululu-paragraph-comment-badge:focus-visible {
+        background:color-mix(in srgb, currentColor 10%, transparent);
+        outline:none;
+      }
+      .gululu-paragraph-highlight {
+        outline:2px solid var(--primary, currentColor); outline-offset:2px; border-radius:4px;
+      }
+      .gululu-inline-paragraph-group {
+        border-left:2px solid color-mix(in srgb, currentColor 22%, transparent);
+        margin:.55em 0 .2em; padding-left:.6em;
+      }
+      .gululu-inline-paragraph-group h5 {
+        margin:0 0 .25em; font-size:.82em; font-weight:600; opacity:.75;
+      }
     `;
     doc.head.appendChild(style);
     doc.querySelectorAll('.gululu-floor[id^="floor-"]').forEach((section) => {
@@ -216,6 +241,7 @@
       renderResponse(response);
       renderInlineComments();
       updateFloorButtons();
+      updateParagraphBadges();
       if (state.danmaku) startDanmaku();
     } catch (error) {
       if (token !== state.chapterToken) return;
@@ -230,9 +256,13 @@
     const list = el('gululu-comments-list');
     list.innerHTML = '';
     const floors = response && Array.isArray(response.floors) ? response.floors : [];
+    // 按章节楼层顺序排列（API 分批返回顺序不稳定）
+    const ordered = state.floorIds
+      .map((id) => floors.find((floor) => Number(floor.floor_id) === Number(id)))
+      .filter(Boolean);
     const shownFloors = state.selectedFloorId === null
-      ? floors
-      : floors.filter((floor) => Number(floor.floor_id) === state.selectedFloorId);
+      ? ordered
+      : ordered.filter((floor) => Number(floor.floor_id) === state.selectedFloorId);
     let total = 0;
     shownFloors.forEach((floor) => {
       const comments = Array.isArray(floor.comments) ? floor.comments : [];
@@ -252,8 +282,8 @@
   function renderFloor(floor, comments) {
     const section = document.createElement('section');
     section.className = 'gululu-comment-floor';
-    const heading = document.createElement('h3');
     const label = state.floorLabels.get(Number(floor.floor_id)) || `楼层 ${floor.floor_id}`;
+    const heading = document.createElement('h3');
     heading.textContent = `${label} · ${countComments(comments)}`;
     section.appendChild(heading);
     if (floor.error) {
@@ -269,8 +299,222 @@
       section.appendChild(empty);
       return section;
     }
-    comments.forEach((comment) => section.appendChild(renderComment(comment, false, document, false)));
+    const floorId = Number(floor.floor_id);
+    // 楼层内评论分组：段落评论（按正文段落先后次序）+ 楼层评论（无段落，置后）
+    const paragraphGroups = new Map();
+    const floorComments = [];
+    comments.forEach((comment) => {
+      if (comment.paragraph_id) {
+        let items = paragraphGroups.get(comment.paragraph_id);
+        if (!items) { items = []; paragraphGroups.set(comment.paragraph_id, items); }
+        items.push(comment);
+      } else {
+        floorComments.push(comment);
+      }
+    });
+    // 段落组按正文顺序排列（章节第一段在前）
+    const order = paragraphOrder(floorId);
+    const orderedParagraphIds = Array.from(paragraphGroups.keys())
+      .sort((a, b) => {
+        const ia = order.indexOf(String(a));
+        const ib = order.indexOf(String(b));
+        return (ia < 0 ? 9999 : ia) - (ib < 0 ? 9999 : ib);
+      });
+    orderedParagraphIds.forEach((paragraphId) => {
+      const items = (paragraphGroups.get(paragraphId) || [])
+        .slice()
+        .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))); // 新在前
+      const group = document.createElement('details');
+      group.className = 'gululu-comment-group gululu-comment-group-paragraph';
+      group.dataset.paragraphId = paragraphId;
+      const groupHead = document.createElement('summary');
+      groupHead.textContent = `段落 ${paragraphId} · ${countComments(items)}`;
+      group.appendChild(groupHead);
+      items.forEach((comment) => {
+        const article = renderComment(comment, false, document, false);
+        article.classList.add('gululu-paragraph-comment');
+        article.addEventListener('click', () => jumpToParagraph(floorId, paragraphId));
+        group.appendChild(article);
+      });
+      section.appendChild(group);
+    });
+    if (floorComments.length) {
+      const group = document.createElement('div');
+      group.className = 'gululu-comment-group gululu-comment-group-floor';
+      const groupHead = document.createElement('h4');
+      groupHead.textContent = `楼层评论 ${countComments(floorComments)}`;
+      group.appendChild(groupHead);
+      floorComments.forEach((comment) => group.appendChild(
+        renderComment(comment, false, document, false)
+      ));
+      section.appendChild(group);
+    }
     return section;
+  }
+
+  /** 楼层内段落 id 的正文先后次序（用于评论段落组排序）。 */
+  function paragraphOrder(floorId) {
+    const doc = state.chapterDocument;
+    if (!doc) return [];
+    const anchor = floorId === 0
+      ? (doc.querySelector('.book-meta') || doc.querySelector('.chapter-title'))
+      : doc.getElementById(`floor-${floorId}`);
+    if (!anchor) return [];
+    const order = [];
+    anchor.querySelectorAll('[data-paragraph-id]').forEach((p) => {
+      const id = p.dataset.paragraphId;
+      if (id && !order.includes(id)) order.push(id);
+    });
+    return order;
+  }
+
+  /** 为有段落评论的正文段落注入行内评论数徽标（data-textpos-exclude，不影响坐标）。 */
+  function updateParagraphBadges() {
+    const doc = state.chapterDocument;
+    if (!doc) return;
+    doc.querySelectorAll('.gululu-paragraph-comment-badge').forEach((node) => node.remove());
+    const floors = state.response && Array.isArray(state.response.floors)
+      ? state.response.floors : [];
+    floors.forEach((floor) => {
+      const floorId = Number(floor.floor_id);
+      const anchor = floorId === 0
+        ? (doc.querySelector('.book-meta') || doc.querySelector('.chapter-title'))
+        : doc.getElementById(`floor-${floorId}`);
+      if (!anchor) return;
+      const byParagraph = new Map();
+      (Array.isArray(floor.comments) ? floor.comments : []).forEach((comment) => {
+        if (!comment.paragraph_id) return;
+        byParagraph.set(
+          comment.paragraph_id,
+          (byParagraph.get(comment.paragraph_id) || 0) + countComments([comment])
+        );
+      });
+      if (!byParagraph.size) return;
+      anchor.querySelectorAll('[data-paragraph-id]').forEach((paragraph) => {
+        const paragraphId = paragraph.dataset.paragraphId;
+        const count = byParagraph.get(paragraphId);
+        if (!count) return;
+        // 只跳过迷雾未解锁（display:none）的段落；折叠 details 内段落
+        // 也挂徽标（展开后可见可点）。
+        if (paragraph.closest('.gululu-fog-block.gululu-fog-hidden')) return;
+        const badge = doc.createElement('button');
+        badge.type = 'button';
+        badge.className = 'gululu-paragraph-comment-badge';
+        badge.dataset.paragraphId = paragraphId;
+        badge.dataset.floorId = String(floorId);
+        badge.setAttribute('data-textpos-exclude', 'true');
+        badge.setAttribute('aria-label', `段落 ${paragraphId} 有 ${count} 条评论`);
+        badge.textContent = String(count);
+        badge.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openParagraphComments(floorId, paragraphId, badge);
+        });
+        paragraph.appendChild(badge);
+      });
+    });
+    scheduleReaderLayout();
+  }
+
+  /** 打开评论面板并聚焦指定段落的评论组，同时高亮正文段落与组内首条评论。 */
+  function openParagraphComments(floorId, paragraphId, returnFocus) {
+    state.selectedFloorId = floorId;
+    state.returnFocus = returnFocus || null;
+    togglePanel(true, true);
+    requestAnimationFrame(() => {
+      const group = document.querySelector(
+        `.gululu-comment-group-paragraph[data-paragraph-id="${CSS.escape(paragraphId)}"]`
+      );
+      if (group) {
+        // 展开该段落的评论组（默认折叠）
+        group.open = true;
+        // 显式滚动面板列表（scrollIntoView 会波及正文滚动容器导致位置跳变）
+        const list = el('gululu-comments-list');
+        if (list) {
+          list.scrollTop = Math.max(0, group.offsetTop - list.offsetTop - 8);
+        }
+        group.classList.add('gululu-comment-group-focus');
+        setTimeout(() => group.classList.remove('gululu-comment-group-focus'), 1600);
+        const first = group.querySelector('.gululu-paragraph-comment');
+        if (first) {
+          first.classList.add('gululu-comment-focus');
+          setTimeout(() => first.classList.remove('gululu-comment-focus'), 2200);
+        }
+      }
+      highlightParagraph(floorId, paragraphId);
+    });
+  }
+
+  /** 点击面板段落评论：跳转正文对应段落（保持阅读位置语义），并临时高亮。 */
+  function jumpToParagraph(floorId, paragraphId) {
+    const doc = state.chapterDocument;
+    if (!doc) return;
+    const anchor = floorId === 0
+      ? (doc.querySelector('.book-meta') || doc.querySelector('.chapter-title'))
+      : doc.getElementById(`floor-${floorId}`);
+    if (!anchor) return;
+    const target = anchor.querySelector(`[data-paragraph-id="${CSS.escape(paragraphId)}"]`);
+    if (!target) return;
+    // 目标段落不可见（迷雾/折叠隐藏）时退化为定位所在楼层开头
+    const locate = target.getClientRects().length ? target : anchor;
+    // 统一用 text_offset 定位（滚动模式 scrollIntoView 对 iframe 内容不可靠）。
+    // paragraphOffset 返回段落内第一个可见字符（跳过折叠空白），保证定位点有渲染盒子。
+    const offset = paragraphOffset(locate);
+    if (offset !== null && window.Reader && Reader.seekToOffset) {
+      Reader.seekToOffset(offset);
+    } else if (locate.scrollIntoView) {
+      locate.scrollIntoView({ block: 'start' });
+    }
+    highlightParagraph(floorId, paragraphId);
+  }
+
+  /** 段落元素起点 → text_offset（跳过前导折叠空白，保证定位点有渲染盒子）。 */
+  function paragraphOffset(paragraph) {
+    const ctx = window.App && App.state.textCtx;
+    if (!ctx || !window.TextPos || !TextPos.rangeToOffsets) return null;
+    const doc = paragraph.ownerDocument;
+    try {
+      const walker = doc.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT, {
+        acceptNode(n) {
+          let p = n.parentElement;
+          while (p) {
+            if (p.hasAttribute && p.hasAttribute('data-textpos-exclude')) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            p = p.parentElement;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      let node;
+      while ((node = walker.nextNode())) {
+        const firstChar = node.data.search(/\S/);
+        if (firstChar < 0) continue; // 纯空白文本节点无渲染盒子，跳过
+        const range = doc.createRange();
+        range.setStart(node, firstChar);
+        range.collapse(true);
+        const offsets = TextPos.rangeToOffsets(ctx, range);
+        return offsets ? offsets[0] : null;
+      }
+    } catch (error) { /* optional */ }
+    return null;
+  }
+
+  /** 高亮 iframe 内指定楼层的段落（临时 outline，不移动阅读位置）。 */
+  function highlightParagraph(floorId, paragraphId) {
+    const doc = state.chapterDocument;
+    if (!doc) return;
+    const anchor = floorId === 0
+      ? (doc.querySelector('.book-meta') || doc.querySelector('.chapter-title'))
+      : doc.getElementById(`floor-${floorId}`);
+    if (!anchor) return;
+    anchor.querySelectorAll('.gululu-paragraph-highlight').forEach((node) => {
+      node.classList.remove('gululu-paragraph-highlight');
+    });
+    const target = anchor.querySelector(`[data-paragraph-id="${CSS.escape(paragraphId)}"]`);
+    if (!target) return;
+    target.classList.add('gululu-paragraph-highlight');
+    setTimeout(() => target.classList.remove('gululu-paragraph-highlight'), 2000);
   }
 
   function renderComment(comment, child, ownerDocument, inline) {
@@ -320,9 +564,32 @@
       const list = doc.createElement('div');
       list.className = 'gululu-inline-comment-list';
       if (comments.length) {
-        comments.forEach((comment) => list.appendChild(
+        // 与面板一致：按段落分组渲染
+        const paragraphGroups = new Map();
+        const floorComments = [];
+        comments.forEach((comment) => {
+          if (comment.paragraph_id) {
+            let items = paragraphGroups.get(comment.paragraph_id);
+            if (!items) { items = []; paragraphGroups.set(comment.paragraph_id, items); }
+            items.push(comment);
+          } else {
+            floorComments.push(comment);
+          }
+        });
+        floorComments.forEach((comment) => list.appendChild(
           renderComment(comment, false, doc, true)
         ));
+        paragraphGroups.forEach((items, paragraphId) => {
+          const group = doc.createElement('div');
+          group.className = 'gululu-inline-paragraph-group';
+          const groupHead = doc.createElement('h5');
+          groupHead.textContent = `段落 ${paragraphId} · ${countComments(items)}`;
+          group.appendChild(groupHead);
+          items.forEach((comment) => group.appendChild(
+            renderComment(comment, false, doc, true)
+          ));
+          list.appendChild(group);
+        });
       } else {
         const empty = doc.createElement('p');
         empty.className = 'gululu-inline-comment-empty';
@@ -393,12 +660,39 @@
     }
   }
 
+  /** 评论抽屉展开/收起时正文让位（同层级），并在重排稳定后恢复阅读位置。 */
+  function setReaderShrink(open) {
+    const root = document.getElementById('reader-root');
+    if (!root) return;
+    const paged = !!(window.Paged && Paged.isActive());
+    if (window.__gululuDiag) console.log('[gululu] shrink', open, 'paged=' + paged, 'st0=' + document.getElementById('chapter-scroll').scrollTop);
+    // 分页模式：布局变化前冻结页首锚点，由 Paged.onResize 的 120ms 延迟
+    // 内部按锚点恢复（避免手动 seekToOffset 与 onResize 竞争导致漂移）。
+    if (paged && Paged.beginViewportResize) {
+      Paged.beginViewportResize(window.Reader ? Reader.currentOffset() : 0);
+    }
+    root.classList.toggle('gululu-comments-open', open);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (window.Reader && Reader.applyLayout) Reader.applyLayout();
+      requestAnimationFrame(() => {
+        if (paged) {
+          if (Paged.onResize) Paged.onResize();
+        }
+        // 滚动模式：正文宽度变化会重排（行变短），scrollTop 像素保持，
+        // 关闭抽屉后布局恢复、内容与采样完全一致，天然无累积漂移；
+        // 不做 offset 定位（采样点为列中线，与字符 x 不一致会逐次累积）。
+      });
+    }));
+  }
+
   function togglePanel(force, keepSelection, restoreFocus) {
     if (!state.sourceId) return;
     const wasOpen = state.panelOpen;
     state.panelOpen = typeof force === 'boolean' ? force : !state.panelOpen;
     if (state.panelOpen && !keepSelection) state.selectedFloorId = null;
     el('gululu-comments-panel').classList.toggle('hidden', !state.panelOpen);
+    // 只在面板开合状态实际变化时让位/重排；已开时再次打开（如徽标点击）不重复定位
+    if (wasOpen !== state.panelOpen) setReaderShrink(state.panelOpen);
     el('gululu-comments-btn').classList.toggle('active', state.panelOpen);
     const quick = el('gululu-quick-comments');
     if (quick) {
@@ -409,6 +703,7 @@
       if (window.App && App.setGululuQuickMenu) App.setGululuQuickMenu(false, false);
       if (window.ViewMenu) ViewMenu.close(false);
       if (window.GululuImmersive) GululuImmersive.closePanel();
+      if (window.GululuOverview) GululuOverview.closePanel();
     }
     if (state.panelOpen && state.response) renderResponse(state.response);
     if (state.panelOpen && !state.response) load(false);
@@ -420,16 +715,10 @@
   }
 
   function setDisplayMode(mode) {
-    if (mode !== 'panel' && mode !== 'inline') return;
-    state.displayMode = mode;
-    el('gululu-comments-mode').value = mode;
-    if (mode === 'inline') {
-      togglePanel(false);
-      if (state.response) renderInlineComments();
-      else if (state.floorIds.length) load(false);
-    } else {
-      renderInlineComments();
-    }
+    // 楼末折叠（inline）模式已移除：评论统一为侧边面板显示。
+    if (mode !== 'panel') return;
+    state.displayMode = 'panel';
+    renderInlineComments();
     updateFloorButtons();
     if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
   }
@@ -466,9 +755,6 @@
     });
     el('gululu-comments-close').addEventListener('click', () => togglePanel(false, false, true));
     el('gululu-comments-refresh').addEventListener('click', () => load(true));
-    el('gululu-comments-mode').addEventListener('change', (event) => {
-      setDisplayMode(event.target.value);
-    });
     el('gululu-danmaku-toggle').addEventListener('change', (event) => {
       setDanmaku(event.target.checked);
     });

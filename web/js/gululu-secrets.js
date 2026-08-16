@@ -149,20 +149,59 @@
     state.sourceId = 0;
   }
 
-  function resetBook() {
+  /** 重置当前章节的秘密线索（按本章秘密标题移除）。 */
+  function resetChapterSecrets() {
+    if (!state.sourceId) return;
+    const clues = loadClues();
+    const bookClues = clues[String(state.sourceId)];
+    if (!bookClues || typeof bookClues !== 'object') {
+      Toast.show('本书没有已保存的线索');
+      return;
+    }
+    const titles = new Set();
+    if (state.doc) {
+      state.doc.querySelectorAll('[data-gululu-secret-title]').forEach((node) => {
+        const t = String(node.dataset.gululuSecretTitle || '').trim();
+        if (t) titles.add(t);
+      });
+    }
+    let removed = 0;
+    titles.forEach((title) => {
+      if (Object.prototype.hasOwnProperty.call(bookClues, title)) {
+        delete bookClues[title];
+        removed += 1;
+      }
+    });
+    if (!removed) {
+      Toast.show('本章没有已保存的线索');
+      return;
+    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(clues)); } catch (error) {
+      Toast.show('无法重置秘密线索', true);
+      return;
+    }
+    closeModal();
+    Toast.show(`已重置本章 ${removed} 条线索`);
+  }
+
+  /** 重置全书秘密线索。 */
+  function resetAllSecrets() {
     if (!state.sourceId) return;
     const clues = loadClues();
     delete clues[String(state.sourceId)];
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(clues)); } catch (error) {
       Toast.show('无法重置秘密线索', true);
+      return;
     }
     closeModal();
+    Toast.show('已重置全书秘密线索');
   }
 
   window.GululuSecrets = {
     setBook,
     onChapterLoaded,
-    resetBook,
+    resetChapterSecrets,
+    resetAllSecrets,
     close,
     snapshot: () => ({
       sourceId: state.sourceId,

@@ -38,3 +38,6 @@ android/keystore.properties
 android/app/release/
 *.jks
 android/*.epub
+
+node_modules/
+

@@ -225,6 +225,7 @@
       if (window.GululuAssistantReader) GululuAssistantReader.close();
       if (window.GululuImmersive) GululuImmersive.close();
       if (window.GululuSecrets) GululuSecrets.close();
+      if (window.GululuOverview) GululuOverview.close();
       document.title = '安科书架';
     },
 
@@ -255,6 +256,7 @@
         if (window.GululuAssistantReader) GululuAssistantReader.setBook(data);
         if (window.GululuImmersive) GululuImmersive.setBook(data);
         if (window.GululuSecrets) GululuSecrets.setBook(data);
+        if (window.GululuOverview) GululuOverview.setBook(data);
         const p = data.progress || { chapter_index: 0, text_offset: 0 };
         await Reader.loadChapter(p.chapter_index, p.text_offset || 0);
       } catch (e) {
@@ -322,12 +324,14 @@
         this.setGululuQuickMenu(false, false);
         ViewMenu.close(false);
         if (window.GululuImmersive) GululuImmersive.closePanel();
+        if (window.GululuOverview) GululuOverview.closePanel();
         if (window.GululuComments) GululuComments.togglePanel(event.currentTarget);
       });
       document.getElementById('gululu-quick-settings').addEventListener('click', (event) => {
         this.setGululuQuickMenu(false, false);
         if (window.GululuComments) GululuComments.closePanel();
         if (window.GululuImmersive) GululuImmersive.closePanel();
+        if (window.GululuOverview) GululuOverview.closePanel();
         ViewMenu.toggle({ anchor: 'gululu', returnFocus: event.currentTarget });
       });
       document.getElementById('gululu-quick-more-toggle').addEventListener('click', () => {
@@ -342,8 +346,12 @@
       });
       document.getElementById('gululu-quick-toc').addEventListener('click', () => {
         this.setGululuQuickMenu(false, false);
-        Sidebar.switchTab('toc');
-        if (!Sidebar.isOpen()) Sidebar.toggle();
+        if (Sidebar.isOpen()) {
+          Sidebar.close();
+        } else {
+          Sidebar.switchTab('toc');
+          Sidebar.toggle();
+        }
       });
       document.getElementById('gululu-quick-bookmark').addEventListener('click', async (event) => {
         const button = event.currentTarget;
@@ -357,23 +365,65 @@
         this.setGululuQuickMenu(false, false);
         ViewMenu.close(false);
         if (window.GululuComments) GululuComments.closePanel();
+        if (window.GululuOverview) GululuOverview.closePanel();
         if (window.GululuImmersive) {
           GululuImmersive.togglePanel(event.currentTarget);
         }
       });
-      document.getElementById('gululu-quick-reveal-dice').addEventListener('click', () => {
-        if (window.GululuAssistantReader) GululuAssistantReader.revealNext10();
+      document.getElementById('gululu-quick-overview').addEventListener('click', (event) => {
+        this.setGululuQuickMenu(false, false);
+        ViewMenu.close(false);
+        if (window.GululuComments) GululuComments.closePanel();
+        if (window.GululuImmersive) GululuImmersive.closePanel();
+        if (window.GululuOverview) {
+          GululuOverview.togglePanel(event.currentTarget);
+        }
+      });
+      document.getElementById('gululu-quick-reveal-dice').addEventListener('click', (event) => {
+        const menu = document.getElementById('gululu-dice-menu');
+        const opening = menu.classList.contains('hidden');
+        this.setGululuQuickMenu(false, false);
+        if (window.GululuComments) GululuComments.closePanel();
+        if (window.GululuImmersive) GululuImmersive.closePanel();
+        if (window.GululuOverview) GululuOverview.closePanel();
+        ViewMenu.close(false);
+        menu.classList.toggle('hidden', !opening);
+        event.currentTarget.classList.toggle('active', opening);
+        event.currentTarget.setAttribute('aria-expanded', String(opening));
+      });
+      document.getElementById('gululu-dice-next').addEventListener('click', () => {
+        document.getElementById('gululu-dice-menu').classList.add('hidden');
+        document.getElementById('gululu-quick-reveal-dice').classList.remove('active');
+        if (window.GululuAssistantReader) GululuAssistantReader.revealNextOne();
+      });
+      document.getElementById('gululu-dice-all').addEventListener('click', () => {
+        document.getElementById('gululu-dice-menu').classList.add('hidden');
+        document.getElementById('gululu-quick-reveal-dice').classList.remove('active');
+        if (window.GululuAssistantReader) GululuAssistantReader.revealAll();
       });
       document.getElementById('gululu-quick-fullscreen').addEventListener('click', () => {
         this.setGululuQuickMenu(false, false);
         this.toggleImmersive();
       });
-      document.getElementById('gululu-reset-assistant').addEventListener('click', () => {
+      document.getElementById('gululu-reset-dice-chapter').addEventListener('click', () => {
         this.setGululuQuickMenu(false, false);
-        if (!window.confirm('重置本书的骰点揭示和秘密线索？阅读进度与书签不会受影响。')) return;
-        if (window.GululuAssistantReader) GululuAssistantReader.resetBook();
-        if (window.GululuSecrets && GululuSecrets.resetBook) GululuSecrets.resetBook();
-        Toast.show('已重置本书阅读解锁');
+        if (!window.confirm('重置本章的骰点揭示进度？阅读进度与书签不会受影响。')) return;
+        if (window.GululuAssistantReader) GululuAssistantReader.resetChapterDice();
+      });
+      document.getElementById('gululu-reset-dice-all').addEventListener('click', () => {
+        this.setGululuQuickMenu(false, false);
+        if (!window.confirm('重置本书全部骰点揭示进度？阅读进度与书签不会受影响。')) return;
+        if (window.GululuAssistantReader) GululuAssistantReader.resetAllDice();
+      });
+      document.getElementById('gululu-reset-secrets-chapter').addEventListener('click', () => {
+        this.setGululuQuickMenu(false, false);
+        if (!window.confirm('重置本章的秘密线索？阅读进度与书签不会受影响。')) return;
+        if (window.GululuSecrets) GululuSecrets.resetChapterSecrets();
+      });
+      document.getElementById('gululu-reset-secrets-all').addEventListener('click', () => {
+        this.setGululuQuickMenu(false, false);
+        if (!window.confirm('重置本书全部秘密线索？阅读进度与书签不会受影响。')) return;
+        if (window.GululuSecrets) GululuSecrets.resetAllSecrets();
       });
 
       window.addEventListener('beforeunload', () => Reader.saveProgress());

@@ -105,21 +105,6 @@
     theme.id = 'vm-gululu-theme';
     section.appendChild(row('主题', theme));
 
-    const mode = document.createElement('select');
-    mode.id = 'vm-gululu-comments-mode';
-    mode.className = 'vm-select';
-    [['panel', '侧边面板'], ['inline', '楼末折叠']].forEach(([value, label]) => {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = label;
-      mode.appendChild(option);
-    });
-    mode.addEventListener('change', () => {
-      if (window.GululuComments) GululuComments.setDisplayMode(mode.value);
-      sync();
-    });
-    section.appendChild(row('评论显示', mode));
-
     const danmaku = document.createElement('label');
     danmaku.className = 'gululu-switch vm-gululu-switch';
     const input = document.createElement('input');
@@ -354,8 +339,6 @@
       if (theme) theme.textContent = themeNames[currentTheme] || '跟随系统';
       const snapshot = window.GululuComments && GululuComments.snapshot
         ? GululuComments.snapshot() : null;
-      const mode = document.getElementById('vm-gululu-comments-mode');
-      if (mode && snapshot) mode.value = snapshot.displayMode;
       const danmaku = document.getElementById('vm-gululu-danmaku');
       if (danmaku && snapshot) danmaku.checked = snapshot.danmaku;
       const assistant = window.GululuAssistantReader && GululuAssistantReader.snapshot

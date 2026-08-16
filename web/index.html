@@ -209,6 +209,10 @@
       <div id="paragraph-mask" class="paragraph-mask hidden"></div>
       <div id="dual-gutter" class="dual-gutter"></div>
       <div id="gululu-danmaku-layer" class="gululu-danmaku-layer" aria-hidden="true"></div>
+      <div id="gululu-music-toast" class="gululu-music-toast hidden" role="status">
+        <svg class="icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-music"></use></svg>
+        <span id="gululu-music-toast-text">正在播放</span>
+      </div>
       <div id="reader-loading-mask" class="reader-loading-mask hidden" role="status" aria-live="polite">
         <span>加载中…</span>
       </div>
@@ -230,13 +234,6 @@
         </div>
       </header>
       <div class="gululu-comments-toolbar">
-        <label class="gululu-comments-mode-label" for="gululu-comments-mode">
-          <span>显示</span>
-          <select id="gululu-comments-mode" class="gululu-comments-mode">
-            <option value="panel">侧边面板</option>
-            <option value="inline">楼末折叠</option>
-          </select>
-        </label>
         <label class="gululu-switch">
           <input id="gululu-danmaku-toggle" type="checkbox">
           <span class="gululu-switch-track" aria-hidden="true"></span>
@@ -273,11 +270,36 @@
           <span>音乐音量</span>
           <input id="gululu-volume" type="range" min="0" max="100" step="5">
         </label>
+        <div class="gululu-music-progress-row">
+          <span>播放进度</span>
+          <input id="gululu-music-seek" type="range" min="0" max="1000" step="1" value="0" aria-label="音乐进度">
+        </div>
+        <button id="gululu-music-toggle" class="btn gululu-music-toggle" type="button">
+          <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-play"></use></svg>
+          <span>播放</span>
+        </button>
         <button id="gululu-stop-music" class="btn gululu-stop-music" type="button">
           <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-stop"></use></svg>
           <span>停止音乐</span>
         </button>
       </div>
+    </aside>
+
+    <aside id="gululu-overview-panel" class="gululu-overview-panel hidden" aria-label="沉浸内容总览">
+      <header class="gululu-comments-header">
+        <div>
+          <h2>沉浸内容总览</h2>
+          <p id="gululu-overview-status">本章音乐 / 背景 / 视效 / 阅读解锁</p>
+        </div>
+        <button id="gululu-overview-close" class="top-btn" title="关闭总览">
+          <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-close"></use></svg>
+        </button>
+      </header>
+      <div class="gululu-overview-tabs" role="tablist" aria-label="总览视图">
+        <button class="gululu-overview-tab active" type="button" role="tab" data-view="floor" aria-selected="true">按楼层</button>
+        <button class="gululu-overview-tab" type="button" role="tab" data-view="type" aria-selected="false">按类型</button>
+      </div>
+      <div id="gululu-overview-list" class="gululu-overview-list"></div>
     </aside>
 
     <div id="gululu-quick-shell" class="gululu-quick-shell hidden">
@@ -286,9 +308,21 @@
           <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-expand"></use></svg>
           <span>全屏</span>
         </button>
-        <button id="gululu-reset-assistant" class="gululu-quick-command" type="button" role="menuitem">
+        <button id="gululu-reset-dice-chapter" class="gululu-quick-command" type="button" role="menuitem">
+          <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-dice"></use></svg>
+          <span>重置本章骰点揭示</span>
+        </button>
+        <button id="gululu-reset-dice-all" class="gululu-quick-command" type="button" role="menuitem">
+          <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-dice"></use></svg>
+          <span>重置全书骰点揭示</span>
+        </button>
+        <button id="gululu-reset-secrets-chapter" class="gululu-quick-command" type="button" role="menuitem">
           <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-trash"></use></svg>
-          <span>重置阅读解锁</span>
+          <span>重置本章秘密线索</span>
+        </button>
+        <button id="gululu-reset-secrets-all" class="gululu-quick-command" type="button" role="menuitem">
+          <svg class="icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-trash"></use></svg>
+          <span>重置全书秘密线索</span>
         </button>
       </div>
       <nav id="gululu-quick-actions" class="gululu-quick-actions" aria-label="骨碌碌快捷操作">
@@ -304,9 +338,22 @@
         <button id="gululu-quick-immersive" class="gululu-quick-action" type="button" title="音乐与氛围" aria-label="音乐与氛围" aria-controls="gululu-immersive-panel" aria-expanded="false">
           <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-music"></use></svg>
         </button>
-        <button id="gululu-quick-reveal-dice" class="gululu-quick-action" type="button" title="揭示接下来的骰点" aria-label="揭示接下来的骰点">
+        <button id="gululu-quick-overview" class="gululu-quick-action" type="button" title="沉浸内容总览" aria-label="沉浸内容总览" aria-controls="gululu-overview-panel" aria-expanded="false">
+          <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-grid"></use></svg>
+        </button>
+        <button id="gululu-quick-reveal-dice" class="gululu-quick-action" type="button" title="骰点解锁" aria-label="骰点解锁" aria-controls="gululu-dice-menu" aria-expanded="false">
           <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-dice"></use></svg>
         </button>
+        <div id="gululu-dice-menu" class="gululu-dice-menu hidden" role="menu" aria-label="骰点解锁">
+          <button id="gululu-dice-next" class="gululu-quick-command" type="button" role="menuitem">
+            <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-dice"></use></svg>
+            <span>解锁下一组骰点</span>
+          </button>
+          <button id="gululu-dice-all" class="gululu-quick-command" type="button" role="menuitem">
+            <svg class="icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-dice"></use></svg>
+            <span>解锁本章全部骰点</span>
+          </button>
+        </div>
         <button id="gululu-quick-settings" class="gululu-quick-action" type="button" title="阅读设置" aria-label="阅读设置" aria-controls="view-menu" aria-expanded="false">
           <svg class="icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><use href="#i-gear"></use></svg>
         </button>
@@ -362,6 +409,7 @@
 <script src="/js/gululu-assistant-reader.js"></script>
 <script src="/js/gululu-immersive.js"></script>
 <script src="/js/gululu-secrets.js"></script>
+<script src="/js/gululu-overview.js"></script>
 <script src="/js/reader.js"></script>
 <script src="/js/reader-navigation.js"></script>
 <script src="/js/reader-help.js"></script>

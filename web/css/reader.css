@@ -233,26 +233,175 @@
   flex-direction: column;
   background: var(--base-200);
   border-left: 1px solid var(--border);
+  border-radius: 16px 0 0 16px;
   box-shadow: var(--shadow-lg);
   color: var(--base-content);
+}
+
+/* 评论抽屉展开时正文让位（与阅读界面同层级，不遮正文） */
+#reader-root.gululu-comments-open .chapter-scroll {
+  margin-right: min(380px, 88vw);
+  transition: margin-right 0.18s ease;
 }
 
 .gululu-immersive-panel {
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  right: 60px;
+  bottom: 50px;
   z-index: 45;
-  width: min(340px, 88vw);
+  width: min(280px, calc(100vw - 76px));
+  max-height: calc(100vh - 120px);
   display: flex;
   flex-direction: column;
   background: var(--base-200);
-  border-left: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px;
   box-shadow: var(--shadow-lg);
   color: var(--base-content);
+  overflow: hidden;
 }
 
 .gululu-immersive-controls { padding: 6px 14px 20px; }
+
+/* ---- 沉浸内容总览（气泡） ---- */
+.gululu-overview-panel {
+  position: absolute;
+  right: 60px;
+  bottom: 50px;
+  z-index: 46;
+  width: min(320px, calc(100vw - 76px));
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  background: var(--base-200);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  color: var(--base-content);
+  overflow: hidden;
+}
+.gululu-overview-list {
+  overflow-y: auto;
+  padding: 10px 14px 16px;
+}
+.gululu-overview-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px 0;
+  flex-shrink: 0;
+}
+.gululu-overview-tab {
+  padding: 5px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.gululu-overview-tab:hover { color: var(--base-content); }
+.gululu-overview-tab.active {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  color: var(--primary);
+}
+.gululu-overview-section { margin-top: 12px; }
+.gululu-overview-section > h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+.gululu-overview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin: 3px 0;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--base-content);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.gululu-overview-row:hover {
+  background: color-mix(in srgb, var(--base-300) 40%, transparent);
+}
+.gululu-overview-badge {
+  flex: 0 0 auto;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.gululu-overview-progress {
+  height: 6px;
+  margin: 6px 2px 4px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--base-300) 60%, transparent);
+  overflow: hidden;
+}
+.gululu-overview-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--primary);
+  transition: width 0.3s ease;
+}
+.gululu-overview-caption { margin: 4px 2px; font-size: 11px; opacity: 0.75; }
+.gululu-overview-empty { padding: 18px 4px; font-size: 12px; opacity: 0.7; text-align: center; }
+.gululu-overview-bg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+.gululu-overview-bg {
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--base-300) 30%, transparent);
+  cursor: pointer;
+}
+.gululu-overview-bg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gululu-overview-bg-thumb {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 6px;
+}
+.gululu-overview-target {
+  outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px;
+}
+.gululu-overview-active {
+  border-color: color-mix(in srgb, var(--primary) 60%, transparent);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
+}
+.gululu-overview-active-section > h4 { color: var(--primary); }
+.gululu-overview-unlock {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--primary) 50%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.gululu-overview-unlock:hover {
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+}
 .gululu-control-row,
 .gululu-volume-row {
   min-height: 48px;
@@ -263,10 +412,53 @@
   border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
+.gululu-music-progress-row {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.gululu-music-progress-row input {
+  flex: 1;
+  accent-color: var(--primary);
+}
+.gululu-music-toggle {
+  width: 100%;
+  margin-top: 10px;
+  justify-content: center;
+  gap: 7px;
+}
 .gululu-control-row:has(input:disabled) { color: var(--muted); }
 .gululu-volume-row { align-items: flex-start; flex-direction: column; padding: 12px 0; gap: 8px; }
 .gululu-volume-row input { width: 100%; accent-color: var(--primary); }
 .gululu-stop-music { width: 100%; margin-top: 14px; justify-content: center; gap: 7px; }
+
+.gululu-music-toast {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 49;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(420px, 80vw);
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--base-200) 92%, transparent);
+  box-shadow: var(--shadow-md);
+  color: var(--base-content);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.gululu-music-toast.hidden { display: none; }
 
 /* ---- 骨碌碌专版快捷操作 ---- */
 .gululu-quick-shell {
@@ -330,8 +522,55 @@
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: 8px;
+  background: var(--base-100);  box-shadow: var(--shadow-lg);
+}
+
+/* 骰点解锁气泡（对齐 quick-menu 外观，锚定 reveal-dice 按钮左侧） */
+.gululu-dice-menu {
+  position: absolute;
+  right: 48px;
+  bottom: 234px;
+  width: 176px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   background: var(--base-100);
   box-shadow: var(--shadow-lg);
+}
+.gululu-dice-menu.hidden { display: none; }
+
+/* 悬浮气泡弹出动效（immersive / overview / dice / 更多菜单 / 设置面板） */
+@keyframes gululu-pop-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.gululu-immersive-panel:not(.hidden),
+.gululu-overview-panel:not(.hidden),
+.gululu-comments-panel:not(.hidden),
+.gululu-dice-menu:not(.hidden),
+.gululu-quick-menu:not(.hidden),
+.view-menu:not(.hidden) {
+  animation: gululu-pop-in 180ms ease-out;
+}
+
+/* 悬浮按钮按压反馈 */
+.gululu-quick-action {
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s ease;
+}
+.gululu-quick-action:active {
+  transform: scale(0.94);
+}
+
+/* 图片加载完成淡入（避免生硬闪现） */
+@keyframes gululu-img-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.chapter-frame img.gululu-img-loaded {
+  animation: gululu-img-fade 0.3s ease-out;
 }
 
 .gululu-quick-command {
@@ -498,6 +737,43 @@
 }
 
 .gululu-comment-warning { color: var(--warning); }
+
+/* 段落级评论分组（宿主层面板） */
+.gululu-comment-group { margin-top: 0.7em; }
+.gululu-comment-group > h4,
+.gululu-comment-group > summary {
+  margin: 0 0 0.35em;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+.gululu-comment-group > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.gululu-comment-group > summary::-webkit-details-marker { display: none; }
+.gululu-comment-group > summary::before {
+  content: '▸';
+  display: inline-block;
+  width: 1.1em;
+  opacity: 0.6;
+}
+.gululu-comment-group[open] > summary::before { content: '▾'; }
+.gululu-comment-group-paragraph {
+  border-left: 2px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  padding-left: 0.6em;
+}
+.gululu-comment-group-focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.gululu-paragraph-comment { cursor: pointer; }
+.gululu-comment-focus {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 55%, transparent);
+}
 
 .gululu-online-comment {
   padding: 10px 0;
@@ -1076,7 +1352,22 @@
 
 @media (max-width: 520px) {
   .gululu-comments-panel { width: 100%; }
-  .gululu-immersive-panel { width: 100%; }
+  .gululu-immersive-panel {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 82vh;
+    border-radius: 12px 12px 0 0;
+  }
+  .gululu-overview-panel {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 82vh;
+    border-radius: 12px 12px 0 0;
+  }
+  /* 窄屏面板全宽覆盖，正文不让位 */
+  #reader-root.gululu-comments-open .chapter-scroll { margin-right: 0; }
   .gululu-quick-shell { right: 8px; bottom: 46px; }
   .view-menu.gululu-quick-anchor {
     right: 56px;

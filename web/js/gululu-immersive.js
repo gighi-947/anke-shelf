@@ -69,12 +69,73 @@
     if (state.audioCue) state.audioCue.classList.add('playing');
   }
 
+  /** 当前播放音乐的楼层标签（如“第3楼”），用于顶栏气泡与控件。 */
+  function floorLabel(cue) {
+    const floor = cue && cue.closest ? cue.closest('.gululu-floor') : null;
+    const num = floor && floor.querySelector('.floor-number');
+    return (num && num.textContent.trim()) || '';
+  }
+
+  function showMusicToast(title, label) {
+    const toast = el('gululu-music-toast');
+    const text = el('gululu-music-toast-text');
+    if (!toast || !text) return;
+    text.textContent = label ? `${title} · ${label}` : title;
+    toast.classList.remove('hidden');
+  }
+
+  function hideMusicToast() {
+    const toast = el('gululu-music-toast');
+    if (toast) toast.classList.add('hidden');
+  }
+
+  function syncMusicControls() {
+    const toggle = el('gululu-music-toggle');
+    const seek = el('gululu-music-seek');
+    const audio = state.audio;
+    if (toggle) {
+      const paused = !audio || audio.paused;
+      const icon = toggle.querySelector('use');
+      const span = toggle.querySelector('span');
+      if (icon) icon.setAttribute('href', paused ? '#i-play' : '#i-pause');
+      if (span) span.textContent = paused ? '播放' : '暂停';
+    }
+    if (seek && audio && Number.isFinite(audio.duration) && audio.duration > 0) {
+      seek.value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+    }
+  }
+
+  function toggleMusic() {
+    const audio = state.audio;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.volume = state.prefs.volume;
+      audio.play().catch(() => { /* optional */ });
+    } else {
+      audio.pause();
+    }
+    syncMusicControls();
+  }
+
+  function onMusicSeek() {
+    const audio = state.audio;
+    const seek = el('gululu-music-seek');
+    if (!audio || !seek) return;
+    const value = Number(seek.value);
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      audio.currentTime = (value / 1000) * audio.duration;
+    }
+  }
+
   function stopMusic(options) {
     const settings = options || {};
+    if (window.__gululuDiag) console.log('[gululu] stopMusic', settings.silent ? 'silent' : 'user', settings.immediate ? 'immediate' : '');
     const audio = state.audio;
     state.audioGeneration += 1;
     state.audio = null;
     updatePlayingCue(null);
+    hideMusicToast();
+    syncMusicControls();
     if (audio) {
       const start = Number(audio.volume) || 0;
       const startedAt = performance.now();
@@ -94,12 +155,15 @@
     const url = safeHttpsUrl(cue && cue.dataset.gululuMusicUrl);
     const titleNode = cue && cue.querySelector('.gululu-music-title');
     const title = (titleNode && titleNode.textContent.trim()) || 'BGM';
+    if (window.__gululuDiag) console.log('[gululu] playMusic', automatic ? 'auto' : 'manual', title, 'url=' + url);
     if (!url) {
       setStatus('音乐链接不可用', true);
       return;
     }
     if (state.audio && state.audioCue === cue) {
-      stopMusic();
+      // 同曲切停只对手动点击生效；自动播放（scanChapter 轮询）遇到
+      // 同 cue 已在播放时应直接跳过，避免 250ms 轮询把手动播放杀掉。
+      if (!automatic) stopMusic();
       return;
     }
     stopMusic({ silent: true });
@@ -108,9 +172,12 @@
     audio.loop = true;
     audio.preload = 'none';
     audio.volume = 0;
+    if (audio.addEventListener) audio.addEventListener('timeupdate', syncMusicControls);
     state.audio = audio;
     updatePlayingCue(cue);
     setStatus(`${automatic ? '自动音乐' : '正在播放'}：${title}`);
+    showMusicToast(title, floorLabel(cue));
+    syncMusicControls();
     if (audio.addEventListener) {
       audio.addEventListener('error', () => {
         if (state.audio !== audio || generation !== state.audioGeneration) return;
@@ -232,7 +299,13 @@
     const image = new Image();
     image.onload = () => {
       if (generation !== state.backgroundGeneration) return;
+      // 切图淡入：先透明（强制 reflow 确保生效），换图后恢复（触发 800ms transition）
       layer.style.backgroundImage = `url(${JSON.stringify(enabledUrl)})`;
+      layer.style.opacity = '0';
+      void layer.offsetWidth; // 强制同步布局，避免 opacity 0 未生效就恢复
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (generation === state.backgroundGeneration) layer.style.opacity = '';
+      }));
       root.classList.add('gululu-background-active');
     };
     image.onerror = () => {
@@ -410,6 +483,7 @@
       if (window.App && App.setGululuQuickMenu) App.setGululuQuickMenu(false, false);
       if (window.ViewMenu) ViewMenu.close(false);
       if (window.GululuComments && GululuComments.closePanel) GululuComments.closePanel();
+      if (window.GululuOverview && GululuOverview.closePanel) GululuOverview.closePanel();
     }
     if (wasOpen && !state.panelOpen && restoreFocus && state.returnFocus) {
       state.returnFocus.focus();
@@ -436,6 +510,8 @@
     });
     el('gululu-immersive-close').addEventListener('click', () => closePanel(true));
     el('gululu-stop-music').addEventListener('click', () => stopMusic());
+    el('gululu-music-toggle').addEventListener('click', () => toggleMusic());
+    el('gululu-music-seek').addEventListener('input', onMusicSeek);
     el('gululu-auto-music-toggle').addEventListener('change', (event) => {
       state.prefs.autoMusic = event.target.checked;
       savePreferences();
@@ -479,14 +555,20 @@
       applyBackground('');
       stopVfx();
     },
-    snapshot: () => ({
-      sourceId: state.sourceId,
-      panelOpen: state.panelOpen,
-      playing: !!state.audio,
-      backgroundUrl: state.backgroundUrl,
-      effect: state.effect,
-      reducedMotion: state.reducedMotion.matches,
-      prefs: { ...state.prefs },
-    }),
+    snapshot: () => {
+      const cue = state.audioCue;
+      const titleNode = cue && cue.querySelector ? cue.querySelector('.gululu-music-title') : null;
+      return {
+        sourceId: state.sourceId,
+        panelOpen: state.panelOpen,
+        playing: !!state.audio,
+        backgroundUrl: state.backgroundUrl,
+        effect: state.effect,
+        reducedMotion: state.reducedMotion.matches,
+        prefs: { ...state.prefs },
+        musicTitle: (titleNode && titleNode.textContent.trim()) || '',
+        musicFloor: cue ? floorLabel(cue) : '',
+      };
+    },
   };
 })();

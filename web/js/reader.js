@@ -178,17 +178,40 @@
     }
   }
 
+  /** 视口采样/坐标可能落在空白文本节点（无渲染盒子，rect=0 会把位置拉回开头）。
+   * 用 textCtx.ranges 顺序向后找第一个非空白文本位置。 */
+  function skipBlankPoint(ctx, point) {
+    let node = point.node;
+    let ci = point.charIndex;
+    const isBlank = (n, c) => n.nodeType === Node.TEXT_NODE && n.data.slice(c).trim() === '';
+    let guard = 0;
+    while (isBlank(node, ci) && guard++ < 60) {
+      const idx = ctx.ranges.findIndex((r) => r.node === node);
+      if (idx === -1 || idx + 1 >= ctx.ranges.length) break;
+      const next = ctx.ranges[idx + 1];
+      node = next.node;
+      ci = 0;
+    }
+    return { node, charIndex: ci };
+  }
+
   function restoreOffset(offset, doc) {
     const ctx = App.state.textCtx;
     const el = scroller();
     if (!ctx) { el.scrollTop = 0; return; }
     const point = TextPos.plainToPoint(ctx, offset);
     if (!point) { el.scrollTop = 0; return; }
+    const anchor = skipBlankPoint(ctx, point);
     const range = doc.createRange();
-    range.setStart(point.node, point.charIndex);
+    range.setStart(anchor.node, anchor.charIndex);
     range.collapse(true);
     const rect = range.getBoundingClientRect();
-    el.scrollTop = Math.max(0, rect.top);
+    // 同 seekToOffset：rect.top 为 iframe 内容坐标，需加 frameTop 换算宿主位置。
+    // 定位到视口 8px（滚动采样点 y=scrollTop+8），保证恢复后采样与定位一致、
+    // 不产生逐次累积漂移。
+    const frame = frameEl();
+    const frameTop = frame ? frame.getBoundingClientRect().top : 0;
+    el.scrollTop = Math.max(0, rect.top + frameTop + el.scrollTop - 8);
   }
 
   function waitForLayoutReady(doc, paged) {
@@ -336,7 +359,10 @@
             });
           };
           doc.querySelectorAll('img').forEach((img) => {
-            img.addEventListener('load', onImgChange);
+            img.addEventListener('load', () => {
+              img.classList.add('gululu-img-loaded');
+              onImgChange();
+            });
           });
           // 文档级委托：任何图片（含后加载的）加载失败都收起占位，避免大段空白。
           doc.addEventListener('error', (e) => {
@@ -365,6 +391,7 @@
             if (window.GululuAssistantReader) GululuAssistantReader.onChapterLoaded(doc);
             if (window.GululuImmersive) GululuImmersive.onChapterLoaded(doc);
             if (window.GululuSecrets) GululuSecrets.onChapterLoaded(doc);
+            if (window.GululuOverview) GululuOverview.onChapterLoaded(doc);
             if (window.App && App.syncGululuBookmark) App.syncGululuBookmark();
             this.updateProgressUI();
             resolve();
@@ -426,22 +453,30 @@
       } else {
         const point = TextPos.plainToPoint(ctx, offset);
         if (point) {
+          const anchor = skipBlankPoint(ctx, point);
           const range = doc.createRange();
-          range.setStart(point.node, point.charIndex);
+          range.setStart(anchor.node, anchor.charIndex);
           range.collapse(true);
           const rect = range.getBoundingClientRect();
-          scroller().scrollTop = Math.max(0, rect.top);
+          const scrollerEl = scroller();
+          const frame = frameEl();
+          const frameTop = frame ? frame.getBoundingClientRect().top : 0;
+          if (window.__gululuDiag) console.log('[gululu] seek offset=' + offset, 'rectTop=' + rect.top, 'frameTop=' + frameTop, 'stBefore=' + scrollerEl.scrollTop, 'node=' + (anchor.node.data ? JSON.stringify(anchor.node.data.slice(0, 16)) : anchor.node.nodeName));
+          // 定位到视口 8px（滚动采样点），保证恢复后采样与定位一致、无累积漂移
+          scrollerEl.scrollTop = Math.max(0, rect.top + frameTop + scrollerEl.scrollTop - 8);
         }
       }
-      this.saveProgress();
+      this.saveProgress(offset);
       this.updateProgressUI();
       window.dispatchEvent(new Event('reader-updated'));
     },
 
-    saveProgress() {
+    saveProgress(preciseOffset) {
       if (!App.state.bookId || App.state.view !== 'reader' || App.state.chapterIndex < 0) return;
       const session = this.ensureSession();
-      const off = this.currentOffset();
+      // 定位类操作（搜索跳转 / 评论跳转 / 抽屉保位）传入目标 offset，
+      // 避免滚动/重排未稳定时重新采样视口中线造成进度乱跳。
+      const off = typeof preciseOffset === 'number' ? preciseOffset : this.currentOffset();
       session.setPosition(off);
       Api.saveProgress( App.state.bookId, session.chapterIndex, off);
       session.markSaved();
@@ -596,6 +631,9 @@
       const wrap = document.querySelector('.chapter-wrap');
       if (wrap && !Paged.isActive()) {
         wrap.style.maxWidth = (46 * (App.state.settings.page_width || 1)) + 'em';
+        // 滚动模式：内容高度变化（徽标/评论/折叠注入）后重算 iframe 高度，
+        // 否则底部内容被裁剪，滚动到底出现大段空白。
+        syncHeight();
       }
     },
 
