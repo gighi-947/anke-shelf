@@ -1,3 +1,3 @@
-# 安科书架（AnkeShelf）Python 后端包
+﻿# 安科书架（AnkeShelf）Python 后端包
 
-__version__ = "1.3.1"
+__version__ = "1.4.0"

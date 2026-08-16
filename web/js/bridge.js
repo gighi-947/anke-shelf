@@ -1,4 +1,4 @@
-/**
+﻿/**
  * HTTP API 桥接封装（前后端分离版）。
  * - 运行时通过 fetch 调用本地 /api/<name>，业务不再依赖 pywebview js_api
  * - 每次启动随机生成令牌，从 URL query 读取（?token=...），落 sessionStorage
@@ -72,7 +72,7 @@
     get_stats: async () => ({ book: {}, global: {} }),
     open_data_dir: async () => ({ ok: false, error: '浏览器调试模式' }),
     uninstall_and_quit: async () => ({ ok: false }),
-    get_version: async () => '1.3.1',
+    get_version: async () => '1.4.0',
     toggle_fullscreen: async () => ({ ok: false, error: '浏览器调试模式' }),
     on_frontend_ready: async () => undefined,
     log_frontend: async () => undefined,

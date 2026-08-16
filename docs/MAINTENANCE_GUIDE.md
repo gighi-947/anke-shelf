@@ -1,4 +1,4 @@
-# AnkeShelf 接手维护手册（Maintenance Guide）
+﻿# AnkeShelf 接手维护手册（Maintenance Guide）
 
 > 文档日期：2026-08-16
 > 用途：接手维护者进场参考。**开发规则以 [AGENTS.md](../AGENTS.md) 为最高优先级**，
@@ -14,7 +14,7 @@ EPUB / 原生书 → 还原安科排版 → 舒适阅读与追更。GNU AGPL-3.0
 
 | 端 | 当前版本 | 技术栈 | 版本源位置 |
 | --- | --- | --- | --- |
-| Windows | **v1.3.1** | Python + Web SPA + pywebview 壳 | 多文件散落（`app/__init__.py`、bridge MOCK、版本测试、README 等，升级按清单全量替换） |
+| Windows | **v1.4.0** | Python + Web SPA + pywebview 壳 | 多文件散落（`app/__init__.py`、bridge MOCK、版本测试、README 等，升级按清单全量替换） |
 | Android | **android-v1.0.0** | Kotlin + Compose + WebView 渲染内核 | **唯一定义**：`android/app/build.gradle.kts` |
 
 - 版本线分离：Windows `vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；Android `android-vX.Y.Z` +
@@ -176,8 +176,8 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 ## 10. 当前状态（2026-08-16 快照）
 
 - 基线 `main`（HEAD 以 `git log` 为准）；`win/gululu-reader-interaction` 已并入主干；
-  最近主线为骨碌碌适配（v1.3.0 / v1.3.1）。
-- 版本线：Windows v1.3.1、Android android-v1.0.0，均已发布。
+  最近主线为骨碌碌适配（v1.3.0 / v1.4.0）。
+- 版本线：Windows v1.4.0、Android android-v1.0.0，均已发布。
 - 待办与延后项见 DevLog §5 与 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
   （P3 收尾、P4 参考仓库 3/8 待补：readest / Kavita / LibreraReader，需求触发）。
 

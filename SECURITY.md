@@ -1,10 +1,10 @@
-# 安全策略（Security Policy）
+﻿# 安全策略（Security Policy）
 
 ## 支持版本
 
 | 版本 | 平台 | 状态 |
 | --- | --- | --- |
-| v1.3.1 | Windows | 受支持 |
+| v1.4.0 | Windows | 受支持 |
 | android-v1.0.0 | Android | 受支持 |
 
 ## 报告漏洞

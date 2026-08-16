@@ -1,4 +1,4 @@
-# AnkeShelf 架构整合路线图（下阶段任务参考）
+﻿# AnkeShelf 架构整合路线图（下阶段任务参考）
 
 > 文档日期：2026-08-12（2026-08-15 状态核对）
 > 分析基线：`main` / `1ea4c95`（分析时点）；2026-08-13 核对：HEAD 已推进至
@@ -11,7 +11,7 @@
 > Android CI bundle 路径守卫与 API 契约启动失败诊断；2026-08-15 Windows 骨碌碌
 > 适配经 PR #13 以 rebase 方式并入主干，合并基线为 `4b77ded`。
 > 各节“状态”注明进度。
-> 当前版本：Windows v1.3.1，Android android-v1.0.0
+> 当前版本：Windows v1.4.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
 > - `I:\AnkeShelf_Review_Archive\AnkeShelf_Architecture_Improvement_Proposal.md`（架构改进提案）
 > - `I:\AnkeShelf_Review_Archive\review1.md`（外部工程评审）
