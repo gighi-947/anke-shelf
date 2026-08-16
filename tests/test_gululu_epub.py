@@ -211,7 +211,7 @@ class TestGululuAstRenderer(unittest.TestCase):
             html,
         )
         self.assertIn("<h3><em>幕间</em></h3>", html)
-        self.assertIn('<details class="gululu-fold" open="open">', html)
+        self.assertIn('<details class="gululu-fold">', html)
         self.assertIn("<del>折叠内容</del>", html)
 
     def test_unknown_node_gets_visible_placeholder_or_strict_error(self):

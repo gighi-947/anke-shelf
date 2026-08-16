@@ -42,7 +42,7 @@ async function openBook(page) {
   await page.evaluate(() => Shelf.render());
   await page.locator('#book-grid .book-card').first().waitFor();
   const gululuBadge = page.locator('.book-card .gululu-badge');
-  assert(await gululuBadge.count() === 1, '骨碌碌书籍封面缺少来源标签');
+  assert(await gululuBadge.count() >= 1, '骨碌碌书籍封面缺少来源标签');
   assert((await gululuBadge.first().textContent()).trim() === '骨碌碌', '骨碌碌来源标签文字错误');
   await page.evaluate(async () => {
     const books = await Api.getShelf();
@@ -116,9 +116,14 @@ async function inspectDesktop(browser) {
   await diceValue.click();
   assert(await diceValue.evaluate((node) => node.classList.contains('revealed')), '点击后骰点没有揭示');
   assert(!(await fogBlock.evaluate((node) => node.classList.contains('gululu-fog-hidden'))), '揭示骰点后迷雾没有解除');
+  // 一级骰点入口 → 气泡菜单（下一组 / 本章全部）
   await page.locator('#gululu-quick-reveal-dice').click();
-  assert(await diceValues.nth(1).evaluate((node) => node.classList.contains('revealed')),
-    '一级骰点入口没有揭示接下来的骰点');
+  assert(await page.locator('#gululu-dice-menu').isVisible(), '一级骰点入口未弹出解锁气泡');
+  assert(await page.locator('#gululu-dice-next').count() === 1
+    && await page.locator('#gululu-dice-all').count() === 1, '骰点解锁气泡缺少选项');
+  await page.locator('#gululu-dice-all').click();
+  assert(await diceValues.evaluateAll((nodes) => Array.from(nodes).every((n) => n.classList.contains('revealed'))),
+    '解锁本章全部没有揭示所有骰点');
   const chapterTextAfterDice = await page.evaluate(() => TextPos.build(
     document.querySelector('#chapter-frame').contentDocument
   ).text);
@@ -150,7 +155,6 @@ async function inspectDesktop(browser) {
   assert(await page.locator('#view-menu').evaluate((menu) => menu.classList.contains('gululu-quick-anchor')),
     '浮动排版面板没有锚定右下角快捷入口');
   assert(await page.locator('#vm-gululu-settings').isVisible(), '浮动排版面板缺少骨碌碌集中配置');
-  assert(await page.locator('#vm-gululu-comments-mode').count() === 1, '集中配置缺少评论显示方式');
   assert(await page.locator('#vm-gululu-danmaku').count() === 1, '集中配置缺少弹幕开关');
 
   await page.locator('#gululu-quick-comments').click();
@@ -210,12 +214,66 @@ async function inspectDesktop(browser) {
   const afterImmersive = await page.evaluate(() => App.state.textCtx.text.length);
   assert(before === afterImmersive, `沉浸效果改变正文坐标：${before} -> ${afterImmersive}`);
 
+  // 沉浸内容总览：双视图切换 + 分类区块 + 条目跳转
+  await page.locator('#gululu-quick-overview').click();
+  await page.locator('.gululu-overview-section').first().waitFor();
+  assert(await page.locator('.gululu-overview-tab').count() === 2, '总览缺少双视图切换');
+  await page.locator('.gululu-overview-tab[data-view="type"]').click();
+  await page.locator('.gululu-overview-section', { hasText: '阅读解锁' }).waitFor();
+  const overviewSections = await page.locator('.gululu-overview-section').count();
+  assert(overviewSections >= 3, `总览分类区块不足：${overviewSections}`);
+  // 音乐条目应显示歌名而非 URL
+  const musicSectionText = await page.locator('.gululu-overview-section', { hasText: '音乐' }).first().textContent();
+  assert(!musicSectionText.includes('.mp3') && !musicSectionText.includes('https'),
+    `音乐条目未显示歌名：${musicSectionText.slice(0, 100)}`);
+  await page.locator('.gululu-overview-row').first().click();
+  await page.frameLocator('#chapter-frame').locator('.gululu-overview-target').first().waitFor();
+  await page.locator('#gululu-overview-close').click();
+  assert(!(await page.locator('#gululu-overview-panel').isVisible()), '总览面板未关闭');
+
+  // 评论抽屉开合（正文让位重排）回到原布局后阅读位置不变（进度保持铁律）
+  const posBeforeDrawer = await page.evaluate(() => Reader.currentOffset());
+  await page.locator('#gululu-quick-comments').click();
+  await page.locator('.gululu-online-comment').first().waitFor();
+  await page.locator('#gululu-comments-close').click();
+  await page.waitForTimeout(600);
+  const posAfterDrawer = await page.evaluate(() => Reader.currentOffset());
+  assert(Math.abs(posAfterDrawer - posBeforeDrawer) <= 4,
+    `评论抽屉开合改变阅读位置：${posBeforeDrawer} -> ${posAfterDrawer}`);
+
   await page.locator('#gululu-quick-comments').click();
   await page.locator('.gululu-online-comment').first().waitFor();
   const comments = await page.locator('.gululu-online-comment').count();
   const after = await page.evaluate(() => App.state.textCtx.text.length);
   assert(comments >= 3, `在线评论数量不足：${comments}`);
   assert(before === after, `评论面板改变正文坐标：${before} -> ${after}`);
+
+  // 段落级评论：正文徽标 + 面板段落分组 + 联动高亮
+  const paraFrame = page.frameLocator('#chapter-frame');
+  await paraFrame.locator('.gululu-paragraph-comment-badge').first().waitFor();
+  const badgeCount = await paraFrame.locator('.gululu-paragraph-comment-badge').count();
+  assert(badgeCount >= 1, `正文缺少段落评论徽标：${badgeCount}`);
+  const badgeFloor = await paraFrame.locator('.gululu-paragraph-comment-badge').first().getAttribute('data-floor-id');
+  const badgePid = await paraFrame.locator('.gululu-paragraph-comment-badge').first().getAttribute('data-paragraph-id');
+  assert(badgeFloor && badgePid, `段落徽标缺少楼层/段落标识：floor=${badgeFloor} pid=${badgePid}`);
+  const groupCount = await page.locator('.gululu-comment-group-paragraph').count();
+  assert(groupCount >= 1, `面板缺少段落评论分组：${groupCount}`);
+  const groupTitle = await page.locator('.gululu-comment-group-paragraph summary').first().textContent();
+  assert(groupTitle.includes('段落'), `段落分组标题错误：${groupTitle}`);
+  // 段落组默认折叠，徽标点击后展开
+  assert(!(await page.locator('.gululu-comment-group-paragraph').first().evaluate((el) => el.open)),
+    '段落评论组未默认折叠');
+  // 点击正文徽标 → 面板聚焦该段评论组 + 正文段落高亮
+  await paraFrame.locator('.gululu-paragraph-comment-badge').first().click();
+  await page.waitForFunction((pid) => !!(
+    document.querySelector(`.gululu-comment-group-paragraph[data-paragraph-id="${CSS.escape(pid)}"]`)
+  ), badgePid);
+  await paraFrame.locator(`[data-paragraph-id="${badgePid}"].gululu-paragraph-highlight`).waitFor();
+  // 点击面板段落评论 → 正文对应段落高亮
+  await page.locator('.gululu-paragraph-comment').first().click();
+  await paraFrame.locator('.gululu-paragraph-highlight').first().waitFor();
+  const afterParagraph = await page.evaluate(() => App.state.textCtx.text.length);
+  assert(before === afterParagraph, `段落评论交互改变正文坐标：${before} -> ${afterParagraph}`);
 
   await page.locator('#gululu-comments-panel .gululu-switch').click();
   await page.locator('.gululu-danmaku-item').first().waitFor();
@@ -290,22 +348,16 @@ async function inspectDesktop(browser) {
   const floorCommentButtons = chapterFrame.locator('.gululu-floor-comment-button');
   assert(await floorCommentButtons.count() === 2, '多楼层章节没有逐楼评论入口');
   await floorCommentButtons.nth(1).click();
-  await page.locator('.gululu-online-comment').first().waitFor();
+  await page.locator('.gululu-online-comment:visible').first().waitFor();
   assert(await page.locator('.gululu-comment-floor').count() === 1, '逐楼入口没有聚焦对应楼层');
   const focusedComment = await page.locator('.gululu-online-comment > p').first().textContent();
   assert(focusedComment === '第一章第三楼评论', `逐楼评论内容错误：${focusedComment}`);
 
-  await page.locator('#gululu-comments-mode').selectOption('inline');
-  await chapterFrame.locator('.gululu-inline-comments').nth(1).waitFor();
-  const inlineBlocks = chapterFrame.locator('.gululu-inline-comments');
-  assert(await inlineBlocks.count() === 2, '楼末折叠没有覆盖本章全部楼层');
-  const inlineComment = await inlineBlocks.nth(1).locator('.gululu-inline-comment-body').first().textContent();
-  assert(inlineComment === '第一章第三楼评论', `楼末折叠评论内容错误：${inlineComment}`);
   const chapterTextAfterComments = await page.evaluate(() => (
     TextPos.build(document.querySelector('#chapter-frame').contentDocument).text
   ));
   assert(chapterTextAfterComments === chapterTextBeforeComments,
-    '楼末评论被计入 text_offset 文本坐标');
+    '在线评论被计入 text_offset 文本坐标');
 
   await page.evaluate(async () => {
     App.state.settings.pagination = true;
@@ -409,7 +461,7 @@ async function inspectDesktop(browser) {
     `返回书架后沉浸效果未清理：${JSON.stringify(cleanup)}`);
   await page.close();
   return { embedded, comments, before, after, afterSecret, afterImmersive, floorCardStyle,
-    secretText, canvasPixels, danmaku, focusedComment, inlineComment,
+    secretText, canvasPixels, danmaku, focusedComment,
     loadingStarted, loadingFinished, paginationResize, isolation, cleanup, errors };
 }
 

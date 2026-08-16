@@ -8,17 +8,14 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-15）
+## 1. 当前状态（2026-08-16）
 
-- 当前开发基线：`main`；Windows 骨碌碌适配已通过 PR #13 以 rebase 方式并入主干
-  （合并基线 `4b77ded`），包含全能助手、真实书 `63299` 排版/性能适配、图片三态与
-  追加式增量热更新。精确提交与远端状态以 `git log` / `git status` 为准。
-- 当前工作分支：`win/gululu-reader-interaction`，正在验证接近参考插件操作习惯的专版
-  交互、逐楼评论双模式与来源隔离；尚未合并或发布新版本。
-- 版本线：Windows `v1.3.1`（本轮正式发布，AnkeShelf-v1.3.1.zip）；
+- 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
+  沉浸总览 / 骰点解锁菜单）已全部合入，待发布 v1.4.0。精确提交与远端状态以
+  `git log` / `git status` 为准。
+- 版本线：Windows `v1.4.0`（本轮发布，AnkeShelf-v1.4.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
-- 测试基线（Windows / JS / Android JVM 于 2026-08-15 实跑复核；真机基线沿用
-  2026-08-14）：
+- 测试基线（Windows / JS / Android JVM 于 2026-08-16 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 283 项 OK
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
@@ -29,7 +26,9 @@
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
-  - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）。
+  - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
+  - 骨碌碌正式冒烟 `formal_ui_smoke.js`（桌面 + 430px，含骰点菜单/段落评论/总览/
+    抽屉保位断言）全过。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
 
 ## 2. 本机环境（Windows 开发机）
@@ -53,6 +52,184 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-16 win/docs：骨碌碌阅读交互第九轮（评论排序折叠 / 重置拆分 / 面板外观统一）
+
+- 评论排序与折叠：段落评论组按**正文段落先后次序**排列（`paragraphOrder`），同段落内
+  评论按时间**新在前**；楼层评论（无段落）置后；段落评论组默认 **`<details>` 折叠**，
+  手动点击 summary 或从正文徽标点击展开对应组。
+- 评论入口：徽标仅跳过迷雾未解锁块（`.gululu-fog-block.gululu-fog-hidden`），折叠
+  details 内段落也挂徽标（展开后可见可点）。
+- 重置拆分：更多菜单重置选项拆为**重置本章骰点 / 重置全书骰点 / 重置本章秘密线索 /
+  重置全书秘密线索**（assistant 新增 `resetChapterDice/resetAllDice`，secrets 新增
+  `resetChapterSecrets/resetAllSecrets`）。
+- 解锁位置保持：`revealGroups`（含 revealAll/整楼揭示）后 `restoreReadingPosition`
+  （rAF 后 seekToOffset 当前 offset），避免迷雾显隐导致布局变化后进度错位。
+- 外观统一：评论抽屉加圆角（16px 左侧）与 `gululu-pop-in` 动画，与其他悬浮面板一致；
+  背景切图淡入补强制 reflow（`void layer.offsetWidth`），确保 opacity 过渡生效。
+- 设置持久化核查：`app/settings.py` load/save 原子写 + 类型校验，前端各面板
+  `Api.saveSettings` 链路完整；未发现丢失问题（如有具体场景需复现）。
+- 验证：formal 冒烟（含段落组折叠断言/逐楼评论）桌面+430px 全过；verify-63299 /
+  verify-comments / verify-toast 全过。未改 Android、双端 JSON 契约。
+
+### 2026-08-16 win/docs：骨碌碌阅读交互第八轮（评论排序 / inline 移除 / 活跃区实时 / 悬浮层级统一）
+
+- 评论排序：评论楼层按章节 `floorIds` 顺序排列（API 分批返回顺序不稳定）；
+  楼层内评论按 `created_at` 时间升序（段落分组内同样有序）。
+- 移除楼末折叠（inline）显示模式：删除评论面板「显示」下拉、ViewMenu「评论显示」选项
+  与相关 JS 绑定；评论统一为侧边面板展示（此前 panel 与 inline 可能同时出现）。
+- 活跃中实时增强：`GululuImmersive.snapshot()` 增加 `musicTitle/musicFloor`；
+  总览「活跃中」区块显示**具体歌名 + 楼层**、当前氛围背景**缩略图预览**，
+  面板打开期间每秒自动刷新（关闭停止）。
+- 悬浮层级与动画统一（重新梳理）：
+  - 层级盘点：正文层 0/1/12 → 快捷轨 43 → 评论抽屉 44 → 沉浸气泡 45 → 总览气泡 46 →
+    音乐 toast 49 → view-menu 210 → 模态 300 → 灯箱 500；面板打开覆盖快捷轨（子页面
+    语义），互斥网络保证同一时刻单一弹层；
+  - 动画统一：`gululu-pop-in`（淡入+上浮 180ms）应用于 immersive / overview /
+    dice 菜单 / 更多菜单 / 设置面板，全部悬浮入口打开动画一致；快捷按钮加
+    `:active` 按压缩放反馈；
+  - 实测三个面板动画均生效（`animation-name: gululu-pop-in`）。
+- 验证：formal 冒烟（桌面+430px）+ verify-63299 + verify-comments + verify-toast 全过。
+  未改 Android、双端 JSON 契约。
+
+### 2026-08-16 win/docs：骨碌碌阅读交互第七轮（零漂移 + 骰点菜单 + 总览精简 + 动效）
+
+- 评论/进度零漂移（63299 复现）：
+  - 视口采样可能落在**空白文本节点**（段落间空白，无渲染盒子 rect=0）→
+    `seekToOffset`/`restoreOffset` 用 `skipBlankPoint`（按 textCtx.ranges 顺序跳过
+    纯空白，找下一个可见文本）定位；移除把位置拉回开头的错误兜底；
+  - 滚动模式评论抽屉开合**保持 scrollTop 像素**（正文宽度变化必然重排，不做 offset
+    定位——采样点 x=列中线与字符 x 不一致会逐次累积漂移）。63299 反复开关 5 次
+    offset/scrollTop 完全恒定（1141/1000）；分页模式仍走
+    `beginViewportResize`+`onResize`（146483→146483）。
+- 骰点遮罩内评论：`.gululu-fog-hidden { display:none }` 使隐藏段落 rect=0；
+  评论徽标**只挂当前可见段落**（`getClientRects().length` 检查），跳转目标不可见时
+  退化为定位楼层开头（符合"只加载已展开段落"语义）。
+- 骰点解锁气泡：一级 reveal-dice 按钮改为弹出气泡菜单——**解锁下一组**（新增
+  `GululuAssistantReader.revealNextOne`）与**解锁本章全部**（`revealAll`），纳入互斥网络。
+- 总览精简：**折叠不再纳入沉浸内容**（仅保留秘密）；音乐条目**按 cue 去重**
+  （自动+手动同元素只记一次，标注 kind）。
+- 动效：悬浮气泡（immersive/overview/dice）打开加 `gululu-pop-in` 淡入上浮 160ms；
+  正文图片加载完成淡入（`.gululu-img-loaded` + 0.3s fade），图片间过渡不再生硬。
+- 验证：formal 冒烟（含骰点菜单/全部解锁用例）桌面+430px 全过；repro-drift 零漂移；
+  verify-comments（锚定 gap 8.3px/重复稳定）+ verify-63299（4 项）+ verify-toast 全过。
+  未改 Android、双端 JSON 契约。
+
+### 2026-08-16 win/docs：骨碌碌阅读交互第五轮（评论锚定坐标系修复 + 骰点一键解锁 + 总览活跃高亮）
+
+- 评论锚定终极修复（63299 插桩定位）：
+  - 跨 iframe 的 `getBoundingClientRect` 对 iframe 内元素返回 **iframe 内容坐标**
+    （frameTop 变化时 charTop 恒定），`Reader.seekToOffset` / `restoreOffset` 原先
+    误当宿主视口坐标直接赋 scrollTop → 定位偏差且随重复点击累积。修复：换算加
+    `frame.getBoundingClientRect().top + scrollTop`（结果与当前滚动无关，绝对定位）。
+    63299 实测首个可见字符 gap 0.32px，重复点击 5 次 scrollTop 恒定。
+  - `paragraphOffset` 跳过段落前导折叠空白（纯空白文本节点无渲染盒子，rect=0 会把
+    位置拉回开头）；去掉 `seekToOffset(0)` 错误兜底。
+- 段落评论显示确认：63299 真实 API 评论 paragraphId（77733141 等）与正文段落
+  `data-paragraph-id` 一一对应（14 条评论含楼层级 0）；面板段落分组与正文徽标
+  （9 个）端到端验证通过。
+- 音乐控件 UI 规范：`.gululu-music-progress-row` / `.gululu-music-toggle` 样式
+  对齐现有 `.gululu-control-row` 系列（min-height/边框/accent-color）。
+- 一键解锁本章全部骰点：`GululuAssistantReader.revealAll()` + 总览「阅读解锁」区
+  「一次性解锁本章全部骰点（N）」按钮。
+- 总览活跃高亮：`scan` 读 `GululuImmersive.snapshot()`（playing/backgroundUrl/effect），
+  顶部「活跃中」摘要区块 + 播放中音乐条目 / 显示中背景缩略图 / 生效视效条目高亮
+  （`.gululu-overview-active`，primary 色）。
+- 滚动空白：长章节（63299 第 2 章 338145px）滚动到底 `reachedEnd=true`、
+  iframeH=docH 精确无裁剪；若用户仍见空白需提供具体书/页复现。
+- 验证：formal 冒烟 + verify-comments（锚定 gap 0.32px/重复稳定）+ verify-63299
+  （骰点/折叠/总览/分页保位）+ verify-toast（气泡/停止/滚动底）全过；Windows Python
+  283 项 OK。未改 Android、双端 JSON 契约。
+
+### 2026-08-16 win/docs：骨碌碌阅读交互第四轮（评论锚定稳定 / 音乐气泡 / 滚动空白）
+
+- 评论跳转锚定（63299 真实书插桩复现）：
+  - `togglePanel` 只在面板开合状态**实际变化**时调 `setReaderShrink`（已开再打开不再
+    重复定位，消除二次重排漂移）；
+  - 段落评论组聚焦从 `scrollIntoView` 改为**显式面板列表滚动**
+    （`list.scrollTop = group.offsetTop - list.offsetTop`，scrollIntoView 会波及正文
+    滚动容器）。修复后真实鼠标重复点击 5 次 `scrollTop` 完全稳定。
+- 音乐顶栏气泡：`showMusicToast` 已接入但被 `scanChapter` 250ms 轮询杀掉——63299 的
+  自动音乐与手动音乐标记在同一元素，手动点击后轮询触发 `playMusic(auto)` 走进
+  **同曲切停**分支；修复：同曲切停仅手动点击生效（`automatic` 时跳过）。toast
+  （歌名 + 楼层）稳定显示，停止隐藏。
+- 滚动模式底部空白：内容高度变化（徽标/评论注入）后 iframe 高度未重算，底部内容被
+  iframe 裁剪；`Reader.applyLayout` 滚动分支补 `syncHeight()`（对齐 Android 既有
+  经验：滚动模式一章到底 + 高度同步）。63299 第 2 章 338145px 内容滚动到底
+  `reachedEnd=true`、iframeH=docH。
+- UI 规范：总览视图 tab 胶囊改圆角 8px；音乐控件/进度条/顶栏气泡统一用现有 CSS 变量。
+- 验证：formal 冒烟 + verify-63299（骰点/折叠/总览/分页保位）+ verify-toast（气泡/
+  停止/长章节滚动底）全过；Windows Python 283 项 OK。未改 Android、双端 JSON 契约。
+
+### 2026-08-16 win/docs：骨碌碌阅读交互第三轮（跳转保位修复 + 总览双视图 + 音乐增强）
+
+- 跳转/保位：
+  - `Reader.seekToOffset` 定位后保存**目标 offset**（`saveProgress(preciseOffset)`），
+    避免滚动/重排未稳定时重新采样视口中线导致进度乱跳；
+  - 分页模式评论抽屉开合改用 `Paged.beginViewportResize`（变化前冻结页首锚点）+
+    `onResize`（120ms 延迟内部恢复），移除手动 `seekToOffset`（与 onResize 竞争导致
+    漂移）。真实书 63299 复现 146483→0 漂移，修复后 146483→146483 精确保持。
+- 总览双视图：`gululu-overview.js` 重写——「按楼层」（一楼聚合音乐/背景/视效/骰点/
+  折叠/秘密）与「按类型」（音乐/背景/视效/阅读解锁/内容结构）两种视图切换；
+  骰点组**聚合为统计**（不再逐个列组）；音乐条目显示**歌名**（`.gululu-music-title`）；
+  每项标注所在楼层并支持点击跳转正文。
+- 沉浸增强：背景切换加淡入过渡（opacity transition，避免硬切）；音乐面板新增
+  **进度条**（timeupdate 同步 + 可拖动 seek）与**播放/暂停键**；播放时顶栏显示
+  **音乐气泡**（歌名 + 楼层）。
+- 重置分开：更多菜单「重置阅读解锁」拆为「重置骰点揭示」与「重置秘密线索」两个入口。
+- 参考书 63299：用新转换器重新生成（4 章，骰点 824 / 折叠 52 / 自动音乐 38 / 背景 45 /
+  段落 7050），注册到用户书架；`formal_server` 新增 `--book` 参数加载外部 EPUB；
+  新增 `workspace/verify-63299.js` 专项验证（骰点遮罩 26/26、折叠 0 open、总览双视图、
+  分页保位）。
+- 验证：formal 冒烟（含总览双视图/音乐歌名断言）桌面+430px 全过；verify-63299 4 项全过；
+  Windows Python 283 项 OK；JS 契约 6/6；Android JVM 117 过/1 跳；UI harness 97 PASS。
+  未改 Android、双端 JSON 契约。
+
+### 2026-08-16 win/docs：骨碌碌阅读交互第二轮（六问题修复 + 沉浸内容总览）
+
+- 问题与修复（均先复现/定位再改）：
+  1. 评论展开进度跳回开头——`Reader.seekToOffset` 滚动定位公式 bug：`scrollTop = rect.top`
+     （视口坐标）在已有滚动位置时会把位置拉回顶部；改为 `rect.top + 当前 scrollTop`
+     （章节加载时 scrollTop=0 行为不变）。复现脚本实测 scrollTop 156 开合抽屉前后一致。
+  2. 目录悬浮按钮不能收回——`gululu-quick-toc` handler 只处理"未打开时打开"，
+     补 `Sidebar.isOpen()` 时 `Sidebar.close()` 分支。
+  3. 段落评论增强——点击面板段落评论经 `TextPos.rangeToOffsets` 求段落起点 →
+     `Reader.seekToOffset` 跳转正文并高亮段落；点击正文徽标 → 面板聚焦段落组并高亮组内
+     首条评论（`.gululu-comment-focus`）。
+  4. 折叠内容未默认折叠——`gululu_ast.py` 的 `collapsibleBlock` 显式写 `open="open"`
+     导致默认展开；去掉 open（浏览器 details 默认折叠），同步
+     `tests/test_gululu_epub.py` 断言。
+  5. 沉浸内容总览——新增 `web/js/gululu-overview.js` 与 `#gululu-overview-panel`：
+     分类展示本章音乐（自动/手动）、氛围背景（缩略图预览）、动态视效、阅读解锁
+     （骰点组进度条 + 解锁数）、折叠/秘密摘要；条目点击跳转正文对应标记并高亮；
+     快捷轨新增总览按钮，纳入互斥网络（comments/immersive/settings/overview 互斥）。
+  6. 骰点隐藏未生效——定位为用户真实书（32203/66905）为旧版转换（无
+     `data-gululu-*` 协议标记），骰点/折叠从未转换；基础骰点遮罩/揭示/迷雾
+     （formal 测试书）冒烟验证正常。旧书需"检查更新"或重导后启用。
+- 验证：`formal_ui_smoke.js` 新增总览用例（分类区块/骰点进度/跳转）+ 抽屉开合保位
+  断言，桌面与 430px 全过；Windows Python 283 项 OK（4 跳）；JS 契约 4 项全绿。
+  未改 Android、CI、双端 JSON 契约。
+
+### 2026-08-16 win/docs：骨碌碌阅读交互改造（悬浮气泡助手 + 侧边评论 + 段落级评论）
+
+- 参考：官方阅读页 `/chat/48856`（`CommentBlock` 侧边抽屉、`RichTextParagraph_inlineCommentNumber`
+  段落行内评论数）+ ScriptCat 5355 V3.94 源码 + 既有 `docs/GULULU_REFERENCE_MATRIX.md`；
+  数据链确认：评论 API `paragraphId`（如 "p1"）↔ 楼层段落 `attrs.id` ↔ 正文
+  `<p data-paragraph-id>`（转换器 `gululu_ast.py` 已写入，测试书 12177 处）。
+- 沉浸助手气泡：`gululu-immersive-panel` 由右侧全高抽屉改为右下角悬浮气泡卡片
+  （right 60px / bottom 50px、宽 280px、圆角 16px，与快捷轨同层，不遮正文）；
+  窄屏（≤520px）改底部抽屉式（全宽、上圆角、max-height 82vh）。
+- 评论侧边展开：评论抽屉打开时 `#reader-root.gululu-comments-open` 让正文
+  `chapter-scroll` 让位 `min(380px,88vw)`（与阅读界面同层级，非覆盖浮层）；
+  开合后经 applyLayout + `seekToOffset` 恢复阅读位置（进度保持铁律）；窄屏不让位。
+- 段落级评论：load 后向有段落评论的正文段落注入行内评论数徽标
+  （`.gululu-paragraph-comment-badge`，带 `data-textpos-exclude`，不进坐标）；
+  面板评论按 `paragraph_id` 分组渲染（段落评论组 + 楼层评论组）；点击正文徽标 →
+  面板聚焦该段评论组并高亮正文段落；点击面板段落评论 → 正文段落临时高亮。
+- 验证：`formal_ui_smoke.js` 新增段落徽标/分组/双向联动/坐标不变/抽屉开合保位断言，
+  桌面 + 430px 全过（0 失败）；Windows Python 283 项 OK（4 跳）；JS 契约
+  textpos 15 / parts 6 / bridge v1 / reader-session 全绿。未改 Android、CI、
+  双端 JSON 契约与后端（`comment_to_public` 早已透传 `paragraph_id`）。
 
 ### 2026-08-16 docs：文档治理评估与整理（冗余/漂移清理）
 

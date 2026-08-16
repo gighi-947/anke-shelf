@@ -149,9 +149,9 @@ class _FakeGululuService:
             "comments_children_9001.json"
         )["data"]["records"]
         second_floor_comment = comment_to_public(floor_comments[0])
-        second_floor_comment.update({"id": 9102, "content": "第一章第二楼评论"})
+        second_floor_comment.update({"id": 9102, "content": "第一章第二楼评论", "paragraph_id": ""})
         third_floor_comment = comment_to_public(floor_comments[0])
-        third_floor_comment.update({"id": 9103, "content": "第一章第三楼评论"})
+        third_floor_comment.update({"id": 9103, "content": "第一章第三楼评论", "paragraph_id": ""})
         self._comments = {
             0: [
                 comment_to_public(item)
@@ -161,6 +161,20 @@ class _FakeGululuService:
             962916: [second_floor_comment],
             963517: [third_floor_comment],
         }
+        # 段落级评论测试：把 962170 楼第一条评论挂到测试书实际段落 dice-regression 上，
+        # 使正文段落徽标 / 面板段落分组 / 双向跳转可端到端断言。
+        for comment in self._comments[962170]:
+            if comment.get("paragraph_id"):
+                comment["paragraph_id"] = "dice-regression"
+                break
+        # 63299 参考书（--book）的段落评论：挂到首章 909377 楼段落 77733141 上。
+        real_floor_comment = comment_to_public(floor_comments[0])
+        real_floor_comment.update({
+            "id": 9201,
+            "content": "63299 首章段落评论（77733141）",
+            "paragraph_id": "77733141",
+        })
+        self._comments[909377] = [real_floor_comment]
 
     def get_comments(self, source_id, floor_ids, refresh=False):
         return {
@@ -184,7 +198,7 @@ class _FakeGululuService:
         return {"running": False, "stage": "idle", "detail": ""}
 
 
-def create_app() -> tuple[Api, BookManager, Path]:
+def create_app(extra_epub: str | None = None) -> tuple[Api, BookManager, Path]:
     WORKSPACE.mkdir(parents=True, exist_ok=True)
     data = WORKSPACE / "formal-data"
     covers = data / "covers"
@@ -210,6 +224,18 @@ def create_app() -> tuple[Api, BookManager, Path]:
         chapter_count=len(nga_book.chapters),
         nga_tid=999,
     ))
+    if extra_epub:
+        extra_path = Path(extra_epub).resolve()
+        if extra_path.exists():
+            extra = books.register(str(extra_path))
+            shelf.upsert(BookRecord(
+                id=extra.id,
+                path=extra.path,
+                title=extra.title,
+                author=extra.author,
+                language=extra.language,
+                chapter_count=len(extra.chapters),
+            ))
     shelf.save()
     progress = ProgressStore(data / "progress.json")
     progress.load()
@@ -236,8 +262,9 @@ def create_app() -> tuple[Api, BookManager, Path]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="启动正式阅读器骨碌碌评论调试服务")
     parser.add_argument("--port", type=int, default=8878, help="本地端口（默认 8878）")
+    parser.add_argument("--book", type=str, default=None, help="额外注册的 EPUB 路径（如真实参考书 63299）")
     args = parser.parse_args()
-    api, books, covers = create_app()
+    api, books, covers = create_app(args.book)
     EpubHandler.log_message = lambda *unused: None
     port = start_server(web_dir(), books, covers, api=api, token=TOKEN, port=args.port)
     print(f"http://127.0.0.1:{port}/index.html?token={TOKEN}", flush=True)
