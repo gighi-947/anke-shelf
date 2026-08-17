@@ -143,6 +143,14 @@
   避免接手者把历史快照当现状误读。
 - 验证：纯文档改动，未跑构建。
 
+### 2026-08-17 android：接手风险修复第五批（重复实现收敛：NgaConfig 原子写 / queryDisplayName）
+
+- `NgaConfig`：移除私有 `atomicWrite` 弱化实现（renameTo 兜底），统一复用
+  `Storage.atomicWriteText`（临时文件 + ATOMIC_MOVE + 回退），凭据文件写入一致性对齐。
+- `queryDisplayName`：AppContainer / SettingsScreen / SettingsReadingPanels 三处重复
+  实现收敛为 `data/ContentResolver.kt` 共享 internal 函数，消除 SAF 文件名查询漂移。
+- 验证：Android JVM 全量 BUILD SUCCESSFUL。
+
 ### 2026-08-16 win/docs：骨碌碌阅读交互第八轮（评论排序 / inline 移除 / 活跃区实时 / 悬浮层级统一）
 
 - 评论排序：评论楼层按章节 `floorIds` 顺序排列（API 分批返回顺序不稳定）；
