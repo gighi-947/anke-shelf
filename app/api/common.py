@@ -1,4 +1,5 @@
 """api 包共享：上下文对象与纯辅助函数。"""
+import logging
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,6 +15,8 @@ from ..shelf import BookRecord, ProgressStore, Shelf
 
 if TYPE_CHECKING:
     from ..gululu_service import GululuService
+
+log = logging.getLogger("app.api")
 
 
 @dataclass
@@ -109,6 +112,6 @@ def spawn_index(ctx: ApiContext, book) -> None:
         try:
             ctx.search.ensure_index(book)
         except Exception:
-            pass
+            log.exception("后台全文索引构建失败")
 
     threading.Thread(target=run, daemon=True).start()

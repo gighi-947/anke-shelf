@@ -1,4 +1,4 @@
-﻿/**
+/**
  * HTTP API 桥接封装（前后端分离版）。
  * - 运行时通过 fetch 调用本地 /api/<name>，业务不再依赖 pywebview js_api
  * - 每次启动随机生成令牌，从 URL query 读取（?token=...），落 sessionStorage
@@ -91,42 +91,44 @@
   };
   const DEFAULT_TIMEOUT = 10000;
 
-  function withTimeout(promise, ms, name) {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(`Bridge call ${name} timed out after ${ms}ms`));
-      }, ms);
-      promise.then(
-        (v) => { clearTimeout(timer); resolve(v); },
-        (e) => { clearTimeout(timer); reject(e); }
-      );
-    });
-  }
-
   async function callHttp(name, args) {
-    const res = await fetch('/api/' + name, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Anke-Token': TOKEN,
-      },
-      body: JSON.stringify({ args }),
-    });
-    let data = null;
+    const timeout = TIMEOUTS[name] || DEFAULT_TIMEOUT;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
     try {
-      data = await res.json();
-    } catch (e) { /* 非 JSON 响应 */ }
-    if (!res.ok || !data || data.ok === false) {
-      throw new Error((data && data.error) || ('HTTP ' + res.status));
+      const res = await fetch('/api/' + name, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Anke-Token': TOKEN,
+        },
+        body: JSON.stringify({ args }),
+        signal: controller.signal,
+      });
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (e) { /* 非 JSON 响应 */ }
+      if (!res.ok || !data || data.ok === false) {
+        throw new Error((data && data.error) || ('HTTP ' + res.status));
+      }
+      return data.data;
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        // 与旧超时错误文案保持一致；底层 fetch 已被取消，不再悬空等待。
+        throw new Error(`Bridge call ${name} timed out after ${timeout}ms`);
+      }
+      throw e;
+    } finally {
+      clearTimeout(timer);
     }
-    return data.data;
   }
 
   window.Bridge = {
     /** 调用 Python 侧方法。失败统一抛错（由调用方 toast）。 */
     async call(name, ...args) {
       if (TOKEN) {
-        return await withTimeout(callHttp(name, args), TIMEOUTS[name] || DEFAULT_TIMEOUT, name);
+        return await callHttp(name, args);
       }
       if (name in MOCKS) {
         return await MOCKS[name](...args);
