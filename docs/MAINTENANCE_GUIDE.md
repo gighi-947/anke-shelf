@@ -1,4 +1,4 @@
-﻿# AnkeShelf 接手维护手册（Maintenance Guide）
+# AnkeShelf 接手维护手册（Maintenance Guide）
 
 > 文档日期：2026-08-16
 > 用途：接手维护者进场参考。**开发规则以 [AGENTS.md](../AGENTS.md) 为最高优先级**，
@@ -128,7 +128,8 @@ NgaConfig / StatsStore / AnnotationStore / BookRepository / OkHttp）+ 四 Tab �
 7. 改 `reader-lite.js`：重跑 bundle（parts 字节级校验）并**解包确认 APK 内已更新**
    （Gradle 曾误判 UP-TO-DATE）。
 8. 改文本规则：先改 `text-cases.json`（红）再改实现（绿），同步 SPEC + DATA_CONTRACT + DevLog。
-9. 涉及 HEAD / 版本线 / 测试基线 / CI 清单的改动，收尾跑**文档漂移检查**；改动必补记 DevLog。
+9. 涉及 HEAD / 版本线 / 测试基线 / CI 清单 / 文件行数 / 待办状态的改动，收尾跑**文档漂移检查**
+   （可先 `scripts/check-doc-drift.ps1` 生成快照，再按 AGENTS.md §5 高漂移清单核对）；改动必补记 DevLog。
 
 ## 7. 测试体系与基线
 
@@ -176,7 +177,8 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 ## 10. 当前状态（2026-08-18 快照）
 
 - 基线 `main`（HEAD 以 `git log` 为准）；`win/gululu-reader-interaction` 已并入主干；
-  最近主线为骨碌碌适配（v1.3.0 / v1.4.0）与五批接手风险修复。
+  最近主线为骨碌碌适配（v1.3.0 / v1.4.0）与五批接手风险修复；文档漂移治理已强化
+  （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
 - 版本线：Windows v1.4.0、Android android-v1.0.0，均已发布。
 - 待办与延后项见 DevLog §5 与 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
   （真实待办仅 Android 数据完整性校验入口；其余大文件拆分 / NGA 迁 TaskManager /
@@ -200,6 +202,7 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 | 改阅读器 | JS + Kotlin 双实现一致（ReaderPagedCrossTest 保护）+ 重 bundle + APK 校验 + 进度回归 |
 | 改文本规则 | 先改 `text-cases.json`（红）→ 实现（绿）→ 同步 SPEC / DATA_CONTRACT / DevLog |
 | 发新版本 | §9 双端 SOP 独立；收尾文档漂移检查 + 补记 DevLog「当前状态」 |
+| 文档漂移检查 | `scripts/check-doc-drift.ps1` 生成快照 + AGENTS.md §5 高漂移清单逐项核对 |
 
 ---
 

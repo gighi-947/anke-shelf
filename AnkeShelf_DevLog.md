@@ -11,7 +11,8 @@
 ## 1. 当前状态（2026-08-18）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
-  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入。
+  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入；
+  文档漂移治理已强化（AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.4.0`（已发布，AnkeShelf-v1.4.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
@@ -70,6 +71,9 @@
   - `CONTRIBUTING.md`：提交/PR 清单补「已跑文档漂移扫描」项，并指向脚本。
 - 验证：`powershell -ExecutionPolicy Bypass -File scripts/check-doc-drift.ps1`
   正常运行输出快照；纯文档/脚本改动，未跑构建。
+- 推送前自检：发现并同步三处新引入漂移——MAINTENANCE_GUIDE §6/§10/§12 补引用新脚本、
+  DevLog §1 当前状态补记治理强化、ARCHITECTURE_ROADMAP 顶部核对块补记本次推进；
+  随后 `check-doc-drift.ps1` 复跑输出与仓库状态一致。
 
 ### 2026-08-18 docs：全仓库非归档文档漂移扫描与修复
 
