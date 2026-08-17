@@ -91,7 +91,7 @@ class NgaConfig(private val file: File) {
         sb.append("ngaPassportUid=").append(raw["ngaPassportUid"] ?: "").append("\n")
         sb.append("ngaPassportCid=").append(raw["ngaPassportCid"] ?: "").append("\n")
         file.parentFile?.mkdirs()
-        atomicWrite(file, sb.toString())
+        atomicWriteText(file, sb.toString())
     }
 
     private fun writeTemplate() {
@@ -123,16 +123,3 @@ data class NgaConfigPatch(
     val ua: String? = null,
     val baseUrl: String? = null,
 )
-
-private fun atomicWrite(file: File, text: String) {
-    val tmp = File(file.parentFile, file.name + ".tmp")
-    try {
-        tmp.writeText(text, Charsets.UTF_8)
-        if (!tmp.renameTo(file)) {
-            file.writeText(text, Charsets.UTF_8)
-            tmp.delete()
-        }
-    } catch (_: Exception) {
-        file.writeText(text, Charsets.UTF_8)
-    }
-}

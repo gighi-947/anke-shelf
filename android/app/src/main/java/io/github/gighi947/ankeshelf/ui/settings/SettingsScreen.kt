@@ -1,8 +1,8 @@
 package io.github.gighi947.ankeshelf.ui.settings
 
 import android.content.Context
-import android.provider.OpenableColumns
 import android.widget.Toast
+import io.github.gighi947.ankeshelf.data.queryDisplayName
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -561,15 +561,4 @@ internal fun SettingsRow(
             control()
         }
     }
-}
-
-internal fun queryDisplayName(
-    resolver: android.content.ContentResolver,
-    uri: android.net.Uri,
-): String? = try {
-    resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-        if (c.moveToFirst()) c.getString(0) else null
-    }
-} catch (_: Exception) {
-    null
 }

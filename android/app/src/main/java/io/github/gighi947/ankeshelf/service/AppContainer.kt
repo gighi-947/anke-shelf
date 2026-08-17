@@ -2,7 +2,6 @@ package io.github.gighi947.ankeshelf.service
 
 import android.content.Context
 import android.net.Uri
-import android.provider.OpenableColumns
 import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.ChapterReadResult
@@ -18,6 +17,7 @@ import io.github.gighi947.ankeshelf.data.Shelf
 import io.github.gighi947.ankeshelf.data.SpineItem
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.data.nowIso
+import io.github.gighi947.ankeshelf.data.queryDisplayName
 import java.io.Closeable
 import java.io.File
 import java.util.concurrent.Executors
@@ -336,13 +336,4 @@ class BookRepository(
             return (ratio.coerceIn(0.0, 1.0) * plainLength).roundToInt().coerceIn(0, plainLength)
         }
     }
-
-    private fun queryDisplayName(resolver: android.content.ContentResolver, uri: Uri): String? =
-        try {
-            resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
-                if (c.moveToFirst()) c.getString(0) else null
-            }
-        } catch (_: Exception) {
-            null
-        }
 }

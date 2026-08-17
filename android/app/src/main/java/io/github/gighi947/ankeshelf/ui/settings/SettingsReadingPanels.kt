@@ -1,8 +1,8 @@
 package io.github.gighi947.ankeshelf.ui.settings
 
 import android.content.Context
-import android.provider.OpenableColumns
 import android.widget.Toast
+import io.github.gighi947.ankeshelf.data.queryDisplayName
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
