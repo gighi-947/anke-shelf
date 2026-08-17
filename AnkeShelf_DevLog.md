@@ -122,6 +122,19 @@
   （secrets / reader-session / textpos 15 / api-contract 52 / bridge v1 / parts 6）全绿。
 - 未处理/延后同上批清单（bridge 内层 ok 不 reject 仍为设计保持，超时取消已补）。
 
+### 2026-08-17 android：正式接手深潜风险修复第三批（EPUB 导出内嵌图片入包 / 下载图片失败日志）
+
+- `EpubExporter`：新增 `imagesDir` 参数，embedded 图片随导出 EPUB 入包
+  （`EPUB/images/<name>` + OPF manifest `<item>`）；章节内
+  `file:///android_images/<bookId>/<name>` 引用改写为相对 `images/<name>`，
+  外部阅读器不再丢图（`EpubExporterTest` 新增 1 例）。
+- `NgaExport`：`epubBytes` 透传 `imagesDir`，新增 `imagesDirFor(context, bookId)`
+  定位下载器同一落盘目录；书架与已下载页两处导出调用同步传入。
+- `NgaDownloader.downloadImages`：单图下载失败从静默 `runCatching` 改为
+  `LogEvents.event("nga","image_download_failed",...)`，保留诊断痕迹；
+  仍不中断整本下载（本地缺图回退在线 URL 语义不变）。
+- 验证：Android JVM 全量 BUILD SUCCESSFUL（含 EpubExporter 新用例）。
+
 ### 2026-08-16 win/docs：骨碌碌阅读交互第八轮（评论排序 / inline 移除 / 活跃区实时 / 悬浮层级统一）
 
 - 评论排序：评论楼层按章节 `floorIds` 顺序排列（API 分批返回顺序不稳定）；
