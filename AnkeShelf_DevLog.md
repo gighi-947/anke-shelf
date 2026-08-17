@@ -111,6 +111,17 @@
   Android mixed content 安全面、EPUB 导出本地图缺失等留待后续批次。
 - 提交：分 `win:` / `android:` / `docs:` 三个本地提交，未推送。
 
+### 2026-08-17 win：正式接手深潜风险修复第二批（桥超时取消 fetch / 后台索引失败日志）
+
+- `web/js/bridge.js`：HTTP 桥超时改为 `AbortController` 真正取消底层 fetch
+  （此前超时只 reject、请求仍悬空），错误文案保持 `Bridge call <name> timed out after <ms>ms`；
+  `withTimeout` 封装移除，MOCKS 路径不变。
+- `app/api/common.py`：`spawn_index` 后台建索引失败从静默 `pass` 改为 `log.exception`，
+  保留失败上下文，不再吞错。
+- 验证：Python 定向 31 项 OK；`node --check web/js/bridge.js` + JS 契约
+  （secrets / reader-session / textpos 15 / api-contract 52 / bridge v1 / parts 6）全绿。
+- 未处理/延后同上批清单（bridge 内层 ok 不 reject 仍为设计保持，超时取消已补）。
+
 ### 2026-08-16 win/docs：骨碌碌阅读交互第八轮（评论排序 / inline 移除 / 活跃区实时 / 悬浮层级统一）
 
 - 评论排序：评论楼层按章节 `floorIds` 顺序排列（API 分批返回顺序不稳定）；
