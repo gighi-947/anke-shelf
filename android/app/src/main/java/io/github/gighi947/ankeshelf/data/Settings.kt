@@ -108,7 +108,10 @@ class Settings(private val file: File) {
         }
         val loaded = try {
             Shelf.json.decodeFromString<SettingsData>(text)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // 与 readJsonStore 的损坏处理一致：隔离原文件、回退默认、保留诊断信息。
+            isolateCorrupt(file)
+            logWarn("AnkeShelf", "settings.json 损坏，已隔离并回退默认：$e")
             return
         }
         lock.withLock {

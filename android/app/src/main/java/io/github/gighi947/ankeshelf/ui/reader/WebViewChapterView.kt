@@ -45,6 +45,7 @@ import io.github.gighi947.ankeshelf.ui.theme.ReaderThemeColors
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.FilterInputStream
 import java.net.URLDecoder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -348,7 +349,18 @@ fun WebViewChapterView(
                                 } else {
                                     val mime = resp.header("Content-Type")?.substringBefore(";")
                                         ?: "image/jpeg"
-                                    WebResourceResponse(mime, null, resp.body.byteStream())
+                                    val body = resp.body
+                                    // WebView 关闭返回流时同步释放 OkHttp Response，避免连接泄漏。
+                                    val stream = object : FilterInputStream(body.byteStream()) {
+                                        override fun close() {
+                                            try {
+                                                super.close()
+                                            } finally {
+                                                resp.close()
+                                            }
+                                        }
+                                    }
+                                    WebResourceResponse(mime, null, stream)
                                 }
                             }.getOrNull()
                         }

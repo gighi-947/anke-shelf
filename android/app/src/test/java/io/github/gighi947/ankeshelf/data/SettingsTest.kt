@@ -1,6 +1,8 @@
 package io.github.gighi947.ankeshelf.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -57,5 +59,18 @@ class SettingsTest {
         s.load()
         assertEquals(false, s.getAll().pagination)
         assertEquals(3, s.getAll().settings_version)
+    }
+
+    @Test
+    fun `corrupt file is isolated and defaults kept`() {
+        val dir = Files.createTempDirectory("settings").toFile()
+        val file = File(dir, "settings.json")
+        file.writeText("{not-json", Charsets.UTF_8)
+        val s = Settings(file)
+        s.load()
+        assertEquals(3, s.getAll().settings_version)
+        assertEquals("dark", s.getAll().theme)
+        assertFalse(file.exists())
+        assertNotNull(dir.listFiles()?.singleOrNull { it.name.startsWith("settings.json.corrupt-") })
     }
 }

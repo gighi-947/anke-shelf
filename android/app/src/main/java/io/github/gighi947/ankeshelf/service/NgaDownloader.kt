@@ -5,6 +5,7 @@ import io.github.gighi947.ankeshelf.data.NativeBook
 import io.github.gighi947.ankeshelf.data.NativeBookWriter
 import io.github.gighi947.ankeshelf.data.NativeFloor
 import io.github.gighi947.ankeshelf.data.NgaConfig
+import io.github.gighi947.ankeshelf.data.NgaFormatHtml
 import io.github.gighi947.ankeshelf.data.atomicWriteJson
 import io.github.gighi947.ankeshelf.data.nowIso
 import kotlinx.serialization.Serializable
@@ -117,12 +118,7 @@ class NgaDownloader(
             }
     }
 
-    private fun normalizeImageUrl(url: String): String =
-        if (url.startsWith("//")) {
-            "https://img.nga.178.com/attachments/" + url.substring(2)
-        } else {
-            url
-        }
+    private fun normalizeImageUrl(url: String): String = NgaFormatHtml.normalizeImageUrl(url)
 
     /** 首次下载：拉全部页 → 写原生书 → 注册书架，返回 bookId。 */
     fun download(params: NgaDownloadParams): String {

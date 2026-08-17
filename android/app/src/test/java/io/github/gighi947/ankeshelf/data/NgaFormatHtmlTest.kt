@@ -41,4 +41,20 @@ class NgaFormatHtmlTest {
         )
         assertEquals("https://img.nga.178.com/mon_4.webp", received)
     }
+
+    @Test
+    fun `normalizeImageUrl strips thumb and resolves protocol-relative`() {
+        assertEquals(
+            "https://img.nga.178.com/attachments/mon_1.jpg",
+            NgaFormatHtml.normalizeImageUrl("//img.nga.178.com/attachments/mon_1.jpg.thumb.jpg"),
+        )
+    }
+
+    @Test
+    fun `normalizeImageUrl resolves dot slash`() {
+        assertEquals(
+            "https://img.nga.178.com/attachments/mon_2.png",
+            NgaFormatHtml.normalizeImageUrl("./mon_2.png"),
+        )
+    }
 }

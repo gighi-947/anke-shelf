@@ -80,9 +80,17 @@ object NgaFormatHtml {
         val muted: String,
     )
 
-    /** NGA 缩略图/中图统一回原图 URL（提高去重命中率）。 */
-    fun normalizeImageUrl(url: String): String =
-        RE_THUMB_SUFFIX.replace(url, "")
+    /** NGA 图片 URL 规范化：缩略图/中图后缀剥除 + 相对/协议相对前缀解析。
+     *  下载（embedded 本地化）与渲染共用此函数，保证本地文件名一致。 */
+    fun normalizeImageUrl(url: String): String {
+        var out = RE_THUMB_SUFFIX.replace(url, "")
+        if (out.startsWith("./")) {
+            out = "https://img.nga.178.com/attachments/" + out.substring(2)
+        } else if (out.startsWith("//")) {
+            out = "https:" + out
+        }
+        return out
+    }
 
     /** 匿名 ID 转中文匿名称谓（对应桌面 format.anony）。 */
     fun anony(it: String): String {
@@ -186,13 +194,7 @@ object NgaFormatHtml {
 
     private fun imgHtml(urlRaw: String, noImages: Boolean, imgSrc: (String) -> String): String {
         if (noImages) return ""
-        var url = normalizeImageUrl(urlRaw)
-        if (url.startsWith("./")) {
-            url = "https://img.nga.178.com/attachments/" + url.substring(2)
-        } else if (url.startsWith("//")) {
-            // file:// 壳下协议相对 URL 会解析成 file://img...，统一补 https。
-            url = "https:" + url
-        }
+        val url = normalizeImageUrl(urlRaw)
         return "<img class=\"nga-img\" src=\"${imgSrc(url)}\"/>"
     }
 
