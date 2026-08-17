@@ -14,7 +14,7 @@ android/
       service/     NGA 下载前台服务与导出（M3 起）
       reader/      WebView 桥（M2 起）
     src/main/assets/reader/   安卓专用精简渲染页（HTML/CSS/JS）
-    src/main/assets/fonts/    内置霞鹜文楷 + OFL.txt
+    assets/fonts（仓库根 canonical 源，经 Gradle 并入 APK）  内置霞鹜文楷 + OFL.txt
   scripts/check-release.ps1   发布前凭据扫描
 ```
 

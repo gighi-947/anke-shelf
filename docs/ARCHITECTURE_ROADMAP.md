@@ -1,4 +1,4 @@
-﻿# AnkeShelf 架构整合路线图（下阶段任务参考）
+# AnkeShelf 架构整合路线图（下阶段任务参考）
 
 > 文档日期：2026-08-12（2026-08-15 状态核对）
 > 分析基线：`main` / `1ea4c95`（分析时点）；2026-08-13 核对：HEAD 已推进至
@@ -91,7 +91,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | 静默失败 | Kotlin `catch (Exception)` 32 处、`return null` 28 处；`readJsonOrNull` 全吞异常 | 失败原因不可区分，debug 困难 |
 | 防御式代码 | `runCatching{}.getOrNull()` 多处；`Settings.get` 返回 `Any?`；`BookSession` 用 5 个 lambda 组装 | 调用关系被隐藏，review 成本高 |
 | 桥协议无版本 | `saveProgress(idx, value, isOffset, page, total, ratio)` 多位置参数，无握手/能力协商 | 局部升级可能静默错配 |
-| API 人工同步 | 后端 `_HANDLERS` 与前端 `METHODS` 各 40 项无对照测试；`bridge.js` MOCKS 缺 `export_diagnostics` / `get_chapter_plaintext` | 协议漂移只能在运行期暴露 |
+| API 人工同步（已解决） | 现状：后端 `_HANDLERS` 与前端 `METHODS`/`bridge.js` MOCKS 共 52 项；`api_manifest()` + `contracts/tests/api-contract.test.js` + `tests/test_api_contract.py` 自动对照，MOCKS 已补齐 | 遗留：业务错误内层 `{ok:false}` 不 reject（前端调用方自查，设计保持） |
 | 正则 HTML 清洗 | `ReaderHtml.sanitizeReaderBody()` 用多组 Regex 删 script/事件属性 | 对不可信输入不充分（文档已自认，jsoup 依赖已存在） |
 | 依赖不可复现 | `requirements.txt` 7 个依赖全是最低版本，无 lock；`pyinstaller` 混在运行依赖 | 同一 tag 不同时间装出不同软件 |
 | 重复大文件 | `web/fonts/weidqczfkyxk.ttf` 与安卓 `LXGWWenKai-Regular.ttf` SHA-256 一致，各约 24.8MB | Git 历史膨胀风险 |

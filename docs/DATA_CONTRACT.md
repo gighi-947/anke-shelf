@@ -87,7 +87,7 @@
 | `line_height` | double | `1.8` | 行高 |
 | `ui_font_scale` | double | `1.0` | 安卓界面字号缩放 |
 | `font_family` | string | `"reader"` | 字体族 |
-| `custom_font` | string | `""` | 自定义字体文件名 |
+| `custom_font` | string | `""` | 自定义字体文件名（Android 缺省 `"sys:weidqczfkyxk.ttf"`，内置霞鹜文楷） |
 | `book_fonts` | map | `{}` | 按书字体覆盖 |
 | `custom_bg/primary/accent/text` | string | `""` | 自定义配色（空=跟随主题） |
 | `page_width` | double | `1.0` | 页面宽度系数 |
@@ -100,7 +100,7 @@
 | `gap_px` | int | `28` | 列间隙 px |
 | `brightness` | double | `0.0` | 亮度调节 |
 | `rsvp_rate` / `autoscroll_speed` / `show_ruler` / `show_statusbar` | — | — | Windows 阅读辅助 |
-| `shortcuts` | map | `{}` | 快捷键（Windows） |
+| `shortcuts` | map | `{}` | 快捷键（Windows 缺省空；Android 缺省内置快捷键表，与 Windows 表同值） |
 | `window_size` | list | `[1024,720]` | 窗口尺寸（Windows） |
 | `last_open_book` | string? | `null` | 最近打开书 |
 

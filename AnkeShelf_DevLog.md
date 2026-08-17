@@ -72,6 +72,45 @@
 - 验证：formal 冒烟（含段落组折叠断言/逐楼评论）桌面+430px 全过；verify-63299 /
   verify-comments / verify-toast 全过。未改 Android、双端 JSON 契约。
 
+### 2026-08-17 win/android/docs：正式接手深潜风险修复第一批（搜索/诊断/任务/前端 secrets/Android 一致性/文档漂移）
+
+- 背景：全面交接调研后接手，按风险优先级处理第一批问题；全部先加复现用例再修复。
+- Windows 后端：
+  - 搜索统计口径：`search._count_hits` 改用与 `_iter_hits` 一致的可重叠扫描计数，
+    修复 `"aaaa"` 查 `"aa"` 时 `chapter_hits/total_hits` 少计（`tests/test_search.py`
+    新增 2 例：重叠计数、emoji 后 `search_more` 不重复返回）；
+  - `search_more` 代理对边界：`after_offset` 先换算码点索引再 +1，避免上次命中为
+    emoji 时 +1 落在代理对中间被拉回同一字符；
+  - 诊断脱敏：`app/diagnostics.py` 新增递归敏感键打码（cookie/passport/password/
+    secret/token/credential/session/auth/cid/uid/key/salt），settings.json 不再原样打包
+    （`tests/test_diagnostics.py` 新增 1 例）；
+  - 任务失败详情：`app/tasks.py` 新增 `error(task_id)` 保留最近一次异常，
+    新接入方不再只能拿到 FAILED 状态（`tests/test_tasks.py` 新增 1 例）。
+- Windows 前端：
+  - `gululu-secrets.js`：线索映射改用 null-prototype 防 `__proto__` 标题被原型 setter
+    吞掉；`clueFor` 改 hasOwnProperty；章节 click 委托改为换章先解绑/同文档去重，
+    避免监听叠加（新增 `tests/js/gululu-secrets.test.js` 3 例，Node 桩环境）。
+- Android：
+  - 图片 URL 归一化统一：`NgaFormatHtml.normalizeImageUrl` 成为唯一权威
+    （剥 `.thumb/.medium` + 解析 `./` 与 `//`），`NgaDownloader` 改为委托同一函数，
+    修复 embedded 模式下载文件名与渲染查找不一致（`NgaFormatHtmlTest` 新增 2 例）；
+  - WebView 在线图片代理响应流：返回流包 `FilterInputStream`，流关闭时同步释放
+    OkHttp Response，避免连接泄漏；
+  - `Settings.load` 损坏 JSON 不再静默回默认：调用 `isolateCorrupt` 隔离原文件并记日志，
+    与 `readJsonStore` 风格一致（`SettingsTest` 新增 1 例）。
+- 文档漂移：
+  - `docs/ANDROID_ARCHITECTURE.md`：字体路径改为仓库根 canonical 源经 Gradle 并入；
+  - `docs/ARCHITECTURE_ROADMAP.md` 2.3：API 人工同步债标记为已解决（52 方法 + 自动对照）；
+  - `docs/DATA_CONTRACT.md`：`custom_font` / `shortcuts` 补 Android 实际缺省值说明。
+- 验证：Windows Python 287 项 OK（4 跳，含新增 4 例）；Android JVM BUILD SUCCESSFUL；
+  Node JS（secrets 3 例 / reader-session / textpos 15 / api-contract 52 / bridge v1 /
+  reader-lite parts 6）全绿。
+- 未处理/延后（记入风险清单）：Stats `sessions` 语义双端均为“每 60s 上报计 1 次”，
+  属既有共享行为，需产品决策后再统一；`native_book.append_container` 跨文件非事务、
+  `instance_guard` PID 复用误杀面、bridge 内层 ok 不 reject、超时不取消 fetch、
+  Android mixed content 安全面、EPUB 导出本地图缺失等留待后续批次。
+- 提交：分 `win:` / `android:` / `docs:` 三个本地提交，未推送。
+
 ### 2026-08-16 win/docs：骨碌碌阅读交互第八轮（评论排序 / inline 移除 / 活跃区实时 / 悬浮层级统一）
 
 - 评论排序：评论楼层按章节 `floorIds` 顺序排列（API 分批返回顺序不稳定）；
