@@ -84,6 +84,9 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
 - **共享语言**：术语不确定时先查 [docs/GLOSSARY.md](docs/GLOSSARY.md)，
   不要自造同义词；领域词（楼层/引用/骰子/只看楼主）与代码概念
   （text_offset/scroll_ratio/原生书）一一对应。
+- **动效纪律**：新增/修改动画遵守 [docs/ANIMATION_STANDARDS.md](docs/ANIMATION_STANDARDS.md)
+  （只动 transform/opacity、UI 动效 ≤300ms、支持 prefers-reduced-motion、
+  禁 transition:all、悬停配 (hover:hover)）；阅读器动画不得影响 text_offset。
 - **Diff 影响检查**：改动涉及共享文件或数据契约字段时，先列出受影响端
   （Windows / Android / CI / 文档），逐项核对后再提交。
 - **文档漂移检查**：任何改动收尾（尤其涉及 HEAD / 版本线 / 测试基线 / CI 清单 /
@@ -100,6 +103,7 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
     测试基线表、§2.2 代码规模热点行数表、§2.3 架构债表状态、§3 各 P 项状态；
   - `docs/MAINTENANCE_GUIDE.md`：§1 版本线、§7 测试体系与基线、§10 当前状态、
     §11 已知问题与风险；
+  - `docs/ANIMATION_STANDARDS.md`：动效审查标准（现役；新增/修改动画必须遵守）；
   - `docs/README.md`：文档索引（现役/历史分类；新增文档必须同步本索引）；
   - `README.md`：版本表、系统要求、功能清单、测试命令；
   - `CHANGELOG.md`、`SECURITY.md`、`使用说明.txt`、`VERSIONING.md`、

@@ -57,6 +57,21 @@
 
 ## 4. 最近流水
 
+### 2026-08-18 docs：落实动效审查标准（ANIMATION_STANDARDS）
+
+- 背景：评估 `react-bits` 分析报告后，决定先落实其 `review-animations` 的动效质量
+  规则（纯规则、零依赖、零许可风险），暂不移植其组件代码。
+- 处理：
+  - 新增 `docs/ANIMATION_STANDARDS.md`：硬性规则（只动 transform/opacity、UI ≤300ms、
+    支持 prefers-reduced-motion、禁 transition:all、禁无理由 scale(0)/ease-in、
+    悬停配 `(hover:hover)`）、阅读器 text_offset 专项、循环/背景动画暂停与停止、
+    新增/修改动效检查清单、来源与许可说明；
+  - `AGENTS.md` §5 新增「动效纪律」条目，漂移清单纳入 `docs/ANIMATION_STANDARDS.md`；
+  - `MAINTENANCE_GUIDE` §6 补第 10 条动效纪律；
+  - `docs/README.md` 索引补登记该现役文档。
+- 验证：纯文档改动；`scripts/check-doc-drift.ps1` 复跑；未跑构建。
+- 后续：如需移植具体效果（如 Aurora 背景），按文档 §5 走「重写实现 + THIRD_PARTY_NOTICES 登记」流程。
+
 ### 2026-08-18 docs：文档层级与重叠治理（归档历史文档 + 文档索引 + REVIEW_ACTION_PLAN 指针 + 权威事实源）
 
 - 背景：审查仓库层级与文档重叠，确认 `docs/` 平铺且历史快照与现役规范混放、

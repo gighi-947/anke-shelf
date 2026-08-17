@@ -130,6 +130,8 @@ NgaConfig / StatsStore / AnnotationStore / BookRepository / OkHttp）+ 四 Tab �
 8. 改文本规则：先改 `text-cases.json`（红）再改实现（绿），同步 SPEC + DATA_CONTRACT + DevLog。
 9. 涉及 HEAD / 版本线 / 测试基线 / CI 清单 / 文件行数 / 待办状态的改动，收尾跑**文档漂移检查**
    （可先 `scripts/check-doc-drift.ps1` 生成快照，再按 AGENTS.md §5 高漂移清单核对）；改动必补记 DevLog。
+10. 新增/修改动画遵守 `docs/ANIMATION_STANDARDS.md`（只动 transform/opacity、UI ≤300ms、
+    `prefers-reduced-motion`、禁 `transition:all`、悬停配 `(hover:hover)`）；阅读器动画不得影响 text_offset。
 
 ## 7. 测试体系与基线
 

@@ -16,6 +16,7 @@
 | [TEXT_NORMALIZATION_SPEC.md](TEXT_NORMALIZATION_SPEC.md) | text_offset 文本规范化唯一权威 | 现役 |
 | [GLOSSARY.md](GLOSSARY.md) | 领域词 ↔ 代码概念术语表 | 现役 |
 | [ANDROID_DESIGN_TOKENS.md](ANDROID_DESIGN_TOKENS.md) | Android UI 设计令牌（间距/圆角/颜色） | 现役 |
+| [ANIMATION_STANDARDS.md](ANIMATION_STANDARDS.md) | 动效审查标准（transform/opacity、≤300ms、reduced-motion 等） | 现役；新增/修改动画必须遵守 |
 | [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md) | P0–P4 路线图与执行顺序 | 现役；**待办唯一基线** |
 | [REVIEW_ACTION_PLAN.md](REVIEW_ACTION_PLAN.md) | 整改行动计划指针 | 现役指针；历史版见 archive/REVIEW_ACTION_PLAN.md |
 | [GULULU_REFERENCE_MATRIX.md](GULULU_REFERENCE_MATRIX.md) | 骨碌碌全能助手功能对照矩阵 | 现役参考 |
