@@ -8,16 +8,17 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-16）
+## 1. 当前状态（2026-08-18）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
-  沉浸总览 / 骰点解锁菜单）已全部合入，待发布 v1.4.0。精确提交与远端状态以
-  `git log` / `git status` 为准。
-- 版本线：Windows `v1.4.0`（本轮发布，AnkeShelf-v1.4.0.zip）；
+  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入。
+  精确提交与远端状态以 `git log` / `git status` 为准。
+- 版本线：Windows `v1.4.0`（已发布，AnkeShelf-v1.4.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
-- 测试基线（Windows / JS / Android JVM 于 2026-08-16 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 283 项 OK
-    （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
+- 测试基线（Windows / JS / Android JVM 于 2026-08-18 实跑复核）：
+  - Windows Python：`python -m unittest discover tests` = 287 项
+    （本机 Python 3.14：1 error + 4 跳，error 为 `test_main_guard` 平台敏感项；
+    bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
@@ -52,6 +53,36 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-18 docs：全仓库非归档文档漂移扫描与修复
+
+- 背景：上一条修了 DevLog §5 延后项清单漂移后，按 AGENTS.md「文档漂移检查」纪律
+  对全部非归档文档做一次系统扫描，用 `git rev-parse HEAD`、最新测试计数、
+  `wc -l` 文件行数、`.github/workflows/*.yml` 清单逐一对照文档声明。
+- 实跑测试获取真值：Windows Python 287 项（3.14：1 error + 4 跳，error 为
+  `test_main_guard` 平台敏感项；bundled 3.12 全过）；JS 契约 textpos 15 /
+  api-contract 52 / bridge v1 / reader-lite-parts 6 parts·36917B 均过。
+- 修复的漂移项：
+  - DevLog §1 当前状态：日期 08-16→08-18；测试计数 283→287；「待发布 v1.4.0」
+    →「已发布」；补记五批接手风险修复已合入。
+  - ARCHITECTURE_ROADMAP §2.1：Windows Python 280→287；主干状态 `4b77ded`→
+    补记 v1.4.0 发布与五批修复；JS 契约补 `bridge-contract` +
+    `reader-lite-parts` 两条。
+  - ARCHITECTURE_ROADMAP §2.2：文件行数表全量更新（WebViewChapterView 605→645、
+    NativeBook 562→635、BookshelfScreen 591→604、Epub 512→569、SettingsScreen
+    550→564、SearchScreen 541→565、NativeReaderScreen 428→476、reader-lite.js
+    977→1038、reader.js 655→761、nga_service.py 524→586、reader.css 1683→2125 等）。
+  - ARCHITECTURE_ROADMAP 顶部核对块：补 2026-08-16 v1.4.0 发布与 2026-08-17/18
+    五批修复的推进记录（历史核对链保留不改写）。
+  - MAINTENANCE_GUIDE §7：测试基线 283→287、日期 08-15→08-18；
+    §10 当前状态：补五批修复、真实待办收敛。
+- 确认无漂移的项：README 版本表/系统要求、CHANGELOG、SECURITY、使用说明.txt、
+  contracts/README、DATA_CONTRACT、ANDROID_ARCHITECTURE、CODEBASE_MAP、
+  VERSIONING、ADR、AGENTS（均用 `vX.Y.Z` 变量形式）、GLOSSARY、
+  NATIVE_BOOK_FORMAT、TEXT_NORMALIZATION_SPEC、ANDROID_DESIGN_TOKENS。
+- 归档不改写：REVIEW_ACTION_PLAN 的「111 过 / 230 项」是 `ab3c6d8` 时点快照、
+  ANDROID_CODE_REVIEW/PERFORMANCE_REVIEW 已有 2026-08-13 核对标注，均属历史
+  审查记录，保留原文。
 
 ### 2026-08-18 docs：DevLog 第 5 节延后项清单同步真实状态（文档漂移修复）
 
