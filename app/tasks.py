@@ -39,6 +39,7 @@ class TaskManager:
         self._lanes = lanes or {}
         self._active: dict[str, str] = {}  # lane -> task_id
         self._cancelled: set[str] = set()
+        self._errors: dict[str, str] = {}  # task_id -> 最近一次失败详情
         self._lock = threading.RLock()
 
     def start(self, lane: str, task_id: str) -> bool:
@@ -48,6 +49,7 @@ class TaskManager:
                 return self._active[lane] == task_id
             self._active[lane] = task_id
             self._cancelled.discard(task_id)
+            self._errors.pop(task_id, None)
             return True
 
     def finish(self, lane: str, task_id: str) -> None:
@@ -63,6 +65,11 @@ class TaskManager:
     def is_cancelled(self, task_id: str) -> bool:
         with self._lock:
             return task_id in self._cancelled
+
+    def error(self, task_id: str) -> Optional[str]:
+        """最近一次失败任务的异常详情；无失败/未知任务返回 None。"""
+        with self._lock:
+            return self._errors.get(task_id)
 
     def run(
         self,
@@ -89,7 +96,9 @@ class TaskManager:
             return TaskStatus.CANCELLED if self.is_cancelled(task_id) else TaskStatus.COMPLETED
         except TaskCancelled:
             return TaskStatus.CANCELLED
-        except Exception:
+        except Exception as e:
+            with self._lock:
+                self._errors[task_id] = f"{type(e).__name__}: {e}"
             return TaskStatus.FAILED
         finally:
             self.finish(lane, task_id)

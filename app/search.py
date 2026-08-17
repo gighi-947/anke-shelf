@@ -127,12 +127,12 @@ class SearchService:
                 pos = hay.find(needle, pos + 1)
 
     def _count_hits(self, text: str, q: str, case_sensitive: bool, whole_word: bool) -> int:
-        """章节内的全部命中数（C 层快速统计；整词模式按非重叠计数）。"""
-        hay = text if case_sensitive else text.lower()
-        needle = q if case_sensitive else q.lower()
-        if whole_word:
-            return len(_word_re(needle).findall(hay))
-        return hay.count(needle)
+        """章节内的全部命中数，必须与 _iter_hits 的可重叠扫描语义一致。
+
+        不能用 str.count / findall（它们按非重叠计数），否则重叠查询时
+        chapter_hits/total_hits 会小于实际返回的命中数。
+        """
+        return sum(1 for _ in self._iter_hits(text, q, 0, case_sensitive, whole_word))
 
     def _make_snippet(self, text: str, pos: int, q: str, snippet_len: int) -> str:
         s = max(0, pos - snippet_len)
@@ -241,7 +241,9 @@ class SearchService:
                 break
         if ch is None:
             return None
-        start = cp_index_from_utf16(ch["text"], max(0, int(after_offset) + 1))
+        # after_offset 是 UTF-16 code unit 偏移；先换算到码点索引再 +1，
+        # 避免上次命中是代理对（emoji）时 +1 落在代理对中间而被拉回同一字符。
+        start = cp_index_from_utf16(ch["text"], max(0, int(after_offset))) + 1
         hits = []
         n = 0
         gen = self._iter_hits(ch["text"], q, start, case_sensitive, whole_word)

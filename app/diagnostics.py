@@ -1,6 +1,7 @@
 """诊断导出（B6）：版本/平台/日志/脱敏设置；绝不包含 NGA Cookie 与凭据。"""
 import json
 import platform
+import re
 import sys
 import zipfile
 from datetime import datetime
@@ -8,6 +9,23 @@ from pathlib import Path
 
 from . import __version__
 from .paths import data_dir
+
+# settings.json 未来若出现凭据类字段，诊断包必须打码而不是原样导出。
+_SENSITIVE_KEY_RE = re.compile(
+    r"(?i)(cookie|passport|password|secret|token|credential|session|auth|cid|uid|key|salt)"
+)
+
+
+def _redact_settings(value):
+    """递归脱敏 settings 中敏感键的值；键名与普通设置保持不变。"""
+    if isinstance(value, dict):
+        return {
+            k: ("[REDACTED]" if _SENSITIVE_KEY_RE.search(k) else _redact_settings(v))
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_settings(v) for v in value]
+    return value
 
 
 def build_diagnostics(dest: Path, data_root: Path | None = None) -> Path:
@@ -29,7 +47,10 @@ def build_diagnostics(dest: Path, data_root: Path | None = None) -> Path:
         settings_file = root / "settings.json"
         if settings_file.is_file():
             settings = json.loads(settings_file.read_text(encoding="utf-8"))
-            z.writestr("settings.json", json.dumps(settings, ensure_ascii=False, indent=2))
+            z.writestr(
+                "settings.json",
+                json.dumps(_redact_settings(settings), ensure_ascii=False, indent=2),
+            )
         logs = root / "logs"
         if logs.is_dir():
             for p in sorted(logs.glob("*.log")):

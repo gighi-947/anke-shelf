@@ -8,6 +8,7 @@
     doc: null,
     modal: null,
     escapeHandler: null,
+    clickHandler: null,
   };
 
   function loadClues() {
@@ -23,8 +24,12 @@
   function saveClue(title, password) {
     const clues = loadClues();
     const sourceKey = String(state.sourceId);
-    const bookClues = clues[sourceKey] && typeof clues[sourceKey] === 'object'
+    const raw = clues[sourceKey] && typeof clues[sourceKey] === 'object'
       ? clues[sourceKey] : {};
+    // 使用 null-prototype 映射，避免标题恰好为 "__proto__" 时被原型 setter
+    // 吞掉（普通对象 bookClues["__proto__"] = x 不会创建自有属性）。
+    const bookClues = Object.create(null);
+    Object.keys(raw).forEach((k) => { bookClues[k] = raw[k]; });
     bookClues[title] = password;
     clues[sourceKey] = bookClues;
     try {
@@ -39,7 +44,10 @@
   function clueFor(title) {
     const clues = loadClues();
     const bookClues = clues[String(state.sourceId)];
-    return bookClues && typeof bookClues[title] === 'string' ? bookClues[title] : '';
+    return bookClues && typeof bookClues === 'object' &&
+        Object.prototype.hasOwnProperty.call(bookClues, title) &&
+        typeof bookClues[title] === 'string'
+      ? bookClues[title] : '';
   }
 
   function closeModal() {
@@ -124,9 +132,15 @@
   }
 
   function onChapterLoaded(doc) {
+    // 换章时先解绑旧文档委托，避免同一文档重复加载时监听叠加。
+    if (state.doc && state.doc !== doc && state.clickHandler) {
+      state.doc.removeEventListener('click', state.clickHandler);
+      state.clickHandler = null;
+    }
     state.doc = doc || null;
     if (!state.sourceId || !doc) return;
-    doc.addEventListener('click', (event) => {
+    if (state.clickHandler) return; // 同一文档已绑定
+    const handler = (event) => {
       const secret = event.target.closest('.gululu-secret-cue');
       const clue = event.target.closest('.gululu-clue-cue');
       if (!secret && !clue) return;
@@ -134,17 +148,27 @@
       event.stopPropagation();
       if (secret) unlockSecret(secret);
       else collectClue(clue);
-    });
+    };
+    doc.addEventListener('click', handler);
+    state.clickHandler = handler;
   }
 
   function setBook(book) {
     closeModal();
+    if (state.doc && state.clickHandler) {
+      state.doc.removeEventListener('click', state.clickHandler);
+      state.clickHandler = null;
+    }
     state.doc = null;
     state.sourceId = Number(book && book.gululu_source_id) || 0;
   }
 
   function close() {
     closeModal();
+    if (state.doc && state.clickHandler) {
+      state.doc.removeEventListener('click', state.clickHandler);
+      state.clickHandler = null;
+    }
     state.doc = null;
     state.sourceId = 0;
   }

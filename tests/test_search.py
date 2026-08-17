@@ -196,6 +196,40 @@ class TestHighFrequencySearch(unittest.TestCase):
         self.assertFalse(more["more"])
 
 
+class TestSearchOverlapAndUtf16Continuation(unittest.TestCase):
+    """重叠命中统计口径与代理对（emoji）续取边界（交接深潜发现）。"""
+
+    def test_overlapping_hits_count_matches_returned(self):
+        # "aaaa" 中 "aa" 的重叠命中为 0/1/2 三处；旧统计用 str.count 只数 2，
+        # 导致 chapter_hits/total_hits 小于实际返回的命中数。
+        book = _FakeBook(["aaaa"], ["t"])
+        svc = SearchService()
+        svc.ensure_index(book)
+        data = svc.search(book.id, "aa")
+        self.assertEqual(data["total_hits"], 3)
+        self.assertEqual(data["results"][0]["chapter_hits"], 3)
+        self.assertEqual(
+            [h["offset"] for h in data["results"][0]["hits"]],
+            [0, 1, 2],
+        )
+
+    def test_search_more_after_astral_hit_does_not_duplicate(self):
+        # text_offset 为 UTF-16 code unit；上次命中若为 emoji，旧续取在
+        # after_offset+1（落在代理对中间）会被 cp_index_from_utf16 拉回同一字符，
+        # 导致 search_more 重复返回同一条命中。
+        book = _FakeBook(["a👋b👋c"], ["t"])
+        svc = SearchService()
+        svc.ensure_index(book)
+        data = svc.search(book.id, "👋", per_chapter=1)
+        self.assertEqual(data["total_hits"], 2)
+        first = data["results"][0]
+        self.assertEqual([h["offset"] for h in first["hits"]], [1])
+        self.assertTrue(first["more"])
+        page = svc.search_more(book.id, "👋", 0, 1, per_chapter=1)
+        self.assertEqual([h["offset"] for h in page["hits"]], [4])
+        self.assertFalse(page["more"])
+
+
 class TestDrop(unittest.TestCase):
     """索引清理（独立类：不破坏 TestSearchService 的共享索引）。"""
 

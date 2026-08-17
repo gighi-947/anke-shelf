@@ -71,6 +71,16 @@ class TaskManagerTest(unittest.TestCase):
         self.assertEqual(status, TaskStatus.PENDING)
         tm.finish("x", "busy")
 
+    def test_failed_task_retains_error_detail(self):
+        tm = TaskManager(lanes={"x": 1})
+
+        def boom(report):
+            raise ValueError("boom detail")
+
+        status = tm.run("x", "tx", boom)
+        self.assertEqual(status, TaskStatus.FAILED)
+        self.assertIn("boom detail", tm.error("tx"))
+
 
 if __name__ == "__main__":
     unittest.main()
