@@ -105,6 +105,9 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
     `contracts/README.md`、`docs/CODEBASE_MAP.md`、`docs/GLOSSARY.md`、
     `docs/DATA_CONTRACT.md`、`docs/ANDROID_ARCHITECTURE.md`、
     `nga-post-template.bbcode`。
+  **治理固定点（停止递归）**：本清单与 `scripts/check-doc-drift.ps1` 是漂移检查的
+  固定点；不为它们编写元文档，不递归治理。新增高漂移文档时改本清单与脚本即可，
+  活状态字段照常同步。
 
 ## 6. 数据契约（docs/DATA_CONTRACT.md）
 

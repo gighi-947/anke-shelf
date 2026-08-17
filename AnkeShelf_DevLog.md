@@ -74,6 +74,9 @@
 - 推送前自检：发现并同步三处新引入漂移——MAINTENANCE_GUIDE §6/§10/§12 补引用新脚本、
   DevLog §1 当前状态补记治理强化、ARCHITECTURE_ROADMAP 顶部核对块补记本次推进；
   随后 `check-doc-drift.ps1` 复跑输出与仓库状态一致。
+- 收敛递归：`AGENTS.md §5` 增加「治理固定点（停止递归）」条款——清单与脚本是检查
+  固定点，不为它们编写元文档；`check-doc-drift.ps1` 新增 `Governance wiring check`，
+  自动检查 AGENTS / CONTRIBUTING / MAINTENANCE_GUIDE 是否仍引用本脚本。
 
 ### 2026-08-18 docs：全仓库非归档文档漂移扫描与修复
 
