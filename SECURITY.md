@@ -1,4 +1,4 @@
-﻿# 安全策略（Security Policy）
+# 安全策略（Security Policy）
 
 ## 支持版本
 
@@ -22,7 +22,7 @@ https://github.com/gighi-947/anke-shelf/security/advisories/new ）私下报告�
 - EPUB 解析带路径穿越防护与条目数/解压体积上限（ZIP 炸弹防护）。
 - Android：`allowBackup=false`、最小权限、WebView 仅加载本地资产、章节 HTML 输入清洗。
 
-## 已知限制（见 docs/ANDROID_SECURITY_REVIEW.md）
+## 已知限制（见 docs/archive/ANDROID_SECURITY_REVIEW.md）
 
 - Android 章节清洗已改为 jsoup DOM allowlist（2026-08-14，路线图 P2）。
 - Android 为加载 https 图片允许混合内容，风险限于图片子资源。

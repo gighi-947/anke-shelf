@@ -77,7 +77,7 @@
 | localhost 服务也会被跨站调用 | 仅回环监听 + 随机令牌（URL query + 请求头双携带）+ API body 限制 | server.py / 10.x |
 | 路径穿越攻击面多（含双重编码） | unquote 后再校验；拒绝反斜杠/`..`/绝对路径；只命中 zip 条目名集合 | server.py / 10.13 |
 | ZIP 炸弹与超大解压量 | EPUB 加 max_entries/max_total_bytes 可配置上限，超限拒绝 | 10.13 |
-| Android 正则清洗对畸形 HTML 有遗漏 | 不可信输入用 jsoup DOM allowlist（项目已有依赖）；正则仅作过渡 | ANDROID_SECURITY_REVIEW / 本轮 P2 |
+| Android 正则清洗对畸形 HTML 有遗漏 | 不可信输入用 jsoup DOM allowlist（项目已有依赖）；正则仅作过渡 | docs/archive/ANDROID_SECURITY_REVIEW / 本轮 P2 |
 | 凭据、正文、签名不能进诊断包 | 诊断包只含版本/脱敏设置/日志；发布包与诊断包都做凭据扫描 | 10.11 / 9.61 |
 
 ## 7. 网络与环境

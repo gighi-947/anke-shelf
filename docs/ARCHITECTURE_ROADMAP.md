@@ -66,6 +66,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
 
+> 权威基线：版本线见 README 版本表；测试基线详见 `MAINTENANCE_GUIDE.md` §7；本节为路线图快照。
+
 ### 2.2 代码规模热点
 
 | 文件 | 行数 | 关注点 |

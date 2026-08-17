@@ -91,7 +91,7 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   `git rev-parse HEAD`、最新测试计数、`.github/workflows/*.yml` 清单逐一对照
   下列非归档文档声明；可先用
   `powershell -ExecutionPolicy Bypass -File scripts/check-doc-drift.ps1`
-  生成高漂移快照，再人工核对。`docs/DEVLOG_ARCHIVE.md` 等归档只保留历史，不改写。
+  生成高漂移快照，再人工核对。`docs/DEVLOG_ARCHIVE.md`、`docs/archive/` 等归档只保留历史，不改写。
   **高漂移检查清单（非归档文档）**：
   - `AnkeShelf_DevLog.md`：§1 当前状态（日期 / HEAD / 版本线 / 测试计数 /
     发布状态）、§4 最近流水（本次改动必补记）、§5 待办与延后项（已完成项不得
@@ -100,6 +100,7 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
     测试基线表、§2.2 代码规模热点行数表、§2.3 架构债表状态、§3 各 P 项状态；
   - `docs/MAINTENANCE_GUIDE.md`：§1 版本线、§7 测试体系与基线、§10 当前状态、
     §11 已知问题与风险；
+  - `docs/README.md`：文档索引（现役/历史分类；新增文档必须同步本索引）；
   - `README.md`：版本表、系统要求、功能清单、测试命令；
   - `CHANGELOG.md`、`SECURITY.md`、`使用说明.txt`、`VERSIONING.md`、
     `contracts/README.md`、`docs/CODEBASE_MAP.md`、`docs/GLOSSARY.md`、

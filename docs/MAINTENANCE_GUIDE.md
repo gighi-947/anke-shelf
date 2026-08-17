@@ -143,6 +143,8 @@ NgaConfig / StatsStore / AnnotationStore / BookRepository / OkHttp）+ 四 Tab �
 | 安全回归 | ZIP 炸弹上限 / 穿越拒绝 / CSP `script-src 'none'` | `tests/security/` |
 | 性能基准 | 提取 ≈1.1ms/章、开读 3.2ms、搜索 7.0ms | `tests/performance/bench.py` + nightly |
 
+> **测试基线文档权威**：本节是测试基线的唯一文档事实源；DevLog §1、ARCHITECTURE_ROADMAP §2.1 等处的计数仅为快照/指针，以本节为准。
+
 守卫矩阵：api-contract（handler↔client↔MOCK）、textpos（逐字符对齐）、
 bridge-contract（桥版本）、reader-lite-parts（字节级防拆分漂移）、
 test_contracts.py（文本期望 + 原生书 fixture + JSON Schema）、
@@ -203,6 +205,7 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 | 改文本规则 | 先改 `text-cases.json`（红）→ 实现（绿）→ 同步 SPEC / DATA_CONTRACT / DevLog |
 | 发新版本 | §9 双端 SOP 独立；收尾文档漂移检查 + 补记 DevLog「当前状态」 |
 | 文档漂移检查 | `scripts/check-doc-drift.ps1` 生成快照 + AGENTS.md §5 高漂移清单逐项核对 |
+| 新增/移动文档 | 同步 `docs/README.md` 索引；历史文档移入 `docs/archive/`（只读不改写） |
 
 ---
 

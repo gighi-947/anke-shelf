@@ -1,6 +1,6 @@
 # 安科书架 Android 设计令牌规范（Design Tokens）
 
-> 范围：仅安卓端 Compose UI（`ui/theme/Tokens.kt`）。桌面端语义见 `docs/ANDROID_UI_PLAN.md`；阅读器 WebView 由 `readerTheme(settings)` 与 Compose 同源驱动。
+> 范围：仅安卓端 Compose UI（`ui/theme/Tokens.kt`）。桌面端语义见 `docs/archive/ANDROID_UI_PLAN.md`；阅读器 WebView 由 `readerTheme(settings)` 与 Compose 同源驱动。
 
 ## 1. 目标
 

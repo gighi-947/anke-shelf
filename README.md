@@ -1,4 +1,4 @@
-﻿# 安科书架（AnkeShelf）
+# 安科书架（AnkeShelf）
 
 <p align="center">
   <img src="docs/logo/ankeshelf-logo.png" alt="安科书架 AnkeShelf" width="160" />
@@ -13,6 +13,8 @@ Windows 另支持把骨碌碌公开书籍转换为标准 EPUB。两端共享同�
 | --- | --- | --- | --- | --- |
 | Windows 桌面端 | **v1.4.0** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
 | Android 手机端 | **v1.0.0** | Kotlin + Jetpack Compose（正文用安卓专用 WebView 渲染内核） | `android-vX.Y.Z` | `AnkeShelf-vX.Y.Z-android.apk` |
+
+> **版本线文档权威**：本表是版本线的唯一文档事实源；代码事实源为 Windows `app/__init__.py`、Android `android/app/build.gradle.kts`。其他文档（DevLog / MAINTENANCE_GUIDE / ROADMAP 等）中的版本线以本表为准。
 
 > 跨平台开发日志见 [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)；两端架构说明见
 > [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 与
@@ -225,7 +227,7 @@ gradlew.bat testDebugUnitTest             :: JVM 单元测试（数据层 / 进�
 gradlew.bat compileDebugAndroidTestKotlin :: 仪器测试编译
 ```
 
-真机手工验收参照 [docs/ANDROID_M4_ACCEPTANCE.md](docs/ANDROID_M4_ACCEPTANCE.md)；
+真机手工验收参照 [docs/archive/ANDROID_M4_ACCEPTANCE.md](docs/archive/ANDROID_M4_ACCEPTANCE.md)；
 进度保持回归要求“滚动 / 翻页 → 退出 → 重进”位置一致，连续重进 3 次一致。
 
 ---

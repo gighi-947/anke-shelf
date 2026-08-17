@@ -32,6 +32,8 @@
   - 骨碌碌正式冒烟 `formal_ui_smoke.js`（桌面 + 430px，含骰点菜单/段落评论/总览/
     抽屉保位断言）全过。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
+- 权威基线：版本线见 README 版本表；测试基线详见 `docs/MAINTENANCE_GUIDE.md` §7；
+  待办以 `docs/ARCHITECTURE_ROADMAP.md` 为准（本节为快速快照）。
 
 ## 2. 本机环境（Windows 开发机）
 
@@ -54,6 +56,27 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-18 docs：文档层级与重叠治理（归档历史文档 + 文档索引 + REVIEW_ACTION_PLAN 指针 + 权威事实源）
+
+- 背景：审查仓库层级与文档重叠，确认 `docs/` 平铺且历史快照与现役规范混放、
+  REVIEW_ACTION_PLAN 与 ROADMAP 待办重复、版本/测试基线多源复述。
+- 处理：
+  - 新建 `docs/archive/`，移入 8 份历史 Android/规划文档
+    （ANDROID_CODE_REVIEW / PERFORMANCE_REVIEW / SECURITY_REVIEW / UI_PLAN /
+    NATIVE_RENDERER / READER_REFERENCES / M4_ACCEPTANCE / NGA_READER_PLAN）
+    及旧 REVIEW_ACTION_PLAN 全量；
+  - 新增 `docs/README.md` 文档索引（现役 / 日志 / ADR / 归档分类 + 职责 + 维护约定）；
+  - `docs/REVIEW_ACTION_PLAN.md` 改为**指针文档**，P0–P4 唯一基线收敛到
+    `ARCHITECTURE_ROADMAP.md`；
+  - 事实源收敛：README 版本表 = 版本线文档权威、MAINTENANCE_GUIDE §7 = 测试基线
+    文档权威、ROADMAP = 待办唯一基线；DevLog §1 / ROADMAP §2.1 补权威指针；
+  - 同步引用链接：README / SECURITY / LESSONS_LEARNED / ANDROID_DESIGN_TOKENS /
+    DevLog 指向 `docs/archive/`；
+  - `AGENTS.md` 漂移清单纳入 `docs/README.md` 与 `docs/archive/` 归档纪律；
+  - `MAINTENANCE_GUIDE §12` 补「新增/移动文档」速查行。
+- 验证：`git mv` 移动 9 文件、引用链接更新；`scripts/check-doc-drift.ps1` 复跑；
+  纯文档改动，未跑构建。
 
 ### 2026-08-18 docs/win：文档漂移治理强化（显式检查清单 + 半自动扫描脚本）
 
@@ -106,7 +129,7 @@
   NATIVE_BOOK_FORMAT、TEXT_NORMALIZATION_SPEC、ANDROID_DESIGN_TOKENS。
 - 归档不改写：REVIEW_ACTION_PLAN 的「111 过 / 230 项」是 `ab3c6d8` 时点快照、
   ANDROID_CODE_REVIEW/PERFORMANCE_REVIEW 已有 2026-08-13 核对标注，均属历史
-  审查记录，保留原文。
+  审查记录，保留原文（2026-08-18 起统一存放于 `docs/archive/`）。
 
 ### 2026-08-18 docs：DevLog 第 5 节延后项清单同步真实状态（文档漂移修复）
 
@@ -391,7 +414,7 @@
     NATIVE_BOOK_FORMAT.md 为唯一权威，本节为摘要），消除字段级重复；
   - `AGENTS.md` 文档漂移检查清单补 `使用说明.txt`、`nga-post-template.bbcode`
     （此前未纳入，使用说明漂移即治理盲点所致）；
-  - `docs/ANDROID_UI_PLAN.md`、`docs/ANDROID_READER_REFERENCES.md`：补“状态”
+  - `docs/archive/ANDROID_UI_PLAN.md`、`docs/archive/ANDROID_READER_REFERENCES.md`：补“状态”
     标注（M4 已验收/调研记录，非现役规范），与其余历史文档状态纪律对齐。
 - 评估结论（不整理项）：ADR 五份为“为何决定”重申（职责不同，保留）；ARCHITECTURE
   与 CODEBASE_MAP 粒度不同（保留）；REVIEW_ACTION_PLAN 与 ARCHITECTURE_ROADMAP
