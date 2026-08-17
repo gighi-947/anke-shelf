@@ -54,6 +54,21 @@ Get-Content 'docs/MAINTENANCE_GUIDE.md' -Encoding UTF8 |
   Select-String -Pattern '^\| Windows Python |^\| JS 契约 |^\| Android JVM |^\| 真机 |^\| UI harness ' |
   ForEach-Object { $_.Line }
 
+Section 'Governance wiring check'
+$wiring = @(
+  @{ File = 'AGENTS.md'; Needle = 'scripts/check-doc-drift.ps1' },
+  @{ File = 'CONTRIBUTING.md'; Needle = 'scripts/check-doc-drift.ps1' },
+  @{ File = 'docs/MAINTENANCE_GUIDE.md'; Needle = 'scripts/check-doc-drift.ps1' }
+)
+foreach ($w in $wiring) {
+  $hit = Select-String -Path $w.File -Pattern $w.Needle -SimpleMatch -Quiet
+  if ($hit) {
+    Write-Host ("OK   {0} -> {1}" -f $w.File, $w.Needle)
+  } else {
+    Write-Host ("MISS {0} missing reference to {1}" -f $w.File, $w.Needle) -ForegroundColor Yellow
+  }
+}
+
 if ($RunTests) {
   Section 'Live test counts (Windows Python + JS contracts)'
   python -m unittest discover tests 2>&1 |
