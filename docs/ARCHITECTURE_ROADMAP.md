@@ -88,16 +88,16 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 债 | 证据 | 影响 |
 | --- | --- | --- |
-| 静默失败 | Kotlin `catch (Exception)` 32 处、`return null` 28 处；`readJsonOrNull` 全吞异常 | 失败原因不可区分，debug 困难 |
-| 防御式代码 | `runCatching{}.getOrNull()` 多处；`Settings.get` 返回 `Any?`；`BookSession` 用 5 个 lambda 组装 | 调用关系被隐藏，review 成本高 |
-| 桥协议无版本 | `saveProgress(idx, value, isOffset, page, total, ratio)` 多位置参数，无握手/能力协商 | 局部升级可能静默错配 |
+| 静默失败（核心已解决） | `readJsonStore` / `StoreLoadResult` / `RepoResult` / `ChapterReadResult` 已显式化；残余 null 清理按 P2 现状收敛 | 失败原因可区分；残余 null 属低风险收尾 |
+| 防御式代码（部分解决） | `Settings.get(key): Any?` 已删除；`BookSession` 5 lambda 为统一只读接口设计保留 | 调用关系已显式化，剩余为设计取舍 |
+| 桥协议无版本（已解决） | ready 握手 `{bridgeVersion:1, capabilities}` + `BridgeProtocol.isCompatible`；ProgressModel 纯决策可回放 | 协议错配在运行期显式失败并记诊断 |
 | API 人工同步（已解决） | 现状：后端 `_HANDLERS` 与前端 `METHODS`/`bridge.js` MOCKS 共 52 项；`api_manifest()` + `contracts/tests/api-contract.test.js` + `tests/test_api_contract.py` 自动对照，MOCKS 已补齐 | 遗留：业务错误内层 `{ok:false}` 不 reject（前端调用方自查，设计保持） |
-| 正则 HTML 清洗 | `ReaderHtml.sanitizeReaderBody()` 用多组 Regex 删 script/事件属性 | 对不可信输入不充分（文档已自认，jsoup 依赖已存在） |
-| 依赖不可复现 | `requirements.txt` 7 个依赖全是最低版本，无 lock；`pyinstaller` 混在运行依赖 | 同一 tag 不同时间装出不同软件 |
-| 重复大文件 | `web/fonts/weidqczfkyxk.ttf` 与安卓 `LXGWWenKai-Regular.ttf` SHA-256 一致，各约 24.8MB | Git 历史膨胀风险 |
-| 治理文件缺失 | 无 CONTRIBUTING/SECURITY/CoC/模板/CODEOWNERS/Dependabot | 陌生人无法安全参与 |
-| 文档膨胀 | DevLog 约 180KB；头部已由 `1ea4c95` 修复为 2026-08-10（review1 的“头部过期”断言已过时） | 新会话定位成本上升 |
-| 编码损坏 | `web/js/reader.js` 8 处中文注释为连续 `?` | 影响可读性，易误导 |
+| 正则 HTML 清洗（已解决） | `sanitizeReaderBody()` 改为 jsoup DOM 白名单清洗（P2 已完成） | 不可信 HTML 清洗可证明 |
+| 依赖不可复现（已解决） | `requirements.in` + 带哈希 lock，CI/PyInstaller 按 lock 安装（P1 已完成） | 同一提交可重复构建 |
+| 重复大文件（已解决） | 字体去重为仓库根 `assets/fonts/` canonical 源，双端构建共用（P3 已完成） | Git 体积不再膨胀 |
+| 治理文件缺失（已解决） | CONTRIBUTING / SECURITY / Issue·PR 模板 / CODEOWNERS / Dependabot / THIRD_PARTY_NOTICES 已补齐（P3 已完成） | 陌生人可安全参与 |
+| 文档膨胀（已治理） | DevLog 历史归档至 `docs/DEVLOG_ARCHIVE.md`，教训收敛至 `docs/LESSONS_LEARNED.md`（P3/10.15 已完成） | 现役日志只留当前状态与最近流水 |
+| 编码损坏（已解决） | `web/js/reader.js` 乱码注释已修复（P3 已完成） | 可读性恢复 |
 
 ---
 
