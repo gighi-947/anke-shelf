@@ -53,6 +53,19 @@
 
 ## 4. 最近流水
 
+### 2026-08-18 docs：DevLog 第 5 节延后项清单同步真实状态（文档漂移修复）
+
+- 背景：核对 DevLog 第 5 节"待办与延后项"与路线图 §3、代码实际状态，发现 P1/P2
+  多项已落地但仍标"剩余"，属文档漂移，会误导接手者高估工作量。
+- 核对结论（均经代码验证）：
+  - P1 三项"剩余"（桥协议+进度回放、依赖锁定、首批 ADR）**全部已完成**；
+  - P2 三项（jsoup 清洗、Android 错误模型、诊断闭环）**全部已完成**；
+  - P3 中大文件拆分/存储恢复/开源治理**大部分已完成**；
+  - 真实待办仅剩：Android 数据完整性校验入口（Windows 已有，Android 缺）；
+    其余大文件拆分 / Android NGA 迁 TaskManager / P4 保持延后。
+- 处理：重写第 5 节为"已完成"与"真实待办"两组，归档已完成项，标注延后理由。
+  未改代码、未改数据契约。
+
 ### 2026-08-16 win/docs：骨碌碌阅读交互第九轮（评论排序折叠 / 重置拆分 / 面板外观统一）
 
 - 评论排序与折叠：段落评论组按**正文段落先后次序**排列（`paragraphOrder`），同段落内
@@ -1167,13 +1180,37 @@
 
 ## 5. 待办与延后项
 
-- P0：已完成（项目侧友好提示 + 文档，`b6fba10`；未重新打包发行版）。
-- P1：契约/API 漂移守卫已完成（`c8f90cf`）；剩余——Android 桥协议版本 +
-  进度事件回放、依赖锁定与构建可复现、首批 ADR；
-- P2：jsoup 清洗、Android 错误模型/null 清理、Android 诊断闭环；
-- P3：大文件渐进拆分、TaskManager 试点、存储恢复能力、开源治理与仓库卫生；
-- P4：参考仓库克隆（网络恢复后）；第二书源 / SQLite / 同步 / 插件（需求触发）。
-- 细节与延后理由见 [docs/ARCHITECTURE_ROADMAP.md](docs/ARCHITECTURE_ROADMAP.md)。
+> 2026-08-18 核对：本节已与代码实际状态同步（此前 P1/P2 多项已落地但未更新，
+> 属文档漂移）。细节与延后理由见 [docs/ARCHITECTURE_ROADMAP.md](docs/ARCHITECTURE_ROADMAP.md)。
+
+**已完成（不再列入待办）：**
+
+- P0：发行包启动崩溃——项目侧友好提示 + 文档（`b6fba10`）；章节读取失败模型
+  `ChapterReadResult`（`867e7ea`）。
+- P1：契约/API 漂移守卫（`c8f90cf`）、Android 桥协议版本 + 进度事件回放
+  （`ad034b8`，`ProgressModel` 纯函数 + 7 份 fixtures）、依赖锁定与构建可复现
+  （`edaf442`，带哈希 lock + APK SHA-256 比对）、首批 ADR（`docs/adr/` 5 份）。
+- P2：jsoup 白名单清洗 `sanitizeReaderBody()`（`d697330`）、Android 错误模型
+  `RepoResult`/`ChapterReadResult`/`StoreLoadResult` + review3 残余 null 收敛
+  （`9e84c4c`）、Android 诊断闭环 `LogEvents`/`Diagnostics` + task_id 全链路
+  （`cb40cee`、`b63809f`）。
+- P3（已完成部分）：`reader-lite.js` parts 模块化、`SettingsScreen`/
+  `DownloadScreen`/`NativeReaderScreen`/前端 `settings.js`/`nga_download.js`
+  拆分；Windows 存储恢复（`isolate_corrupt` + `.bak` +
+  `verify_data_integrity`）；统一备份包 `ank-backup/1` 双端落地；
+  开源治理（CONTRIBUTING/SECURITY/模板/CODEOWNERS/Dependabot/
+  THIRD_PARTY_NOTICES/字体去重/乱码修复）。
+- P4：参考仓库 5/8 已克隆并产出 `docs/REFERENCE_MATRIX.md`。
+
+**真实待办（按优先级）：**
+
+- P3：Android 数据完整性校验入口——Android 已有 `isolateCorrupt` 但缺
+  `verify_data_integrity` 等价 API 与设置页入口（Windows 已有完整实现可参照）。
+- P3（保持延后，等真实痛点）：`BookshelfScreen.kt`/`SearchScreen.kt`/
+  `reader.js` 等剩余大文件拆分——路线图原则"只在出现第二个真实调用边界时拆"。
+- P3（保持延后）：Android NGA 下载迁入统一 `TaskManager`——路线图明确推迟。
+- P4（保持延后）：参考仓库剩余 3 个（readest/Kavita/LibraReader）需网络通道；
+  第二书源 / SQLite / 同步 / 插件——等第二个真实实现或量化瓶颈触发。
 
 ## 6. 纪律提醒（新会话必守）
 
