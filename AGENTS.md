@@ -86,12 +86,25 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   （text_offset/scroll_ratio/原生书）一一对应。
 - **Diff 影响检查**：改动涉及共享文件或数据契约字段时，先列出受影响端
   （Windows / Android / CI / 文档），逐项核对后再提交。
-- **文档漂移检查**：任何涉及 HEAD / 版本线 / 测试基线 / CI 清单的改动，收尾时
-  必须把非归档文档（DevLog「当前状态」、路线图基线、
-  README（重点核对版本表与系统要求）、VERSIONING、contracts README、使用说明.txt、nga-post-template.bbcode 等）
-  同步到仓库实际状态，并跑一次漂移扫描：用
+- **文档漂移检查**：任何改动收尾（尤其涉及 HEAD / 版本线 / 测试基线 / CI 清单 /
+  文件行数 / 待办状态时）必须跑一次漂移扫描：用
   `git rev-parse HEAD`、最新测试计数、`.github/workflows/*.yml` 清单逐一对照
-  文档声明；`docs/DEVLOG_ARCHIVE.md` 等归档只保留历史，不改写。
+  下列非归档文档声明；可先用
+  `powershell -ExecutionPolicy Bypass -File scripts/check-doc-drift.ps1`
+  生成高漂移快照，再人工核对。`docs/DEVLOG_ARCHIVE.md` 等归档只保留历史，不改写。
+  **高漂移检查清单（非归档文档）**：
+  - `AnkeShelf_DevLog.md`：§1 当前状态（日期 / HEAD / 版本线 / 测试计数 /
+    发布状态）、§4 最近流水（本次改动必补记）、§5 待办与延后项（已完成项不得
+    继续标“剩余”）；
+  - `docs/ARCHITECTURE_ROADMAP.md`：顶部核对块（HEAD 推进链）、§2.1 版本与
+    测试基线表、§2.2 代码规模热点行数表、§2.3 架构债表状态、§3 各 P 项状态；
+  - `docs/MAINTENANCE_GUIDE.md`：§1 版本线、§7 测试体系与基线、§10 当前状态、
+    §11 已知问题与风险；
+  - `README.md`：版本表、系统要求、功能清单、测试命令；
+  - `CHANGELOG.md`、`SECURITY.md`、`使用说明.txt`、`VERSIONING.md`、
+    `contracts/README.md`、`docs/CODEBASE_MAP.md`、`docs/GLOSSARY.md`、
+    `docs/DATA_CONTRACT.md`、`docs/ANDROID_ARCHITECTURE.md`、
+    `nga-post-template.bbcode`。
 
 ## 6. 数据契约（docs/DATA_CONTRACT.md）
 

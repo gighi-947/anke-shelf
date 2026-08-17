@@ -54,6 +54,23 @@
 
 ## 4. 最近流水
 
+### 2026-08-18 docs/win：文档漂移治理强化（显式检查清单 + 半自动扫描脚本）
+
+- 背景：08-18 维护者补做「全仓库非归档文档漂移扫描与修复」后，复盘发现现有治理
+  规则（AGENTS.md §5）粒度太粗、纯人工、无自动化，是漂移反复出现的根因。
+- 处理：
+  - `AGENTS.md` §5「文档漂移检查」扩为**高漂移检查清单**，显式列出
+    DevLog §1/§4/§5、ARCHITECTURE_ROADMAP 顶部核对块与 §2.1/§2.2/§2.3/§3、
+    MAINTENANCE_GUIDE §1/§7/§10/§11、README/CHANGELOG/SECURITY/使用说明/
+    VERSIONING/contracts README/CODEBASE_MAP/GLOSSARY/DATA_CONTRACT/
+    ANDROID_ARCHITECTURE/nga-post-template.bbcode；
+  - 新增 `scripts/check-doc-drift.ps1`：输出 HEAD/分支/工作区/CI 清单 +
+    高漂移文档快照（DevLog §1、ROADMAP §2.1/§2.2、MAINTENANCE_GUIDE §7），
+    可选 `-RunTests` 实跑测试计数，供收尾人工核对；
+  - `CONTRIBUTING.md`：提交/PR 清单补「已跑文档漂移扫描」项，并指向脚本。
+- 验证：`powershell -ExecutionPolicy Bypass -File scripts/check-doc-drift.ps1`
+  正常运行输出快照；纯文档/脚本改动，未跑构建。
+
 ### 2026-08-18 docs：全仓库非归档文档漂移扫描与修复
 
 - 背景：上一条修了 DevLog §5 延后项清单漂移后，按 AGENTS.md「文档漂移检查」纪律
