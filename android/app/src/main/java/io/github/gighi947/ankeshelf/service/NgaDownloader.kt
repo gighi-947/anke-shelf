@@ -93,7 +93,7 @@ class NgaDownloader(
         for (url in urls) {
             val target = File(dir, NativeBookWriter.imageFileName(url))
             if (target.isFile && target.length() > 0) continue
-            runCatching {
+            try {
                 val req = Request.Builder()
                     .url(url)
                     .ngaHeaders(cfg)
@@ -105,6 +105,15 @@ class NgaDownloader(
                         }
                     }
                 }
+            } catch (e: Exception) {
+                // 单图失败不中断整本书：渲染时本地缺图会回退在线 URL；但必须留诊断痕迹。
+                LogEvents.event(
+                    "nga",
+                    "image_download_failed",
+                    "task_id" to taskId,
+                    "url" to url,
+                    "error" to (e.toString()),
+                )
             }
         }
     }

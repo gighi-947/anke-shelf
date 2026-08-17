@@ -459,7 +459,7 @@ internal fun writeLibraryExport(
             val bytes = if (fmt == "md") {
                 NgaExport.markdownText(dir, meta).toByteArray(Charsets.UTF_8)
             } else {
-                NgaExport.epubBytes(dir, meta)
+                NgaExport.epubBytes(dir, meta, NgaExport.imagesDirFor(context, book.id))
             }
             context.contentResolver.openOutputStream(uri)?.use { os -> os.write(bytes) }
             LogEvents.event(

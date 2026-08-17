@@ -14,7 +14,11 @@ import java.util.zip.ZipOutputStream
  */
 object EpubExporter {
 
-    fun build(nativeDir: File, meta: NativeMeta): ByteArray {
+    fun build(nativeDir: File, meta: NativeMeta, imagesDir: File? = null): ByteArray {
+        val imageDir = imagesDir?.takeIf { it.isDirectory }
+        val imageNames = imageDir
+            ?.listFiles()?.filter { it.isFile }?.map { it.name }?.sorted()
+            ?: emptyList()
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { zip ->
             // mimetype 必须为第一个条目且 STORED（EPUB 规范）
@@ -27,14 +31,33 @@ object EpubExporter {
             zip.closeEntry()
 
             zip.putNextEntry(ZipEntry("EPUB/content.opf"))
-            zip.write(opfXml(meta).toByteArray(Charsets.UTF_8))
+            zip.write(opfXml(meta, imageNames).toByteArray(Charsets.UTF_8))
             zip.closeEntry()
 
             for (ch in meta.chapters) {
                 val file = File(nativeDir, ch.file)
                 if (!file.isFile) continue
+                val data = if (imageNames.isNotEmpty()) {
+                    // 原生书 embedded 模式章节引用 file:///android_images/<bookId>/<name>，
+                    // 导出 EPUB 时改写为相对 images/ 路径并随包携带。
+                    file.readText(Charsets.UTF_8)
+                        .replace(
+                            Regex("""file:///android_images/[^/"']+/([^"' ]+)"""),
+                            "images/$1",
+                        )
+                        .toByteArray(Charsets.UTF_8)
+                } else {
+                    file.readBytes()
+                }
                 zip.putNextEntry(ZipEntry("EPUB/${ch.file}"))
-                file.inputStream().use { it.copyTo(zip) }
+                zip.write(data)
+                zip.closeEntry()
+            }
+
+            for (name in imageNames) {
+                val img = imageDir?.let { File(it, name) } ?: continue
+                zip.putNextEntry(ZipEntry("EPUB/images/$name"))
+                img.inputStream().use { it.copyTo(zip) }
                 zip.closeEntry()
             }
         }
@@ -48,7 +71,7 @@ object EpubExporter {
             crc = CRC32().apply { update("application/epub+zip".toByteArray(Charsets.US_ASCII)) }.value
         }
 
-    private fun opfXml(meta: NativeMeta): String {
+    private fun opfXml(meta: NativeMeta, imageNames: List<String> = emptyList()): String {
         val manifest = StringBuilder()
         val spine = StringBuilder()
         meta.chapters.forEachIndexed { i, ch ->
@@ -57,6 +80,11 @@ object EpubExporter {
                 "<item id=\"$id\" href=\"${xmlEscape(ch.file)}\" media-type=\"application/xhtml+xml\"/>",
             )
             spine.append("<itemref idref=\"$id\"/>")
+        }
+        for (name in imageNames) {
+            manifest.append(
+                "<item id=\"img_${xmlEscape(name)}\" href=\"images/${xmlEscape(name)}\" media-type=\"${imageMime(name)}\"/>",
+            )
         }
         val bookId = "urn:uuid:${UUID.randomUUID()}"
         return """<?xml version="1.0" encoding="utf-8"?>
@@ -76,6 +104,16 @@ object EpubExporter {
 </package>
 """
     }
+
+    private fun imageMime(name: String): String =
+        when (name.substringAfterLast('.', "").lowercase()) {
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "bmp" -> "image/bmp"
+            "svg" -> "image/svg+xml"
+            else -> "image/jpeg"
+        }
 
     private fun xmlEscape(s: String): String =
         s.replace("&", "&amp;").replace("\"", "&quot;")

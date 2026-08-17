@@ -572,7 +572,13 @@ private fun exportBook(
                     if (fmt == "md") {
                         out.write(NgaExport.markdownText(dir, meta).toByteArray(Charsets.UTF_8))
                     } else {
-                        out.write(NgaExport.epubBytes(dir, meta))
+                        out.write(
+                            NgaExport.epubBytes(
+                                dir,
+                                meta,
+                                NgaExport.imagesDirFor(context, rec.id),
+                            ),
+                        )
                     }
                 } else if (fmt == "epub") {
                     File(rec.path).inputStream().use { input -> input.copyTo(out) }

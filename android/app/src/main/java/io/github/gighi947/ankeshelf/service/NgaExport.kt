@@ -1,5 +1,7 @@
 package io.github.gighi947.ankeshelf.service
 
+import android.content.Context
+import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.data.EpubExporter
 import io.github.gighi947.ankeshelf.data.NativeBookWriter
 import io.github.gighi947.ankeshelf.data.NativeFloor
@@ -18,8 +20,12 @@ fun safeExportName(title: String): String {
 /** NGA 书导出：EPUB（原生书章节打包）/ Markdown（楼层转换）。 */
 object NgaExport {
 
-    fun epubBytes(nativeDir: File, meta: NativeMeta): ByteArray =
-        EpubExporter.build(nativeDir, meta)
+    fun epubBytes(nativeDir: File, meta: NativeMeta, imagesDir: File? = null): ByteArray =
+        EpubExporter.build(nativeDir, meta, imagesDir)
+
+    /** embedded 图片目录（与 NgaDownloader.downloadImages 落盘位置一致）。 */
+    fun imagesDirFor(context: Context, bookId: String): File =
+        File(File(context.filesDir, AppPaths.APP_DIR_NAME), "images/$bookId")
 
     fun markdownText(nativeDir: File, meta: NativeMeta): String {
         val floors = NativeBookWriter.loadFloors(nativeDir)
