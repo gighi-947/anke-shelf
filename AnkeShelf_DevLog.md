@@ -59,6 +59,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：架构收敛第六轮——reader.js 移除“必然存在模块”的防御包装
+
+- 背景：`index.html` 固定加载全部前端模块，但 `reader.js` 仍到处 `if (window.X)` /
+  `try { ... } catch { }`，把“模块必然存在”当成“可能不存在”，产生大量噪音。
+- 改动：`web/js/reader.js` 删除围绕 `CodeHighlight` / `Annotations` / `Gululu*` /
+  `FullSearch` / `Stats` / `ViewMenu` / `SettingsPage` / `Paged` 的窗口存在性检查与
+  冗余 try-catch；`toggleBookmarkAtCurrent` 删除“模块未加载”死分支。
+- 验证：`node --check web/js/reader.js` 通过；`reader-lite-parts` / `bridge-contract` /
+  `textpos` / `reader-session` JS 守卫全绿。
+
 ### 2026-08-19 android：架构收敛第五轮——ATOMIC_MOVE 回退不再静默
 
 - 背景：`data/Storage.kt::moveReplace` 原子移动失败时静默回退普通替换，掩盖文件系统异常。

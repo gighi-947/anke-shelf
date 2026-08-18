@@ -89,7 +89,7 @@
               const offsets = TextPos.rangeToOffsets(App.state.textCtx, range);
               if (!offsets) return;
               const offset = offsets[0];
-              if (window.Paged && Paged.isActive()) Paged.gotoOffset(offset);
+              if (Paged.isActive()) Paged.gotoOffset(offset);
               else restoreOffset(offset, targetDoc);
               const session = Reader.ensureSession();
               session.setPosition(offset);
@@ -318,24 +318,14 @@
           applyOverrides(doc);
           const paged = Paged.isActive();
           if (!paged && window.__readerHugeChapter__) {
-            try { Toast.show('本章内容较大，已自动切换为滚动阅读'); } catch (e) { /* ignore */ }
+            Toast.show('本章内容较大，已自动切换为滚动阅读');
           }
           let textDomChanged = false;
-          try {
-            if (window.CodeHighlight) {
-              textDomChanged = CodeHighlight.highlightBlocks(doc) > 0 || textDomChanged;
-            }
-          } catch (e) { /* ignore */ }
-          try {
-            if (window.Annotations) {
-              textDomChanged = Annotations.injectForChapter(doc) > 0 || textDomChanged;
-            }
-          } catch (e) { /* ignore */ }
+          textDomChanged = CodeHighlight.highlightBlocks(doc) > 0 || textDomChanged;
+          textDomChanged = Annotations.injectForChapter(doc) > 0 || textDomChanged;
           // 注入高亮/代码高亮 span 后重建坐标，保证 text_offset 与注入后的 DOM 对齐。
           if (textDomChanged) App.state.textCtx = TextPos.build(doc);
-          try {
-            if (window.Annotations) Annotations.bindSelection(doc);
-          } catch (e) { /* ignore */ }
+          Annotations.bindSelection(doc);
           bindLinkHandler(doc);
           bindDocInteractions(doc);
           // 焦点在 iframe 内时也能响应全局快捷键（热键在阅读正文中生效）。
@@ -392,12 +382,12 @@
             }
             Toc.highlight(index);
             document.getElementById('reader-chapter-label').textContent = ch.title || '';
-            if (window.GululuComments) GululuComments.onChapterLoaded(doc);
-            if (window.GululuAssistantReader) GululuAssistantReader.onChapterLoaded(doc);
-            if (window.GululuImmersive) GululuImmersive.onChapterLoaded(doc);
-            if (window.GululuSecrets) GululuSecrets.onChapterLoaded(doc);
-            if (window.GululuOverview) GululuOverview.onChapterLoaded(doc);
-            if (window.App && App.syncGululuBookmark) App.syncGululuBookmark();
+            GululuComments.onChapterLoaded(doc);
+            GululuAssistantReader.onChapterLoaded(doc);
+            GululuImmersive.onChapterLoaded(doc);
+            GululuSecrets.onChapterLoaded(doc);
+            GululuOverview.onChapterLoaded(doc);
+            App.syncGululuBookmark();
             this.updateProgressUI();
             resolve();
           });
@@ -490,7 +480,7 @@
     onPageTurned() {
       this.saveProgress();
       this.updateProgressUI();
-      if (window.Stats) Stats.addPage();
+      Stats.addPage();
       window.dispatchEvent(new Event('reader-updated'));
     },
 
@@ -539,7 +529,7 @@
       if (ev.key === 'Escape') {
         if (Reader.closeImage()) { ev.preventDefault(); return; }
         if (Reader.closeShortcuts()) { ev.preventDefault(); return; }
-        if (window.FullSearch && FullSearch.isOpen()) {
+        if (FullSearch.isOpen()) {
           FullSearch.close();
           ev.preventDefault();
           return;
@@ -548,7 +538,7 @@
         if (vm && !vm.classList.contains('hidden')) { ViewMenu.close(); ev.preventDefault(); return; }
         const sp = document.getElementById('settings-view');
         if (sp && !sp.classList.contains('hidden')) {
-          if (window.SettingsPage) SettingsPage.close();
+          SettingsPage.close();
           ev.preventDefault();
           return;
         }
@@ -562,7 +552,7 @@
       }
       if ((ev.ctrlKey || ev.metaKey) && (ev.key === 'f' || ev.key === 'F')) {
         ev.preventDefault();
-        if (window.FullSearch) FullSearch.open();
+        FullSearch.open();
         return;
       }
       const sp = document.getElementById('settings-view');
@@ -610,7 +600,7 @@
       Theme.applyReaderPrefs(s.font_size, s.line_height);
       this.updateOverrides();
       Api.saveSettings( { font_size: s.font_size });
-      if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
+      ViewMenu.sync();
     },
 
     lineHeight(delta) {
@@ -619,7 +609,7 @@
       Theme.applyReaderPrefs(s.font_size, s.line_height);
       this.updateOverrides();
       Api.saveSettings( { line_height: s.line_height });
-      if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
+      ViewMenu.sync();
     },
 
     onPaginationChange() {
@@ -659,12 +649,7 @@
     async toggleBookmarkAtCurrent() {
       if (!App.state.bookId || App.state.chapterIndex < 0) return null;
       const offset = this.currentOffset();
-      if (window.Annotations && Annotations.toggleBookmark) {
-        return Annotations.toggleBookmark(App.state.chapterIndex, offset);
-      } else {
-        Toast.show('Bookmarks are available after the annotations module loads');
-        return null;
-      }
+      return Annotations.toggleBookmark(App.state.chapterIndex, offset);
     },
 
     /** Readest 风格：点击页面中央切换顶/底栏显示状态。 */
