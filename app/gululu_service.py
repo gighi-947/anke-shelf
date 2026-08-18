@@ -73,6 +73,42 @@ class GululuService:
         with self._lock:
             return dict(self._status)
 
+    def _begin_task(
+        self,
+        task_id: str,
+        action: str,
+        source_id: int,
+        stage: str,
+        detail: str,
+        *,
+        dest: str = "",
+        book_id: str = "",
+        image_mode: str = "",
+    ) -> None:
+        """登记当前任务并重置状态字段（三个 start 方法共用，避免复制粘贴）。"""
+        with self._lock:
+            self._current_task = task_id
+            self._status.update(
+                running=True,
+                stage=stage,
+                current=0,
+                total=0,
+                detail=detail,
+                error="",
+                book_id=book_id,
+                source_id=source_id,
+                task_id=task_id,
+                action=action,
+                files=[],
+                dest=dest,
+                image_mode=image_mode,
+                image_total=0,
+                image_embedded=0,
+                image_failed=0,
+                new_count=0,
+                baseline_initialized=False,
+            )
+
     def start(self, source: str | int, image_mode: str = "online") -> dict:
         try:
             source_id = extract_book_id(source)
@@ -82,31 +118,20 @@ class GululuService:
         task_id = f"gululu-{uuid.uuid4().hex[:12]}"
         if not self._tasks.start(self.LANE, task_id):
             return {"ok": False, "error": "已有骨碌碌导入任务在运行"}
-        with self._lock:
-            self._current_task = task_id
-            self._status.update(
-                running=True,
-                stage="metadata",
-                current=0,
-                total=0,
-                detail="正在读取书籍信息",
-                error="",
-                book_id="",
-                source_id=source_id,
-                task_id=task_id,
-                action="import",
-                files=[],
-                dest="",
-                image_mode=normalized_image_mode,
-                image_total=0,
-                image_embedded=0,
-                image_failed=0,
-                new_count=0,
-                baseline_initialized=False,
-            )
+        self._begin_task(
+            task_id,
+            "import",
+            source_id,
+            "metadata",
+            "正在读取书籍信息",
+            image_mode=normalized_image_mode,
+        )
         thread = threading.Thread(
-            target=self._run_task,
-            args=(source_id, normalized_image_mode, task_id),
+            target=lambda: self._run_managed_task(
+                task_id,
+                lambda report: self._run(source_id, normalized_image_mode, task_id, report),
+            ),
+            args=(),
             daemon=True,
             name="gululu-import",
         )
@@ -126,31 +151,23 @@ class GululuService:
         task_id = f"gululu-export-{uuid.uuid4().hex[:12]}"
         if not self._tasks.start(self.LANE, task_id):
             return {"ok": False, "error": "已有骨碌碌任务在运行"}
-        with self._lock:
-            self._current_task = task_id
-            self._status.update(
-                running=True,
-                stage="metadata",
-                current=0,
-                total=0,
-                detail="正在读取书籍信息",
-                error="",
-                book_id="",
-                source_id=source_id,
-                task_id=task_id,
-                action="export",
-                files=[],
-                dest=str(dest),
-                image_mode=normalized_image_mode,
-                image_total=0,
-                image_embedded=0,
-                image_failed=0,
-                new_count=0,
-                baseline_initialized=False,
-            )
+        self._begin_task(
+            task_id,
+            "export",
+            source_id,
+            "metadata",
+            "正在读取书籍信息",
+            dest=str(dest),
+            image_mode=normalized_image_mode,
+        )
         thread = threading.Thread(
-            target=self._run_export_task,
-            args=(source_id, Path(dest), normalized_image_mode, task_id),
+            target=lambda: self._run_managed_task(
+                task_id,
+                lambda report: self._run_export(
+                    source_id, Path(dest), normalized_image_mode, task_id, report
+                ),
+            ),
+            args=(),
             daemon=True,
             name="gululu-export",
         )
@@ -169,31 +186,21 @@ class GululuService:
         task_id = f"gululu-update-{uuid.uuid4().hex[:12]}"
         if not self._tasks.start(self.LANE, task_id):
             return {"ok": False, "error": "已有骨碌碌任务在运行"}
-        with self._lock:
-            self._current_task = task_id
-            self._status.update(
-                running=True,
-                stage="update",
-                current=0,
-                total=0,
-                detail="正在检查更新",
-                error="",
-                book_id=book_id_for_target(self._shelf, target),
-                source_id=source_id,
-                task_id=task_id,
-                action="update",
-                files=[],
-                dest="",
-                image_mode=normalized_image_mode,
-                image_total=0,
-                image_embedded=0,
-                image_failed=0,
-                new_count=0,
-                baseline_initialized=False,
-            )
+        self._begin_task(
+            task_id,
+            "update",
+            source_id,
+            "update",
+            "正在检查更新",
+            book_id=book_id_for_target(self._shelf, target),
+            image_mode=normalized_image_mode,
+        )
         thread = threading.Thread(
-            target=self._run_update_task,
-            args=(source_id, normalized_image_mode, task_id),
+            target=lambda: self._run_managed_task(
+                task_id,
+                lambda report: self._run_update(source_id, normalized_image_mode, task_id, report),
+            ),
+            args=(),
             daemon=True,
             name="gululu-update",
         )
@@ -207,32 +214,6 @@ class GululuService:
             return {"ok": False, "error": "没有进行中的骨碌碌任务"}
         self._tasks.cancel(task_id)
         return {"ok": True}
-
-    def _run_task(self, source_id: int, image_mode: str, task_id: str) -> None:
-        self._run_managed_task(
-            task_id,
-            lambda report: self._run(source_id, image_mode, task_id, report),
-        )
-
-    def _run_export_task(
-        self,
-        source_id: int,
-        dest: Path,
-        image_mode: str,
-        task_id: str,
-    ) -> None:
-        self._run_managed_task(
-            task_id,
-            lambda report: self._run_export(
-                source_id, dest, image_mode, task_id, report
-            ),
-        )
-
-    def _run_update_task(self, source_id: int, image_mode: str, task_id: str) -> None:
-        self._run_managed_task(
-            task_id,
-            lambda report: self._run_update(source_id, image_mode, task_id, report),
-        )
 
     def _run_managed_task(self, task_id: str, worker: Callable) -> None:
         def on_progress(item: TaskProgress) -> None:

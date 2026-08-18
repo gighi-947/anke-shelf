@@ -59,6 +59,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：架构收敛第三轮——GululuService 启动/任务包装去重
+
+- 背景：第二轮统一前端错误路径后，继续收敛 Windows 后端控制流碎片：`GululuService`
+  三个 start 方法复制同一份状态初始化，三个 `_run_*_task` 只是转发 lambda。
+- 改动：
+  - 新增 `_begin_task(...)` 私有方法，`start` / `start_export` / `start_update`
+    共用任务状态初始化；
+  - 删除 `_run_task` / `_run_export_task` / `_run_update_task` 三个转发方法，
+    thread target 直接内联 `_run_managed_task`；
+  - 线程创建显式传 `args=()`，兼容测试中的 `_ImmediateThread` 构造约束。
+- 验证：`tests.test_gululu_service` 14 项 OK；Windows Python 全量 300 项 OK（4 跳）。
+
 ### 2026-08-19 win：架构收敛第二轮——统一前端业务错误路径（bridge reject 内层 ok:false）
 
 - 背景：第一轮已统一 HTTP 层错误响应；本轮把“handler 返回 `{ok:false,error}` 但 HTTP 仍 200”
