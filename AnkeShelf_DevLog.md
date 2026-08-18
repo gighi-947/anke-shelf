@@ -60,6 +60,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：get_chapter_plaintext 不再折叠失败为空串
+
+- 背景：`get_chapter_plaintext` 把书未加载、章节读取失败统一折叠为空串，
+  属于“失败语义被隐藏”的残留。
+- 改动：书未加载抛 `ApiError(BOOK_NOT_FOUND)`；章节读取失败抛
+  `ApiError(BOOK_INVALID)`；不再返回 `""` 掩盖原因。
+- 验证：Windows Python 301 项 OK（4 跳）。
+
 ### 2026-08-19 android：数据层 catch-all 增加可见日志（第二批：Epub/NativeBook/WebView）
 
 - 背景：第一批已给 Shelf/Settings/NgaConfig/ContentResolver 加日志；本批继续覆盖
