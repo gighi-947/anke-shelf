@@ -6,7 +6,7 @@
 run_app.py            入口（PyInstaller 目标脚本）
 app/                  Python 后端
   main.py             窗口生命周期、服务装配、单实例、DPI
-  server.py           本地 HTTP 服务（/api/<name> 分发 + /book/ 读取书内容）
+  server.py           本地 HTTP 服务（/api/<name> 分发 + /book/ 读取书内容 + /img/ NGA 图床代理）
   api/                前端唯一业务入口（api/ 包：registry + 按域 handler，方法名即接口名）
   settings.py         用户设置持久化（默认值 + 旧版迁移）
   shelf.py            书架/进度存储（原子 JSON）
@@ -58,6 +58,10 @@ docs/                 架构与规划文档
   `Bridge.call(name, ...args)` → `POST /api/<name>`（本地随机令牌）。
 - 书内容：`/book/<book_id>/<zip_path>`（EPUB zip 内路径）或原生书目录读取，
   章节由 iframe 加载（同源，可注入样式与交互）。
+- NGA 图片/表情：章节内 NGA 图床 `src` 由 `server.py` 重写为
+  `/img/<book_id>?u=<url>` 本地代理（NGA 域名白名单 + Referer/Cookie），
+  规避防盗链 403；加载失败在双端显示占位卡（`data-textpos-exclude`，
+  不影响 `text_offset`）。
 - 阅读进度：统一 `text_offset`（纯文本字符偏移），滚动/分页模式都可精确恢复。
 - NGA 下载：下载完成立即构建原生书容器并注册书架；热更新只拉新页、追加新楼层。
 - 骨碌碌导入：公开 API 分批获取 → AST 转 XHTML → `.part` 原子替换紧凑 EPUB

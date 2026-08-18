@@ -57,6 +57,30 @@
 
 ## 4. 最近流水
 
+### 2026-08-18 win/android：P5-B NGA 表情/图片裂图修复（代理 + 失败占位）
+
+- 背景：用户反馈 NGA 平台表情图片显示错误（裂图）。根因：Windows 在线模式
+  iframe 直连图床，NGA 防盗链需 Referer/Cookie → 403。
+- Windows：
+  - `server.py` 新增 `/img/<book_id>?u=<url>` 代理路由：NGA 图床域名白名单
+    （`nga.178.com` / `nga.cn` / `ngabbs.com`，显式集合）、带 Referer 与已存
+    Cookie、未注册 book 404、非白名单 400、拉取失败 502；
+  - 章节输出时 `_rewrite_nga_image_src` 把 NGA 图床 `src/poster` 重写为本地代理
+    （只改属性，不影响 text_offset）；
+  - `reader.js` 图片 error 监听由“隐藏”改为替换为 `data-textpos-exclude` 占位卡，
+    `reader.css` 加 `.img-error-placeholder` 样式。
+- Android：
+  - `reader-lite.parts/20-textpos.js` 的 `isSkipNode` 增加
+    `data-textpos-exclude` 祖先跳过（与桌面对齐）；
+  - `40-layout.js` error 监听把失败图片替换为无文本节点占位（文案走 CSS
+    `::after`），`reader.css` 加占位样式；
+  - 重新 bundle（6 parts / 37375 字节），parts/bridge 契约通过。
+- 测试：`test_server.py` 新增 6 例（白名单拒绝/404/缺 u/头注入/502/重写）；
+  Windows Python 302 项 OK（4 跳）；Android JVM BUILD SUCCESSFUL；JS 契约全绿。
+- 文档：`docs/ARCHITECTURE.md` 路由表与数据流补 `/img/` 代理说明。
+- 注意：改 JS 后 APK 内 `assets/reader/reader-lite.js` 需重新打包并校验
+  SHA-256（本机已 bundle，发行前按 check-release 校验）。
+
 ### 2026-08-18 docs：P5 批次后文档漂移扫描与同步
 
 - 扫描发现 P5-A 合入后测试计数 287→296、ROADMAP §2.2 行数表 / §2.1 主干状态 /
