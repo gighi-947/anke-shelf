@@ -60,6 +60,17 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 android：数据层 catch-all 增加可见日志（第二批：Epub/NativeBook/WebView）
+
+- 背景：第一批已给 Shelf/Settings/NgaConfig/ContentResolver 加日志；本批继续覆盖
+  EPUB、原生书与 WebView 桥中的静默 catch/runCatching。
+- 改动（行为不变，仅让失败可观测）：
+  - `Epub.kt`：资源读取失败、容器关闭失败记 warning；
+  - `NativeBook.kt`：资源读取失败记 warning；
+  - `WebViewChapterView.kt`：两处 `currentScrollState` JSON 解析失败、
+    NGA 图片代理失败记 warning。
+- 验证：Android `gradlew testDebugUnitTest --rerun-tasks` BUILD SUCCESSFUL。
+
 ### 2026-08-19 android：数据层 catch-all 增加可见日志（第一批）
 
 - 背景：Android 数据层多处 `catch (_: Exception)` 静默吞错，符合原提示词

@@ -197,7 +197,8 @@ class NativeBook(val path: File) : Closeable {
         return try {
             if (!p.path.startsWith(root.absolutePath + File.separator)) return null
             if (!p.isFile) null else p.readBytes()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logWarn("AnkeShelf", "原生书资源读取失败 ${p.path}：${e.message}")
             null
         }
     }

@@ -193,7 +193,8 @@ class EpubBook(val path: File) : Closeable {
     override fun close() {
         try {
             zip?.close()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logWarn("AnkeShelf", "EPUB 容器关闭失败：${e.message}")
         }
         zip = null
     }
@@ -225,7 +226,8 @@ class EpubBook(val path: File) : Closeable {
         if (info == null) return null
         return try {
             zf.getInputStream(info).use { it.readBytes() }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logWarn("AnkeShelf", "EPUB 资源读取失败 $zipPath：${e.message}")
             null
         }
     }

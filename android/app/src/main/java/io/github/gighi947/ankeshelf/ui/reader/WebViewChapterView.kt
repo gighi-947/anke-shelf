@@ -164,7 +164,9 @@ fun WebViewChapterView(
                         web.evaluateJavascript(
                             "(function(){try{return AnkeReader.currentScrollState();}catch(e){return {o:0,r:-1,p:false};}})()",
                             ValueCallback { v ->
-                                val st = runCatching { JSONObject(v ?: "{}") }.getOrNull()
+                                val st = runCatching { JSONObject(v ?: "{}") }
+                                    .onFailure { Log.w("AnkeShelf", "解析 currentScrollState 失败：${it.message}") }
+                                    .getOrNull()
                                 value = st?.optInt("o", 0) ?: 0
                                 ratio = st?.optDouble("r", -1.0) ?: -1.0
                                 paged = st?.optBoolean("p", false) ?: false
@@ -362,7 +364,8 @@ fun WebViewChapterView(
                                     }
                                     WebResourceResponse(mime, null, stream)
                                 }
-                            }.getOrNull()
+                            }.onFailure { Log.w("AnkeShelf", "NGA 图片代理失败 $url：${it.message}") }
+                                .getOrNull()
                         }
                         return super.shouldInterceptRequest(view, request)
                     }
@@ -512,7 +515,9 @@ fun WebViewChapterView(
                     // 每次退出都把进度往回拉（9.48 漂移根因）。滚动模式才需要取即时值。
                     "(function(){try{return AnkeReader.currentScrollState();}catch(e){return {o:0,r:-1,p:false};}})()",
                     ValueCallback { v ->
-                        val st = runCatching { JSONObject(v ?: "{}") }.getOrNull()
+                        val st = runCatching { JSONObject(v ?: "{}") }
+                            .onFailure { Log.w("AnkeShelf", "解析 dispose currentScrollState 失败：${it.message}") }
+                            .getOrNull()
                         val o = st?.optInt("o", 0) ?: 0
                         val r = st?.optDouble("r", -1.0) ?: -1.0
                         val isPaged = st?.optBoolean("p", false) ?: false
