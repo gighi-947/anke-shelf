@@ -54,8 +54,7 @@ LICENSE、DevLog、.github、assets（字体 canonical 源）。
   X-Anke-Token，sessionStorage；浏览器直开走 MOCKS 调试降级）。
 - **存储范式**（`app/storage.py`）：tmp 文件 → 替换前保留 `.bak` → `os.replace` 原子写；
   损坏隔离 `.corrupt-*` 并回退默认；`verify_json_file` 报告可解析性/版本/大小。
-- 任务：`TaskManager` 按 lane 单飞（gululu / export 已接入；NGA 暂用自持锁，
-  新任务（导入/导出/索引）才接入）。
+- 任务：`TaskManager` 按 lane 单飞（NGA / gululu / export 均已接入）。
 - 阅读：章节经 iframe 加载 + 注入排版（不改书源）；`web/js/paged.js` CSS multi-column
   分页（单页 / 自动双页 / 强制双页、双页补偶数列）；`web/js/textpos.js` 与
   `app/text.py` 逐字符对齐。
@@ -185,7 +184,7 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
   文档漂移治理已强化（AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
 - 版本线：Windows v1.4.0、Android android-v1.0.0，均已发布。
 - 待办与延后项见 DevLog §5 与 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
-  （真实待办仅 Android 数据完整性校验入口；其余大文件拆分 / NGA 迁 TaskManager /
+  （真实待办仅 Android 数据完整性校验入口；其余大文件拆分 /
   P4 参考仓库 3/8 待补：readest / Kavita / LibreraReader，均保持延后）。
 
 ## 11. 已知问题与风险

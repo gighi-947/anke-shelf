@@ -8,12 +8,13 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-18）
+## 1. 当前状态（2026-08-19）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
   沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入；
-  P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复；第一轮架构收敛
-  （EventBus→显式回调 / API 400 语义 / reader-lite 冗余 try-catch）已完成；
+  P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复；多轮架构收敛已完成：
+  EventBus→显式回调、API 错误统一到 HTTP/ApiError、reader-lite 状态机
+  Step 0–4、TaskManager 统一 NGA/Gululu/Export；
   文档漂移治理已强化
   （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
   精确提交与远端状态以 `git log` / `git status` 为准。
@@ -58,6 +59,21 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 win：NGA 服务迁入 TaskManager，统一任务基础设施
+
+- 背景：此前 NGA 使用自持 `_lock + _cancel + _status`，Gululu/Export 已用
+  `TaskManager`，同一问题两套实现。用户决定迁移 NGA，统一基础设施。
+- 改动：
+  - `NgaService` 新增 `LANE = "network:nga"` 与 `task_manager` 注入；
+  - `start` / `update_book` 改用 `TaskManager.start` + `_begin_task` + 线程 lambda；
+  - 新增 `_run_managed_task`，与 Gululu/Export 对齐状态映射；
+  - `_download` / `_update_core` 改为接收 `cancelled: Callable[[], bool]`，
+    不再依赖 `self._cancel`；
+  - `cancel()` 改为调用 `TaskManager.cancel(current_task)`；
+  - `tests/test_nga_service.py` 同步更新（取消/线程捕获）。
+- 文档：ROADMAP §P3 / GLOSSARY / MAINTENANCE_GUIDE 同步为“NGA 已接入 TaskManager”。
+- 验证：`tests.test_nga_service` 23 项 OK；Windows Python 全量 302 项 OK（4 跳）。
 
 ### 2026-08-19 win：handler 层迁移到 ApiError 异常
 

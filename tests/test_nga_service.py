@@ -138,9 +138,10 @@ class TestNgaService(unittest.TestCase):
             self.assertIn("已有", r["error"])
             self.svc._set(running=False)
 
-    def test_cancel_sets_event(self):
+    def test_cancel_marks_current_task(self):
+        self.svc._current_task = "task-1"
         self.svc.cancel()
-        self.assertTrue(self.svc._cancel.is_set())
+        self.assertTrue(self.svc._tasks.is_cancelled("task-1"))
 
     def test_cancel_removes_newly_created_folder(self):
         target = self.root / "nga_library" / "123(0)"
@@ -181,9 +182,8 @@ class TestNgaService(unittest.TestCase):
             ensure_nga_config()
             save_nga_config({"uid": "1", "cid": "2", "ua": "UA"})
             with patch("app.nga_service._import_nga", return_value=fake_import):
-                self.svc._cancel.set()
                 with self.assertRaises(RuntimeError):
-                    self.svc._download(123, {"authorid": 0})
+                    self.svc._download(123, {"authorid": 0}, cancelled=lambda: True)
         self.assertFalse(target.exists())
 
     def test_cancel_keeps_existing_folder(self):
@@ -226,9 +226,8 @@ class TestNgaService(unittest.TestCase):
             ensure_nga_config()
             save_nga_config({"uid": "1", "cid": "2", "ua": "UA"})
             with patch("app.nga_service._import_nga", return_value=fake_import):
-                self.svc._cancel.set()
                 with self.assertRaises(RuntimeError):
-                    self.svc._download(123, {"authorid": 0})
+                    self.svc._download(123, {"authorid": 0}, cancelled=lambda: True)
         self.assertTrue(target.exists())
         self.assertEqual((target / "post.epub").read_bytes(), b"partial-overwrite")
 
@@ -398,14 +397,18 @@ class TestNgaService(unittest.TestCase):
         captured = {}
 
         def fake_thread(*args, **kwargs):
-            captured["args"] = kwargs.get("args", ())
-            return types.SimpleNamespace(start=lambda: None)
+            target = kwargs.get("target")
+            return types.SimpleNamespace(start=lambda: target())
 
-        with patch("app.nga_service.threading.Thread", fake_thread), \
+        def fake_run_update(*args):
+            captured["params"] = args[4]
+
+        with patch.object(svc, "_run_update", fake_run_update), \
+                patch("app.nga_service.threading.Thread", fake_thread), \
                 patch("app.paths.data_dir", return_value=self.root):
             r = svc.update_book("e" * 32, {})
         self.assertTrue(r["ok"])
-        effective = captured["args"][4]
+        effective = captured["params"]
         self.assertEqual(effective["theme"], "dark")
         self.assertEqual(effective["authorid"], 62906407)
         self.assertEqual(effective["image_mode"], "none")

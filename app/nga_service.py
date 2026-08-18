@@ -1,14 +1,16 @@
 """NGA 帖子下载服务：对接 ngapost2md-python 包，提供 UI 进度/取消/单飞。"""
+import hashlib
+import json
 import logging
 import re
 import threading
-import json
-import hashlib
+import uuid
 from pathlib import Path
 from typing import Callable, Optional
 
 from .logutil import log_event
 from .nga_config import ensure_nga_config, load_nga_config
+from .tasks import TaskCancelled, TaskManager, TaskProgress, TaskStatus
 from .native_book import (
     append_container,
     is_native_dir,
@@ -110,19 +112,23 @@ def _import_nga():
 class NgaService:
     """下载服务：一次只允许一个任务，状态可轮询，支持取消。"""
 
+    LANE = "network:nga"
+
     def __init__(
         self,
         book_register: Callable[[str], object],
         shelf=None,
         books=None,
         on_book_updated: Optional[Callable[[str], None]] = None,
+        task_manager: Optional[TaskManager] = None,
     ):
         self._book_register = book_register
         self._shelf = shelf
         self._books = books
         self._on_book_updated = on_book_updated
+        self._tasks = task_manager or TaskManager(lanes={self.LANE: 1})
         self._lock = threading.Lock()
-        self._cancel = threading.Event()
+        self._current_task: Optional[str] = None
         self._status = {
             "running": False,
             "stage": "idle",
@@ -149,13 +155,28 @@ class NgaService:
         if self._on_book_updated is not None:
             self._on_book_updated(book_id)
 
-    def _begin(self, **kw) -> bool:
-        """原子占位：任务启动瞬间即标记 running，避免并发重复启动。"""
+    def _begin_task(
+        self,
+        task_id: str,
+        action: str,
+        stage: str,
+        detail: str,
+        *,
+        book_id: str = "",
+    ) -> None:
+        """登记当前任务并重置状态字段（start/update_book 共用）。"""
         with self._lock:
-            if self._status["running"]:
-                return False
-            self._status.update(running=True, current=0, total=0, error="", **kw)
-        return True
+            self._current_task = task_id
+            self._status.update(
+                running=True,
+                stage=stage,
+                current=0,
+                total=0,
+                detail=detail,
+                error="",
+                book_id=book_id,
+                action=action,
+            )
 
     # ---------- 启动/取消 ----------
 
@@ -172,21 +193,32 @@ class NgaService:
         cfg = load_nga_config()
         if not cfg["configured"]:
             return {"ok": False, "error": "请先在下载面板中填写 NGA Cookie（ngaPassportUid / ngaPassportCid）"}
-        self._cancel.clear()
-        if not self._begin(stage="pages", detail="正在初始化…",
-                           book_id="", action="download"):
+        task_id = f"nga-{uuid.uuid4().hex[:12]}"
+        if not self._tasks.start(self.LANE, task_id):
             return {"ok": False, "error": "已有下载任务在运行"}
+        self._begin_task(
+            task_id,
+            "download",
+            "pages",
+            "正在初始化…",
+        )
         t = threading.Thread(
-            target=self._run,
-            args=(tid, dict(params)),
+            target=lambda: self._run_managed_task(
+                task_id,
+                lambda report: self._run(tid, dict(params), task_id, report),
+            ),
+            args=(),
             daemon=True,
             name="nga-download",
         )
         t.start()
-        return {"ok": True}
+        return {"ok": True, "task_id": task_id}
 
     def cancel(self) -> None:
-        self._cancel.set()
+        with self._lock:
+            task_id = self._current_task
+        if task_id is not None:
+            self._tasks.cancel(task_id)
 
     def update_book(self, book_id: str, params: dict) -> dict:
         """对已下载的 NGA 帖子做增量热更新（只拉新页、只追加新楼层）。"""
@@ -217,13 +249,24 @@ class NgaService:
         for param_key, default_key in field_map.items():
             if param_key not in effective or effective[param_key] is None:
                 effective[param_key] = defaults.get(default_key)
-        self._cancel.clear()
-        if not self._begin(stage="update", detail="正在检查更新…",
-                           book_id=book_id, action="update"):
+        task_id = f"nga-update-{uuid.uuid4().hex[:12]}"
+        if not self._tasks.start(self.LANE, task_id):
             return {"ok": False, "error": "已有下载/更新任务在运行"}
+        self._begin_task(
+            task_id,
+            "update",
+            "update",
+            "正在检查更新…",
+            book_id=book_id,
+        )
         t = threading.Thread(
-            target=self._run_update,
-            args=(rec, folder, int(rec.nga_tid), author_id, effective),
+            target=lambda: self._run_managed_task(
+                task_id,
+                lambda report: self._run_update(
+                    rec, folder, int(rec.nga_tid), author_id, effective, task_id, report
+                ),
+            ),
+            args=(),
             daemon=True,
             name="nga-update",
         )
@@ -294,22 +337,59 @@ class NgaService:
 
     # ---------- 后台执行 ----------
 
-    def _run(self, tid: int, params: dict) -> None:
+    def _run_managed_task(self, task_id: str, worker: Callable) -> None:
+        """在 TaskManager lane 上执行任务并统一映射状态（与 Gululu/Export 对齐）。"""
+        def on_progress(item: TaskProgress) -> None:
+            self._set(
+                stage=item.stage,
+                current=item.current,
+                total=item.total,
+                detail=item.message,
+            )
+
         try:
-            book_id = self._download(tid, params)
+            status = self._tasks.run(
+                self.LANE,
+                task_id,
+                worker,
+                on_progress=on_progress,
+            )
+            if status == TaskStatus.CANCELLED:
+                self._set(running=False, stage="cancelled", detail="已取消", error="")
+            elif status == TaskStatus.FAILED and self.status()["stage"] != "error":
+                self._set(running=False, stage="error", detail="")
+        finally:
+            with self._lock:
+                if self._current_task == task_id:
+                    self._current_task = None
+
+    def _run(self, tid: int, params: dict, task_id: str, report) -> None:
+        cancelled = lambda: self._tasks.is_cancelled(task_id)  # noqa: E731
+        try:
+            book_id = self._download(tid, params, cancelled)
             self._set(running=False, stage="done", detail="下载完成",
                       book_id=book_id or "")
+        except TaskCancelled:
+            self._set(running=False, stage="cancelled", detail="已取消", error="")
+            raise
         except Exception as e:  # noqa: BLE001
-            if self._cancel.is_set():
+            if cancelled():
                 self._set(running=False, stage="cancelled", detail="已取消", error="")
-            else:
-                log.exception("NGA 下载失败")
-                self._set(running=False, stage="error", detail="",
-                          error=str(e))
+                raise TaskCancelled(task_id) from e
+            log.exception("NGA 下载失败")
+            self._set(running=False, stage="error", detail="",
+                      error=str(e))
+            raise
 
-    def _download(self, tid: int, params: dict) -> Optional[str]:
+    def _download(
+        self,
+        tid: int,
+        params: dict,
+        cancelled: Optional[Callable[[], bool]] = None,
+    ) -> Optional[str]:
+        cancelled = cancelled or (lambda: False)
         client_mod, config_mod, nga_mod, Tiezi = _import_nga()
-        nga_mod.set_cancel_cb(self._cancel.is_set)
+        nga_mod.set_cancel_cb(cancelled)
         try:
             cfg = _build_cfg(config_mod, params, epub_enabled=True)
 
@@ -359,10 +439,10 @@ class NgaService:
                 # 避免误删此前已完成下载的同帖文件。
                 was_new_dir = not target_dir.exists()
                 try:
-                    nga_mod.download(tiezi, progress=progress, cancel=self._cancel.is_set,
+                    nga_mod.download(tiezi, progress=progress, cancel=cancelled,
                                      no_images=no_images)
                 finally:
-                    if self._cancel.is_set() and was_new_dir:
+                    if cancelled() and was_new_dir:
                         _remove_tree(target_dir)
             finally:
                 nga_client.close()
@@ -411,26 +491,43 @@ class NgaService:
 
     # ---------- 热更新 ----------
 
-    def _run_update(self, rec, folder: str, tid: int, author_id: int, params: dict) -> None:
+    def _run_update(
+        self,
+        rec,
+        folder: str,
+        tid: int,
+        author_id: int,
+        params: dict,
+        task_id: str,
+        report,
+    ) -> None:
         native = is_native_dir(Path(rec.path))
         md_path = Path(nga_library_dir()) / folder / "post.md"
         md_size = md_path.stat().st_size if md_path.is_file() else 0
+        cancelled = lambda: self._tasks.is_cancelled(task_id)  # noqa: E731
         try:
-            new_count = self._update_core(rec, folder, tid, author_id, params, native)
+            new_count = self._update_core(
+                rec, folder, tid, author_id, params, native, cancelled
+            )
             detail = f"已更新 {new_count} 楼" if new_count else "已是最新"
             self._set(running=False, stage="done", detail=detail,
                       book_id=rec.id, action="update")
             log_event(log, "nga", "update_done", book_id=rec.id, new_floors=new_count)
             _save_download_settings(folder, self._current_settings(folder, tid, params))
+        except TaskCancelled:
+            self._set(running=False, stage="cancelled", detail="已取消",
+                      error="", book_id=rec.id, action="update")
+            raise
         except Exception as e:  # noqa: BLE001
-            if self._cancel.is_set():
+            if cancelled():
                 self._truncate_md(md_path, md_size)
                 self._set(running=False, stage="cancelled", detail="已取消",
                           error="", book_id=rec.id, action="update")
-            else:
-                log.exception("NGA 热更新失败")
-                self._set(running=False, stage="error", detail="",
-                          error=str(e), book_id=rec.id, action="update")
+                raise TaskCancelled(task_id) from e
+            log.exception("NGA 热更新失败")
+            self._set(running=False, stage="error", detail="",
+                      error=str(e), book_id=rec.id, action="update")
+            raise
 
     def _current_settings(self, folder: str, tid: int, params: dict) -> dict:
         """把本次更新使用的参数落盘为“最近一次设置”。"""
@@ -446,9 +543,19 @@ class NgaService:
             "max_floors": int(old.get("max_floors", 0) or 0),
         }
 
-    def _update_core(self, rec, folder, tid, author_id, params, native) -> int:
+    def _update_core(
+        self,
+        rec,
+        folder,
+        tid,
+        author_id,
+        params,
+        native,
+        cancelled: Optional[Callable[[], bool]] = None,
+    ) -> int:
+        cancelled = cancelled or (lambda: False)
         client_mod, config_mod, nga_mod, Tiezi = _import_nga()
-        nga_mod.set_cancel_cb(self._cancel.is_set)
+        nga_mod.set_cancel_cb(cancelled)
         cfg = _build_cfg(config_mod, params, epub_enabled=False)
         nga_client = client_mod.NgaClient(cfg)
         try:
@@ -462,7 +569,7 @@ class NgaService:
             # 文件夹按原始 author_id 定位；抓取过滤可单独切换（仅影响新楼层）
             tiezi.author_id = fetch_author_id
             nga_mod.download(tiezi, progress=self._progress_cb,
-                             cancel=self._cancel.is_set, no_images=False)
+                             cancel=cancelled, no_images=False)
         finally:
             nga_client.close()
             nga_mod.set_cancel_cb(None)

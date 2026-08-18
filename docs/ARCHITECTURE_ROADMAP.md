@@ -288,12 +288,13 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 > 状态（2026-08-14）：导出服务已接入 `TaskManager`（lane=export）——单飞占位、进度经
 > `on_progress`、取消经 cancel 标志与 `TaskCancelled`、失败/完成映射到既有 status 字典；
 > 新增 `/api/export_cancel` 与导出页「取消导出」按钮；`TaskManager.start` 对同任务
-> 重入幂等。NGA 迁移仍按计划推迟。
+> 重入幂等。NGA 已于 2026-08-19 迁入 `TaskManager`（lane=network:nga），
+> 双端任务基础设施统一。
 
 - 选 `app/export_service.py` 或 `app/search.py` 接入 `TaskManager`；
 - 统一任务状态字段：`id/lane/state/stage/current/total/message/started_at/
   updated_at/cancellable/error_code`；
-- 验证开始/进度/取消/失败/完成/清理语义后，再评估 NGA 迁移。
+- 验证开始/进度/取消/失败/完成/清理语义后，NGA 已迁移（2026-08-19）。
 - 预期目标：任务取消无半成品，错误与状态跨功能一致。
 
 ### P3：存储恢复能力（保留 JSON）
@@ -481,7 +482,6 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - 不为拆文件引入 Hilt/Koin、前端框架或复杂分层模板；
 - 不立即把全部 JSON 迁移 SQLite；
 - 不提前实现 ContentSource / 第二书源抽象、插件系统、跨端同步；
-- 不一次性把 NGA 下载迁入 `TaskManager`；
 - 不删除现有诊断日志，除非已有等价诊断手段；
 - 不把性能基准的单次波动作为 PR 硬门禁。
 
