@@ -9,11 +9,15 @@
 
   function parseBookId(raw) {
     const text = String(raw || '').trim();
-    const match = text.match(/^\d+$/) ||
-      text.match(/^https:\/\/(?:www\.)?gululu\.world\/book\/(\d+)\/?(?:[?#].*)?$/i);
-    if (!match) return null;
-    const value = match[1] || match[0];
-    return /^\d{1,12}$/.test(value) && Number(value) > 0 ? value : null;
+    // 纯数字直接校验
+    if (/^\d{1,12}$/.test(text) && Number(text) > 0) return text;
+    // 从任意文本中搜索骨碌碌链接（容忍"点击链接阅读：…"等前缀）
+    const urls = text.match(/https?:\/\/(?:www\.)?gululu\.world\/book\/(\d+)/gi);
+    if (!urls) return null;
+    // 多个链接时要求用户明确选择
+    if (urls.length > 1) return null;
+    const id = urls[0].match(/(\d+)$/)[1];
+    return /^\d{1,12}$/.test(id) && Number(id) > 0 ? id : null;
   }
 
   function buildSection() {

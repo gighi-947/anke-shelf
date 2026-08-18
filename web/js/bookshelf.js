@@ -14,6 +14,13 @@
     return (App.state.settings && App.state.settings.shelf_sort) || 'recent';
   }
 
+  /** 剥离书名首个【…】前缀（设置开启时；仅显示层，不改存储/搜索/导出）。 */
+  function displayTitle(title) {
+    const raw = title || '(No Title)';
+    if (!(App.state.settings && App.state.settings.hide_title_brackets)) return raw;
+    return raw.replace(/^【[^】]*】/, '').trim() || raw;
+  }
+
   function gululuBadge(book) {
     if (!Number(book && book.gululu_source_id)) return null;
     const badge = document.createElement('span');
@@ -104,10 +111,10 @@
       cover.className = 'recent-cover';
       const fb = document.createElement('span');
       fb.className = 'recent-cover-fallback';
-      fb.textContent = (book.title || '?').slice(0, 1);
+      fb.textContent = displayTitle(book.title).slice(0, 1);
       cover.appendChild(fb);
       const img = new Image();
-      img.alt = book.title || '';
+      img.alt = displayTitle(book.title);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
       if (book.cover_url) img.src = book.cover_url;
@@ -117,7 +124,7 @@
 
       const title = document.createElement('span');
       title.className = 'recent-title';
-      title.textContent = book.title || '(No Title)';
+      title.textContent = displayTitle(book.title);
 
       const meta = document.createElement('span');
       meta.className = 'recent-meta';
@@ -149,7 +156,7 @@
       cover.className = 'book-cover';
       const ft = document.createElement('div');
       ft.className = 'cover-fallback-title';
-      ft.textContent = book.title || '(No Title)';
+      ft.textContent = displayTitle(book.title);
       const fa = document.createElement('div');
       fa.className = 'cover-fallback-author';
       fa.textContent = book.nga_tid
@@ -158,7 +165,7 @@
       cover.append(ft, fa);
 
       const img = new Image();
-      img.alt = book.title || '';
+      img.alt = displayTitle(book.title);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
       if (book.cover_url) img.src = book.cover_url;
@@ -180,7 +187,7 @@
       meta.className = 'book-meta';
       const title = document.createElement('div');
       title.className = 'book-title';
-      title.textContent = book.title || '(No Title)';
+      title.textContent = displayTitle(book.title);
       const author = document.createElement('div');
       author.className = 'book-author';
       author.textContent = book.nga_tid
@@ -218,9 +225,9 @@
       cover.className = 'book-row-cover';
       const fb = document.createElement('div');
       fb.className = 'book-row-cover-fallback';
-      fb.textContent = (book.title || '?').slice(0, 2);
+      fb.textContent = displayTitle(book.title).slice(0, 2);
       const img = new Image();
-      img.alt = book.title || '';
+      img.alt = displayTitle(book.title);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
       if (book.cover_url) img.src = book.cover_url;
@@ -239,7 +246,7 @@
       const sourceBadge = gululuBadge(book);
       if (sourceBadge) title.appendChild(sourceBadge);
       const titleText = document.createElement('span');
-      titleText.textContent = book.title || '(No Title)';
+      titleText.textContent = displayTitle(book.title);
       title.appendChild(titleText);
       const author = document.createElement('div');
       author.className = 'book-row-author';
@@ -289,6 +296,25 @@
         });
         actions.appendChild(exp);
       }
+      const rn = document.createElement('button');
+      rn.className = 'rename-btn';
+      rn.title = 'Rename';
+      rn.appendChild(Icons.icon('edit', 14));
+      rn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        const name = prompt('Rename book:', book.title || '');
+        if (name === null) return;
+        const trimmed = name.trim();
+        if (!trimmed || trimmed === book.title) return;
+        try {
+          await Api.renameBook(book.id, trimmed);
+          Toast.show('Renamed');
+          this.render();
+        } catch (e) {
+          Toast.show('Rename failed: ' + (e.message || e), true);
+        }
+      });
+      actions.appendChild(rn);
       const del = document.createElement('button');
       del.className = 'delete-btn';
       del.title = 'Remove from shelf';
@@ -399,5 +425,20 @@
     };
     if (gridBtn) gridBtn.addEventListener('click', () => setView('grid'));
     if (listBtn) listBtn.addEventListener('click', () => setView('list'));
+
+    const bracketsBtn = document.getElementById('shelf-hide-brackets');
+    if (bracketsBtn) {
+      const active = App.state.settings && App.state.settings.hide_title_brackets;
+      bracketsBtn.classList.toggle('active', !!active);
+      bracketsBtn.setAttribute('aria-pressed', String(!!active));
+      bracketsBtn.addEventListener('click', () => {
+        const next = !(App.state.settings && App.state.settings.hide_title_brackets);
+        App.state.settings.hide_title_brackets = next;
+        Api.saveSettings({ hide_title_brackets: next });
+        bracketsBtn.classList.toggle('active', next);
+        bracketsBtn.setAttribute('aria-pressed', String(next));
+        Shelf.render();
+      });
+    }
   });
 })();

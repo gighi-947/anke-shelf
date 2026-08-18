@@ -288,6 +288,12 @@ internal fun ReadingPanel(
                     onCheckedChange = { commit(SettingsPatch(bars_pinned = it)) },
                 )
             }
+            SettingsRow("隐藏书名前缀", "书架隐藏首个【安科】等括号前缀（仅显示层，不改原名）") {
+                Switch(
+                    checked = data.hide_title_brackets,
+                    onCheckedChange = { commit(SettingsPatch(hide_title_brackets = it)) },
+                )
+            }
             TopInsetRow(context)
         }
     }

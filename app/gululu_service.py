@@ -15,7 +15,7 @@ from .gululu_epub import (
     build_epub,
 )
 from .gululu_images import normalize_image_mode
-from .gululu_source import parse_book_id
+from .gululu_source import extract_book_id
 from .gululu_update import book_id_for_target, execute_update, replace_and_register, write_baseline
 from .logutil import log_event
 from .paths import gululu_library_dir
@@ -74,7 +74,7 @@ class GululuService:
 
     def start(self, source: str | int, image_mode: str = "online") -> dict:
         try:
-            source_id = parse_book_id(source)
+            source_id = extract_book_id(source)
             normalized_image_mode = normalize_image_mode(image_mode)
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
@@ -115,7 +115,7 @@ class GululuService:
     def start_export(self, source: str | int, image_mode: str = "online") -> dict:
         """生成一份包含当前公开评论的独立 EPUB，不修改书架副本。"""
         try:
-            source_id = parse_book_id(source)
+            source_id = extract_book_id(source)
             normalized_image_mode = normalize_image_mode(image_mode)
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
@@ -158,7 +158,7 @@ class GululuService:
 
     def start_update(self, source: str | int, image_mode: str = "online") -> dict:
         try:
-            source_id = parse_book_id(source)
+            source_id = extract_book_id(source)
             normalized_image_mode = normalize_image_mode(image_mode)
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}

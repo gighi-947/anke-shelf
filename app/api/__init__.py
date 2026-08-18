@@ -35,6 +35,7 @@ _HANDLERS = (
     ("import_books", library.import_books),
     ("remove_book", library.remove_book),
     ("open_book", library.open_book),
+    ("rename_book", library.rename_book),
     # 阅读
     ("save_progress", reader.save_progress),
     ("get_chapter_plaintext", reader.get_chapter_plaintext),

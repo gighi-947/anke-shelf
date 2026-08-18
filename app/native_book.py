@@ -155,6 +155,13 @@ def save_meta(native_dir: Path, meta: dict) -> None:
     atomic_write_text(native_dir / META_NAME, json.dumps(meta, ensure_ascii=False, indent=2))
 
 
+def rename_title(native_dir: Path, new_title: str) -> None:
+    """重命名原生书显示标题（书架与导出共用；不改 tid/章节/进度）。"""
+    meta = load_meta(native_dir)
+    meta["title"] = new_title
+    save_meta(native_dir, meta)
+
+
 def serialize_floor(f) -> dict:
     return {
         "pid": f.pid,

@@ -28,6 +28,7 @@ DEFAULTS: dict[str, Any] = {
     "auto_dual": True,    # 自动双页：分页模式下横屏宽窗自动双页（flow/epub.js Auto spread）
     "shelf_view": "grid",  # 书架视图：grid | list
     "shelf_sort": "recent",  # 书架排序：recent | title | author | added
+    "hide_title_brackets": False,  # 隐藏书名首个【…】前缀（仅显示层剥离，存储原名不变）
     "margin_px": 40,  # 分页阅读边距
     "gap_px": 28,  # 分页列间沟槽
     "brightness": 0.0,  # 亮度遮罩 0~0.7

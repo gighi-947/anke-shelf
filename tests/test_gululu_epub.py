@@ -15,6 +15,7 @@ from app.gululu_epub import (
     GululuClient,
     GululuFormatError,
     build_epub,
+    extract_book_id,
     parse_book_id,
     parse_gululu_identifier,
     render_ast,
@@ -46,6 +47,28 @@ class TestParseBookId(unittest.TestCase):
         self.assertEqual(parse_gululu_identifier("gululu-66905"), 66905)
         self.assertIsNone(parse_gululu_identifier("978-7-0000-0000-0"))
         self.assertIsNone(parse_gululu_identifier("gululu-0"))
+
+
+class TestExtractBookId(unittest.TestCase):
+    def test_extracts_id_from_text_with_prefix(self):
+        self.assertEqual(extract_book_id("点击链接阅读：https://www.gululu.world/book/66905"), 66905)
+
+    def test_extracts_plain_url(self):
+        self.assertEqual(extract_book_id("https://gululu.world/book/123"), 123)
+
+    def test_extracts_bare_id(self):
+        self.assertEqual(extract_book_id("66905"), 66905)
+
+    def test_extracts_id_from_surrounding_text(self):
+        self.assertEqual(extract_book_id("这是 https://www.gululu.world/book/999 的链接"), 999)
+
+    def test_rejects_multiple_links(self):
+        with self.assertRaises(ValueError):
+            extract_book_id("https://www.gululu.world/book/1 和 https://www.gululu.world/book/2")
+
+    def test_rejects_no_link(self):
+        with self.assertRaises(ValueError):
+            extract_book_id("没有任何链接的纯文本")
 
 
 class TestGululuClient(unittest.TestCase):

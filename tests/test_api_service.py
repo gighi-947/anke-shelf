@@ -116,6 +116,33 @@ class ApiServiceTest(unittest.TestCase):
         self.assertEqual(resp.get("error_code"), "BOOK_NOT_FOUND")
         self.assertIn("error", resp)
 
+    def test_rename_book_updates_shelf_and_returns_record(self):
+        books = BookManager()
+        book_id = self._add_shelf_record(books, "", str(SAMPLE))
+        api = self._make_api(books)
+
+        data = api.rename_book(book_id, "  新标题  ")
+        self.assertNotIn("error", data)
+        self.assertEqual(data["title"], "新标题")
+        rec = self.shelf.get(book_id)
+        self.assertEqual(rec.title, "新标题")
+
+    def test_rename_book_empty_or_same_is_noop(self):
+        books = BookManager()
+        book_id = self._add_shelf_record(books, "", str(SAMPLE))
+        original = self.shelf.get(book_id).title
+        api = self._make_api(books)
+
+        api.rename_book(book_id, "   ")
+        self.assertEqual(self.shelf.get(book_id).title, original)
+        api.rename_book(book_id, original)
+        self.assertEqual(self.shelf.get(book_id).title, original)
+
+    def test_rename_book_not_found(self):
+        api = self._make_api(BookManager())
+        resp = api.rename_book("0" * 32, "新标题")
+        self.assertEqual(resp.get("error_code"), "BOOK_NOT_FOUND")
+
     def test_toggle_fullscreen(self):
         calls = []
         api = self._make_api(BookManager(), window_toggle=lambda entering: calls.append(entering))

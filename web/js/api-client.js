@@ -22,6 +22,7 @@
     ['import_books', 'importBooks'],
     ['remove_book', 'removeBook'],
     ['open_book', 'openBook'],
+    ['rename_book', 'renameBook'],
     ['save_progress', 'saveProgress'],
     ['get_chapter_plaintext', 'getChapterPlaintext'],
     ['search', 'search'],

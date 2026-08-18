@@ -1,11 +1,13 @@
-"""书架与书籍：列表 / 导入 / 删除 / 打开。"""
+"""书架与书籍：列表 / 导入 / 删除 / 打开 / 重命名。"""
 import logging
 import re
+from dataclasses import replace
 from pathlib import Path
 
 from ..epub import EpubError
 from ..errors import ErrorCode, api_error
 from ..gululu_source import parse_gululu_identifier
+from ..native_book import is_native_dir, rename_title
 from ..paths import file_mtime
 from ..shelf import BookRecord, ProgressStore
 from .common import (
@@ -82,6 +84,31 @@ def remove_book(ctx: ApiContext, book_id: str) -> bool:
     if ctx.annotations is not None:
         ctx.annotations.remove_book(book_id)
     return True
+
+
+def rename_book(ctx: ApiContext, book_id: str, new_title: str) -> dict:
+    """重命名书籍显示标题：书架记录 + 原生书 meta.json（EPUB 仅书架记录）。
+
+    语义对齐 Android BookRepository.renameBook：空标题/同名直接返回不写盘；
+    原生书目录额外写 meta.json（容错，失败不阻断）；返回更新后记录供前端刷新。
+    """
+    rec = ctx.shelf.get(book_id)
+    if rec is None:
+        return api_error(ErrorCode.BOOK_NOT_FOUND, "书籍不存在")
+    title = (new_title or "").strip()
+    if not title or title == rec.title:
+        return record_to_dict(rec)
+    ctx.books.close(book_id)
+    updated = replace(rec, title=title)
+    ctx.shelf.upsert(updated)
+    ctx.shelf.save()
+    p = Path(rec.path)
+    if p.is_dir() and is_native_dir(p):
+        try:
+            rename_title(p, title)
+        except OSError as e:
+            log.warning("原生书 meta.json 重命名失败（书架已更新）：%s", e)
+    return record_to_dict(updated)
 
 
 def open_book(ctx: ApiContext, book_id: str) -> dict:

@@ -118,6 +118,7 @@ fun BookshelfScreen(
     val launchPicker = {
         launcher.launch(arrayOf("application/epub+zip", "application/octet-stream"))
     }
+    val hideBrackets = container.settings.getAll().hide_title_brackets
     var sortMenu by remember { mutableStateOf(false) }
     var importMenu by remember { mutableStateOf(false) }
     var manageBook by remember { mutableStateOf<BookRecord?>(null) }
@@ -288,6 +289,7 @@ fun BookshelfScreen(
                         BookListRow(
                             ui = ui,
                             coversDir = coversDir,
+                            hideBrackets = hideBrackets,
                             onClick = { onOpen(ui.record) },
                             onLongPress = { manageBook = it },
                             onUpdate = { updateTarget = it },
@@ -318,6 +320,7 @@ fun BookshelfScreen(
                             coversDir = coversDir,
                             context = context,
                             container = container,
+                            hideBrackets = hideBrackets,
                             onClick = { onOpen(ui.record) },
                             onLongPress = { manageBook = it },
                             onUpdate = { updateTarget = it },
@@ -360,6 +363,7 @@ fun BookshelfScreen(
 private fun BookListRow(
     ui: BookUi,
     coversDir: File,
+    hideBrackets: Boolean,
     onClick: () -> Unit,
     onLongPress: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
@@ -367,6 +371,7 @@ private fun BookListRow(
     onExportMd: (BookRecord) -> Unit,
 ) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
+    val displayTitle = if (hideBrackets) ui.record.title.replaceFirst(Regex("^【[^】]*】"), "").ifBlank { ui.record.title } else ui.record.title
     var exportMenu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
@@ -385,12 +390,12 @@ private fun BookListRow(
             if (coverFile?.exists() == true) {
                 AsyncImage(
                     model = coverFile,
-                    contentDescription = ui.record.title,
+                    contentDescription = displayTitle,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
             } else {
-                Text(ui.record.title.take(1).ifBlank { "书" }, style = MaterialTheme.typography.titleMedium)
+                Text(displayTitle.take(1).ifBlank { "书" }, style = MaterialTheme.typography.titleMedium)
             }
         }
         Column(
@@ -399,7 +404,7 @@ private fun BookListRow(
                 .padding(start = AnkeSpacing.md),
         ) {
             Text(
-                ui.record.title,
+                displayTitle,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -456,6 +461,7 @@ private fun BookCard(
     coversDir: File,
     context: Context,
     container: AppContainer,
+    hideBrackets: Boolean,
     onClick: () -> Unit,
     onLongPress: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
@@ -463,6 +469,7 @@ private fun BookCard(
     onExportMd: (BookRecord) -> Unit,
 ) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
+    val displayTitle = if (hideBrackets) ui.record.title.replaceFirst(Regex("^【[^】]*】"), "").ifBlank { ui.record.title } else ui.record.title
     var exportMenu by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
@@ -480,13 +487,13 @@ private fun BookCard(
             if (coverFile?.exists() == true) {
                 AsyncImage(
                     model = coverFile,
-                    contentDescription = ui.record.title,
+                    contentDescription = displayTitle,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                 )
             } else {
                 Text(
-                    ui.record.title.take(1).ifBlank { "书" },
+                    displayTitle.take(1).ifBlank { "书" },
                     style = MaterialTheme.typography.headlineMedium,
                 )
             }
@@ -526,7 +533,7 @@ private fun BookCard(
             }
         }
         Text(
-            ui.record.title,
+            displayTitle,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,

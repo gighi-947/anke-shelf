@@ -35,7 +35,7 @@ from .gululu_images import (
     normalize_image_mode,
     prepare_embedded_images,
 )
-from .gululu_source import parse_book_id, parse_gululu_identifier
+from .gululu_source import extract_book_id, parse_book_id, parse_gululu_identifier
 
 
 FALLBACK_FLOORS_PER_CHAPTER = 20

@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 
 _BOOK_PATH = re.compile(r"^/book/(\d+)/?$")
 _GULULU_IDENTIFIER = re.compile(r"^gululu-([1-9]\d*)$")
+# 搜索模式：从任意文本中提取骨碌碌链接（非锚定）
+_GULULU_URL_SEARCH = re.compile(r"https?://(?:www\.)?gululu\.world/book/(\d+)", re.IGNORECASE)
 
 
 def parse_book_id(value: str | int) -> int:
@@ -24,6 +26,26 @@ def parse_book_id(value: str | int) -> int:
     if match is None:
         raise ValueError("无法从链接中识别骨碌碌书籍 ID")
     return int(match.group(1))
+
+
+def extract_book_id(text: str | int) -> int:
+    """从任意文本中提取首个骨碌碌书籍 ID 或链接。
+
+    与 [parse_book_id] 不同，本函数容忍文本中包含其他内容（如"点击链接阅读：…"）。
+    多个链接命中时报 ValueError，要求用户明确选择；零命中也报 ValueError。
+    """
+    if isinstance(text, int):
+        return parse_book_id(text)
+    raw = str(text).strip()
+    # 纯数字直接走 parse_book_id（含正整数校验）
+    if raw.isdigit():
+        return parse_book_id(raw)
+    urls = list(_GULULU_URL_SEARCH.finditer(raw))
+    if len(urls) > 1:
+        raise ValueError("文本中包含多个骨碌碌链接，请只保留一个")
+    if len(urls) == 1:
+        return int(urls[0].group(1))
+    raise ValueError("请输入骨碌碌书籍 ID 或 https://www.gululu.world/book/<id> 链接")
 
 
 def parse_gululu_identifier(value: str) -> Optional[int]:

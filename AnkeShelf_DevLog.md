@@ -57,6 +57,30 @@
 
 ## 4. 最近流水
 
+### 2026-08-18 win/android：P5-A 快赢批实施（骨碌碌链接提取 / 书名前缀隐藏 / Windows 书架重命名）
+
+- 子项 1（骨碌碌链接提取）：`app/gululu_source.py` 新增 `extract_book_id`，
+  用 `re.finditer` 从任意文本提取首个骨碌碌链接/裸 ID，多个链接时报
+  ValueError；`parse_book_id` 保持不变（仍作 client 层严格二次校验）。
+  `gululu_service.py` 三处 `parse_book_id(source)` 改为 `extract_book_id`；
+  `web/js/gululu-download.js` `parseBookId` 改为 search 模式。测试 6 例
+  （带前缀提取/多链接拒绝/无链接拒绝）全绿。
+- 子项 2（书名前缀隐藏）：新设置 `hide_title_brackets`（默认关，走契约流程）。
+  Windows `settings.py` DEFAULTS + `bookshelf.js` `displayTitle` helper
+  替换 9 处显示用 `book.title`（搜索 `dataset.title` 与删除确认保留原名）；
+  Android `Settings.kt` 三处 + `BookshelfScreen.kt` 两个 Composable 加
+  `hideBrackets` 参数替换 5 处显示用引用（导出文件名 `safeExportName` 保留
+  原名）；`SettingsReadingPanels.kt` "界面"小节加 Switch 开关；DATA_CONTRACT
+  §4 表格同步。剥离规则：`^【[^】]*】` 仅剥首个【…】段。无需 bump
+  settings_version。Android `compileDebugKotlin` + `testDebugUnitTest` 全绿。
+- 子项 3（Windows 书架重命名，对齐 Android `renameBook`）：`native_book.py`
+  新增 `rename_title`；`api/library.py` 新增 `rename_book` handler（EPUB 仅
+  改书架记录，原生书目录额外写 meta.json 容错，空标题/同名不写盘）；
+  `api/__init__.py` 注册 + `api-client.js` METHODS + `bridge.js` MOCKS +
+  `bookshelf.js` 重命名按钮（prompt 弹窗）+ `icons.js` 补 edit 图标。
+  测试 3 例（重命名成功/空标题同名 noop/书不存在）全绿；JS 契约 53 方法一致。
+- 验证：Windows 68 项 OK、JS 契约全过、Android JVM 全绿。
+
 ### 2026-08-18 docs：用户 issue 转化为 P5 开发批次（ROADMAP 扩展）
 
 - 背景：收到用户反馈 issue（书架 3 条：封面缺失/书名前缀挤占/手机版优先；

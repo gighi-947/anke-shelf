@@ -22,6 +22,7 @@
     import_books: async () => [],
     remove_book: async () => true,
     open_book: async () => ({ error: '浏览器调试模式：无法打开书籍' }),
+    rename_book: async () => ({}),
     save_progress: async () => undefined,
     get_chapter_plaintext: async () => '',
     search: async () => ({ ready: true, results: [] }),
