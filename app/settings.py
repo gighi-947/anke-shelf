@@ -1,12 +1,15 @@
 """用户设置持久化（主题/字号/窗口尺寸等）。"""
 import copy
 import json
+import logging
 import threading
 from pathlib import Path
 from typing import Any
 
 from .migrations import run_migrations
 from .storage import atomic_write_json, load_json_file
+
+log = logging.getLogger("settings")
 
 DEFAULTS: dict[str, Any] = {
     "settings_version": 3,
@@ -83,8 +86,16 @@ class Settings:
                 # 旧版设置文件：一次性切到新默认值（滚动阅读 + 内置默认字体）
                 data = run_migrations(data, _SETTINGS_MIGRATIONS, 3, "settings_version")
             for k in DEFAULTS:
-                if k in data and isinstance(data[k], type(DEFAULTS[k])):
+                if k not in data:
+                    continue
+                if isinstance(data[k], type(DEFAULTS[k])):
                     self._data[k] = data[k]
+                else:
+                    log.warning(
+                        "settings.json 字段 %s 类型异常（%s），已忽略并使用默认值",
+                        k,
+                        type(data[k]).__name__,
+                    )
             if migrated:
                 self.save()
 
@@ -102,6 +113,14 @@ class Settings:
     def update(self, patch: dict) -> None:
         with self._lock:
             for k, v in patch.items():
-                if k in DEFAULTS and isinstance(v, type(DEFAULTS[k])):
+                if k not in DEFAULTS:
+                    continue
+                if isinstance(v, type(DEFAULTS[k])):
                     self._data[k] = v
+                else:
+                    log.warning(
+                        "设置更新字段 %s 类型异常（%s），已忽略",
+                        k,
+                        type(v).__name__,
+                    )
             self.save()

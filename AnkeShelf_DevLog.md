@@ -59,6 +59,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：架构收敛第四轮——Settings 类型异常不再静默丢弃
+
+- 背景：Windows `Settings.load/update` 对类型不匹配的字段直接忽略，没有任何日志，
+  属于“名义安全、实际掩盖配置损坏”的静默分支。
+- 改动：`app/settings.py` 对每个被忽略的字段记 `warning`（字段名 + 实际类型），
+  行为不变（仍用默认值），但问题可观测。
+- 验证：`tests.test_settings` 3 项 OK。
+
 ### 2026-08-19 win：架构收敛第三轮——GululuService 启动/任务包装去重
 
 - 背景：第二轮统一前端错误路径后，继续收敛 Windows 后端控制流碎片：`GululuService`
