@@ -275,7 +275,7 @@
     if (stale) status.textContent = `${total} 条 · 离线缓存`;
     else if (cached) status.textContent = `${total} 条 · 本地缓存`;
     else status.textContent = `${total} 条 · 已在线更新`;
-    status.classList.toggle('error', !response || response.ok === false);
+    status.classList.toggle('error', !response);
     if (!shownFloors.length) renderEmpty((response && response.error) || '暂无评论', false, true);
   }
 

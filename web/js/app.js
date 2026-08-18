@@ -232,10 +232,6 @@
     async showReader(bookId) {
       try {
         const data = await Api.openBook( bookId);
-        if (data && data.error) {
-          Toast.show(data.error, true);
-          return;
-        }
         state.view = 'reader';
         state.bookId = bookId;
         state.book = data;

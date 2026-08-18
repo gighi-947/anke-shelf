@@ -91,19 +91,16 @@
       return;
     }
     try {
-      const result = await Api.gululuStartImport(
+      await Api.gululuStartImport(
         source,
         val('gululu-image-mode') || 'online',
       );
-      if (!result.ok) {
-        Toast.show(result.error || '启动失败', true);
-        if (result.error && result.error.includes('已有')) resume(true);
-        return;
-      }
       setRunning(true);
       resume(true);
     } catch (error) {
-      Toast.show('启动失败：' + (error.message || error), true);
+      const msg = error.message || error;
+      Toast.show('启动失败：' + msg, true);
+      if (msg.includes('已有')) resume(true);
     }
   }
 
@@ -124,19 +121,16 @@
       return;
     }
     try {
-      const result = await Api.gululuStartUpdate(
+      await Api.gululuStartUpdate(
         source,
         val('gululu-image-mode') || 'online',
       );
-      if (!result.ok) {
-        Toast.show(result.error || '更新启动失败', true);
-        if (result.error && result.error.includes('已有')) resume(true);
-        return;
-      }
       setRunning(true);
       resume(true);
     } catch (error) {
-      Toast.show('更新启动失败：' + (error.message || error), true);
+      const msg = error.message || error;
+      Toast.show('更新启动失败：' + msg, true);
+      if (msg.includes('已有')) resume(true);
     }
   }
 
@@ -147,18 +141,17 @@
       return;
     }
     try {
-      const result = await Api.gululuStartExport(
+      await Api.gululuStartExport(
         source,
         val('gululu-image-mode') || 'online',
       );
-      if (!result.ok) {
-        if (!result.cancelled) Toast.show(result.error || '启动导出失败', true);
-        return;
-      }
       setRunning(true);
       resume(true);
     } catch (error) {
-      Toast.show('启动导出失败：' + (error.message || error), true);
+      const msg = error.message || error;
+      // 用户取消文件夹选择不是错误，静默返回
+      if (msg.includes('已取消')) return;
+      Toast.show('启动导出失败：' + msg, true);
     }
   }
 

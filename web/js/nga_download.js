@@ -234,16 +234,13 @@
       full_redownload: check('nga-full'),
     };
     try {
-      const r = await Api.ngaStartDownload( params);
-      if (!r.ok) {
-        Toast.show(r.error || '启动失败', true);
-        if (r.error && r.error.indexOf('已有') !== -1) pollDownload();
-        return;
-      }
+      await Api.ngaStartDownload( params);
       setDownloadRunning(true);
       pollDownload();
     } catch (e) {
-      Toast.show('启动失败：' + (e.message || e), true);
+      const msg = e.message || e;
+      Toast.show('启动失败：' + msg, true);
+      if (msg.indexOf('已有') !== -1) pollDownload();
     }
   }
 
@@ -440,7 +437,6 @@
     if (!bookId) return;
     try {
       const d = await Api.ngaUpdateDefaults( bookId);
-      if (!d || d.error) return;
       setVal('dl-update-authorid', d.author_id || '0');
       setVal('dl-update-theme', d.theme === 'dark' ? 'dark' : 'light');
       setVal('dl-update-image-mode', d.image_mode || 'online');
@@ -456,16 +452,13 @@
       return;
     }
     try {
-      const r = await Api.exportStart( bookId, selectedFmt);
-      if (!r.ok) {
-        Toast.show(r.error || '导出启动失败', true);
-        if (r.error && r.error.indexOf('已有') !== -1) pollExport();
-        return;
-      }
+      await Api.exportStart( bookId, selectedFmt);
       Toast.show('已开始导出，请在文件夹选择窗口中选择保存位置');
       pollExport();
     } catch (e) {
-      Toast.show('导出启动失败：' + (e.message || e), true);
+      const msg = e.message || e;
+      Toast.show('导出启动失败：' + msg, true);
+      if (msg.indexOf('已有') !== -1) pollExport();
     }
   }
 
@@ -483,20 +476,17 @@
       toc_pid: intVal('dl-update-toc-pid'),
     };
     try {
-      const r = await Api.ngaUpdateBook( bookId, params);
-      if (!r.ok) {
-        Toast.show(r.error || '更新启动失败', true);
-        if (r.error && r.error.indexOf('已有') !== -1) {
-          switchTab('dl-download');
-          pollDownload();
-        }
-        return;
-      }
+      await Api.ngaUpdateBook( bookId, params);
       Toast.show('正在检查更新…');
       switchTab('dl-download');
       pollDownload();
     } catch (e) {
-      Toast.show('更新启动失败：' + (e.message || e), true);
+      const msg = e.message || e;
+      Toast.show('更新启动失败：' + msg, true);
+      if (msg.indexOf('已有') !== -1) {
+        switchTab('dl-download');
+        pollDownload();
+      }
     }
   }
 

@@ -59,6 +59,26 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：架构收敛第二轮——统一前端业务错误路径（bridge reject 内层 ok:false）
+
+- 背景：第一轮已统一 HTTP 层错误响应；本轮把“handler 返回 `{ok:false,error}` 但 HTTP 仍 200”
+  的业务错误也统一为 `Bridge.call` reject，消除前端散落的 `if (!r.ok)` 分支。
+- 改动：
+  - `web/js/bridge.js`：`callHttp` 对 `data.data.ok === false` 且无
+    `errors[]` / `needs_overwrite` 的结果统一 `throw`；`{errors:[...]}` 与
+    `{needs_overwrite:true}` 仍原样返回（备份校验/覆盖确认不是异常）；
+  - `web/js/nga_download.js`：`ngaStartDownload` / `exportStart` / `ngaUpdateBook`
+    去掉 `!r.ok` 分支，错误统一走 catch；“已有任务”的轮询恢复逻辑移入 catch；
+  - `web/js/gululu-download.js`：`gululuStartImport` / `gululuStartUpdate` /
+    `gululuStartExport` 同样收敛；用户取消文件夹选择按“已取消”静默返回；
+  - `web/js/app.js`：`showReader` 删除已死的 `data.error` 分支；
+  - `web/js/gululu-comments.js`：删除已死的 `response.ok === false` 分支。
+- 验证：`node --check` 五个文件通过；`reader-lite-parts` / `bridge-contract` /
+  `textpos` / `reader-session` JS 守卫通过；`tests.test_api_contract` +
+  `tests.test_server` 38 项 OK。
+- 注意：本轮只改前端错误路径，后端 API 方法清单未变；`api-contract.test.js`
+  仍需在可 spawn Python 的 CI 环境跑。
+
 ### 2026-08-18 win/android/docs：架构审查后第一轮收敛（EventBus→显式回调 / API 400 语义 / reader-lite 冗余 try-catch）
 
 - 背景：对全仓做 vibe-coding 式防御/过度抽象审查后，先清理三处低风险高噪音问题；

@@ -113,7 +113,20 @@
       if (!res.ok || !data || data.ok === false) {
         throw new Error((data && data.error) || ('HTTP ' + res.status));
       }
-      return data.data;
+      const payload = data.data;
+      // 统一业务错误：handler 返回的 {ok:false,error} 也在此 reject，
+      // 前端不再需要散落“返回值 ok===false”分支。
+      // 例外：{errors:[...]} / {needs_overwrite} 是结构化非异常结果（如备份校验、
+      // 覆盖确认），必须原样返回由调用方展示。
+      if (
+        payload &&
+        payload.ok === false &&
+        !payload.needs_overwrite &&
+        !payload.errors
+      ) {
+        throw new Error(payload.error || ('API ' + name + ' failed'));
+      }
+      return payload;
     } catch (e) {
       if (e.name === 'AbortError') {
         // 与旧超时错误文案保持一致；底层 fetch 已被取消，不再悬空等待。
