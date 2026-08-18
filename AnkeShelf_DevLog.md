@@ -57,6 +57,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-18 android：适配 jsoup 1.23.1 自闭合 script 解析行为（Dependabot #9 CI 修复）
+
+- 现象：Dependabot PR #9（org.jsoup 1.19.1 → 1.23.1）Android CI 失败，
+  `ReaderHtmlTest.sanitizeKeepsContentAfterSelfClosingScript` 红。
+- 定位：HTML5 中 `<script>` 非 void 元素，`<script .../>` 会被 jsoup 1.23.1
+  按未闭合开始标签解析并吞掉后续正文；旧版 jsoup 视作自闭合、保留后续内容。
+- 修复：`ReaderHtml.sanitizeReaderBody` 清洗前先把 `<script .../>` 归一化为
+  `<script></script>`，避免后续正文被误删；现有回归用例在 1.19.1 / 1.23.1 下均绿。
+- 验证：临时升 1.23.1 复现红 → 修复后绿 → 还原版本至 1.19.1；全量 Android JVM
+  BUILD SUCCESSFUL。
+- 依赖升级本体由 PR #9 承载，已请求 rebase。
+
 ### 2026-08-18 docs：落实动效审查标准（ANIMATION_STANDARDS）
 
 - 背景：评估 `react-bits` 分析报告后，决定先落实其 `review-animations` 的动效质量
