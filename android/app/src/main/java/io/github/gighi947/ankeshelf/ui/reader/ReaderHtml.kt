@@ -7,6 +7,10 @@ import org.jsoup.Jsoup
 
 private val RE_IMG_TAG = Regex("""(?is)<img\b[^>]*>""")
 
+/** HTML5 中 <script> 不是 void 元素；自闭合写法 <script .../> 会被解析为未闭合开始标签，
+ *  吞掉后续正文。清洗前先归一化为显式闭合，避免 jsoup 升级后误删其后内容。 */
+private val RE_SELF_CLOSING_SCRIPT = Regex("""(?is)<script\b[^>]*/>""")
+
 /** 保留的白名单标签：NGA 楼层卡片/引用/骰子/表格/媒体/彩色字排版所需。 */
 private val ALLOWED_TAGS = setOf(
     "a", "b", "strong", "i", "em", "u", "s", "strike", "del", "ins", "small", "big",
@@ -93,7 +97,8 @@ fun deferContentImages(body: String): String =
 
 /** 清洗章节 body：jsoup DOM 级白名单清洗，保留 NGA 排版样式。 */
 fun sanitizeReaderBody(body: String): String {
-    val doc = Jsoup.parseBodyFragment(body)
+    val normalized = RE_SELF_CLOSING_SCRIPT.replace(body, "<script></script>")
+    val doc = Jsoup.parseBodyFragment(normalized)
     doc.outputSettings().prettyPrint(false)
     val root = doc.body()
 
