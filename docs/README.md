@@ -9,6 +9,7 @@
 | --- | --- | --- |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Windows 端总体架构与数据流 | 现役 |
 | [ANDROID_ARCHITECTURE.md](ANDROID_ARCHITECTURE.md) | Android 端总体架构与桥协议 | 现役 |
+| [READER_LITE_STATE_MACHINE.md](READER_LITE_STATE_MACHINE.md) | reader-lite.js 状态机收敛设计（草案） | 现役草案，待评审 |
 | [MAINTENANCE_GUIDE.md](MAINTENANCE_GUIDE.md) | 接手维护手册（版本线 / 测试基线 / CI / 构建发布 / 纪律） | 现役；版本线以 README 为准、测试基线以本手册 §7 为准 |
 | [CODEBASE_MAP.md](CODEBASE_MAP.md) | 双端代码链路阅读地图 | 现役 |
 | [DATA_CONTRACT.md](DATA_CONTRACT.md) | 双端 JSON 数据契约摘要 | 现役；原生书权威见 NATIVE_BOOK_FORMAT.md |

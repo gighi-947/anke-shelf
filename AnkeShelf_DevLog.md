@@ -59,6 +59,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 docs：reader-lite 状态机收敛设计草案
+
+- 背景：开始 reader-lite.js 收敛前，先固化设计文档与不变量清单，避免直接改
+  高风险进度代码。
+- 产出：`docs/READER_LITE_STATE_MACHINE.md`，包含显式阶段
+  （bootstrapping / restoring / ready）、转换表草案、进度保持不变量、
+  小步实施步骤与验证/回滚方案；同步登记到 `docs/README.md` 文档索引。
+- 状态：草案待评审；未改 reader-lite 运行时代码。
+
 ### 2026-08-19 android：架构收敛第七轮——reader-lite 集中 currentOffset 安全兜底
 
 - 背景：`reader-lite.js` 中 5 处 `try { o = currentOffset(); } catch { }` 重复同一
