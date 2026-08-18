@@ -57,6 +57,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-18 infra：剩余 Dependabot PR 全部按类型合并完成
+
+- 按依赖类型继续合并剩余 7 个 Dependabot PR：
+  - pip：#4 setuptools、#8 pyinstaller、#10 pillow；
+  - Android Gradle：#2 androidx.test.ext:junit、#3 kotlinx-serialization-json、
+    #6 activity-compose、#11 okhttp。
+- 处理：#8 首次 rebase 后 Python 3.14 出现 `test_api_requires_token` 瞬时
+  `ConnectionAbortedError`，重跑后通过（与依赖升级无关，属 CI socket flake）。
+- 结果：所有 Dependabot 依赖升级 PR 已全部 squash 合并，open PR 列表为空。
+
 ### 2026-08-18 infra：Dependabot CI 修复与按类型分批合并
 
 - 背景：Dependabot PR #1 / #5 / #7 / #9 / #12 出现 CI 失败。
