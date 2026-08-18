@@ -1,6 +1,6 @@
 # reader-lite.js 状态机收敛设计
 
-> 状态：已批准；Step 0、Step 1 已完成（phase 字段 + settle 链收敛到 `requestSettle`）。
+> 状态：已批准；Step 0、Step 1、Step 2 已完成（phase 字段 + settle 链 + resize 防抖统一入口）。
 > 目标文件：`android/app/src/main/assets/reader/reader-lite.js`（源文件为其
 > `reader-lite.parts/` 模块；改 parts 后必须 `bundle-reader-lite.js --write`）。
 > 关联纪律：AGENTS.md §3 阅读器与进度保持铁律；ADR-0002 Compose + WebView 阅读架构。
@@ -135,9 +135,9 @@ scheduleResize();
    - `setMode()` / `onResize()` / 滚动初始化 / `finish()` 统一调用 `requestSettle`；
    - `refresh()` 在分页未就绪时也并入 `requestSettle`（就绪路径暂保留原 rAF 流程）；
    - 保留 8s 兜底与 `userMoved` 分支。
-3. **Step 2：收敛 resize**
-   - 将 `onResize` 的 `resizeOffset` / `resizeScrolled` 收进 `state`，
-     并统一 `scheduleResize()`；
+3. **Step 2：收敛 resize** ✅ 已完成
+   - `resizeOffset` / `resizeScrolled` 收进 `state`；
+   - 新增 `scheduleResize()` 单一防抖入口，`onResize()` 仅作转发；
    - 与 `requestSettle` 的交互保持单一入口。
 4. **Step 3：清理冗余 try/catch 与重复分支**
    - 仅保留边界性 try/catch（如 `currentOffsetSafe`）；

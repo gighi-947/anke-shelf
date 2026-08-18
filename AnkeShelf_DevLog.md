@@ -26,7 +26,7 @@
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37664 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37922 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
@@ -58,6 +58,18 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 android：reader-lite 状态机 Step 2——resize 防抖收敛到 scheduleResize
+
+- 背景：Step 1 收敛 settle 链后，继续收敛 resize 的散落状态与定时器。
+- 改动：
+  - `resizeOffset` / `resizeScrolled` 从模块级变量移入 `state`；
+  - 新增 `scheduleResize()` 单一防抖入口，`onResize()` 仅作转发；
+  - 所有图片加载/错误、窗口 resize、insets 变更统一走 `onResize → scheduleResize`；
+  - 与 `requestSettle` 的交互保持单一入口。
+- 验证：JS 守卫全绿（parts 6/37922B）；Android `gradlew testDebugUnitTest --rerun-tasks`
+  BUILD SUCCESSFUL；设计文档更新 Step 2 完成。
+- 下一步：Step 3 清理死分支/重复路径。
 
 ### 2026-08-19 android：reader-lite 状态机 Step 1——settle 链收敛到 requestSettle
 

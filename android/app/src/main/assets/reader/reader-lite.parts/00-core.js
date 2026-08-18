@@ -43,6 +43,9 @@
     userMoved: false,
     // 显式状态机阶段：bootstrapping / restoring / ready（Step 0 先记录，不改行为）
     phase: 'bootstrapping',
+    // resize 防抖状态（Step 2 收进 state，避免模块级散落变量）
+    resizeOffset: 0,
+    resizeScrolled: false,
   };
 
   function callBridge(name) {

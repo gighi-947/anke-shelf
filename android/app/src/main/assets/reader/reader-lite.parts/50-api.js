@@ -106,8 +106,6 @@
   }
 
   var resizeTimer = null;
-  var resizeOffset = 0;
-  var resizeScrolled = false;
   var settleTimer = null;
 
   function layoutReady() {
@@ -173,24 +171,26 @@
     }, 200);
   }
 
-  function onResize() {
+  // Step 2：resize 防抖统一入口，状态收进 state.resizeOffset / state.resizeScrolled。
+  function scheduleResize() {
     if (!state.paged) return;
     var el = scrollEl();
     var wasScrolled = !!el && el.scrollLeft > 1;
     // 重排锚点必须是稳定值（用户翻页/滚动时更新的 pagedAnchor），
     // 不能取“当前页顶采样”——多次重排时页顶会逐页漂移，越恢复越靠前。
     var offset = state.pagedAnchor > 0 ? state.pagedAnchor : currentOffsetPaged();
-    if (offset > 0 && resizeOffset === 0) resizeOffset = offset;
-    if (wasScrolled) resizeScrolled = true;
+    if (offset > 0 && state.resizeOffset === 0) state.resizeOffset = offset;
+    if (wasScrolled) state.resizeScrolled = true;
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
+      resizeTimer = null;
       if (!layoutReady()) {
-        requestSettle(resizeOffset > 0 ? resizeOffset : state.restoreOffset, 0);
+        requestSettle(state.resizeOffset > 0 ? state.resizeOffset : state.restoreOffset, 0);
         return;
       }
       prepare();
       normalizeTallTables();
-      if (!restorePagedAnchor(resizeOffset > 0 ? resizeOffset : state.restoreOffset)) {
+      if (!restorePagedAnchor(state.resizeOffset > 0 ? state.resizeOffset : state.restoreOffset)) {
         // 无页码且 offset<=0：按滚动比例兜底（极少见）。
         var len = (state.textCtx && state.textCtx.text.length) || 0;
         if (len > 0) {
@@ -198,10 +198,14 @@
           gotoOffset(Math.round(ratio * len));
         }
       }
-      resizeOffset = 0;
-      resizeScrolled = false;
+      state.resizeOffset = 0;
+      state.resizeScrolled = false;
       report(false);
     }, 300);
+  }
+
+  function onResize() {
+    scheduleResize();
   }
 
   function setInsets(top, bottom) {
