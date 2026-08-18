@@ -59,6 +59,20 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：API 业务错误统一到 HTTP 边界，移除 bridge 特判
+
+- 背景：此前 bridge 根据 `payload.errors / needs_overwrite` 决定是否 reject，
+  属于前端运行时特判；本轮把“业务错误”统一收敛到 server HTTP 边界。
+- 改动：
+  - `server.py`：handler 返回 `{ok:false,error}` 且无 `errors[] / needs_overwrite`
+    时转 HTTP 400；结构化非错误结果（备份校验/覆盖确认）仍作为 200 data 返回；
+  - `bridge.js`：删除 `payload.ok === false` 特判，成功响应直接返回 `data.data`；
+  - `test_server.py`：新增 `business_error → 400` 与
+    `structured_result → 200 data` 两条用例。
+- 验证：Windows Python 302 项 OK（4 跳）；JS 守卫全绿。
+- 说明：这是“彻底统一 API 错误模型”的第一步；后续可把 handler 内散落的
+  `return {"ok": False, ...}` 逐步改为抛出统一 `ApiError`。
+
 ### 2026-08-19 android：reader-lite 状态机 Step 4——DisciplineTest 守卫状态机结构
 
 - 背景：状态机收敛到一定程度后，把关键结构固化为纪律测试，防止后续回退。

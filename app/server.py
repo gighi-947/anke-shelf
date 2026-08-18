@@ -275,6 +275,18 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
             logging.getLogger("app.api").exception("API %s failed", name)
             self._send_json({"ok": False, "error": str(e)}, code=500)
             return
+        # 统一业务错误：handler 返回 {ok:false,error} 时转 HTTP 4xx，
+        # 前端 bridge 不再需要检查 payload.ok。
+        # 结构化非错误结果（errors[] / needs_overwrite）仍作为 data 返回。
+        if (
+            isinstance(result, dict)
+            and result.get("ok") is False
+            and "error" in result
+            and not result.get("errors")
+            and not result.get("needs_overwrite")
+        ):
+            self._send_error(400, result.get("error") or "bad request")
+            return
         self._send_json({"ok": True, "data": result})
 
     def do_GET(self) -> None:
