@@ -60,6 +60,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：移除 server 对 ok:false 返回 dict 的兜底转换
+
+- 背景：服务层已全部改为抛 ApiError，server 的“handler 返回 ok:false 转 400”分支成为死代码。
+- 改动：
+  - `server.py` 删除 dict 兜底转换，成功响应直接 `{"ok":true,"data":result}`；
+  - `test_server.py` 删除 `business_error` 假方法与对应用例；
+  - 结构化非错误结果（backup `errors[]` / `needs_overwrite`）仍正常作为 data 返回。
+- 验证：Windows Python 301 项 OK（4 跳）。
+- 说明：现在 API 错误只有一条路径——`ApiError` 异常 → server 捕获 → HTTP 错误。
+
 ### 2026-08-19 win：服务层错误改为抛 ApiError，彻底消除 ok:false 返回 dict
 
 - 背景：handler 层已迁移到 ApiError，但 NGA / Gululu / Export 服务层仍返回

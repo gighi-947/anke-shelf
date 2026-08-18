@@ -30,9 +30,6 @@ class _FakeApi:
     def bad_request(self):
         raise ValueError("bad value")
 
-    def business_error(self):
-        return {"ok": False, "error": "business failed"}
-
     def structured_result(self):
         return {"ok": False, "errors": ["invalid backup"], "needs_overwrite": True}
 
@@ -155,12 +152,6 @@ class ServerTestCase(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertFalse(data["ok"])
         self.assertIn("bad value", data["error"])
-
-    def test_api_business_error_dict_becomes_http_error(self):
-        status, data = self.post("/api/business_error", token=self.token)
-        self.assertEqual(status, 400)
-        self.assertFalse(data["ok"])
-        self.assertIn("business failed", data["error"])
 
     def test_api_structured_non_error_result_stays_data(self):
         status, data = self.post("/api/structured_result", token=self.token)
