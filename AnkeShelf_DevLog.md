@@ -26,7 +26,7 @@
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37044 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37492 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
@@ -58,6 +58,18 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 android：reader-lite 状态机 Step 0——加入 phase 字段与转换日志
+
+- 背景：设计草案获批后，先做“零行为变化”的 Step 0，为后续状态机收敛建立可观测基线。
+- 改动：
+  - `state` 新增 `phase`（bootstrapping / restoring / ready）；
+  - `init` / `setMode` / 滚动初始化 / `tryRestoreAfterSettle` / `markSettled`
+    记录 phase 转换日志；`markSettled` 将 phase 置为 ready；
+  - 不改变任何进度保存、桥协议或恢复逻辑。
+- 验证：JS 守卫全绿（parts 6/37492B）；Android `gradlew testDebugUnitTest` BUILD SUCCESSFUL；
+  文档字节基线同步。
+- 下一步：Step 1 收敛 settle 链（`requestSettle` 单定时器）。
 
 ### 2026-08-19 docs：reader-lite 状态机收敛设计草案
 

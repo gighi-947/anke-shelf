@@ -1,6 +1,6 @@
 # reader-lite.js 状态机收敛设计
 
-> 状态：草案，待评审。
+> 状态：已批准；Step 0 已完成（phase 字段 + 转换日志，行为不变）。
 > 目标文件：`android/app/src/main/assets/reader/reader-lite.js`（源文件为其
 > `reader-lite.parts/` 模块；改 parts 后必须 `bundle-reader-lite.js --write`）。
 > 关联纪律：AGENTS.md §3 阅读器与进度保持铁律；ADR-0002 Compose + WebView 阅读架构。

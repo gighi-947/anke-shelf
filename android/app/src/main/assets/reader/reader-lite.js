@@ -41,6 +41,8 @@
     wasSwitch: false,
     settled: false,
     userMoved: false,
+    // 显式状态机阶段：bootstrapping / restoring / ready（Step 0 先记录，不改行为）
+    phase: 'bootstrapping',
   };
 
   function callBridge(name) {
@@ -710,6 +712,8 @@
     state.pagedAnchorPage = -1;
     state.pagedAnchorTotal = -1;
     state.settled = false;
+    state.phase = 'restoring';
+    log('[state] restoring (setMode)');
     callBridge('onMode', state.paged);
     document.body.classList.toggle('paged', state.paged);
     if (state.paged) forceEagerImages();
@@ -764,6 +768,8 @@
   function markSettled() {
     if (state.settled) return;
     state.settled = true;
+    state.phase = 'ready';
+    log('[state] ready');
     callBridge('onSettled');
   }
 
@@ -771,6 +777,7 @@
   // 只在全部就绪后做最终定位；8 秒兜底（网络卡死时也要能恢复）。
   function tryRestoreAfterSettle(offset, deadline) {
     if (settleTimer) clearTimeout(settleTimer);
+    if (state.phase !== 'ready') state.phase = 'restoring';
     var t = deadline || (Date.now() + 8000);
     settleTimer = setTimeout(function () {
       log('[settle] userMoved=' + state.userMoved + ' ready=' + layoutReady());
@@ -889,6 +896,8 @@
     state.restorePending = state.restoreOffset > 0;
     state.wasSwitch = !!opts.wasSwitch;
     state.settled = false;
+    state.phase = 'bootstrapping';
+    log('[state] bootstrapping (init)');
     state.pagedAnchorPage = (opts.page === undefined || opts.page === null) ? -1 : opts.page;
     state.pagedAnchorTotal = (opts.total === undefined || opts.total === null) ? -1 : opts.total;
     if (!document.body) return;
@@ -901,6 +910,8 @@
       state.textCtx = null;
       setTimeout(function () {
         state.textCtx = TextPos.build(document);
+        state.phase = 'restoring';
+        log('[state] restoring (scroll init)');
         if (state.restorePending && state.restoreOffset > 0) {
           restoreScrollOffset(state.restoreOffset, state.restoreRatio);
         }

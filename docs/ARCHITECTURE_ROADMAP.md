@@ -61,7 +61,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复与 DevLog 漂移收敛，并进入 P5 批次（`d0e184e` 用户 issue 转化、`91b6206` P5-A 快赢批）（2026-08-18 核对，HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 300 项（3.14：4 跳；bundled 3.12：全量通过） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 52 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37044 字节）+ 启动失败诊断 + `reader-session` OK |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 52 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37492 字节）+ 启动失败诊断 + `reader-session` OK |
 | Android JVM 单测 | 117 过 / 1 跳（2026-08-15 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |

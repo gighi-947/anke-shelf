@@ -41,6 +41,8 @@
     wasSwitch: false,
     settled: false,
     userMoved: false,
+    // 显式状态机阶段：bootstrapping / restoring / ready（Step 0 先记录，不改行为）
+    phase: 'bootstrapping',
   };
 
   function callBridge(name) {
