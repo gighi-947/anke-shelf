@@ -1,5 +1,5 @@
 """标注：高亮 / 书签 / 笔记 / 导出。"""
-from ..errors import ErrorCode, api_error
+from ..errors import ApiError, ErrorCode
 from .common import ApiContext
 
 
@@ -20,20 +20,22 @@ def save_annotation(
     note: str = "",
 ) -> dict:
     if ctx.annotations is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "标注服务不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "标注服务不可用")
     try:
         return ctx.annotations.add_highlight(
             book_id, chapter_index, start_offset, end_offset, text, color, note
         )
     except ValueError as e:
-        return api_error(ErrorCode.ANNOTATION_INVALID, str(e))
+        raise ApiError(ErrorCode.ANNOTATION_INVALID, str(e))
 
 
 def update_annotation(ctx: ApiContext, book_id: str, ann_id: str, patch: dict) -> dict:
     if ctx.annotations is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "标注服务不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "标注服务不可用")
     r = ctx.annotations.update_annotation(book_id, ann_id, patch or {})
-    return r if r else api_error(ErrorCode.ANNOTATION_INVALID, "标注不存在")
+    if r is None:
+        raise ApiError(ErrorCode.ANNOTATION_INVALID, "标注不存在")
+    return r
 
 
 def delete_annotation(ctx: ApiContext, book_id: str, ann_id: str) -> bool:
@@ -44,7 +46,7 @@ def delete_annotation(ctx: ApiContext, book_id: str, ann_id: str) -> bool:
 
 def add_bookmark(ctx: ApiContext, book_id: str, chapter_index: int, offset: int, text: str) -> dict:
     if ctx.annotations is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "标注服务不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "标注服务不可用")
     return ctx.annotations.add_bookmark(book_id, chapter_index, offset, text)
 
 

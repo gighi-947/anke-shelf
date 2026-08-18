@@ -1,5 +1,5 @@
 """NGA 下载 / 热更新 / 导出。"""
-from ..errors import ErrorCode, api_error
+from ..errors import ApiError, ErrorCode
 from ..nga_config import clear_nga_config, load_nga_config, save_nga_config
 from .common import ApiContext
 
@@ -20,21 +20,21 @@ def nga_clear_config(ctx: ApiContext) -> dict:
 def nga_update_book(ctx: ApiContext, book_id: str, params: dict) -> dict:
     """对已下载的 NGA 帖子做增量热更新。"""
     if ctx.nga_service is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "NGA 下载服务不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "NGA 下载服务不可用")
     return ctx.nga_service.update_book(book_id, params or {})
 
 
 def nga_update_defaults(ctx: ApiContext, book_id: str) -> dict:
     """返回热更新表单的默认参数（最近一次下载/更新设置）。"""
     if ctx.nga_service is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "NGA 下载服务不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "NGA 下载服务不可用")
     return ctx.nga_service.update_defaults(book_id)
 
 
 def export_start(ctx: ApiContext, book_id: str, fmt: str = "both") -> dict:
     """把 NGA 下载的帖子导出为用户自选格式（epub/md/both）+ 自选文件夹。"""
     if ctx.export_service is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "导出服务不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "导出服务不可用")
     return ctx.export_service.start(book_id, fmt)
 
 
@@ -46,19 +46,19 @@ def export_status(ctx: ApiContext) -> dict:
 
 def export_open_dest(ctx: ApiContext) -> dict:
     if ctx.export_service is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "导出服务不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "导出服务不可用")
     return ctx.export_service.open_dest()
 
 
 def export_cancel(ctx: ApiContext) -> dict:
     if ctx.export_service is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "导出服务不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "导出服务不可用")
     return ctx.export_service.cancel()
 
 
 def nga_start_download(ctx: ApiContext, params: dict) -> dict:
     if ctx.nga_service is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "NGA 下载服务不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "NGA 下载服务不可用")
     return ctx.nga_service.start(params or {})
 
 

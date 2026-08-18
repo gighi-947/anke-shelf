@@ -12,7 +12,7 @@ from .. import __version__
 from ..backup import create_backup, restore_backup, verify_backup
 from ..diagnostics import build_diagnostics
 from ..dialogs import pick_folder, pick_paths
-from ..errors import ErrorCode, api_error
+from ..errors import ApiError, ErrorCode
 from ..instance_guard import release_instance_lock
 from ..paths import (
     annotations_path,
@@ -30,11 +30,11 @@ def _pick_and_call(picker, runner, cancel_msg: str = "已取消") -> dict:
     """文件选择 → 取消映射 → 执行 → 异常映射 的统一模板（backup 三件套共用）。"""
     picked = picker()
     if not picked:
-        return api_error(ErrorCode.EXPORT_FAILED, cancel_msg)
+        raise ApiError(ErrorCode.EXPORT_FAILED, cancel_msg)
     try:
         return runner(picked)
     except Exception as e:  # noqa: BLE001
-        return api_error(ErrorCode.STORAGE_ERROR, str(e))
+        raise ApiError(ErrorCode.STORAGE_ERROR, str(e))
 
 
 def on_frontend_ready(ctx: ApiContext) -> None:
@@ -46,25 +46,25 @@ def on_frontend_ready(ctx: ApiContext) -> None:
 def toggle_fullscreen(ctx: ApiContext) -> dict:
     """沉浸式阅读：切换宿主窗口全屏。"""
     if ctx.window_toggle is None:
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, "全屏控制不可用")
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "全屏控制不可用")
     try:
         ctx.window_toggle(not ctx.fullscreen)
         ctx.fullscreen = not ctx.fullscreen
         return {"ok": True}
     except Exception as e:  # noqa: BLE001
-        return api_error(ErrorCode.SERVICE_UNAVAILABLE, str(e))
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, str(e))
 
 
 def export_diagnostics(ctx: ApiContext) -> dict:
     """导出诊断包（版本/平台/日志/脱敏设置）到用户自选文件夹。"""
     dest = pick_folder("选择诊断包保存文件夹")
     if not dest:
-        return api_error(ErrorCode.EXPORT_FAILED, "已取消")
+        raise ApiError(ErrorCode.EXPORT_FAILED, "已取消")
     try:
         path = build_diagnostics(Path(dest))
         return {"ok": True, "path": str(path)}
     except (OSError, ValueError) as e:
-        return api_error(ErrorCode.STORAGE_ERROR, str(e))
+        raise ApiError(ErrorCode.STORAGE_ERROR, str(e))
 
 
 def verify_data_integrity(ctx: ApiContext) -> dict:

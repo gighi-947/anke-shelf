@@ -1,4 +1,4 @@
-﻿"""API 服务层单元测试：重启后按书架路径重载书籍、清除 NGA 配置。"""
+"""API 服务层单元测试：重启后按书架路径重载书籍、清除 NGA 配置。"""
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +7,7 @@ from unittest.mock import patch
 from app.annotations import AnnotationStore
 from app.api import Api
 from app.book_manager import BookManager
+from app.errors import ApiError
 from app.nga_config import load_nga_config
 from app.search import SearchService
 from app.settings import Settings
@@ -83,8 +84,9 @@ class ApiServiceTest(unittest.TestCase):
 
     def test_open_book_missing_shelf_record(self):
         api = self._make_api(BookManager())
-        data = api.open_book("0" * 32)
-        self.assertIn("error", data)
+        with self.assertRaises(ApiError) as cm:
+            api.open_book("0" * 32)
+        self.assertEqual(cm.exception.code, "BOOK_NOT_FOUND")
 
     def test_get_stats_lists_books_with_titles(self):
         books = BookManager()
@@ -112,9 +114,10 @@ class ApiServiceTest(unittest.TestCase):
 
     def test_open_book_error_code(self):
         api = self._make_api(BookManager())
-        resp = api.open_book("missing-book")
-        self.assertEqual(resp.get("error_code"), "BOOK_NOT_FOUND")
-        self.assertIn("error", resp)
+        with self.assertRaises(ApiError) as cm:
+            api.open_book("missing-book")
+        self.assertEqual(cm.exception.code, "BOOK_NOT_FOUND")
+        self.assertIn("未加载", cm.exception.message)
 
     def test_rename_book_updates_shelf_and_returns_record(self):
         books = BookManager()
@@ -140,8 +143,9 @@ class ApiServiceTest(unittest.TestCase):
 
     def test_rename_book_not_found(self):
         api = self._make_api(BookManager())
-        resp = api.rename_book("0" * 32, "新标题")
-        self.assertEqual(resp.get("error_code"), "BOOK_NOT_FOUND")
+        with self.assertRaises(ApiError) as cm:
+            api.rename_book("0" * 32, "新标题")
+        self.assertEqual(cm.exception.code, "BOOK_NOT_FOUND")
 
     def test_toggle_fullscreen(self):
         calls = []
@@ -154,7 +158,9 @@ class ApiServiceTest(unittest.TestCase):
         self.assertFalse(api.fullscreen)
 
         api2 = self._make_api(BookManager())
-        self.assertFalse(api2.toggle_fullscreen()["ok"])
+        with self.assertRaises(ApiError) as cm:
+            api2.toggle_fullscreen()
+        self.assertEqual(cm.exception.code, "SERVICE_UNAVAILABLE")
 
     def test_gululu_secret_decrypt_is_explicit(self):
         api = self._make_api(BookManager())
@@ -165,9 +171,9 @@ class ApiServiceTest(unittest.TestCase):
             "薪火-63299",
         )
         self.assertEqual(result["plaintext"], "风雪之后，炉火仍在。")
-        failed = api.gululu_decrypt_secret(63299, "炉心", CRYPTOJS_CIPHER, "错误密码")
-        self.assertFalse(failed["ok"])
-        self.assertIn("密码错误或秘密数据损坏", failed["error"])
+        with self.assertRaises(ApiError) as cm:
+            api.gululu_decrypt_secret(63299, "炉心", CRYPTOJS_CIPHER, "错误密码")
+        self.assertIn("密码错误或秘密数据损坏", cm.exception.message)
 
     def test_nga_clear_config_removes_credentials(self):
         with patch("app.nga_config.data_dir", return_value=self.root), \

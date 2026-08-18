@@ -1,4 +1,4 @@
-"""结构化 API 错误码（B6）：与错误消息并存，前端可据 error_code 决定展示。"""
+"""结构化 API 错误（B6）：handler 抛出，server 统一转 HTTP 错误响应。"""
 
 
 class ErrorCode:
@@ -10,6 +10,14 @@ class ErrorCode:
     STORAGE_ERROR = "STORAGE_ERROR"
 
 
-def api_error(code: str, message: str) -> dict:
-    """向后兼容的错误响应：message 保持原样，新增 ok/error_code。"""
-    return {"ok": False, "error": message, "error_code": code}
+class ApiError(Exception):
+    """API 层业务错误：由 server 捕获并转为 HTTP 4xx/5xx 响应。
+
+    message 保持用户可读；code 供前端按 error_code 做差异化展示。
+    """
+
+    def __init__(self, code: str, message: str, status: int = 400):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.status = status

@@ -59,6 +59,20 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：handler 层迁移到 ApiError 异常
+
+- 背景：上一步已把业务错误统一到 HTTP 边界；本轮把 API handler 里的
+  `return api_error(...)` 改为 `raise ApiError(...)`，让“错误”成为控制流的一部分。
+- 改动：
+  - `app/errors.py`：`api_error()` 替换为 `ApiError` 异常类（code/message/status）；
+  - `app/server.py`：捕获 `ApiError` 并按 `status` 返回；
+  - `app/api/*.py`：`nga_api` / `gululu_api` / `system_api` / `annotation_api` /
+    `library` 全部改为 `raise ApiError(...)`；
+  - `tests/test_api_service.py`：直接调用 handler 的错误断言改为 `assertRaises(ApiError)`。
+- 验证：Windows Python 302 项 OK（4 跳）。
+- 说明：服务层返回的 `{ok:false,error}` dict 仍由 server 边界兜底转换；
+  后续可再逐步把服务层也改为抛 `ApiError`，但当前已消除 handler 层“返回错误 dict”的写法。
+
 ### 2026-08-19 win：API 业务错误统一到 HTTP 边界，移除 bridge 特判
 
 - 背景：此前 bridge 根据 `payload.errors / needs_overwrite` 决定是否 reject，

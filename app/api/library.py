@@ -5,7 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from ..epub import EpubError
-from ..errors import ErrorCode, api_error
+from ..errors import ApiError, ErrorCode
 from ..gululu_source import parse_gululu_identifier
 from ..native_book import is_native_dir, rename_title
 from ..paths import file_mtime
@@ -94,7 +94,7 @@ def rename_book(ctx: ApiContext, book_id: str, new_title: str) -> dict:
     """
     rec = ctx.shelf.get(book_id)
     if rec is None:
-        return api_error(ErrorCode.BOOK_NOT_FOUND, "书籍不存在")
+        raise ApiError(ErrorCode.BOOK_NOT_FOUND, "书籍不存在")
     title = (new_title or "").strip()
     if not title or title == rec.title:
         return record_to_dict(rec)
@@ -118,11 +118,11 @@ def open_book(ctx: ApiContext, book_id: str) -> dict:
         # 重启后 BookManager 为空：按书架记录里的原路径重新注册。
         rec = ctx.shelf.get(book_id)
         if rec is None:
-            return api_error(ErrorCode.BOOK_NOT_FOUND, "书籍未加载，请重新导入")
+            raise ApiError(ErrorCode.BOOK_NOT_FOUND, "书籍未加载，请重新导入")
         try:
             book = ctx.books.register(rec.path)
         except (EpubError, OSError) as e:
-            return api_error(ErrorCode.BOOK_INVALID, f"书籍文件无法读取：{e}")
+            raise ApiError(ErrorCode.BOOK_INVALID, f"书籍文件无法读取：{e}")
 
     # mtime 变化 → 重解析（用户可能原地替换了文件）
     rec = ctx.shelf.get(book_id)

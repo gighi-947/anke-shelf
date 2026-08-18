@@ -35,6 +35,7 @@ from typing import Optional
 from . import __version__
 from .book_manager import BookManager
 from .epub import decode_text
+from .errors import ApiError
 from .fonts import resolve_font_file
 from .nga_config import DEFAULT_UA, load_nga_config
 
@@ -267,6 +268,10 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
             return
         try:
             result = fn(*payload.get("args") or [], **(payload.get("kwargs") or {}))
+        except ApiError as e:
+            # 业务错误：handler 主动抛出，按错误码/状态返回
+            self._send_error(e.status, e.message)
+            return
         except (TypeError, ValueError) as e:
             # 业务校验/入参错误：显式 400，不让调用方把“参数错”当成服务器故障
             self._send_error(400, str(e) or "bad arguments")
