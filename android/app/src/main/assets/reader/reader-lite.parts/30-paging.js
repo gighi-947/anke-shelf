@@ -135,8 +135,7 @@
     }
     gotoPage(skipToContent(m.current + (dir > 0 ? 1 : -1), dir));
     report(true);
-    var o = 0;
-    try { o = currentOffset(); } catch (e) { /* keep old anchor */ }
+    var o = currentOffsetSafe();
     try {
       var mm = measure();
       log('[flip] after cur=' + mm.current + '/' + mm.total + ' sl=' + scrollEl().scrollLeft + ' off=' + o);
@@ -188,14 +187,17 @@
   // p=true 表示分页：Kotlin dispose 必须忽略 o（9.48：分页退出只 flush 已保存锚点，
   // 不能用页顶采样覆盖）；滚动模式 p=false 才采用 o/r。
   function currentScrollState() {
-    var o = 0;
-    try { o = currentOffset(); } catch (e) { /* ignore */ }
+    var o = currentOffsetSafe();
     var r = state.paged ? -1 : state.scrollRatio;
     return { o: o, r: r, p: state.paged };
   }
 
   function currentOffset() {
     return state.paged ? currentOffsetPaged() : currentOffsetScroll();
+  }
+
+  function currentOffsetSafe() {
+    try { return currentOffset(); } catch (e) { return 0; }
   }
 
   function sampleOffsetY() {

@@ -26,7 +26,7 @@
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37178 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37044 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
@@ -58,6 +58,15 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 android：架构收敛第七轮——reader-lite 集中 currentOffset 安全兜底
+
+- 背景：`reader-lite.js` 中 5 处 `try { o = currentOffset(); } catch { }` 重复同一
+  防御逻辑，噪音大且容易漏改。
+- 改动：新增 `currentOffsetSafe()` 统一捕获并回退 0，5 处调用点全部改为直接调用；
+  rebundle 为 6 parts / 37044 字节。
+- 验证：`reader-lite-parts` / `bridge-contract` / `textpos` / `reader-session` 全绿；
+  文档字节基线同步更新。
 
 ### 2026-08-19 win：架构收敛第六轮——reader.js 移除“必然存在模块”的防御包装
 

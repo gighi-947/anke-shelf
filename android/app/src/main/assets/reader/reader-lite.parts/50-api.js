@@ -264,8 +264,7 @@
         if (state.restorePending && state.restoreOffset > 0) {
           restoreScrollOffset(state.restoreOffset, state.restoreRatio);
         }
-        var o = 0;
-        try { o = currentOffset(); } catch (e) { /* ignore */ }
+        var o = currentOffsetSafe();
         if (o > 0) {
           log('[save:scroll] ch=' + state.chapterIndex + ' off=' + o);
           state.scrollAnchor = o;
@@ -328,8 +327,7 @@
       if (scrollTimer) clearTimeout(scrollTimer);
       scrollTimer = setTimeout(function () {
         scrollTimer = null;
-        var o = 0;
-        try { o = currentOffset(); } catch (e) { /* ignore */ }
+        var o = currentOffsetSafe();
         if (o > 0) {
           state.userMoved = true;
           state.scrollAnchor = o;
@@ -348,8 +346,7 @@
         // 换章后立即把新章位置落库（桌面 loadChapter 语义；首次打开不写，
         // 避免中间布局污染已保存的锚点）。
         if (state.wasSwitch) {
-          var o = 0;
-          try { o = currentOffset(); } catch (e) { /* ignore */ }
+          var o = currentOffsetSafe();
           // 章首采样可能落在首楼卡片 padding 上返回 0；此时也应把“已换到本章”
           // 落库（offset=1 即章首），否则退出重进会回到上一章。
           log('[save:switch] ch=' + state.chapterIndex + ' off=' + (o > 0 ? o : 1));

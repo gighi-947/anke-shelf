@@ -380,8 +380,7 @@
     }
     gotoPage(skipToContent(m.current + (dir > 0 ? 1 : -1), dir));
     report(true);
-    var o = 0;
-    try { o = currentOffset(); } catch (e) { /* keep old anchor */ }
+    var o = currentOffsetSafe();
     try {
       var mm = measure();
       log('[flip] after cur=' + mm.current + '/' + mm.total + ' sl=' + scrollEl().scrollLeft + ' off=' + o);
@@ -433,14 +432,17 @@
   // p=true 表示分页：Kotlin dispose 必须忽略 o（9.48：分页退出只 flush 已保存锚点，
   // 不能用页顶采样覆盖）；滚动模式 p=false 才采用 o/r。
   function currentScrollState() {
-    var o = 0;
-    try { o = currentOffset(); } catch (e) { /* ignore */ }
+    var o = currentOffsetSafe();
     var r = state.paged ? -1 : state.scrollRatio;
     return { o: o, r: r, p: state.paged };
   }
 
   function currentOffset() {
     return state.paged ? currentOffsetPaged() : currentOffsetScroll();
+  }
+
+  function currentOffsetSafe() {
+    try { return currentOffset(); } catch (e) { return 0; }
   }
 
   function sampleOffsetY() {
@@ -902,8 +904,7 @@
         if (state.restorePending && state.restoreOffset > 0) {
           restoreScrollOffset(state.restoreOffset, state.restoreRatio);
         }
-        var o = 0;
-        try { o = currentOffset(); } catch (e) { /* ignore */ }
+        var o = currentOffsetSafe();
         if (o > 0) {
           log('[save:scroll] ch=' + state.chapterIndex + ' off=' + o);
           state.scrollAnchor = o;
@@ -966,8 +967,7 @@
       if (scrollTimer) clearTimeout(scrollTimer);
       scrollTimer = setTimeout(function () {
         scrollTimer = null;
-        var o = 0;
-        try { o = currentOffset(); } catch (e) { /* ignore */ }
+        var o = currentOffsetSafe();
         if (o > 0) {
           state.userMoved = true;
           state.scrollAnchor = o;
@@ -986,8 +986,7 @@
         // 换章后立即把新章位置落库（桌面 loadChapter 语义；首次打开不写，
         // 避免中间布局污染已保存的锚点）。
         if (state.wasSwitch) {
-          var o = 0;
-          try { o = currentOffset(); } catch (e) { /* ignore */ }
+          var o = currentOffsetSafe();
           // 章首采样可能落在首楼卡片 padding 上返回 0；此时也应把“已换到本章”
           // 落库（offset=1 即章首），否则退出重进会回到上一章。
           log('[save:switch] ch=' + state.chapterIndex + ' off=' + (o > 0 ? o : 1));
