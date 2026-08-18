@@ -28,7 +28,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Validate reader JS syntax and exports
         run: node --check app/src/main/assets/reader/reader-lite.js
       - name: Validate reader-lite.js equals parts bundle
