@@ -26,7 +26,7 @@
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37922 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37311 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
@@ -58,6 +58,17 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 android：reader-lite 状态机 Step 3——phase 取代 settled、删除死分支
+
+- 背景：Step 2 后继续清理状态机冗余，让 `phase` 真正成为“已就绪”事实源。
+- 改动：
+  - 删除 `state.settled`，`markSettled` 改为 `if (state.phase === 'ready') return`；
+  - 删除从未读取的 `state.resizeScrolled` 及对应写入；
+  - `refresh()` 分页路径统一走 `requestSettle`，移除独立 rAF 分支；
+  - reader-lite 体积由 37922 → 37311 字节（净减少）。
+- 验证：JS 守卫全绿；Android `gradlew testDebugUnitTest --rerun-tasks` BUILD SUCCESSFUL；
+  设计文档更新 Step 3 完成。
 
 ### 2026-08-19 android：reader-lite 状态机 Step 2——resize 防抖收敛到 scheduleResize
 

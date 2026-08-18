@@ -39,13 +39,11 @@
     scrollRatio: -1,
     restoreRatio: -1,
     wasSwitch: false,
-    settled: false,
     userMoved: false,
-    // 显式状态机阶段：bootstrapping / restoring / ready（Step 0 先记录，不改行为）
+    // 显式状态机阶段：bootstrapping / restoring / ready（Step 3 起 phase 取代 settled）
     phase: 'bootstrapping',
     // resize 防抖状态（Step 2 收进 state，避免模块级散落变量）
     resizeOffset: 0,
-    resizeScrolled: false,
   };
 
   function callBridge(name) {
@@ -714,7 +712,6 @@
     // 遮罩重置，等新模式布局稳定后再放行。
     state.pagedAnchorPage = -1;
     state.pagedAnchorTotal = -1;
-    state.settled = false;
     state.phase = 'restoring';
     log('[state] restoring (setMode)');
     callBridge('onMode', state.paged);
@@ -767,8 +764,7 @@
   }
 
   function markSettled() {
-    if (state.settled) return;
-    state.settled = true;
+    if (state.phase === 'ready') return;
     state.phase = 'ready';
     log('[state] ready');
     callBridge('onSettled');
@@ -816,16 +812,14 @@
     }, 200);
   }
 
-  // Step 2：resize 防抖统一入口，状态收进 state.resizeOffset / state.resizeScrolled。
+  // Step 2：resize 防抖统一入口，状态收进 state.resizeOffset。
   function scheduleResize() {
     if (!state.paged) return;
     var el = scrollEl();
-    var wasScrolled = !!el && el.scrollLeft > 1;
     // 重排锚点必须是稳定值（用户翻页/滚动时更新的 pagedAnchor），
     // 不能取“当前页顶采样”——多次重排时页顶会逐页漂移，越恢复越靠前。
     var offset = state.pagedAnchor > 0 ? state.pagedAnchor : currentOffsetPaged();
     if (offset > 0 && state.resizeOffset === 0) state.resizeOffset = offset;
-    if (wasScrolled) state.resizeScrolled = true;
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
       resizeTimer = null;
@@ -844,7 +838,6 @@
         }
       }
       state.resizeOffset = 0;
-      state.resizeScrolled = false;
       report(false);
     }, 300);
   }
@@ -873,20 +866,8 @@
       return;
     }
     // 字体/图片未就绪时重排会把多列布局打回中间态，gotoOffset 会算出错误页
-    // （恢复瞬间闪回章首）；全部就绪后 onResize 会按锚点精确定位，
-    // 这里只在就绪后做最终兜底重排；未就绪则并入统一 settle 链。
-    if (!layoutReady()) {
-      requestSettle(state.restorePending ? state.restoreOffset : state.pagedAnchor, 0);
-      return;
-    }
-    prepare();
-    requestAnimationFrame(function () {
-      normalizeTallTables();
-      var off = state.restorePending ? state.restoreOffset : state.pagedAnchor;
-      restorePagedAnchor(off);
-      report(false);
-      markSettled();
-    });
+    // （恢复瞬间闪回章首）；全部就绪后也统一走 requestSettle 做最终兜底重排。
+    requestSettle(state.restorePending ? state.restoreOffset : state.pagedAnchor, 0);
   }
 
   function init(opts) {
@@ -907,7 +888,6 @@
     state.scrollAnchor = state.restoreOffset;
     state.restorePending = state.restoreOffset > 0;
     state.wasSwitch = !!opts.wasSwitch;
-    state.settled = false;
     state.phase = 'bootstrapping';
     log('[state] bootstrapping (init)');
     state.pagedAnchorPage = (opts.page === undefined || opts.page === null) ? -1 : opts.page;

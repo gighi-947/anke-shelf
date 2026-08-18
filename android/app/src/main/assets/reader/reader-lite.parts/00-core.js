@@ -39,13 +39,11 @@
     scrollRatio: -1,
     restoreRatio: -1,
     wasSwitch: false,
-    settled: false,
     userMoved: false,
-    // 显式状态机阶段：bootstrapping / restoring / ready（Step 0 先记录，不改行为）
+    // 显式状态机阶段：bootstrapping / restoring / ready（Step 3 起 phase 取代 settled）
     phase: 'bootstrapping',
     // resize 防抖状态（Step 2 收进 state，避免模块级散落变量）
     resizeOffset: 0,
-    resizeScrolled: false,
   };
 
   function callBridge(name) {
