@@ -105,7 +105,8 @@ class Shelf(private val shelfFile: File, private val coversDir: File) {
         if (rec != null && rec.cover_rel != null) {
             try {
                 File(coversDir, rec.cover_rel.substringAfterLast('/')).delete()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                logWarn("AnkeShelf", "删除封面失败：${e.message}")
             }
         }
     }
@@ -119,7 +120,8 @@ class Shelf(private val shelfFile: File, private val coversDir: File) {
                 try {
                     val dt = OffsetDateTime.parse(last)
                     if ((System.currentTimeMillis() / 1000.0 - dt.toEpochSecond()) < throttleSeconds) return
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    logWarn("AnkeShelf", "解析 last_read_at 失败：${e.message}")
                 }
             }
             books[bookId] = rec.copy(last_read_at = now)
@@ -135,7 +137,8 @@ class Shelf(private val shelfFile: File, private val coversDir: File) {
             coversDir.mkdirs()
             File(coversDir, "${book.id}.$ext").writeBytes(data)
             rel
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logWarn("AnkeShelf", "提取封面失败：${e.message}")
             null
         }
     }

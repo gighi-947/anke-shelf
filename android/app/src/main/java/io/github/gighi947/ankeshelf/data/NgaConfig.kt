@@ -67,7 +67,8 @@ class NgaConfig(private val file: File) {
         val out = LinkedHashMap<String, String>()
         val text = try {
             file.readText(Charsets.UTF_8)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logWarn("AnkeShelf", "NGA 配置读取失败：${e.message}")
             return emptyMap()
         }
         for (line in text.lineSequence()) {

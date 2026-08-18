@@ -60,6 +60,20 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 android：数据层 catch-all 增加可见日志（第一批）
+
+- 背景：Android 数据层多处 `catch (_: Exception)` 静默吞错，符合原提示词
+  “名义安全、实际掩盖问题”的模式。
+- 改动（行为不变，仅让失败可观测）：
+  - `ContentResolver.queryDisplayName`：查询失败记 warning；
+  - `Shelf.remove`：删除封面失败记 warning；
+  - `Shelf.touch`：解析 last_read_at 失败记 warning；
+  - `Shelf.extractCover`：提取封面失败记 warning；
+  - `Settings.load`：读取失败/版本解析失败记 warning；
+  - `NgaConfig.readIni`：读取失败记 warning。
+- 验证：Android `gradlew testDebugUnitTest --rerun-tasks` BUILD SUCCESSFUL。
+- 下一步：继续清理 Epub/NativeBook/WebViewChapterView 等 catch-all。
+
 ### 2026-08-19 win：移除 server 对 ok:false 返回 dict 的兜底转换
 
 - 背景：服务层已全部改为抛 ApiError，server 的“handler 返回 ok:false 转 400”分支成为死代码。

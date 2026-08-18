@@ -9,6 +9,7 @@ internal fun queryDisplayName(resolver: ContentResolver, uri: Uri): String? = tr
     resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
         if (c.moveToFirst()) c.getString(0) else null
     }
-} catch (_: Exception) {
+} catch (e: Exception) {
+    logWarn("AnkeShelf", "查询 SAF 显示名失败：${e.message}")
     null
 }

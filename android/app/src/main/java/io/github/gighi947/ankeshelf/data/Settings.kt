@@ -98,14 +98,16 @@ class Settings(private val file: File) {
     fun load() {
         val text = try {
             file.takeIf { it.exists() }?.readText(Charsets.UTF_8)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logWarn("AnkeShelf", "settings.json 读取失败：${e.message}")
             null
         }
         if (text.isNullOrBlank()) return
         val rawVersion = try {
             Shelf.json.parseToJsonElement(text)
                 .jsonObject["settings_version"]?.jsonPrimitive?.intOrNull ?: 0
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logWarn("AnkeShelf", "settings.json 版本解析失败：${e.message}")
             0
         }
         val loaded = try {
