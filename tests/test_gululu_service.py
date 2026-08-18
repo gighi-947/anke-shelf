@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from app.api import Api
 from app.book_manager import BookManager
+from app.errors import ApiError
 from app.gululu_epub import (
     GululuBuildResult,
     GululuCancelled,
@@ -120,14 +121,14 @@ class GululuServiceTest(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_invalid_source_does_not_start(self):
-        result = self.service.start("not-a-book")
-        self.assertFalse(result["ok"])
+        with self.assertRaises(ApiError):
+            self.service.start("not-a-book")
         self.assertFalse(self.service.status()["running"])
 
     def test_invalid_image_mode_does_not_start(self):
-        result = self.service.start("66905", "cached")
-        self.assertFalse(result["ok"])
-        self.assertIn("图片模式", result["error"])
+        with self.assertRaises(ApiError) as cm:
+            self.service.start("66905", "cached")
+        self.assertIn("图片模式", cm.exception.message)
         self.assertFalse(self.service.status()["running"])
 
     def test_success_writes_atomically_and_registers(self):
@@ -388,7 +389,8 @@ class GululuServiceTest(unittest.TestCase):
                 patch("app.gululu_service.GululuClient", return_value=_BlockingClient()):
             self.assertTrue(self.service.start("66905")["ok"])
             self.assertTrue(_BlockingClient.entered.wait(2))
-            self.assertFalse(self.service.start("66906")["ok"])
+            with self.assertRaises(ApiError):
+                self.service.start("66906")
             self.assertTrue(self.service.cancel()["ok"])
             deadline = time.time() + 2
             while self.service.status()["running"] and time.time() < deadline:

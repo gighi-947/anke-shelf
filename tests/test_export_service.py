@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from app.errors import ApiError
 from app.export_service import ExportService
 
 
@@ -88,9 +89,9 @@ class ExportServiceTest(unittest.TestCase):
     def test_export_single_flight(self):
         svc = ExportService(self.shelf, folder_picker=lambda: str(self.dest))
         self.assertTrue(svc._tasks.start("export", "busy"))
-        r = svc.start(self.rec.id, "both")
-        self.assertFalse(r["ok"])
-        self.assertIn("已有", r["error"])
+        with self.assertRaises(ApiError) as cm:
+            svc.start(self.rec.id, "both")
+        self.assertIn("已有", cm.exception.message)
         svc._tasks.finish("export", "busy")
 
     def test_export_cancel_picker_marks_cancelled(self):

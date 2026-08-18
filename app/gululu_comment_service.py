@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from .errors import ApiError, ErrorCode
 from .gululu_client import GululuClient
 from .gululu_comments import comment_to_public
 from .gululu_source import parse_book_id
@@ -37,7 +38,7 @@ class GululuCommentService:
             source_id = parse_book_id(source)
             scopes = self._validate_scopes(floor_ids)
         except ValueError as exc:
-            return {"ok": False, "error": str(exc), "floors": []}
+            raise ApiError(ErrorCode.BOOK_INVALID, str(exc))
 
         cached = {floor_id: self._read_cache(source_id, floor_id) for floor_id in scopes}
         pending = [

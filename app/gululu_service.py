@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from . import dialogs
+from .errors import ApiError, ErrorCode
 from .gululu_comment_service import GululuCommentService
 from .gululu_epub import (
     GululuBuildResult,
@@ -114,10 +115,10 @@ class GululuService:
             source_id = extract_book_id(source)
             normalized_image_mode = normalize_image_mode(image_mode)
         except ValueError as exc:
-            return {"ok": False, "error": str(exc)}
+            raise ApiError(ErrorCode.BOOK_INVALID, str(exc))
         task_id = f"gululu-{uuid.uuid4().hex[:12]}"
         if not self._tasks.start(self.LANE, task_id):
-            return {"ok": False, "error": "已有骨碌碌导入任务在运行"}
+            raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "已有骨碌碌导入任务在运行")
         self._begin_task(
             task_id,
             "import",
@@ -144,13 +145,13 @@ class GululuService:
             source_id = extract_book_id(source)
             normalized_image_mode = normalize_image_mode(image_mode)
         except ValueError as exc:
-            return {"ok": False, "error": str(exc)}
+            raise ApiError(ErrorCode.BOOK_INVALID, str(exc))
         dest = self._folder_picker()
         if not dest:
-            return {"ok": False, "cancelled": True, "error": "已取消导出"}
+            raise ApiError(ErrorCode.EXPORT_FAILED, "已取消导出")
         task_id = f"gululu-export-{uuid.uuid4().hex[:12]}"
         if not self._tasks.start(self.LANE, task_id):
-            return {"ok": False, "error": "已有骨碌碌任务在运行"}
+            raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "已有骨碌碌任务在运行")
         self._begin_task(
             task_id,
             "export",
@@ -179,13 +180,13 @@ class GululuService:
             source_id = extract_book_id(source)
             normalized_image_mode = normalize_image_mode(image_mode)
         except ValueError as exc:
-            return {"ok": False, "error": str(exc)}
+            raise ApiError(ErrorCode.BOOK_INVALID, str(exc))
         target = gululu_library_dir() / str(source_id) / "post.epub"
         if not target.is_file():
-            return {"ok": False, "error": "本机没有可更新的骨碌碌 EPUB，请先完成导入"}
+            raise ApiError(ErrorCode.BOOK_NOT_FOUND, "本机没有可更新的骨碌碌 EPUB，请先完成导入")
         task_id = f"gululu-update-{uuid.uuid4().hex[:12]}"
         if not self._tasks.start(self.LANE, task_id):
-            return {"ok": False, "error": "已有骨碌碌任务在运行"}
+            raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "已有骨碌碌任务在运行")
         self._begin_task(
             task_id,
             "update",
@@ -211,7 +212,7 @@ class GululuService:
         with self._lock:
             task_id = self._current_task
         if task_id is None:
-            return {"ok": False, "error": "没有进行中的骨碌碌任务"}
+            raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "没有进行中的骨碌碌任务")
         self._tasks.cancel(task_id)
         return {"ok": True}
 

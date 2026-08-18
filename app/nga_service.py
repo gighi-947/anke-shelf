@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 from typing import Callable, Optional
 
+from .errors import ApiError, ErrorCode
 from .logutil import log_event
 from .nga_config import ensure_nga_config, load_nga_config
 from .tasks import TaskCancelled, TaskManager, TaskProgress, TaskStatus
@@ -185,17 +186,20 @@ class NgaService:
         theme, toc_pid, per_chapter, no_images, full_redownload, open_after."""
         with self._lock:
             if self._status["running"]:
-                return {"ok": False, "error": "已有下载任务在运行"}
+                raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "已有下载任务在运行")
         tid, error = _parse_tid(params.get("tid", ""))
         if error:
-            return {"ok": False, "error": error}
+            raise ApiError(ErrorCode.BOOK_INVALID, error)
         ensure_nga_config()
         cfg = load_nga_config()
         if not cfg["configured"]:
-            return {"ok": False, "error": "请先在下载面板中填写 NGA Cookie（ngaPassportUid / ngaPassportCid）"}
+            raise ApiError(
+                ErrorCode.SERVICE_UNAVAILABLE,
+                "请先在下载面板中填写 NGA Cookie（ngaPassportUid / ngaPassportCid）",
+            )
         task_id = f"nga-{uuid.uuid4().hex[:12]}"
         if not self._tasks.start(self.LANE, task_id):
-            return {"ok": False, "error": "已有下载任务在运行"}
+            raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "已有下载任务在运行")
         self._begin_task(
             task_id,
             "download",
@@ -224,20 +228,18 @@ class NgaService:
         """对已下载的 NGA 帖子做增量热更新（只拉新页、只追加新楼层）。"""
         with self._lock:
             if self._status["running"]:
-                return {"ok": False, "error": "已有下载/更新任务在运行"}
+                raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "已有下载/更新任务在运行")
         if self._shelf is None:
-            return {"ok": False, "error": "书架服务不可用"}
+            raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "书架服务不可用")
         rec = self._shelf.get(book_id)
         if rec is None or not rec.nga_tid:
-            return {"ok": False, "error": "仅支持更新 NGA 下载的帖子"}
+            raise ApiError(ErrorCode.BOOK_NOT_FOUND, "仅支持更新 NGA 下载的帖子")
         folder = Path(rec.path).parent.name
         author_id = 0
         m = re.match(r"^\d+\((\d+)\)", folder)
         if m:
             author_id = int(m.group(1))
         defaults = self.update_defaults(book_id)
-        if not defaults.get("ok"):
-            return defaults
         field_map = {
             "authorid": "author_id",
             "theme": "theme",
@@ -251,7 +253,7 @@ class NgaService:
                 effective[param_key] = defaults.get(default_key)
         task_id = f"nga-update-{uuid.uuid4().hex[:12]}"
         if not self._tasks.start(self.LANE, task_id):
-            return {"ok": False, "error": "已有下载/更新任务在运行"}
+            raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "已有下载/更新任务在运行")
         self._begin_task(
             task_id,
             "update",
@@ -283,7 +285,7 @@ class NgaService:
         if self._shelf is not None:
             rec = self._shelf.get(book_id)
         if rec is None or not rec.nga_tid:
-            return {"ok": False, "error": "仅支持更新 NGA 下载的帖子"}
+            raise ApiError(ErrorCode.BOOK_NOT_FOUND, "仅支持更新 NGA 下载的帖子")
         folder = Path(rec.path).parent.name
         author_id = 0
         m = re.match(r"^\d+\((\d+)\)", folder)

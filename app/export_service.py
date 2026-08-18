@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from . import dialogs
+from .errors import ApiError, ErrorCode
 from .native_book import is_native_dir, rebuild_epub_for_native
 from .shelf import Shelf
 from .tasks import TaskCancelled, TaskManager, TaskProgress, TaskStatus
@@ -55,10 +56,10 @@ class ExportService:
         """启动后台导出。fmt: epub / md / both。"""
         rec = self._shelf.get(book_id)
         if rec is None or not rec.nga_tid:
-            return {"ok": False, "error": "仅支持导出 NGA 下载的帖子"}
+            raise ApiError(ErrorCode.BOOK_NOT_FOUND, "仅支持导出 NGA 下载的帖子")
         task_id = f"export-{uuid.uuid4().hex[:12]}"
         if not self._tasks.start("export", task_id):
-            return {"ok": False, "error": "已有导出任务在运行"}
+            raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "已有导出任务在运行")
         with self._lock:
             self._current_task = task_id
             self._status.update(
@@ -80,19 +81,19 @@ class ExportService:
 
         dest = self.status().get("dest") or ""
         if not dest or not Path(dest).is_dir():
-            return {"ok": False, "error": "没有可打开的导出文件夹"}
+            raise ApiError(ErrorCode.EXPORT_FAILED, "没有可打开的导出文件夹")
         try:
             os.startfile(dest)
             return {"ok": True}
         except OSError as e:
-            return {"ok": False, "error": str(e)}
+            raise ApiError(ErrorCode.EXPORT_FAILED, str(e))
 
     def cancel(self) -> dict:
         """取消当前导出任务（协作出取消，文件夹选择等阻塞点不可中断）。"""
         with self._lock:
             task_id = self._current_task
         if task_id is None:
-            return {"ok": False, "error": "没有进行中的导出任务"}
+            raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "没有进行中的导出任务")
         self._tasks.cancel(task_id)
         return {"ok": True}
 

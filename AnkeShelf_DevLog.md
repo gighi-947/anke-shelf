@@ -60,6 +60,22 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：服务层错误改为抛 ApiError，彻底消除 ok:false 返回 dict
+
+- 背景：handler 层已迁移到 ApiError，但 NGA / Gululu / Export 服务层仍返回
+  `{"ok": false, "error": ...}` dict；本轮统一为异常。
+- 改动：
+  - `NgaService`：start / update_book / update_defaults 错误改为 `raise ApiError`；
+  - `GululuService`：start / start_export / start_update / cancel 错误改为
+    `raise ApiError`（用户取消导出仍以“已取消导出”消息抛出，前端 catch 静默处理）；
+  - `ExportService`：start / open_dest / cancel 错误改为 `raise ApiError`；
+  - `GululuCommentService`：入参校验错误改为 `raise ApiError`；
+  - `system_api.open_data_dir` 错误改为 `raise ApiError`；
+  - `backup.py` 的 `{ok:false, errors[]}` 保留为结构化非错误结果，不迁移。
+  - 相关测试同步改为 `assertRaises(ApiError)`。
+- 验证：Windows Python 302 项 OK（4 跳）。
+- 说明：现在 `app/` 下仅 `backup.py` 仍返回 `ok:false`，且是有意保留的结构化校验结果。
+
 ### 2026-08-19 win：NGA 服务迁入 TaskManager，统一任务基础设施
 
 - 背景：此前 NGA 使用自持 `_lock + _cancel + _status`，Gululu/Export 已用

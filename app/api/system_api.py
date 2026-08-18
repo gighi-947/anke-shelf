@@ -130,7 +130,7 @@ def open_data_dir(ctx: ApiContext) -> dict:
         os.startfile(str(data_dir()))
         return {"ok": True}
     except OSError as e:
-        return {"ok": False, "error": str(e)}
+        raise ApiError(ErrorCode.STORAGE_ERROR, str(e))
 
 
 def uninstall_and_quit(ctx: ApiContext) -> dict:

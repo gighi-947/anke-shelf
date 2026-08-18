@@ -11,6 +11,7 @@ from unittest.mock import patch
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT / "ngapost2md-python"))
 
+from app.errors import ApiError
 from app.nga_config import DEFAULT_UA, ensure_nga_config, load_nga_config, save_nga_config
 from app.nga_service import NgaService, _parse_tid
 from app.server import _CSP
@@ -112,18 +113,18 @@ class TestNgaService(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_start_invalid_tid(self):
-        r = self.svc.start({"tid": "not-a-tid"})
-        self.assertFalse(r["ok"])
-        self.assertIn("无法识别", r["error"])
+        with self.assertRaises(ApiError) as cm:
+            self.svc.start({"tid": "not-a-tid"})
+        self.assertIn("无法识别", cm.exception.message)
 
     def test_start_unconfigured(self):
         with patch("app.paths.data_dir", return_value=self.root), \
                 patch("app.nga_config.data_dir", return_value=self.root), \
                 patch("app.nga_config._candidate_source", return_value=Path()):
             ensure_nga_config()
-            r = self.svc.start({"tid": "41989465"})
-            self.assertFalse(r["ok"])
-            self.assertIn("Cookie", r["error"])
+            with self.assertRaises(ApiError) as cm:
+                self.svc.start({"tid": "41989465"})
+            self.assertIn("Cookie", cm.exception.message)
 
     def test_single_flight(self):
         with patch("app.paths.data_dir", return_value=self.root), \
@@ -133,9 +134,9 @@ class TestNgaService(unittest.TestCase):
             save_nga_config({"uid": "1", "cid": "2", "ua": "UA"})
         with patch("app.nga_service._import_nga", side_effect=RuntimeError("boom")):
             self.svc._set(running=True)  # 模拟已有任务
-            r = self.svc.start({"tid": "41989465"})
-            self.assertFalse(r["ok"])
-            self.assertIn("已有", r["error"])
+            with self.assertRaises(ApiError) as cm:
+                self.svc.start({"tid": "41989465"})
+            self.assertIn("已有", cm.exception.message)
             self.svc._set(running=False)
 
     def test_cancel_marks_current_task(self):
@@ -379,8 +380,9 @@ class TestNgaService(unittest.TestCase):
     def test_update_defaults_rejects_non_nga_book(self):
         rec = BookRecord(id="d" * 32, path=str(self.root / "x.epub"), title="t")
         svc = NgaService(book_register=lambda p: "bid", shelf=self._shelf_with(rec))
-        d = svc.update_defaults("d" * 32)
-        self.assertFalse(d["ok"])
+        with self.assertRaises(ApiError) as cm:
+            svc.update_defaults("d" * 32)
+        self.assertIn("仅支持更新", cm.exception.message)
 
     def test_update_book_fills_stored_defaults(self):
         folder = self.root / "nga_library" / "41989465(62906407)"
