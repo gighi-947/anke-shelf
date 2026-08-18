@@ -57,6 +57,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-18 infra：Dependabot CI 修复与按类型分批合并
+
+- 背景：Dependabot PR #1 / #5 / #7 / #9 / #12 出现 CI 失败。
+- 处理：
+  - #1 / #5 / #7 / #12（GitHub Actions）：失败原因为 Dependabot 分支基于旧版
+    `android.yml`（`node android/scripts/...` 双路径），`@dependabot rebase` 后修复；
+  - #9（org.jsoup → 1.23.1）：真实解析行为变更，代码修复（见下一条）后 rebase 通过；
+  - 按依赖类型分批 squash 合并：GitHub Actions（#1 / #5 / #7 / #12）、
+    Android Gradle（#9）。
+- 验证：合并后各 PR 的 build / contract-guard / test-and-package 全绿。
+- 剩余未合并 Dependabot PR：#2 / #3 / #4 / #6 / #8 / #10 / #11（待确认 CI 后按类型处理）。
+
 ### 2026-08-18 android：适配 jsoup 1.23.1 自闭合 script 解析行为（Dependabot #9 CI 修复）
 
 - 现象：Dependabot PR #9（org.jsoup 1.19.1 → 1.23.1）Android CI 失败，
