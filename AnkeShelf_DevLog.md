@@ -59,6 +59,13 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 android：架构收敛第五轮——ATOMIC_MOVE 回退不再静默
+
+- 背景：`data/Storage.kt::moveReplace` 原子移动失败时静默回退普通替换，掩盖文件系统异常。
+- 改动：回退前记 `warning`（含原因），行为不变。
+- 验证：`android\gradlew.bat -p android testDebugUnitTest --tests "...data.StorageTest"`
+  BUILD SUCCESSFUL。
+
 ### 2026-08-19 win：架构收敛第四轮——Settings 类型异常不再静默丢弃
 
 - 背景：Windows `Settings.load/update` 对类型不匹配的字段直接忽略，没有任何日志，

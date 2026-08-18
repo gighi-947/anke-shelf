@@ -37,7 +37,8 @@ private fun moveReplace(from: File, to: File) {
             StandardCopyOption.REPLACE_EXISTING,
             StandardCopyOption.ATOMIC_MOVE,
         )
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        logWarn("AnkeShelf", "ATOMIC_MOVE 失败，回退普通替换：${e.message}")
         Files.move(from.toPath(), to.toPath(), StandardCopyOption.REPLACE_EXISTING)
     }
 }
