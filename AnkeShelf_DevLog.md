@@ -12,14 +12,14 @@
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
   沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入；
-  文档漂移治理已强化（AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
+  P5 批次已启动并完成 P5-A 快赢批；文档漂移治理已强化
+  （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.4.0`（已发布，AnkeShelf-v1.4.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-18 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 287 项
-    （本机 Python 3.14：1 error + 4 跳，error 为 `test_main_guard` 平台敏感项；
-    bundled Python 3.12：全量通过）；
+  - Windows Python：`python -m unittest discover tests` = 296 项
+    （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
@@ -56,6 +56,14 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-18 docs：P5 批次后文档漂移扫描与同步
+
+- 扫描发现 P5-A 合入后测试计数 287→296、ROADMAP §2.2 行数表 / §2.1 主干状态 /
+  DevLog §1 / MAINTENANCE_GUIDE §7/§10 未同步；按 AGENTS §5 清单修复。
+- 同步：DevLog §1、ROADMAP 顶部核对块 / §2.1 / §2.2、MAINTENANCE_GUIDE §7/§10；
+  新增 `.zcode/` 到 `.gitignore`（本地工具产物）。
+- 验证：Windows Python 296 项 OK（4 跳）；漂移脚本复跑一致。
 
 ### 2026-08-18 win/android：P5-A 快赢批实施（骨碌碌链接提取 / 书名前缀隐藏 / Windows 书架重命名）
 

@@ -16,6 +16,7 @@ dist/
 memory/
 /reference/
 cherry-studio-export/
+.zcode/
 
 # ---- NGA 凭据与本地配置 ----
 ngapost2md-python/config.ini
