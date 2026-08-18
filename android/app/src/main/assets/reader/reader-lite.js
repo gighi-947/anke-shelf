@@ -106,7 +106,11 @@
 
   function isSkipNode(node) {
     var p = node.parentElement;
-    return p && (p.tagName === 'SCRIPT' || p.tagName === 'STYLE');
+    while (p) {
+      if (p.tagName === 'SCRIPT' || p.tagName === 'STYLE' || p.hasAttribute('data-textpos-exclude')) return true;
+      p = p.parentElement;
+    }
+    return false;
   }
 
   var TextPos = {
@@ -615,7 +619,15 @@
     }, true);
     document.addEventListener('error', function (e) {
       var t = e.target;
-      if (t && t.tagName === 'IMG' && state.paged) onResize();
+      if (t && t.tagName === 'IMG') {
+        // 加载失败替换为占位卡；占位无文本节点（文案走 CSS ::after），
+        // data-textpos-exclude 双保险，text_offset 不受影响。
+        var ph = document.createElement('span');
+        ph.className = 'img-error-placeholder';
+        ph.setAttribute('data-textpos-exclude', '');
+        if (t.parentNode) t.parentNode.replaceChild(ph, t);
+        if (state.paged) onResize();
+      }
     }, true);
   }
 

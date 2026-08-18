@@ -250,3 +250,23 @@ mark.hl-purple {
 mark.hl-cyan {
     background: rgba(0, 188, 212, 0.40);
 }
+
+/* NGA 图片/表情加载失败占位卡：无文本节点，文案走 ::after，不进 text_offset */
+.img-error-placeholder {
+    display: inline-block;
+    min-width: 96px;
+    min-height: 64px;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    border: 1px dashed rgba(128, 128, 128, 0.45);
+    border-radius: 6px;
+    background: rgba(128, 128, 128, 0.08);
+    color: rgba(128, 128, 128, 0.65);
+    font-size: 12px;
+    line-height: 1.4;
+    vertical-align: middle;
+    text-align: center;
+}
+.img-error-placeholder::after {
+    content: "图片加载失败";
+}

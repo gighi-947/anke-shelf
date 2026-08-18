@@ -3,7 +3,11 @@
 
   function isSkipNode(node) {
     var p = node.parentElement;
-    return p && (p.tagName === 'SCRIPT' || p.tagName === 'STYLE');
+    while (p) {
+      if (p.tagName === 'SCRIPT' || p.tagName === 'STYLE' || p.hasAttribute('data-textpos-exclude')) return true;
+      p = p.parentElement;
+    }
+    return false;
   }
 
   var TextPos = {
