@@ -342,6 +342,110 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
   optional CFI）；API 设计不假设 caller 永远是同进程 WebView。
 - 预期目标：长期设计决策有外部案例支撑，不照搬技术栈。
 
+### P5：用户反馈批次（2026-08-18 issue，六项）
+
+> 来源：用户 issue（书架 3 条 / NGA 4 条 / 骨碌碌 1 条）。全部条目已于
+> 2026-08-18 对照代码核实现状，按"快赢 → 致命修复 → 体验 → 大件"排序。
+> 产品原则（issue 第 3 条，非代码）：用户可见功能 Android 先行或双端同步交付。
+
+#### P5-A：快赢批（骨碌碌链接提取 + 书名显示 + Windows 重命名）
+
+1. **骨碌碌粘贴文本自动提取链接**：现状 `gululu_source.py` 只 fullmatch 纯
+   URL/ID，粘贴"点击链接阅读：https://…"报错。改动：前后端都支持从任意
+   文本提取首个骨碌碌链接/ID（前端 `parseBookId`、后端 fullmatch→search 并
+   校验唯一命中）。成功标准：带前缀文本直接可导入。
+   验证：`tests/test_gululu_service.py` 新用例（红→绿）。
+   文件：`app/gululu_source.py`、`web/js/gululu-download.js`。仅 Windows 端。
+2. **书名前缀隐藏（显示层）**：安科标题普遍带【安科】等前缀，网格/最近阅读
+   ellipsis 截断把真名挤掉。改动：新设置 `hide_title_brackets`（默认关，走
+   契约流程更新 DATA_CONTRACT §4），书架网格/最近阅读显示层过滤首个
+   `【…】` 段；不改存储书名（重命名/导出不受影响）。双端。
+   文件：`app/settings.py`、`web/js/bookshelf.js`/`app.js`、Android
+   `Settings.kt` + `BookshelfScreen.kt`、`docs/DATA_CONTRACT.md`。
+   验证：过滤函数单测（纯逻辑）+ UI harness。
+3. **Windows 书架重命名**（对齐 Android 已有 `renameBook`）：新 API
+   `book_rename` + 书架右键/长按菜单；原生书同步 meta.json title（语义对照
+   Android `NativeBookWriter.renameTitle`）。仅 Windows 端。
+   文件：`app/api/library.py`、`app/shelf.py`、`app/native_book.py`、
+   `web/js/bookshelf.js`。验证：API 单测 + 重命名后重开书标题一致。
+
+#### P5-B：NGA 图片裂图修复（用户标"致命"）
+
+- 现状（已核实根因）：Windows 在线图片模式 iframe 直连图床，NGA 图床防盗链
+  需 Referer/Cookie → 403 裂图；book 内缺失图仅返回 1×1 透明 GIF（几乎
+  不可见）。Android 已有图片代理（`shouldInterceptRequest` + NGA 头 + OkHttp
+  缓存）但失败无可见占位。
+- 改动：
+  1. Windows `server.py` 新增 `/img/<book_id>?u=<url>` 代理路由：book_id
+     须已注册、URL 必须命中 NGA 图床域名白名单（显式集合，禁任意 URL），
+     转发带 `Referer: https://bbs.nga.cn/` 与已存 Cookie；`_serve_book`
+     输出章节时把白名单图源重写为代理 URL（重写属性不影响 TextPos 文本
+     节点，坐标安全）；
+  2. 双端加载失败占位：`onerror` 替换为明确"图片加载失败"占位卡（Windows
+     reader-image / Android reader-lite.js 既有 error 监听扩展）。
+- 成功标准：在线模式 NGA 帖图 Windows 端正常加载；失败显示占位而非裂图。
+- 验证：`test_server.py` 代理用例（头注入/白名单拒绝/未注册 book 404/
+  路径穿越拒绝）；Android 改 JS 后校验 APK 内 SHA-256；真机实图抽查。
+- Diff 影响：`server.py` 路由表变更同步 `docs/ARCHITECTURE.md`；Android
+  reader-lite parts 重打包。
+
+#### P5-C：滚动到底自动翻章（连续阅读）
+
+- 现状：双端滚动/分页到章尾即停。改动：新设置 `auto_chapter_turn`（默认
+  关），滚动模式距底 ≤48px 且停留 ≥800ms 触发 `nextChapter`（沿用现有
+  loadChapter 语义：先存旧章精确 offset）。**不新增进度写入口**，仍走
+  `ChapterProgressTracker` / 桌面 `saveProgress`。
+- 铁律：必跑"滚动→退出→重进"回归 + 连续重进 3 次；进度 fixtures 不变。
+- 文件：`web/js/reader.js`、`assets/reader/reader-lite.parts/`（30-paging/
+  40-layout）重打包、双端 Settings 契约扩展。
+- 验证：UI harness 新用例（到底触发换章、退出重进位置一致）；Android 真机。
+
+#### P5-D：封面系统（骨碌碌封面 + 自定义封面）
+
+- 现状（已核实）：`gululu_epub.py` 不生成封面；双端 `cover_rel` 机制已有
+  （extract_cover→covers/），Android 书架已显示封面文件，但无自定义入口。
+- 改动：
+  1. 骨碌碌导入生成封面：优先 fetch_index 响应封面字段（如有），否则取首章
+     首个 HTTPS 位图下载为封面，写入 EPUB3 cover 资源 → 现有 extract_cover
+     自动生效；失败显式记日志不阻断导入；
+  2. 自定义封面（双端）：书架管理菜单"设置封面"→ 选图（大小/格式校验，
+     失败显式提示）→ 复制到 `covers/<id>.<ext>` 更新 `cover_rel`（无契约
+     变更）+ "恢复默认"。
+- 文件：`app/gululu_epub.py`/`gululu_service.py`/`api/library.py`、
+  `web/js/bookshelf.js`、Android `BookRepository`/`BookManagement`/
+  `Shelf.kt`。
+- 验证：`test_gululu_epub` 封面用例、Android `ShelfTest` 封面更新用例。
+
+#### P5-E：NGA 凭据傻瓜化（分级）
+
+- E1（低成本，随 P5-A 并行）：粘贴完整 Cookie 字符串自动解析——用户整段
+  复制 F12 Cookie（或含 uid/cid 的任意文本），粘贴后自动提取
+  `ngaPassportUid`/`ngaPassportCid` 填入两栏。双端。
+  文件：`web/js/nga_download.js`、Android 登录配置面板。验证：解析函数单测。
+- E2（中成本，Android 先行）：应用内 WebView 打开 NGA 登录页，登录后从
+  CookieManager 提取 uid/cid 一键保存。安全边界：仅登录用途、URI 固定
+  bbs.nga.cn、拿到凭据即关窗，不加载任意页面；Windows 可用 pywebview
+  二级窗。验证：真机手工 + 不落任何凭据到日志。
+- 成功标准：小白不接触 F12 完成配置。
+
+#### P5-F：NGA 楼中楼评论（最大件，最后做）
+
+- 现状（已核实）：数据管道全通——`Floor.comments` 递归结构、
+  `analyze_floors` 已解析页响应自带 comments、floors.json/native_book
+  序列化保留；但 Windows `format_html` 有 `comment_bg` 主题色却未渲染、
+  Android `NgaFormatHtml` 未处理；服务层无"收集评论"参数。
+- 改动：
+  1. 下载参数新增 `collect_comments`（默认关，记录入 meta.json，走
+     NATIVE_BOOK_FORMAT 字段扩展流程）；开启时逐楼拉取楼中楼写入 comments
+     （限速 + 进度反馈，大帖请求量在任务状态中显式呈现）；
+  2. 渲染：楼层卡片底部内嵌 `<details>` 折叠楼中楼（默认收起）；
+  3. **text_offset 红线**：评论只随楼层首次写入章节时一并写入；热更新只对
+     新楼层收集；已下载楼层永不回填评论（破坏章节前缀稳定）。
+- 风险：评论文本进入正文 DOM 会计入 text_offset——只要同章内容永不改写即
+  稳定（不变量 1 保持）；"只看楼主 + 收评论"语义在 UI 文案说明。
+- 验证：契约 fixture 扩展（带 comments 的 floors）；双端渲染单测；
+  进度回归（含评论章节滚动/翻页→退出→重进）。
+
 ---
 
 ## 4. 推荐执行顺序
@@ -356,6 +460,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
    （严格红→绿→回归）。
 5. **之后（随变化点）**：P3 拆分与 TaskManager 试点、存储恢复、开源治理；
    P4 等网络与真实需求触发。
+6. **当前批次（P5 用户反馈，2026-08-18 起）**：A 快赢 → B 裂图修复（用户
+   标致命）→ C 自动翻章 → D 封面 → E1 Cookie 粘贴（可与 A 并行）→
+   F 楼中楼；E2 WebView 登录随 Android 版本排期。进度类改动（C/F）必跑
+   "滚动/翻页 → 退出 → 重进"回归。
 
 ---
 

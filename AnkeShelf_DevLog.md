@@ -57,6 +57,31 @@
 
 ## 4. 最近流水
 
+### 2026-08-18 docs：用户 issue 转化为 P5 开发批次（ROADMAP 扩展）
+
+- 背景：收到用户反馈 issue（书架 3 条：封面缺失/书名前缀挤占/手机版优先；
+  NGA 4 条：凭据门槛/图片裂图"致命"/滚动自动翻章/楼中楼；骨碌碌 1 条：
+  链接前缀）。全部条目先对照代码核实现状，再按项目纪律（成功标准 + 验证
+  方式 + 涉及文件 + Diff 影响检查）转化为 ROADMAP §3 P5 批次（六个子项
+  A–F），并更新 §4 执行顺序（P5 为当前批次）。
+- 核实结论（关键事实）：
+  - 骨碌碌 EPUB 不生成封面（`gululu_epub.py` 无 cover）；双端 `cover_rel`
+    机制已有但无自定义入口；Android 已有重命名、Windows 无；
+  - Windows 无图片代理：在线图片模式 iframe 直连 NGA 图床缺 Referer →
+    403 裂图（根因）；Android 已有代理但失败无可见占位；
+  - NGA 楼中楼数据管道全通（`Floor.comments` 递归 / `analyze_floors` 已解析
+    响应自带 comments / floors.json 已存），但双端渲染均未画、服务层无收集
+    参数；
+  - 骨碌碌 URL 解析仅接受纯 URL/ID，带"点击链接阅读："前缀报错；
+  - 双端均无滚动到底自动翻章。
+- 排序：A 快赢（链接提取/书名前缀隐藏/Windows 重命名）→ B 裂图修复
+  （用户标致命，Windows 代理 + 双端失败占位）→ C 自动翻章（涉进度铁律，
+  必跑回归）→ D 封面系统 → E1 Cookie 粘贴解析（与 A 并行）→ F 楼中楼
+  （最大件，text_offset 红线：评论只随楼层首次写入，永不回填）。
+- 产品原则采纳：用户可见功能 Android 先行或双端同步交付（issue 第 3 条）。
+- 未改代码；新增 `hide_title_brackets` / `auto_chapter_turn` / `collect_comments`
+  设置与 meta 字段均列为"改动时走契约流程"，本条不触碰契约。
+
 ### 2026-08-18 infra：剩余 Dependabot PR 全部按类型合并完成
 
 - 按依赖类型继续合并剩余 7 个 Dependabot PR：
@@ -1331,6 +1356,10 @@
 
 **真实待办（按优先级）：**
 
+- P5（当前批次，2026-08-18 用户 issue）：A 快赢（骨碌碌链接提取/书名前缀
+  隐藏/Windows 重命名）→ B NGA 裂图修复（Windows 图片代理 + 双端失败占位）
+  → C 滚动自动翻章 → D 封面系统 → E1 Cookie 粘贴解析 → F NGA 楼中楼。
+  子项明细见 ROADMAP §3 P5。
 - P3：Android 数据完整性校验入口——Android 已有 `isolateCorrupt` 但缺
   `verify_data_integrity` 等价 API 与设置页入口（Windows 已有完整实现可参照）。
 - P3（保持延后，等真实痛点）：`BookshelfScreen.kt`/`SearchScreen.kt`/
