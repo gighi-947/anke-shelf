@@ -740,7 +740,7 @@
       }
       report(false);
       if (!layoutReady()) {
-        tryRestoreAfterSettle(state.paged ? state.pagedAnchor : state.scrollAnchor, 0);
+        requestSettle(state.paged ? state.pagedAnchor : state.scrollAnchor, 0);
       } else {
         setTimeout(markSettled, 100);
       }
@@ -775,11 +775,13 @@
 
   // 字体/图片加载期间多列布局会反复进入中间态（同一 offset 在不同列之间跳），
   // 只在全部就绪后做最终定位；8 秒兜底（网络卡死时也要能恢复）。
-  function tryRestoreAfterSettle(offset, deadline) {
+  // Step 1：所有“等布局就绪后恢复/标记就绪”的路径统一走这一个入口。
+  function requestSettle(offset, deadline) {
     if (settleTimer) clearTimeout(settleTimer);
     if (state.phase !== 'ready') state.phase = 'restoring';
     var t = deadline || (Date.now() + 8000);
-    settleTimer = setTimeout(function () {
+    settleTimer = setTimeout(function settleTick() {
+      settleTimer = null;
       log('[settle] userMoved=' + state.userMoved + ' ready=' + layoutReady());
       if (state.userMoved) {
         // 用户已滚动/翻页：位置由用户掌控，settle 链只标记就绪，
@@ -788,7 +790,7 @@
         return;
       }
       if (!layoutReady() && Date.now() < t) {
-        tryRestoreAfterSettle(offset, t);
+        settleTimer = setTimeout(settleTick, 200);
         return;
       }
       if (state.paged) {
@@ -825,7 +827,7 @@
     if (resizeTimer) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () {
       if (!layoutReady()) {
-        tryRestoreAfterSettle(resizeOffset > 0 ? resizeOffset : state.restoreOffset, 0);
+        requestSettle(resizeOffset > 0 ? resizeOffset : state.restoreOffset, 0);
         return;
       }
       prepare();
@@ -865,8 +867,11 @@
     }
     // 字体/图片未就绪时重排会把多列布局打回中间态，gotoOffset 会算出错误页
     // （恢复瞬间闪回章首）；全部就绪后 onResize 会按锚点精确定位，
-    // 这里只在就绪后做最终兜底重排。
-    if (!layoutReady()) return;
+    // 这里只在就绪后做最终兜底重排；未就绪则并入统一 settle 链。
+    if (!layoutReady()) {
+      requestSettle(state.restorePending ? state.restoreOffset : state.pagedAnchor, 0);
+      return;
+    }
     prepare();
     requestAnimationFrame(function () {
       normalizeTallTables();
@@ -922,7 +927,7 @@
           callBridge('saveProgress', state.chapterIndex, o, true, -1, -1, state.scrollRatio);
         }
         if (!layoutReady()) {
-          tryRestoreAfterSettle(state.restoreOffset > 0 ? state.restoreOffset : state.scrollAnchor, 0);
+          requestSettle(state.restoreOffset > 0 ? state.restoreOffset : state.scrollAnchor, 0);
         } else {
           markSettled();
         }
@@ -1008,7 +1013,7 @@
         if (state.restoreOffset > 0) restoreScrollOffset(state.restoreOffset, state.restoreRatio);
       }
       if (!layoutReady()) {
-        tryRestoreAfterSettle(
+        requestSettle(
           state.paged ? state.pagedAnchor : state.scrollAnchor,
           0,
         );

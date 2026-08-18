@@ -1,6 +1,6 @@
 # reader-lite.js 状态机收敛设计
 
-> 状态：已批准；Step 0 已完成（phase 字段 + 转换日志，行为不变）。
+> 状态：已批准；Step 0、Step 1 已完成（phase 字段 + settle 链收敛到 `requestSettle`）。
 > 目标文件：`android/app/src/main/assets/reader/reader-lite.js`（源文件为其
 > `reader-lite.parts/` 模块；改 parts 后必须 `bundle-reader-lite.js --write`）。
 > 关联纪律：AGENTS.md §3 阅读器与进度保持铁律；ADR-0002 Compose + WebView 阅读架构。
@@ -129,9 +129,11 @@ scheduleResize();
    - 在 `state` 中新增 `phase: 'bootstrapping' | 'restoring' | 'ready'`；
    - 在关键转换点输出 `log('[state] ...')`；
    - 不改行为，跑全部 JS/Android 测试，确认无回归。
-2. **Step 1：收敛 settle 链**
-   - 将 `tryRestoreAfterSettle` 递归改为 `requestSettle(offset, deadline)` 单定时器；
-   - `refresh()` / `finish()` / `setMode()` 统一调用 `requestSettle`；
+2. **Step 1：收敛 settle 链** ✅ 已完成
+   - `tryRestoreAfterSettle` 改为 `requestSettle(offset, deadline)`，内部用
+     `settleTick` 单一定时器重试，不再递归调用自身；
+   - `setMode()` / `onResize()` / 滚动初始化 / `finish()` 统一调用 `requestSettle`；
+   - `refresh()` 在分页未就绪时也并入 `requestSettle`（就绪路径暂保留原 rAF 流程）；
    - 保留 8s 兜底与 `userMoved` 分支。
 3. **Step 2：收敛 resize**
    - 将 `onResize` 的 `resizeOffset` / `resizeScrolled` 收进 `state`，

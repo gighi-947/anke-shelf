@@ -26,7 +26,7 @@
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37492 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37664 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
@@ -58,6 +58,19 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 android：reader-lite 状态机 Step 1——settle 链收敛到 requestSettle
+
+- 背景：Step 0 基线通过后，开始收敛最核心的 settle 链。
+- 改动：
+  - `tryRestoreAfterSettle` 重命名为 `requestSettle(offset, deadline)`；
+  - 内部改为 `settleTick` 单一定时器重试，不再递归调用自身；
+  - `setMode` / `onResize` / 滚动初始化 / `finish` 统一走 `requestSettle`；
+  - `refresh` 在分页未就绪时并入 `requestSettle`（就绪路径保留原 rAF 流程）；
+  - 保留 8s 兜底与 `userMoved` 不覆盖用户位置语义。
+- 验证：JS 守卫全绿（parts 6/37664B）；Android `gradlew testDebugUnitTest --rerun-tasks`
+  BUILD SUCCESSFUL；设计文档更新 Step 1 完成。
+- 下一步：Step 2 收敛 resize（`scheduleResize` 单一入口）。
 
 ### 2026-08-19 android：reader-lite 状态机 Step 0——加入 phase 字段与转换日志
 
