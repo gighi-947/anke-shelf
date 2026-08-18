@@ -2123,3 +2123,19 @@ mark.hl-mark.hl-flash { animation: hl-flash 1.2s ease-out; }
   font-size: 12px;
   white-space: nowrap;
 }
+/* NGA 图片/表情加载失败占位卡（文案 data-textpos-exclude，不进坐标） */
+.img-error-placeholder {
+  display: inline-block;
+  min-width: 96px;
+  min-height: 64px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  border: 1px dashed color-mix(in srgb, var(--reader-fg, #888) 35%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--reader-fg, #888) 6%, transparent);
+  color: color-mix(in srgb, var(--reader-fg, #888) 60%, transparent);
+  font-size: 12px;
+  line-height: 1.4;
+  vertical-align: middle;
+  text-align: center;
+}

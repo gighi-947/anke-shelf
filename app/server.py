@@ -6,6 +6,7 @@
   /book/<book_id>/<zip_path...>  zip 内按 POSIX 路径读字节（no-store）
   /cover/<book_id>         封面缓存文件（covers/<id>.<ext>），缺失 404
   /font/<kind>/<name>       自定义字体文件
+  /img/<book_id>?u=<url>    NGA 图床图片代理（Referer/Cookie 防盗链，白名单）
   POST /api/<name>          JSON API（X-Anke-Token 校验），前端唯一业务入口
 
 安全要点：
@@ -13,6 +14,7 @@
 - /api/* 需要每次启动随机生成的令牌，防止其他网页调用本地服务
 - unquote 解码后再校验；zip_path 拒绝反斜杠 / .. 段 / 绝对路径 / 超长
 - 只允许命中 zip 条目名集合（精确 → 小写兜底），绝不拼到文件系统路径
+- /img/* 只代理 NGA 图床白名单域名，禁任意 URL；未注册 book 返回 404
 - 文本资源统一解码后以 UTF-8 输出；章节响应加 CSP 与 nosniff
 - 图片缺失返回 1×1 透明 GIF，防章节内布局崩坏
 """
@@ -24,7 +26,9 @@ import posixpath
 import re
 import secrets
 import threading
+import urllib.error
 import urllib.parse
+import urllib.request
 from pathlib import Path
 from typing import Optional
 
@@ -32,6 +36,7 @@ from . import __version__
 from .book_manager import BookManager
 from .epub import decode_text
 from .fonts import resolve_font_file
+from .nga_config import DEFAULT_UA, load_nga_config
 
 # 1×1 透明 GIF
 _TRANSPARENT_GIF = base64.b64decode(
@@ -135,6 +140,45 @@ def _safe_zip_path(zip_path: str) -> Optional[str]:
     if norm.startswith("..") or "/.." in norm or ".." in norm.split("/"):
         return None
     return norm
+
+
+# NGA 图床白名单（域名后缀匹配；表情图 img4.nga.178.com 等均覆盖）
+_NGA_IMAGE_HOST_SUFFIXES = ("nga.178.com", "nga.cn", "ngabbs.com")
+_IMG_ATTR_RE = re.compile(r'(?i)\b(src|poster)=(["\'])(https?://[^"\']+)\2')
+
+
+def _is_nga_image_url(url: str) -> bool:
+    """仅接受 http/https 且主机命中 NGA 图床白名单的 URL。"""
+    try:
+        p = urllib.parse.urlparse(url)
+    except ValueError:
+        return False
+    if p.scheme not in ("http", "https") or not p.hostname:
+        return False
+    host = p.hostname.lower()
+    return any(host == s or host.endswith("." + s) for s in _NGA_IMAGE_HOST_SUFFIXES)
+
+
+def _rewrite_nga_image_src(html: str, book_id: str) -> str:
+    """把章节 HTML 中 NGA 图床图片的 src/poster 改写为本地 /img 代理 URL。
+
+    只改属性值，不产生/删除文本节点，text_offset 保持稳定。
+    """
+    def repl(m):
+        attr, quote, url = m.group(1), m.group(2), m.group(3)
+        if not _is_nga_image_url(url):
+            return m.group(0)
+        proxy = f"/img/{book_id}?u={urllib.parse.quote(url, safe='')}"
+        return f"{attr}={quote}{proxy}{quote}"
+    return _IMG_ATTR_RE.sub(repl, html)
+
+
+def _fetch_url(url: str, headers: dict) -> tuple[bytes, str]:
+    """代理拉取图片；返回 (字节, mime)。供测试替换。"""
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        mime = resp.headers.get_content_type() or "image/jpeg"
+        return resp.read(), mime
 
 
 class EpubHandler(http.server.BaseHTTPRequestHandler):
@@ -242,6 +286,8 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
             return
         if path.startswith("/book/"):
             self._serve_book(path[len("/book/") :])
+        elif path.startswith("/img/"):
+            self._serve_img(path[len("/img/") :])
         elif path.startswith("/cover/"):
             self._serve_cover(path[len("/cover/") :])
         elif path.startswith("/font/"):
@@ -306,7 +352,10 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
         ext = posixpath.splitext(safe)[1].lower()
         if ext in _TEXT_EXTS:
             # 文本资源统一转 UTF-8（BOM/声明编码/GBK 兜底）
-            data = decode_text(data).encode("utf-8")
+            text = decode_text(data)
+            # NGA 表情/图床图片改写为本地代理，规避防盗链 403 裂图
+            text = _rewrite_nga_image_src(text, book_id)
+            data = text.encode("utf-8")
             mime = mime.split(";")[0] + "; charset=utf-8"
         if ext in (".xhtml", ".html", ".htm"):
             # 注入 <base href>：指向章节所在目录，章节内相对路径
@@ -319,6 +368,42 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
             data = _inject_base(data, base)
             mime = "text/html; charset=utf-8"
         self._send_bytes(data, mime, extra_headers={"Content-Security-Policy": _CSP})
+
+    def _serve_img(self, rest: str) -> None:
+        """NGA 图床图片代理：/img/<book_id>?u=<url>。
+
+        仅代理白名单 NGA 图床，带 Referer 与已存 Cookie，规避防盗链 403。
+        """
+        book_id = rest.split("?", 1)[0]
+        if not _BOOK_ID_RE.match(book_id):
+            self._send_error(400, "bad book id")
+            return
+        if not self.books.has(book_id):
+            self._send_error(404, "book not opened")
+            return
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        urls = query.get("u")
+        if not urls or len(urls) != 1 or not urls[0]:
+            self._send_error(400, "missing u")
+            return
+        url = urls[0]
+        if not _is_nga_image_url(url):
+            self._send_error(400, "url not allowed")
+            return
+        cfg = load_nga_config()
+        cookie = f"ngaPassportUid={cfg['uid']}; ngaPassportCid={cfg['cid']}"
+        headers = {
+            "Referer": "https://bbs.nga.cn/",
+            "User-Agent": cfg.get("ua") or DEFAULT_UA,
+            "Cookie": cookie,
+        }
+        try:
+            data, mime = _fetch_url(url, headers)
+        except Exception:
+            logging.getLogger("app.server").exception("图片代理失败：%s", url)
+            self._send_error(502, "image proxy failed")
+            return
+        self._send_bytes(data, mime)
 
     def _serve_cover(self, rest: str) -> None:
         if not _BOOK_ID_RE.match(rest):

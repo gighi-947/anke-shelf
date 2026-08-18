@@ -6,9 +6,11 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
+from unittest import mock
+from urllib.parse import quote
 
 from app.book_manager import BookManager
-from app.server import _inject_base, start_server
+from app.server import _inject_base, _rewrite_nga_image_src, start_server
 
 SAMPLE_DIR = Path(__file__).parent / "sample"
 
@@ -248,6 +250,57 @@ class ServerTestCase(unittest.TestCase):
     def test_cover_missing_404(self):
         status, _, _ = self.get(f"/cover/{'1' * 32}")
         self.assertEqual(status, 404)
+
+    # ---------- NGA 图片代理 ----------
+
+    def test_img_proxy_rejects_bad_book(self):
+        url = quote("https://img4.nga.178.com/ngabbs/post/smile/abc.png", safe="")
+        status, _, _ = self.get(f"/img/{'0' * 32}?u={url}")
+        self.assertEqual(status, 404)
+
+    def test_img_proxy_rejects_non_nga_url(self):
+        url = quote("https://evil.example/x.png", safe="")
+        status, _, _ = self.get(f"/img/{self.book.id}?u={url}")
+        self.assertEqual(status, 400)
+
+    def test_img_proxy_rejects_missing_u(self):
+        status, _, _ = self.get(f"/img/{self.book.id}")
+        self.assertEqual(status, 400)
+
+    @mock.patch("app.server._fetch_url", return_value=(b"\x89PNG", "image/png"))
+    def test_img_proxy_forwards_with_headers(self, fetch):
+        original = "https://img4.nga.178.com/ngabbs/post/smile/abc.png"
+        status, headers, body = self.get(f"/img/{self.book.id}?u={quote(original, safe='')}")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/png")
+        self.assertEqual(body, b"\x89PNG")
+        self.assertEqual(fetch.call_count, 1)
+        fetched_url, fetch_headers = fetch.call_args.args
+        self.assertEqual(fetched_url, original)
+        self.assertIn("Referer", fetch_headers)
+        self.assertEqual(fetch_headers["Referer"], "https://bbs.nga.cn/")
+        self.assertIn("Cookie", fetch_headers)
+
+    def test_img_proxy_failure_returns_502(self):
+        with mock.patch("app.server._fetch_url", side_effect=OSError("boom")):
+            url = quote("https://img4.nga.178.com/ngabbs/post/smile/abc.png", safe="")
+            status, _, _ = self.get(f"/img/{self.book.id}?u={url}")
+        self.assertEqual(status, 502)
+
+    def test_rewrite_nga_image_src(self):
+        html = (
+            '<img src="https://img4.nga.178.com/ngabbs/post/smile/abc.png">'
+            '<img src="https://example.com/x.png">'
+            '<img src="https://img.nga.cn/attachments/mon_1.jpg">'
+        )
+        out = _rewrite_nga_image_src(html, self.book.id)
+        self.assertIn(f'/img/{self.book.id}?u=', out)
+        self.assertNotIn('src="https://img4.nga.178.com', out)
+        self.assertNotIn('src="https://img.nga.cn', out)
+        self.assertIn('src="https://example.com/x.png"', out)
+        # 代理 URL 完整保留原始地址
+        encoded = quote("https://img4.nga.178.com/ngabbs/post/smile/abc.png", safe="")
+        self.assertIn(f'/img/{self.book.id}?u={encoded}', out)
 
 
 if __name__ == "__main__":

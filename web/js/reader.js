@@ -364,11 +364,16 @@
               onImgChange();
             });
           });
-          // 文档级委托：任何图片（含后加载的）加载失败都收起占位，避免大段空白。
+          // 文档级委托：任何图片（含后加载的）加载失败显示占位卡，避免裂图/大段空白。
+          // 占位文案带 data-textpos-exclude，不进入 text_offset 坐标系。
           doc.addEventListener('error', (e) => {
             const t = e.target;
             if (t && t.tagName === 'IMG') {
-              t.style.display = 'none';
+              const placeholder = document.createElement('span');
+              placeholder.className = 'img-error-placeholder';
+              placeholder.setAttribute('data-textpos-exclude', '');
+              placeholder.textContent = '图片加载失败';
+              t.replaceWith(placeholder);
               onImgChange();
             }
           }, true);
