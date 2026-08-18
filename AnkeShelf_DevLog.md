@@ -59,6 +59,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 android：reader-lite 状态机 Step 4——DisciplineTest 守卫状态机结构
+
+- 背景：状态机收敛到一定程度后，把关键结构固化为纪律测试，防止后续回退。
+- 改动：`DisciplineTest.kt` 新增测试，守卫：
+  - `phase` 字段存在、`markSettled` 以 `phase === 'ready'` 判断；
+  - `requestSettle` / `scheduleResize` 单一入口存在；
+  - `onResize` 只转发 `scheduleResize`；
+  - `refresh` 分页路径并入 `requestSettle`；
+  - 禁止 `state.settled` / `resizeScrolled` 复活。
+- 验证：Android `gradlew testDebugUnitTest --rerun-tasks` BUILD SUCCESSFUL。
+- 下一步：reader-lite 状态机主要步骤已完成；可回到全局清理 API 错误模型 / TaskManager。
+
 ### 2026-08-19 android：reader-lite 状态机 Step 3——phase 取代 settled、删除死分支
 
 - 背景：Step 2 后继续清理状态机冗余，让 `phase` 真正成为“已就绪”事实源。

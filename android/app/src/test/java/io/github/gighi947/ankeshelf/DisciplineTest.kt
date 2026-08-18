@@ -107,6 +107,45 @@ class DisciplineTest {
     }
 
     @Test
+    fun `reader-lite 状态机保持显式 phase 与统一 settle resize 入口`() {
+        val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
+
+        assertTrue(
+            "reader-lite.js 必须保留显式 phase 字段",
+            js.contains("phase: 'bootstrapping'"),
+        )
+        assertTrue(
+            "markSettled 必须以 phase===ready 作为唯一已就绪判断",
+            js.contains("if (state.phase === 'ready') return;"),
+        )
+        assertTrue(
+            "settle 必须统一走 requestSettle",
+            js.contains("function requestSettle(offset, deadline)"),
+        )
+        assertTrue(
+            "resize 必须统一走 scheduleResize",
+            js.contains("function scheduleResize()"),
+        )
+        assertTrue(
+            "onResize 应只转发 scheduleResize",
+            js.contains("function onResize() {") && js.contains("scheduleResize();"),
+        )
+        assertTrue(
+            "refresh 分页路径必须并入 requestSettle",
+            js.contains("requestSettle(state.restorePending ? state.restoreOffset : state.pagedAnchor, 0)"),
+        )
+
+        assertFalse(
+            "state.settled 已删除，不得复活",
+            js.contains("state.settled") || js.contains("settled: false"),
+        )
+        assertFalse(
+            "state.resizeScrolled 已删除（只写不读的死变量）",
+            js.contains("resizeScrolled"),
+        )
+    }
+
+    @Test
     fun `CI 配置只触发 android 路径且不使用弃用动作`() {
         val yml = File(repoRoot, ".github/workflows/android.yml").readText()
         assertTrue("android.yml 必须仅 android/** 触发", yml.contains("'android/**'"))

@@ -1,6 +1,6 @@
 # reader-lite.js 状态机收敛设计
 
-> 状态：已批准；Step 0–3 已完成（phase 字段 + settle/resize 统一入口 + 死分支清理）。
+> 状态：已批准；Step 0–4 已完成（phase 字段 + settle/resize 统一入口 + 死分支清理 + 守卫测试）。
 > 目标文件：`android/app/src/main/assets/reader/reader-lite.js`（源文件为其
 > `reader-lite.parts/` 模块；改 parts 后必须 `bundle-reader-lite.js --write`）。
 > 关联纪律：AGENTS.md §3 阅读器与进度保持铁律；ADR-0002 Compose + WebView 阅读架构。
@@ -143,10 +143,11 @@ scheduleResize();
    - `state.settled` 删除，`phase === 'ready'` 成为唯一“已就绪”事实源；
    - 删除从未读取的 `state.resizeScrolled`；
    - `refresh()` 分页路径统一走 `requestSettle`，不再保留独立 rAF 分支。
-5. **Step 4：补充守卫测试**
-   - 在 `DisciplineTest` 中增加对 `requestSettle` / `scheduleResize` /
-     `phase` 转换注释的字符串守卫；
-   - 如条件允许，为 `reader-lite.js` 增加 Node vm 下的最小 DOM 行为测试。
+5. **Step 4：补充守卫测试** ✅ 已完成
+   - `DisciplineTest` 新增“reader-lite 状态机保持显式 phase 与统一 settle resize 入口”；
+   - 守卫 `phase`、`requestSettle`、`scheduleResize`、`onResize` 转发、
+     `refresh` 并入 `requestSettle`，并禁止 `state.settled` / `resizeScrolled` 复活；
+   - 后续如需更深行为测试，再补 Node vm 最小 DOM 用例。
 
 ## 6. 验证方案
 
