@@ -133,7 +133,7 @@
     if (settleTimer) clearTimeout(settleTimer);
     var t = deadline || (Date.now() + 8000);
     settleTimer = setTimeout(function () {
-      try { log('[settle] userMoved=' + state.userMoved + ' ready=' + layoutReady()); } catch (e) { /* ignore */ }
+      log('[settle] userMoved=' + state.userMoved + ' ready=' + layoutReady());
       if (state.userMoved) {
         // 用户已滚动/翻页：位置由用户掌控，settle 链只标记就绪，
         // 绝不能用初始 offset 把阅读位置拉回/覆盖（9.54 根因）。
@@ -155,7 +155,7 @@
         var so = 0;
         try { so = currentOffsetScroll(); } catch (e) { /* ignore */ }
         if (so > 0) {
-          try { log('[settle-save] so=' + so); } catch (e) { /* ignore */ }
+          log('[settle-save] so=' + so);
           state.scrollAnchor = so;
           // 滚动保存显式 page=-1：清除追踪器里残留的分页页码（模式隔离）。
           callBridge('saveProgress', state.chapterIndex, so, true, -1, -1, state.scrollRatio);

@@ -124,7 +124,7 @@
     if (!state.paged) return;
     state.userMoved = true;
     var m = measure();
-    try { log('[flip] dir=' + dir + ' before cur=' + m.current + '/' + m.total + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
+    log('[flip] dir=' + dir + ' before cur=' + m.current + '/' + m.total + ' sl=' + scrollEl().scrollLeft);
     if (dir > 0 && m.current >= m.total - 1) {
       callBridge('requestChapter', 1);
       return;
@@ -179,7 +179,7 @@
     var ratio = window.scrollY / max;
     state.scrollRatio = clamp(ratio, 0, 1);
     var out = Math.round(clamp(ratio, 0, 1) * len);
-    try { log('[ratio-fallback] scrollY=' + Math.round(window.scrollY) + ' off=' + out); } catch (e) { /* ignore */ }
+    log('[ratio-fallback] scrollY=' + Math.round(window.scrollY) + ' off=' + out);
     return out;
   }
 
@@ -239,7 +239,7 @@
       var len = ctx ? ctx.text.length : 0;
       if (len > 0) {
         window.scrollTo(0, r * Math.max(1, document.body.scrollHeight - window.innerHeight));
-        try { log('[restore:ratio] r=' + r + ' scrollY=' + Math.round(window.scrollY)); } catch (e) { /* ignore */ }
+        log('[restore:ratio] r=' + r + ' scrollY=' + Math.round(window.scrollY));
         state.restorePending = false;
         return;
       }
@@ -307,7 +307,7 @@
     } catch (e) { /* ignore */ }
     if (state.pagedAnchorPage >= 0 && state.pagedAnchorTotal > 0 && m.total === state.pagedAnchorTotal) {
       gotoPage(state.pagedAnchorPage);
-      try { log('[restore-page] gotoPage -> ' + state.pagedAnchorPage + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
+      log('[restore-page] gotoPage -> ' + state.pagedAnchorPage + ' sl=' + scrollEl().scrollLeft);
       return true;
     }
     if (offset > 0) {

@@ -25,7 +25,10 @@ class _FakeApi:
         return {"args": args, "kwargs": kwargs}
 
     def boom(self):
-        raise ValueError("boom")
+        raise RuntimeError("boom")
+
+    def bad_request(self):
+        raise ValueError("bad value")
 
 
 def _samples() -> dict[str, Path]:
@@ -140,6 +143,12 @@ class ServerTestCase(unittest.TestCase):
         self.assertEqual(status, 500)
         self.assertFalse(data["ok"])
         self.assertIn("boom", data["error"])
+
+    def test_api_validation_error_bad_request(self):
+        status, data = self.post("/api/bad_request", token=self.token)
+        self.assertEqual(status, 400)
+        self.assertFalse(data["ok"])
+        self.assertIn("bad value", data["error"])
 
     def test_api_args_and_kwargs(self):
         status, data = self.post(

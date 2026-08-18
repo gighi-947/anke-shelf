@@ -35,7 +35,7 @@
 | text_offset | 章内折叠纯文本字符偏移（唯一坐标，0 基） | Windows `app/text.py` / `web/js/textpos.js`；Android `data/Text.kt` / reader-lite.js `TextPos` |
 | Position | 阅读位置值对象（chapter_index + text_offset，UTF-16 code unit） | `app/domain.py`；Android 侧对应 ProgressEntry |
 | BookRevision | 书籍内容版本标识（native:<tid>:<last_lou>:<updated_time> / epub:<size>:<mtime>） | `app/domain.py`；搜索索引按它自动失效 |
-| EventBus / book_updated | 进程内领域事件（NGA 下载/热更新后通知缓存失效） | `app/events.py`；订阅在 `app/main.py` |
+| book_updated 通知 | 下载/热更新完成后通知宿主刷新搜索缓存（单一订阅点，显式回调注入） | `app/nga_service.py` / `app/gululu_service.py` 的 `on_book_updated`；装配在 `app/main.py` |
 | ErrorCode / api_error | 结构化 API 错误码（message 不变，新增 ok/error_code） | `app/errors.py` |
 | run_migrations | 统一数据迁移框架（load → migrate → validate → 原子写） | `app/migrations.py`；Settings v<3 迁移已接入 |
 | build_diagnostics | 诊断包导出（版本/平台/日志/脱敏设置，不含凭据） | `app/diagnostics.py`；设置 → 数据「导出诊断信息」 |

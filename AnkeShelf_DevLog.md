@@ -12,19 +12,21 @@
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
   沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入；
-  P5 批次已启动并完成 P5-A 快赢批；文档漂移治理已强化
+  P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复；第一轮架构收敛
+  （EventBus→显式回调 / API 400 语义 / reader-lite 冗余 try-catch）已完成；
+  文档漂移治理已强化
   （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.4.0`（已发布，AnkeShelf-v1.4.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-18 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 296 项
+  - Windows Python：`python -m unittest discover tests` = 300 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 36917 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37178 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
@@ -56,6 +58,26 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-18 win/android/docs：架构审查后第一轮收敛（EventBus→显式回调 / API 400 语义 / reader-lite 冗余 try-catch）
+
+- 背景：对全仓做 vibe-coding 式防御/过度抽象审查后，先清理三处低风险高噪音问题；
+  P5 功能批次（C/D/E/F）尚未开始，本提交不改变用户可见功能。
+- Windows：
+  - 删除 `app/events.py` 的 `EventBus`：全仓只有 `book_updated` 一个订阅点，
+    改为 `NgaService` / `GululuService` 构造参数 `on_book_updated` 显式注入，
+    `main.py` 装配；同步删除 `tests/test_events.py`，更新 `docs/GLOSSARY.md`；
+  - `server.py` 错误响应统一带 `{ok:false,error}`；handler 抛 `TypeError/ValueError`
+    时返回 400（业务校验/入参错误）而非 500；`api/reader.py::save_progress` 不再
+    静默吞掉非法入参，改由 HTTP 边界显式 400；
+  - `test_server.py`：`boom` 改用 `RuntimeError` 保持 500 语义，新增 `bad_request`
+    400 用例。
+- Android：
+  - `reader-lite.parts` 删除 6 处 `try { log(...) } catch { }`——`log()` 内部已由
+    `callBridge` 兜底，外层 try-catch 是纯噪音；重新 bundle 为 6 parts / 37178 字节。
+- 测试：Windows Python 300 项 OK（4 跳）；`reader-lite-parts` / `bridge-contract`
+  JS 守卫通过；`api-contract` 启动依赖 Python 子进程，沙箱内无法跑，留待常规 CI。
+- 注意：Android 发行前需重新打包并校验 APK 内 `reader-lite.js` SHA-256。
 
 ### 2026-08-18 win/android：P5-B NGA 表情/图片裂图修复（代理 + 失败占位）
 

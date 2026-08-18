@@ -369,7 +369,7 @@
     if (!state.paged) return;
     state.userMoved = true;
     var m = measure();
-    try { log('[flip] dir=' + dir + ' before cur=' + m.current + '/' + m.total + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
+    log('[flip] dir=' + dir + ' before cur=' + m.current + '/' + m.total + ' sl=' + scrollEl().scrollLeft);
     if (dir > 0 && m.current >= m.total - 1) {
       callBridge('requestChapter', 1);
       return;
@@ -424,7 +424,7 @@
     var ratio = window.scrollY / max;
     state.scrollRatio = clamp(ratio, 0, 1);
     var out = Math.round(clamp(ratio, 0, 1) * len);
-    try { log('[ratio-fallback] scrollY=' + Math.round(window.scrollY) + ' off=' + out); } catch (e) { /* ignore */ }
+    log('[ratio-fallback] scrollY=' + Math.round(window.scrollY) + ' off=' + out);
     return out;
   }
 
@@ -484,7 +484,7 @@
       var len = ctx ? ctx.text.length : 0;
       if (len > 0) {
         window.scrollTo(0, r * Math.max(1, document.body.scrollHeight - window.innerHeight));
-        try { log('[restore:ratio] r=' + r + ' scrollY=' + Math.round(window.scrollY)); } catch (e) { /* ignore */ }
+        log('[restore:ratio] r=' + r + ' scrollY=' + Math.round(window.scrollY));
         state.restorePending = false;
         return;
       }
@@ -552,7 +552,7 @@
     } catch (e) { /* ignore */ }
     if (state.pagedAnchorPage >= 0 && state.pagedAnchorTotal > 0 && m.total === state.pagedAnchorTotal) {
       gotoPage(state.pagedAnchorPage);
-      try { log('[restore-page] gotoPage -> ' + state.pagedAnchorPage + ' sl=' + scrollEl().scrollLeft); } catch (e) { /* ignore */ }
+      log('[restore-page] gotoPage -> ' + state.pagedAnchorPage + ' sl=' + scrollEl().scrollLeft);
       return true;
     }
     if (offset > 0) {
@@ -771,7 +771,7 @@
     if (settleTimer) clearTimeout(settleTimer);
     var t = deadline || (Date.now() + 8000);
     settleTimer = setTimeout(function () {
-      try { log('[settle] userMoved=' + state.userMoved + ' ready=' + layoutReady()); } catch (e) { /* ignore */ }
+      log('[settle] userMoved=' + state.userMoved + ' ready=' + layoutReady());
       if (state.userMoved) {
         // 用户已滚动/翻页：位置由用户掌控，settle 链只标记就绪，
         // 绝不能用初始 offset 把阅读位置拉回/覆盖（9.54 根因）。
@@ -793,7 +793,7 @@
         var so = 0;
         try { so = currentOffsetScroll(); } catch (e) { /* ignore */ }
         if (so > 0) {
-          try { log('[settle-save] so=' + so); } catch (e) { /* ignore */ }
+          log('[settle-save] so=' + so);
           state.scrollAnchor = so;
           // 滚动保存显式 page=-1：清除追踪器里残留的分页页码（模式隔离）。
           callBridge('saveProgress', state.chapterIndex, so, true, -1, -1, state.scrollRatio);

@@ -208,7 +208,7 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _send_error(self, code: int, msg: str = "") -> None:
-        self._send_json({"error": msg}, code=code)
+        self._send_json({"ok": False, "error": msg}, code=code)
 
     def _send_json(self, data, code: int = 200) -> None:
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
@@ -267,6 +267,10 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
             return
         try:
             result = fn(*payload.get("args") or [], **(payload.get("kwargs") or {}))
+        except (TypeError, ValueError) as e:
+            # 业务校验/入参错误：显式 400，不让调用方把“参数错”当成服务器故障
+            self._send_error(400, str(e) or "bad arguments")
+            return
         except Exception as e:
             logging.getLogger("app.api").exception("API %s failed", name)
             self._send_json({"ok": False, "error": str(e)}, code=500)

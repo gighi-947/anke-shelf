@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from . import dialogs
-from .events import bus
 from .gululu_comment_service import GululuCommentService
 from .gululu_epub import (
     GululuBuildResult,
@@ -35,12 +34,14 @@ class GululuService:
         folder_picker: Optional[Callable[[], str]] = None,
         shelf=None,
         books=None,
+        on_book_updated: Optional[Callable[[str], None]] = None,
     ) -> None:
         self._book_register = book_register
         self._tasks = task_manager or TaskManager(lanes={self.LANE: 1})
         self._folder_picker = folder_picker or dialogs.pick_folder
         self._shelf = shelf
         self._books = books
+        self._on_book_updated = on_book_updated
         self._comments = GululuCommentService(
             lambda: gululu_library_dir(),
             lambda: GululuClient(),
@@ -317,7 +318,7 @@ class GululuService:
                 image_failed=len(result.image_failures),
             )
             self._log_image_failures(source_id, result)
-            bus.emit("book_updated", book_id=book_id)
+            self._notify_book_updated(book_id)
             log_event(log, "gululu", "import_done", book_id=book_id, source_id=source_id)
         except (GululuCancelled, TaskCancelled):
             partial.unlink(missing_ok=True)
@@ -377,7 +378,7 @@ class GululuService:
             )
             if result is not None:
                 self._log_image_failures(source_id, result)
-                bus.emit("book_updated", book_id=executed.book_id)
+                self._notify_book_updated(executed.book_id)
                 log_event(
                     log,
                     "gululu",
@@ -496,3 +497,8 @@ class GululuService:
     def _set(self, **values) -> None:
         with self._lock:
             self._status.update(values)
+
+    def _notify_book_updated(self, book_id: str) -> None:
+        """导入/更新完成后通知宿主刷新缓存（原 EventBus 单一订阅点）。"""
+        if self._on_book_updated is not None:
+            self._on_book_updated(book_id)

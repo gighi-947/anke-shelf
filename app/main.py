@@ -157,14 +157,13 @@ def main() -> int:
     settings = Settings(settings_path())
     settings.load()
     search_svc = SearchService()
-    from .events import bus
+    # book_updated 回调改为显式注入，见 NgaService/GululuService
 
     def _on_book_updated(book_id: str) -> None:
         """下载/热更新后：若书在缓存中，按 revision 刷新全文索引（惰性重建）。"""
         if books.has(book_id):
             search_svc.refresh_if_stale(books.open(book_id))
 
-    bus.on("book_updated", _on_book_updated)
     annotations = AnnotationStore(annotations_path())
     annotations.load()
     stats = StatsStore(statistics_path())
@@ -199,7 +198,12 @@ def main() -> int:
         shelf.save()
         return book.id
 
-    nga_svc = NgaService(_register_nga_book, shelf=shelf, books=books)
+    nga_svc = NgaService(
+        _register_nga_book,
+        shelf=shelf,
+        books=books,
+        on_book_updated=_on_book_updated,
+    )
 
     def _register_gululu_book(path: str) -> str:
         """骨碌碌 EPUB 生成完成后注册到标准书架。"""
@@ -227,6 +231,7 @@ def main() -> int:
         _register_gululu_book,
         shelf=shelf,
         books=books,
+        on_book_updated=_on_book_updated,
     )
     export_svc = ExportService(shelf)
     frontend_ready = threading.Event()

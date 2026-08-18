@@ -7,7 +7,6 @@ import hashlib
 from pathlib import Path
 from typing import Callable, Optional
 
-from .events import bus
 from .logutil import log_event
 from .nga_config import ensure_nga_config, load_nga_config
 from .native_book import (
@@ -116,10 +115,12 @@ class NgaService:
         book_register: Callable[[str], object],
         shelf=None,
         books=None,
+        on_book_updated: Optional[Callable[[str], None]] = None,
     ):
         self._book_register = book_register
         self._shelf = shelf
         self._books = books
+        self._on_book_updated = on_book_updated
         self._lock = threading.Lock()
         self._cancel = threading.Event()
         self._status = {
@@ -142,6 +143,11 @@ class NgaService:
     def _set(self, **kw) -> None:
         with self._lock:
             self._status.update(kw)
+
+    def _notify_book_updated(self, book_id: str) -> None:
+        """下载/热更新完成后通知宿主刷新缓存（原 EventBus 单一订阅点）。"""
+        if self._on_book_updated is not None:
+            self._on_book_updated(book_id)
 
     def _begin(self, **kw) -> bool:
         """原子占位：任务启动瞬间即标记 running，避免并发重复启动。"""
@@ -397,7 +403,7 @@ class NgaService:
             })
             # 注册到书架（BookManager + Shelf 由调用方回调完成）
             book_id = self._book_register(str(native_dir) if valid else str(epub_path))
-            bus.emit("book_updated", book_id=book_id)
+            self._notify_book_updated(book_id)
             log_event(log, "nga", "download_done", book_id=book_id)
             return book_id
         finally:
@@ -507,7 +513,7 @@ class NgaService:
                 self._books.register(str(native_dir))
             except Exception as e:  # noqa: BLE001
                 log.warning("热更新后重新注册书籍失败（打开时将兜底重解析）：%s", e)
-        bus.emit("book_updated", book_id=rec.id)
+        self._notify_book_updated(rec.id)
         return new_count
 
     def _progress_cb(self, stage: str, detail: dict) -> None:
