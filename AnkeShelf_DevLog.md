@@ -62,6 +62,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 win/android：移除 NGA 下载深/浅色选择
+
+- 背景：主题已自适应，NGA 下载不再需要深/浅色选项。
+- 改动：
+  - Windows 下载/更新表单移除“主题”下拉框与 theme 参数；
+  - Android 下载页移除“主题”FilterChip 与 Intent 的 theme extra；
+  - UI harness 移除对已删除下拉框的断言。
+- 验证：JS 语法 OK；Android `compileDebugKotlin` BUILD SUCCESSFUL。
 ### 2026-08-20 win/android：NGA 楼层/引用/评论框随主题自适应
 
 - 背景：NGA 下载时把浅/深主题色写死进章节 HTML，读者切换主题后会出现文字被遮挡。

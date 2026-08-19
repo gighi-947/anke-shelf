@@ -32,10 +32,6 @@
         ['embedded', '嵌入图片'],
         ['none', '不含图片'],
       ])),
-      field('主题', select('nga-theme', [
-        ['light', '浅色'],
-        ['dark', '深色'],
-      ])),
     );
     wrap.appendChild(row2);
 
@@ -118,10 +114,6 @@
     const row2 = document.createElement('div');
     row2.className = 'nga-form-row';
     row2.append(
-      field('主题', select('dl-update-theme', [
-        ['light', '浅色'],
-        ['dark', '深色'],
-      ])),
       field('图片', select('dl-update-image-mode', [
         ['online', '在线图片'],
         ['embedded', '嵌入图片'],

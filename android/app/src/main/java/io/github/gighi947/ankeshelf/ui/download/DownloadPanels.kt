@@ -238,7 +238,6 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
     var tidText by remember { mutableStateOf("") }
     var authorIdText by remember { mutableStateOf("") }
     var maxFloorsText by remember { mutableStateOf("") }
-    var themeDark by remember { mutableStateOf(false) }
     var perChapterText by remember { mutableStateOf("20") }
     var imageMode by remember { mutableStateOf("online") }
     var status by remember { mutableStateOf(NgaServiceStatus.snapshot()) }
@@ -305,29 +304,7 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                     .fillMaxWidth()
                     .padding(top = AnkeSpacing.sm),
             )
-            // 主题/图片选项拆成独立分组（参照设置页“翻页方式”的 FilterChip 做法），
-            // 避免窄屏下单行 8 个元素溢出错乱。
-            Text(
-                "主题",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = AnkeSpacing.sm),
-            )
-            FlowRow(
-                modifier = Modifier.padding(top = AnkeSpacing.xs),
-                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
-            ) {
-                FilterChip(
-                    selected = !themeDark,
-                    onClick = { themeDark = false },
-                    label = { Text("浅色") },
-                )
-                FilterChip(
-                    selected = themeDark,
-                    onClick = { themeDark = true },
-                    label = { Text("深色") },
-                )
-            }
+            // 图片选项独立分组（主题已改为自适应，不再在下载时选择）。
             Text(
                 "图片",
                 style = MaterialTheme.typography.labelLarge,
@@ -363,7 +340,6 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                             putExtra("tid", tid)
                             putExtra("authorId", authorIdText.trim().toLongOrNull() ?: 0L)
                             putExtra("maxFloors", maxFloorsText.trim().toIntOrNull() ?: 0)
-                            putExtra("theme", if (themeDark) "dark" else "light")
                             putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
                             putExtra("imageMode", imageMode)
                             // 已存在同 tid 书时点击“重新下载”= 强制全量重下；
@@ -385,8 +361,7 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                                 putExtra("bookId", existing.id)
                                 putExtra("tid", tid)
                                 putExtra("authorId", authorIdText.trim().toLongOrNull() ?: 0L)
-                                putExtra("theme", if (themeDark) "dark" else "light")
-                                putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
+                                    putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
                                 putExtra("imageMode", imageMode)
                             }
                             ContextCompat.startForegroundService(context, intent)

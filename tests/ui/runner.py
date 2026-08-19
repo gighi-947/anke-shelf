@@ -133,8 +133,7 @@ def main() -> int:
         uSel.dispatchEvent(new Event('change'));
         await new Promise(r => setTimeout(r, 200));
         L('update_defaults:' + (
-          document.getElementById('dl-update-authorid').value === '0' &&
-          document.getElementById('dl-update-theme').value === 'light' ? 1 : 0
+          document.getElementById('dl-update-authorid').value === '0' ? 1 : 0
         ));
         L('update_btn:' + (!!document.getElementById('dl-update-start') ? 1 : 0));
         L('toc_mode_ui:' + (!!document.getElementById('nga-toc-mode') ? 1 : 0));

@@ -227,7 +227,6 @@
       max_floors: intVal('nga-max-floors'),
       per_chapter: intVal('nga-per-chapter') || 20,
       image_mode: val('nga-image-mode'),
-      theme: val('nga-theme'),
       toc_pid: intVal('nga-toc-pid'),
       toc_mode: val('nga-toc-mode') || 'index',
       open_after: check('nga-open-after'),
@@ -440,7 +439,6 @@
     try {
       const d = await Api.ngaUpdateDefaults( bookId);
       setVal('dl-update-authorid', d.author_id || '0');
-      setVal('dl-update-theme', d.theme === 'dark' ? 'dark' : 'light');
       setVal('dl-update-image-mode', d.image_mode || 'online');
       setVal('dl-update-per-chapter', d.per_chapter || '20');
       setVal('dl-update-toc-pid', d.toc_pid || '0');
@@ -472,7 +470,6 @@
     }
     const params = {
       authorid: intVal('dl-update-authorid'),
-      theme: val('dl-update-theme'),
       image_mode: val('dl-update-image-mode'),
       per_chapter: intVal('dl-update-per-chapter') || 20,
       toc_pid: intVal('dl-update-toc-pid'),
