@@ -107,6 +107,9 @@ def reset_cover(ctx: ApiContext, book_id: str) -> dict:
     if rec is None:
         raise ApiError(ErrorCode.BOOK_NOT_FOUND, "书籍不存在")
     ctx.shelf.reset_cover(book_id)
+    # NGA 原生书没有“原始网络封面”概念，完全隔离出封面提取逻辑。
+    if rec.nga_tid:
+        return record_to_dict(ctx.shelf.get(book_id) or rec)
     restored = None
     try:
         book = ctx.books.open(book_id)
