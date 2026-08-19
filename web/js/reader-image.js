@@ -32,7 +32,8 @@
         const close = document.createElement('button');
         close.className = 'lightbox-close';
         close.title = '关闭 (Esc)';
-        close.textContent = '✕';
+        close.setAttribute('aria-label', '关闭 (Esc)');
+        close.appendChild(Icons.icon('close', 16));
         const hint = document.createElement('span');
         hint.className = 'lightbox-hint';
         hint.textContent = '滚轮缩放 · 双击 1:1 · 点击关闭';

@@ -209,11 +209,11 @@
   function fontSizeRow() {
     const wrap = document.createElement('div');
     wrap.className = 'vm-control';
-    const minus = btn('A−', () => { Reader.fontSize(-1); sync(); });
+    const minus = iconBtn('minus', '减小字号', () => { Reader.fontSize(-1); sync(); });
     const val = document.createElement('span');
     val.id = 'vm-font-size';
     val.className = 'vm-value';
-    const plus = btn('A＋', () => { Reader.fontSize(1); sync(); });
+    const plus = iconBtn('plus', '增大字号', () => { Reader.fontSize(1); sync(); });
     wrap.append(minus, val, plus);
     return wrap;
   }
@@ -221,11 +221,11 @@
   function lineHeightRow() {
     const wrap = document.createElement('div');
     wrap.className = 'vm-control';
-    const minus = btn('−', () => { Reader.lineHeight(-0.1); sync(); });
+    const minus = iconBtn('minus', '减小行高', () => { Reader.lineHeight(-0.1); sync(); });
     const val = document.createElement('span');
     val.id = 'vm-line-height';
     val.className = 'vm-value';
-    const plus = btn('＋', () => { Reader.lineHeight(0.1); sync(); });
+    const plus = iconBtn('plus', '增大行高', () => { Reader.lineHeight(0.1); sync(); });
     wrap.append(minus, val, plus);
     return wrap;
   }
@@ -301,6 +301,16 @@
     const b = document.createElement('button');
     b.className = 'vm-btn';
     b.textContent = label;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function iconBtn(icon, label, onClick) {
+    const b = document.createElement('button');
+    b.className = 'vm-btn';
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.appendChild(Icons.icon(icon, 16));
     b.addEventListener('click', onClick);
     return b;
   }

@@ -624,7 +624,8 @@ html, body {
   backdrop-filter: blur(4px);
 }
 .delete-btn:hover { color: var(--error); background: var(--base-100); }
-.export-btn {
+.export-btn,
+.rename-btn {
   width: 28px;
   height: 28px;
   border: none;
@@ -638,7 +639,8 @@ html, body {
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(4px);
 }
-.export-btn:hover { color: var(--primary); background: var(--base-100); }
+.export-btn:hover,
+.rename-btn:hover { color: var(--primary); background: var(--base-100); }
 .update-btn:hover { color: var(--warning); background: var(--base-100); }
 
 .book-import-tile {

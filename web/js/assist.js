@@ -100,17 +100,37 @@
       if (!tokens.length) return;
       this._rsvp.tokens = tokens;
       this._rsvp.idx = 0;
-      box.innerHTML = '<span class="rsvp-word"></span><span class="rsvp-control">' +
-        '<button class="vm-btn" id="rsvp-slow">−</button>' +
-        '<button class="vm-btn" id="rsvp-pause">⏸</button>' +
-        '<button class="vm-btn" id="rsvp-fast">＋</button>' +
-        '<button class="vm-btn" id="rsvp-stop">✕</button></span>';
+      box.innerHTML = '<span class="rsvp-word"></span><span class="rsvp-control"></span>';
       box.classList.remove('hidden');
       const wordEl = box.querySelector('.rsvp-word');
       wordEl.textContent = tokens[0];
       const rate = App.state.settings.rsvp_rate || 300;
       let ms = 60000 / rate;
       let running = true;
+      const ctrl = box.querySelector('.rsvp-control');
+      const pauseBtn = document.createElement('button');
+      const makeIconBtn = (icon, label) => {
+        const b = document.createElement('button');
+        b.className = 'vm-btn';
+        b.title = label;
+        b.setAttribute('aria-label', label);
+        b.appendChild(Icons.icon(icon, 14));
+        ctrl.appendChild(b);
+        return b;
+      };
+      const slowBtn = makeIconBtn('minus', '减慢');
+      const fastBtn = makeIconBtn('plus', '加快');
+      pauseBtn.className = 'vm-btn';
+      pauseBtn.title = '暂停';
+      pauseBtn.setAttribute('aria-label', '暂停');
+      pauseBtn.appendChild(Icons.icon('pause', 14));
+      ctrl.appendChild(pauseBtn);
+      const stopBtn = makeIconBtn('close', '停止');
+      const updatePauseIcon = () => {
+        pauseBtn.replaceChildren(Icons.icon(running ? 'pause' : 'play', 14));
+        pauseBtn.title = running ? '暂停' : '继续';
+        pauseBtn.setAttribute('aria-label', running ? '暂停' : '继续');
+      };
 
       const advance = () => {
         this._rsvp.idx++;
@@ -128,13 +148,13 @@
         clearInterval(this._rsvp.timer);
         this._rsvp.timer = setInterval(() => { if (running) advance(); }, ms);
       };
-      box.querySelector('#rsvp-slow').onclick = () => setSpeed(1.4);
-      box.querySelector('#rsvp-fast').onclick = () => setSpeed(1 / 1.4);
-      box.querySelector('#rsvp-pause').onclick = (e) => {
+      slowBtn.addEventListener('click', () => setSpeed(1.4));
+      fastBtn.addEventListener('click', () => setSpeed(1 / 1.4));
+      pauseBtn.addEventListener('click', () => {
         running = !running;
-        e.target.textContent = running ? '⏸' : '▶';
-      };
-      box.querySelector('#rsvp-stop').onclick = () => this.setRsvp(false);
+        updatePauseIcon();
+      });
+      stopBtn.addEventListener('click', () => this.setRsvp(false));
     },
 
     // ---- 自动滚动 ----

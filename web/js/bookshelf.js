@@ -318,11 +318,11 @@
       const coverBtn = document.createElement('button');
       coverBtn.className = 'rename-btn';
       coverBtn.title = '设置封面';
-      coverBtn.textContent = '封面';
+      coverBtn.appendChild(Icons.icon('image', 14));
       coverBtn.addEventListener('click', async (ev) => {
         ev.stopPropagation();
         try {
-          const r = await Api.setCover( book.id);
+          const r = await Api.setCover(book.id);
           if (r && r.cancelled) return;
           Toast.show('封面已更新');
           this.render();
@@ -334,11 +334,11 @@
       const resetCoverBtn = document.createElement('button');
       resetCoverBtn.className = 'rename-btn';
       resetCoverBtn.title = '恢复默认封面';
-      resetCoverBtn.textContent = '恢复';
+      resetCoverBtn.appendChild(Icons.icon('undo', 14));
       resetCoverBtn.addEventListener('click', async (ev) => {
         ev.stopPropagation();
         try {
-          await Api.resetCover( book.id);
+          await Api.resetCover(book.id);
           Toast.show('已恢复默认封面');
           this.render();
         } catch (e) {
@@ -354,7 +354,7 @@
         ev.stopPropagation();
         if (!confirm('Remove "' + (book.title || '') + '" from the shelf?\n(The original file is kept.)')) return;
         try {
-          await Api.removeBook( book.id);
+          await Api.removeBook(book.id);
           Toast.show('Removed');
           this.render();
         } catch (e) {

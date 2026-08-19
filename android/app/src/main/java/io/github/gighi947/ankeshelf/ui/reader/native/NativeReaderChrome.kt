@@ -31,8 +31,17 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -133,18 +142,22 @@ internal fun BoxScope.ReaderTopBar(
                 .fillMaxWidth()
                 .background(barBg.copy(alpha = 0.96f))
                 .statusBarsPadding()
-                .padding(horizontal = 4.dp, vertical = 2.dp),
+                .padding(horizontal = AnkeSpacing.xs, vertical = AnkeSpacing.xxs),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onBack) { Text("← 返回", color = fg) }
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = fg)
+            }
             Text(
                 title,
-                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                modifier = Modifier.weight(1f).padding(horizontal = AnkeSpacing.sm),
                 color = fg,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            TextButton(onClick = onToggleToc) { Text("目录", color = fg) }
+            IconButton(onClick = onToggleToc) {
+                Icon(Icons.Filled.Menu, contentDescription = "目录", tint = fg)
+            }
         }
     }
 }
@@ -177,25 +190,39 @@ internal fun BoxScope.ReaderBottomBar(
                 .fillMaxWidth()
                 .background(barBg.copy(alpha = 0.96f))
                 .navigationBarsPadding()
-                .padding(horizontal = 4.dp, vertical = 2.dp),
+                .padding(horizontal = AnkeSpacing.xs, vertical = AnkeSpacing.xxs),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onPrevChapter) { Text("上一章", color = fg) }
-                TextButton(onClick = onFontDec) { Text("A-", color = fg) }
-                TextButton(onClick = {
+                IconButton(onClick = onPrevChapter) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "上一章", tint = fg)
+                }
+                IconButton(onClick = onFontDec) {
+                    Icon(Icons.Filled.Remove, contentDescription = "减小字号", tint = fg)
+                }
+                IconButton(onClick = {
                     val next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.size]
                     onThemeChange(next)
-                }) { Text("主题", color = fg) }
-                TextButton(onClick = onFontInc) { Text("A+", color = fg) }
-                TextButton(onClick = onNextChapter) { Text("下一章", color = fg) }
+                }) {
+                    Icon(Icons.Filled.Palette, contentDescription = "切换主题", tint = fg)
+                }
+                IconButton(onClick = onFontInc) {
+                    Icon(Icons.Filled.Add, contentDescription = "增大字号", tint = fg)
+                }
+                IconButton(onClick = onNextChapter) {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "下一章", tint = fg)
+                }
             }
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onTogglePagination) {
-                    Text(if (pagination) "分页" else "滚动", color = fg)
+                IconButton(onClick = onTogglePagination) {
+                    Icon(
+                        if (pagination) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.ViewModule,
+                        contentDescription = if (pagination) "切换滚动模式" else "切换分页模式",
+                        tint = fg,
+                    )
                 }
                 Text(
                     if (pagination && pageInfo.second > 0) {
@@ -203,7 +230,7 @@ internal fun BoxScope.ReaderBottomBar(
                     } else {
                         "${(scrollRatio * 100).roundToInt()}%"
                     },
-                    modifier = Modifier.weight(1f).padding(end = 12.dp),
+                    modifier = Modifier.weight(1f).padding(end = AnkeSpacing.md),
                     color = fg,
                     textAlign = TextAlign.End,
                 )
@@ -250,7 +277,7 @@ internal fun BoxScope.ReaderTocDrawer(
                 .fillMaxWidth(0.82f)
                 .widthIn(max = 280.dp)
                 .background(MaterialTheme.colorScheme.surface)
-                .padding(12.dp),
+                .padding(AnkeSpacing.md),
         ) {
             Text("目录", style = MaterialTheme.typography.titleMedium)
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -299,7 +326,7 @@ internal fun ReaderLightbox(
         Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(8.dp),
+                .padding(AnkeSpacing.sm),
         ) {
             IconButton(onClick = onSave) {
                 Icon(Icons.Filled.FileDownload, contentDescription = "保存", tint = Color.White)

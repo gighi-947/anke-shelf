@@ -11,7 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -72,10 +73,10 @@ fun BookManagementOverlay(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(bottom = AnkeSpacing.sm),
                 )
-                ManageRow(Icons.Filled.Edit, "设置封面") {
+                ManageRow(Icons.Filled.Image, "设置封面") {
                     setCoverLauncher.launch("image/*")
                 }
-                ManageRow(Icons.Filled.Refresh, "恢复默认封面") {
+                ManageRow(Icons.Filled.Restore, "恢复默认封面") {
                     onResetCover(rec)
                     onDismiss()
                 }

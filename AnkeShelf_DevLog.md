@@ -60,6 +60,23 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win/android：UI 图标规范核查与修正
+
+- 背景：P5-D 新增封面操作与 Android 原生阅读器悬浮栏被指出不符合既有 UI 图标规范
+  （新操作应为 `Icons.icon` / Material `Icons.Filled.*` 图标按钮，而不是裸文本按钮/Unicode 符号）。
+- Windows/Web：
+  - 书架“设置封面 / 恢复默认封面”改为 `image` / `undo` 图标按钮；
+  - 新增 `undo`、`minus` 图标；`rename-btn` 补上与 `export-btn` 一致的圆形图标按钮样式；
+  - 阅读器上一章/下一章按钮箭头改用 SVG 图标；
+  - 图片灯箱关闭按钮、RSVP 控制、排版字号/行高步进按钮由 Unicode 符号改为 `Icons.icon`。
+- Android：
+  - `BookManagementOverlay` 恢复默认封面由 `Refresh` 改为语义更准确的 `Restore`；
+  - `NativeReaderChrome` 顶/底悬浮栏由 `TextButton` 文本操作改为 `IconButton` +
+    Material 图标（返回/目录/上一章/字号/主题/下一章/分页切换）；
+  - 顺带将 NativeReaderChrome 中 4/8/12dp 裸间距替换为 `AnkeSpacing.xs/xxs/sm/md`。
+- 验证：`node --check` 全绿；JS 契约/reader-lite 全绿；
+  Android `gradlew testDebugUnitTest --rerun-tasks` BUILD SUCCESSFUL。
+
 ### 2026-08-19 win/android：P5-D 封面系统（骨碌碌封面 + 自定义封面）
 
 - 背景：P5-D 需求为骨碌碌导入生成封面，并支持双端自定义封面/恢复默认。
