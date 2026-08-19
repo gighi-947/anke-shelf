@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import xml.etree.ElementTree as ET
 import zipfile
@@ -13,6 +14,8 @@ from .gululu_client import GululuCancelled, GululuClient, GululuIndex, GululuSna
 from .gululu_epub import GululuBuildResult
 from .gululu_images import normalize_image_mode
 from .storage import atomic_write_json
+
+log = logging.getLogger(__name__)
 
 
 class GululuUpdateConflict(Exception):
@@ -97,6 +100,8 @@ def execute_update(
             prepared.snapshot,
             prepared.image_mode,
         )
+        # 即使没有新楼层，也同步一次本地封面缓存，确保封面与远端一致。
+        sync_cover_from_epub(shelf, books, book_id_for_target(shelf, target))
         detail = "已是最新"
         if prepared.baseline_initialized:
             detail += "；已建立增量基线"
@@ -163,6 +168,21 @@ def book_id_for_target(shelf, target: Path) -> str:
         except OSError:
             continue
     return ""
+
+
+def sync_cover_from_epub(shelf, books, book_id: str) -> None:
+    """热更新后从当前 EPUB 重新提取封面到本地 covers 缓存，并同步 shelf.cover_rel。"""
+    if shelf is None or books is None or not book_id:
+        return
+    try:
+        book = books.open(book_id)
+        rel = shelf.extract_cover(book)
+        rec = shelf.get(book_id)
+        if rec is not None:
+            rec.cover_rel = rel
+            shelf.save()
+    except Exception:
+        log.warning("骨碌碌热更新后封面同步失败：%s", book_id, exc_info=True)
 
 
 def replace_and_register(

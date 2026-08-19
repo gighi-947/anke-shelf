@@ -62,6 +62,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 win：骨碌碌封面本地缓存与热更新同步
+
+- 背景：用户要求骨碌碌网络封面本地化缓存，并在每次热更新时同步重载。
+- 现状与增强：
+  - 导入/更新时 `build_epub(fetch_cover=True)` 会把网络封面写入 EPUB，注册书架时 `extract_cover` 提取到本地 `covers/`；
+  - 热更新重建时已通过 `book_register` 重新提取封面；
+  - 本次补充：即使热更新判定“已是最新/无新楼层”，也会调用 `sync_cover_from_epub` 从当前 EPUB 重新提取封面并同步 `cover_rel`。
+- 验证：`tests.test_gululu_update`/`test_gululu_service`/`test_server` 53 项 OK。
 ### 2026-08-20 win：前端始终加载 cover_url 强制使用服务端骰子图
 
 - 背景：服务端已返回骰子 SVG，但前端在 cover_rel 为空时不请求 cover_url，导致旧文字占位仍可能可见。
