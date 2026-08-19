@@ -62,6 +62,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 win：前端缓存强制刷新
+
+- 背景：用户运行 run_app.py 仍看到旧前端，疑似 WebView 缓存。
+- 修复：
+  - `web/index.html` 所有 css/js 引用增加 `?v=20260820` 版本参数；
+  - `server.py` 对 `index.html` 返回 `Cache-Control: no-cache`，避免入口页被长期缓存；
+  - 同步更新本地 `dist/AnkeShelf/_internal/web/index.html`。
+- 验证：`tests.test_server` 36 项 OK。
 ### 2026-08-20 win：NGA 与 Gululu 封面回退逻辑隔离
 
 - 背景：reset_cover 对 NGA 书也尝试重新提取封面，导致 KeyError 日志，且用户要求 NGA 完全不参与封面获取。

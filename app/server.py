@@ -374,7 +374,8 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
         except OSError:
             self._send_error(404, "not found")
             return
-        self._send_bytes(data, _mime_for(target.name), cache="max-age=3600")
+        cache = "no-cache" if target.name == "index.html" else "max-age=3600"
+        self._send_bytes(data, _mime_for(target.name), cache=cache)
 
     def _serve_book(self, rest: str) -> None:
         # rest 形如 "<book_id>/<zip_path...>"，zip_path 保留原始空段语义
