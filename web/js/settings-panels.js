@@ -560,7 +560,7 @@
       img.alt = book.title || '';
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
-      img.src = book.cover_url;
+      img.src = Theme.coverUrl(book.cover_url);
       cover.appendChild(img);
     }
     return cover;

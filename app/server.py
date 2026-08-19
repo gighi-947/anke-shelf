@@ -47,15 +47,23 @@ _TRANSPARENT_GIF = base64.b64decode(
     "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
 )
 
-# 无封面时的平面骰子占位图（SVG，纯色无文字）
-_DICE_COVER_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420">
-  <rect width="300" height="420" fill="#222222"/>
-  <rect x="90" y="150" width="120" height="120" rx="16" fill="none" stroke="#e0e0e0" stroke-width="6"/>
-  <circle cx="120" cy="180" r="9" fill="#e0e0e0"/>
-  <circle cx="180" cy="180" r="9" fill="#e0e0e0"/>
-  <circle cx="120" cy="240" r="9" fill="#e0e0e0"/>
-  <circle cx="180" cy="240" r="9" fill="#e0e0e0"/>
-  <circle cx="150" cy="210" r="9" fill="#e0e0e0"/>
+# 无封面时的平面骰子占位图（SVG，纯色无文字，按主题自适应）
+def _dice_cover_svg(theme: str = "dark") -> str:
+    t = (theme or "").lower()
+    if t == "light":
+        bg, fg = "#ffffff", "#171717"
+    elif t == "sepia":
+        bg, fg = "#f1e8d0", "#5b4636"
+    else:
+        bg, fg = "#222222", "#e0e0e0"
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420">
+  <rect width="300" height="420" fill="{bg}"/>
+  <rect x="90" y="150" width="120" height="120" rx="16" fill="none" stroke="{fg}" stroke-width="6"/>
+  <circle cx="120" cy="180" r="9" fill="{fg}"/>
+  <circle cx="180" cy="180" r="9" fill="{fg}"/>
+  <circle cx="120" cy="240" r="9" fill="{fg}"/>
+  <circle cx="180" cy="240" r="9" fill="{fg}"/>
+  <circle cx="150" cy="210" r="9" fill="{fg}"/>
 </svg>
 """
 
@@ -488,9 +496,10 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
                 continue
             self._send_bytes(data, _mime_for(f.name), cache="max-age=86400")
             return
-        # 无封面统一回退平面骰子占位图，避免前端出现文字封面/裂图。
+        # 无封面统一回退平面骰子占位图，按前端主题参数自适应颜色。
+        theme = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("theme", [""])[0]
         self._send_bytes(
-            _DICE_COVER_SVG.encode("utf-8"),
+            _dice_cover_svg(theme).encode("utf-8"),
             "image/svg+xml",
             cache="max-age=86400",
         )

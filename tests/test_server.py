@@ -271,6 +271,13 @@ class ServerTestCase(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(headers["Content-Type"], "image/svg+xml")
         self.assertIn(b"<svg", body)
+        self.assertIn(b"#222222", body)
+
+    def test_cover_missing_dice_svg_respects_theme(self):
+        status, _, body = self.get(f"/cover/{'1' * 32}?theme=light")
+        self.assertEqual(status, 200)
+        self.assertIn(b"#ffffff", body)
+        self.assertIn(b"#171717", body)
 
     # ---------- NGA 图片代理 ----------
 

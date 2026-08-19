@@ -62,6 +62,13 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 win：默认封面骰子图随主题自适应
+
+- 背景：默认封面 SVG 固定深色，浅色/羊皮纸主题下不协调。
+- 修复：
+  - `Theme.coverUrl` 在封面 URL 上附加 `theme=light|sepia|dark`；
+  - `server.py` 缺失封面时按主题生成对应背景/线条颜色的骰子 SVG。
+- 验证：`tests.test_server` 37 项 OK（含主题参数用例）。
 ### 2026-08-20 win：NGA 官方表情图直连与失败降级
 
 - 背景：NGA 官方表情图（img4.nga.178.com/ngabbs/post/smile）经本地代理后仍无法显示。

@@ -69,7 +69,7 @@
           const img = new Image();
           img.alt = data.title || '';
           img.addEventListener('error', () => img.remove(), { once: true });
-          img.src = data.cover_url;
+          img.src = Theme.coverUrl(data.cover_url);
           cover.appendChild(img);
         }
       }
