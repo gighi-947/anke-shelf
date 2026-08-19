@@ -98,7 +98,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | 静默失败（核心已解决） | `readJsonStore` / `StoreLoadResult` / `RepoResult` / `ChapterReadResult` 已显式化；残余 null 清理按 P2 现状收敛 | 失败原因可区分；残余 null 属低风险收尾 |
 | 防御式代码（部分解决） | `Settings.get(key): Any?` 已删除；`BookSession` 5 lambda 为统一只读接口设计保留 | 调用关系已显式化，剩余为设计取舍 |
 | 桥协议无版本（已解决） | ready 握手 `{bridgeVersion:1, capabilities}` + `BridgeProtocol.isCompatible`；ProgressModel 纯决策可回放 | 协议错配在运行期显式失败并记诊断 |
-| API 人工同步（已解决） | 现状：后端 `_HANDLERS` 与前端 `METHODS`/`bridge.js` MOCKS 共 52 项；`api_manifest()` + `contracts/tests/api-contract.test.js` + `tests/test_api_contract.py` 自动对照，MOCKS 已补齐 | 遗留：业务错误内层 `{ok:false}` 不 reject（前端调用方自查，设计保持） |
+| API 人工同步（已解决） | 后端 `_HANDLERS` 与前端 `METHODS` 自动对照；`bridge.js` MOCKS 已移除，错误统一走 `ApiError` + HTTP | API 错误不再依赖前端内层 ok 判断 |
 | 正则 HTML 清洗（已解决） | `sanitizeReaderBody()` 改为 jsoup DOM 白名单清洗（P2 已完成） | 不可信 HTML 清洗可证明 |
 | 依赖不可复现（已解决） | `requirements.in` + 带哈希 lock，CI/PyInstaller 按 lock 安装（P1 已完成） | 同一提交可重复构建 |
 | 重复大文件（已解决） | 字体去重为仓库根 `assets/fonts/` canonical 源，双端构建共用（P3 已完成） | Git 体积不再膨胀 |
@@ -166,8 +166,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - `app/api/__init__.py` 或 `registry.py` 导出方法清单；
 - 新增 Node 对照测试：加载 `web/js/api-client.js`，与 Python 清单逐项比对
   方法名与参数个数；
-- 补齐 `web/js/bridge.js` MOCKS（当前缺 `export_diagnostics`、
-  `get_chapter_plaintext`）；
+- `web/js/bridge.js` MOCKS 已移除（2026-08-19），不再要求前后端之外维护第三份清单；
 - `tests/test_contracts.py` 扩展 schema/fixture 校验。
 - 预期目标：任何一端新增/改名 API 未同步时，CI 直接失败。
 

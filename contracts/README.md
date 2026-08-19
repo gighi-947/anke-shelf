@@ -34,8 +34,8 @@ contracts/
    见 TEXT_NORMALIZATION_SPEC 的已知分歧清单）；任何一端与期望不符即为契约漂移，
    须修复实现或经评审后修订规范，不允许只改测试绕过。
 5. API 清单由机器对照（`contracts/tests/api-contract.test.js` 与
-   `tests/test_api_contract.py`）：后端 `app/api` 与前端 `web/js/api-client.js`、
-   `bridge.js` MOCKS 必须一一对应；新增 API 必须同时更新 handler、客户端与 MOCK。
+   `tests/test_api_contract.py`）：后端 `app/api` 与前端 `web/js/api-client.js`
+   必须一一对应；新增 API 必须同时更新 handler 与客户端。
 6. 进度事件序列夹具（`contracts/fixtures/progress/`）由 Android 纯决策层
    `ProgressModel` 消费；JS 桥测试（`bridge-contract.test.js`）校验 ready 握手
    版本与能力清单。改进度语义先改用例（红），再改实现（绿）。

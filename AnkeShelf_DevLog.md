@@ -60,6 +60,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win：移除 bridge.js 内置 50 个调试 MOCKS
+
+- 背景：`bridge.js` 为“浏览器直开调试”内置了 50 个假方法，形成第三份 API 清单，
+  是原提示词中“名义调试、实际漂移面”的残留。
+- 改动：
+  - `web/js/bridge.js` 删除 `MOCKS` 对象；无令牌时明确提示需要真实后端；
+  - `tests/test_api_contract.py` 移除 MOCKS 覆盖测试，保留后端↔api-client 双向对照；
+  - 文档同步：`contracts/README.md`、`MAINTENANCE_GUIDE.md`、`ARCHITECTURE_ROADMAP.md`
+    移除 MOCKS 要求。
+- 验证：`node --check web/js/bridge.js` 通过；`api-contract.test.js` 53 方法一致；
+  Windows Python 300 项 OK（4 跳）。
+
 ### 2026-08-19 win：get_chapter_plaintext 不再折叠失败为空串
 
 - 背景：`get_chapter_plaintext` 把书未加载、章节读取失败统一折叠为空串，

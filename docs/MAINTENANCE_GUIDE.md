@@ -48,10 +48,9 @@ LICENSE、DevLog、.github、assets（字体 canonical 源）。
 
 - **API 契约 = 方法名**：`_HANDLERS` 元组共 **52 个方法**（11 系统 + 4 书架 + 2 阅读 +
   3 搜索 + 7 标注 + 2 统计 + 12 NGA + 7 骨碌碌 + 4 设置）；`api_manifest()` 导出清单供
-  前端 / CI 双向对照防漂移；新增 API 必须三处同步：handler + `api-client.js` METHODS +
-  `bridge.js` MOCK。
+  前端 / CI 双向对照防漂移；新增 API 必须两处同步：handler + `api-client.js` METHODS。
 - 前端链路：`Api.<method>()` → `Bridge.call` → `POST /api/<name>`（启动随机令牌
-  X-Anke-Token，sessionStorage；浏览器直开走 MOCKS 调试降级）。
+  X-Anke-Token，sessionStorage；无令牌时提示需要真实后端，不再内置 MOCKS）。
 - **存储范式**（`app/storage.py`）：tmp 文件 → 替换前保留 `.bak` → `os.replace` 原子写；
   损坏隔离 `.corrupt-*` 并回退默认；`verify_json_file` 报告可解析性/版本/大小。
 - 任务：`TaskManager` 按 lane 单飞（NGA / gululu / export 均已接入）。
