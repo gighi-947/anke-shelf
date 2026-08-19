@@ -128,12 +128,6 @@
       img.addEventListener('error', () => img.remove(), { once: true });
       if (book.cover_url) img.src = book.cover_url;
       cover.appendChild(img);
-      if (book.nga_tid) {
-        const badge = document.createElement('span');
-        badge.className = 'nga-badge';
-        badge.textContent = 'NGA';
-        cover.appendChild(badge);
-      }
       const badge = gululuBadge(book);
       if (badge) cover.appendChild(badge);
 
@@ -141,15 +135,24 @@
       title.className = 'recent-title';
       title.textContent = displayTitle(book.title);
 
+      let tagRow = null;
+      if (book.nga_tid) {
+        tagRow = document.createElement('span');
+        tagRow.className = 'nga-tag';
+        tagRow.textContent = 'NGA';
+      }
+
       const meta = document.createElement('span');
       meta.className = 'recent-meta';
       const parts = [];
       if (book.author) parts.push(book.author);
-      if (book.nga_tid) parts.push('NGA');
       if (book.progress_pct > 0) parts.push(Math.round(book.progress_pct * 100) + '%');
       meta.textContent = parts.join(' · ');
 
-      card.append(cover, title, meta);
+      const cardChildren = [cover, title];
+      if (tagRow) cardChildren.push(tagRow);
+      cardChildren.push(meta);
+      card.append(...cardChildren);
       card.addEventListener('click', () => App.showReader(book.id));
       return card;
     },
@@ -273,7 +276,7 @@
       title.className = 'book-row-title';
       if (book.nga_tid) {
         const badge = document.createElement('span');
-        badge.className = 'nga-badge';
+        badge.className = 'nga-tag';
         badge.textContent = 'NGA';
         title.appendChild(badge);
       }
