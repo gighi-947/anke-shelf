@@ -12,7 +12,8 @@
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
   沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入；
-  P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统
+  P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统、
+  P5-E1 Cookie 粘贴解析、P5-E2 Android 应用内登录
   （含 UI 图标规范核查）；多轮架构收敛已完成：
   EventBus→显式回调、API 错误统一到 HTTP/ApiError、reader-lite 状态机
   Step 0–4、TaskManager 统一 NGA/Gululu/Export；
@@ -60,6 +61,17 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 android：P5-E2 应用内 NGA 登录（Android 先行）
+
+- 背景：P5-E2 目标是连 F12/Cookie 都不需要；Android 先行，Windows 后续再做。
+- 改动：
+  - 新增 `NgaLoginDialog.kt`：应用内 WebView 打开 `https://bbs.nga.cn/`，
+    仅允许 bbs.nga.cn 域，用户登录后点“完成并提取”从 `CookieManager` 读取
+    Cookie 并解析 uid/cid 回填配置页；
+  - `ConfigPanel` 新增“浏览器登录”按钮与弹窗；不落日志、不保存 WebView 会话。
+- 验证：Android `compileDebugKotlin` 与 `testDebugUnitTest` 均 BUILD SUCCESSFUL；
+  真机手工登录流程待后续验证。
 
 ### 2026-08-19 win/android：P5-E1 Cookie 粘贴自动解析
 
@@ -1785,7 +1797,7 @@
 
 - P5（当前批次，2026-08-18 用户 issue）：A 快赢、B NGA 裂图修复、
   D 封面系统、E1 Cookie 粘贴解析已完成；剩余/暂缓：
-  - E2 应用内 WebView 登录 NGA 提取凭据（Android 先行，中成本）
+  - E2 Android 应用内 WebView 登录已完成；Windows E2 二级窗待后续
   - C 滚动到底自动翻章（暂不实施，按用户要求；进度类必跑回归）
   - F NGA 楼中楼评论（暂不实施，按用户要求；最大件）
   子项明细见 ROADMAP §3 P5。

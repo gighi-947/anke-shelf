@@ -424,17 +424,18 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - 验证：`test_gululu_epub` 封面用例、Android `ShelfTest` 封面更新用例。
 
 #### P5-E：NGA 凭据傻瓜化（分级）
-> 状态（2026-08-19）：E1 已完成；E2 随 Android 版本排期。
+> 状态（2026-08-19）：E1 双端完成；E2 Android 完成，Windows 二级窗待后续。
 
 - E1（低成本）✅ 已完成（2026-08-19）：粘贴完整 Cookie 字符串自动解析——用户整段
   复制 F12 Cookie（或含 uid/cid 的任意文本），粘贴后自动提取
   `ngaPassportUid`/`ngaPassportCid` 填入两栏。双端。
   文件：`web/js/nga-cookie.js`、`nga-download-panels.js`、Android `NgaConfig.kt`/
   `DownloadPanels.kt`。验证：`tests/js/nga-cookie.test.js`、`NgaCookieParserTest`。
-- E2（中成本，Android 先行）：应用内 WebView 打开 NGA 登录页，登录后从
-  CookieManager 提取 uid/cid 一键保存。安全边界：仅登录用途、URI 固定
-  bbs.nga.cn、拿到凭据即关窗，不加载任意页面；Windows 可用 pywebview
-  二级窗。验证：真机手工 + 不落任何凭据到日志。
+- E2（中成本，Android 先行）✅ Android 已完成（2026-08-19）：应用内 WebView
+  打开 NGA 登录页，登录后从 CookieManager 提取 uid/cid 一键保存。
+  安全边界：仅登录用途、URI 固定 bbs.nga.cn、拿到凭据即关窗，不加载任意页面；
+  Windows 可用 pywebview 二级窗（待后续）。
+  文件：`NgaLoginDialog.kt`、`DownloadPanels.kt`。验证：编译/单测通过，真机手工待做。
 - 成功标准：小白不接触 F12 完成配置。
 
 #### P5-F：NGA 楼中楼评论（最大件，最后做）
@@ -472,7 +473,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
    P4 等网络与真实需求触发。
 6. **当前批次（P5 用户反馈，2026-08-18 起）**：A/B/D/E1 已完成；
    C 自动翻章与 F 楼中楼暂不实施（按用户要求）；
-   E2 WebView 登录随 Android 版本排期。进度类改动（C/F）若实施必跑
+   E2 Android WebView 登录已完成，Windows 二级窗待后续。进度类改动（C/F）若实施必跑
    "滚动/翻页 → 退出 → 重进"回归。
 
 ---

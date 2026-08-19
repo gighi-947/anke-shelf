@@ -122,6 +122,7 @@ internal fun ConfigPanel(container: AppContainer) {
     var cid by remember { mutableStateOf(initial.cid) }
     var ua by remember { mutableStateOf(initial.ua) }
     var rawCookie by remember { mutableStateOf("") }
+    var showNgaLogin by remember { mutableStateOf(false) }
     var configured by remember { mutableStateOf(initial.configured) }
 
     DownloadList {
@@ -187,6 +188,7 @@ internal fun ConfigPanel(container: AppContainer) {
                     )
                     configured = container.ngaConfig.load().configured
                 }) { Text("保存配置") }
+                TextButton(onClick = { showNgaLogin = true }) { Text("浏览器登录") }
                 TextButton(onClick = {
                     container.ngaConfig.clear()
                     uid = ""
@@ -212,6 +214,17 @@ internal fun ConfigPanel(container: AppContainer) {
                 modifier = Modifier.padding(top = AnkeSpacing.sm),
             )
         }
+    }
+    if (showNgaLogin) {
+        NgaLoginDialog(
+            onDismiss = { showNgaLogin = false },
+            onExtracted = { cookie ->
+                val parsed = parseNgaCookieText(cookie)
+                if (parsed.uid.isNotEmpty()) uid = parsed.uid
+                if (parsed.cid.isNotEmpty()) cid = parsed.cid
+                showNgaLogin = false
+            },
+        )
     }
 }
 

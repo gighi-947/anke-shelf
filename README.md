@@ -202,6 +202,8 @@ gradlew.bat assembleRelease      :: 签名发布包（需本地 android/keystore
    也可以直接整段复制 Cookie 字符串；
 4. 安卓在「下载 → 登录配置」、Windows 在「NGA 下载 → 配置」中粘贴保存；
    粘贴完整 Cookie 时会自动解析并填入 uid/cid 两栏。
+5. 安卓也可在「下载 → 登录配置」点“浏览器登录”，在应用内 WebView 登录后
+   点“完成并提取”，自动回填 uid/cid。
 
 凭据只保存在本机（安卓为应用私有目录、Windows 为 `%APPDATA%\AnkeShelf\`），
 不会上传到任何服务器，仓库与发行包均不含真实凭据；Cookie 过期时按上述步骤
