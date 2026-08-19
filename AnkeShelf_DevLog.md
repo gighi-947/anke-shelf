@@ -67,6 +67,7 @@
 - 发现并修复：
   - DevLog §1：测试复核日期 08-18→08-19；`api-contract` 52→53 方法；
   - ROADMAP 头部：补充 2026-08-19 架构收敛状态；
+  - ROADMAP §2.1：主干状态补充收敛完成、Android JVM 复核日期更新为 08-19；
   - ROADMAP §2.2：代码规模热点行数同步到当前实际值；
   - MAINTENANCE_GUIDE §10：快照日期与主线描述更新；
   - 其余高漂移文档（README 版本表、MAINTENANCE §7、GLOSSARY、contracts README、
