@@ -62,6 +62,20 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win/android：第三轮问题复核与修正
+
+- 背景：用户确认菜单仍跳动/卡片飞走、方括号仍只剥一个、默认封面仍显示文字。
+- 更多菜单：
+  - 根因：菜单作为封面卡片的子元素，卡片有 transform，导致 `position: fixed` 相对卡片而非视口；
+  - 修复：菜单改为挂到 `document.body` 上再 `fixed` 定位，彻底避开 transform 容器；
+  - 关闭时从 body 移除菜单，避免残留。
+- 方括号前缀：
+  - Web/Android 正则改为一次性匹配连续多个括号前缀的重复组，不再依赖 `g` 的 `^` 多次匹配。
+- NGA 默认封面：
+  - 根因：API 始终返回 `cover_url`，前端无法区分“无封面”；
+  - 修复：`record_to_dict` 增加 `cover_rel` 字段，前端改用 `cover_rel` 判断是否有真实封面；
+  - Web 网格/列表/最近阅读与书籍管理页均改为无封面时显示骰子图标，且不再请求不存在的封面图。
+- 验证：JS 语法/契约全绿；Python 303 项 OK（4 跳）；Android `compileDebugKotlin` BUILD SUCCESSFUL。
 ### 2026-08-19 win/android：第三轮 UI/细节反馈修复
 
 - 背景：用户反馈更多菜单弹出位置跳动、方括号前缀未全部隐藏、NGA 默认封面文字、

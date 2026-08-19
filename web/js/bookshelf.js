@@ -18,7 +18,7 @@
   function displayTitle(title) {
     const raw = title || '(No Title)';
     if (!(App.state.settings && App.state.settings.hide_title_brackets)) return raw;
-    return raw.replace(/^(?:【[^】]*】|\[[^\]]*\])[\s　]*/g, '').trim() || raw;
+    return raw.replace(/^(?:【[^】]*】|\[[^\]]*\])[\s　]*(?:(?:【[^】]*】|\[[^\]]*\])[\s　]*)*/, '').trim() || raw;
   }
 
   function gululuBadge(book) {
@@ -30,7 +30,7 @@
   }
 
   function closeBookMenus() {
-    document.querySelectorAll('.book-menu').forEach((m) => m.classList.add('hidden'));
+    document.querySelectorAll('.book-menu').forEach((m) => m.remove());
   }
 
   window.Shelf = {
@@ -115,7 +115,7 @@
       cover.className = 'recent-cover';
       const fb = document.createElement('span');
       fb.className = 'recent-cover-fallback';
-      if (book.nga_tid && !book.cover_url) {
+      if (book.nga_tid && !book.cover_rel) {
         fb.classList.add('cover-dice');
         fb.appendChild(Icons.icon('dice', 20));
       } else {
@@ -126,7 +126,7 @@
       img.alt = displayTitle(book.title);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
-      if (book.cover_url) img.src = book.cover_url;
+      if (book.cover_rel && book.cover_url) img.src = book.cover_url;
       cover.appendChild(img);
       if (book.nga_tid) {
         const badge = document.createElement('span');
@@ -169,7 +169,7 @@
 
       const cover = document.createElement('div');
       cover.className = 'book-cover';
-      if (book.nga_tid && !book.cover_url) {
+      if (book.nga_tid && !book.cover_rel) {
         const dice = document.createElement('span');
         dice.className = 'cover-dice';
         dice.appendChild(Icons.icon('dice', 40));
@@ -190,7 +190,7 @@
       img.alt = displayTitle(book.title);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
-      if (book.cover_url) img.src = book.cover_url;
+      if (book.cover_rel && book.cover_url) img.src = book.cover_url;
       cover.appendChild(img);
 
       if (book.nga_tid) {
@@ -247,7 +247,7 @@
       cover.className = 'book-row-cover';
       const fb = document.createElement('div');
       fb.className = 'book-row-cover-fallback';
-      if (book.nga_tid && !book.cover_url) {
+      if (book.nga_tid && !book.cover_rel) {
         fb.classList.add('cover-dice');
         fb.appendChild(Icons.icon('dice', 24));
       } else {
@@ -257,7 +257,7 @@
       img.alt = displayTitle(book.title);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
-      if (book.cover_url) img.src = book.cover_url;
+      if (book.cover_rel && book.cover_url) img.src = book.cover_url;
       cover.append(fb, img);
 
       const meta = document.createElement('div');
@@ -455,97 +455,101 @@
       more.title = '更多管理';
       more.setAttribute('aria-label', '更多管理');
       more.appendChild(Icons.icon('dots', 14));
-      more.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        const menu = actions.querySelector('.book-menu');
-        const wasHidden = menu.classList.contains('hidden');
-        closeBookMenus();
-        if (wasHidden) {
-          menu.style.position = 'fixed';
-          menu.style.right = 'auto';
-          menu.style.left = '0px';
-          menu.style.top = '0px';
-          menu.style.visibility = 'hidden';
-          menu.classList.remove('hidden');
-          const rect = more.getBoundingClientRect();
-          const m = menu.getBoundingClientRect();
-          menu.style.left = Math.max(8, Math.min(window.innerWidth - m.width - 8, rect.right - m.width)) + 'px';
-          menu.style.top = Math.max(8, Math.min(window.innerHeight - m.height - 8, rect.bottom + 4)) + 'px';
-          menu.style.visibility = 'visible';
-        }
-      });
-      actions.appendChild(more);
 
-      const menu = document.createElement('div');
-      menu.className = 'book-menu hidden';
-      const addItem = (label, fn) => {
-        const b = document.createElement('button');
-        b.className = 'book-menu-item';
-        b.textContent = label;
-        b.addEventListener('click', async (ev) => {
-          ev.stopPropagation();
-          menu.classList.add('hidden');
-          await fn();
-        });
-        menu.appendChild(b);
-      };
-      if (book.nga_tid) {
-        addItem('导出帖子（EPUB / Markdown）', async () => {
-          if (window.NgaDownload) NgaDownload.open({ bookId: book.id });
-        });
-      } else if (Number(book.gululu_source_id) > 0) {
-        addItem('导出帖子（含评论 EPUB）', async () => {
+      let menu = null;
+      const buildMenu = () => {
+        const m = document.createElement('div');
+        m.className = 'book-menu hidden';
+        const addItem = (label, fn) => {
+          const b = document.createElement('button');
+          b.className = 'book-menu-item';
+          b.textContent = label;
+          b.addEventListener('click', async (ev) => {
+            ev.stopPropagation();
+            closeBookMenus();
+            await fn();
+          });
+          m.appendChild(b);
+        };
+        if (book.nga_tid) {
+          addItem('导出帖子（EPUB / Markdown）', async () => {
+            if (window.NgaDownload) NgaDownload.open({ bookId: book.id });
+          });
+        } else if (Number(book.gululu_source_id) > 0) {
+          addItem('导出帖子（含评论 EPUB）', async () => {
+            try {
+              await Api.gululuStartExport(String(book.gululu_source_id), 'online');
+              if (window.NgaDownload) NgaDownload.open({ tab: 'dl-gululu' });
+            } catch (e) {
+              Toast.show('导出失败：' + (e.message || e), true);
+            }
+          });
+        }
+        addItem('重命名', async () => {
+          const name = prompt('Rename book:', book.title || '');
+          if (name === null) return;
+          const trimmed = name.trim();
+          if (!trimmed || trimmed === book.title) return;
           try {
-            await Api.gululuStartExport(String(book.gululu_source_id), 'online');
-            if (window.NgaDownload) NgaDownload.open({ tab: 'dl-gululu' });
+            await Api.renameBook(book.id, trimmed);
+            Toast.show('Renamed');
+            this.render();
           } catch (e) {
-            Toast.show('导出失败：' + (e.message || e), true);
+            Toast.show('Rename failed: ' + (e.message || e), true);
           }
         });
-      }
-      addItem('重命名', async () => {
-        const name = prompt('Rename book:', book.title || '');
-        if (name === null) return;
-        const trimmed = name.trim();
-        if (!trimmed || trimmed === book.title) return;
-        try {
-          await Api.renameBook(book.id, trimmed);
-          Toast.show('Renamed');
-          this.render();
-        } catch (e) {
-          Toast.show('Rename failed: ' + (e.message || e), true);
-        }
+        addItem('设置封面', async () => {
+          try {
+            const r = await Api.setCover(book.id);
+            if (r && r.cancelled) return;
+            Toast.show('封面已更新');
+            this.render();
+          } catch (e) {
+            Toast.show('设置封面失败：' + (e.message || e), true);
+          }
+        });
+        addItem('恢复默认封面', async () => {
+          try {
+            await Api.resetCover(book.id);
+            Toast.show('已恢复默认封面');
+            this.render();
+          } catch (e) {
+            Toast.show('恢复封面失败：' + (e.message || e), true);
+          }
+        });
+        addItem('从书架移除', async () => {
+          if (!confirm('Remove "' + (book.title || '') + '" from the shelf?\n(The original file is kept.)')) return;
+          try {
+            await Api.removeBook(book.id);
+            Toast.show('Removed');
+            this.render();
+          } catch (e) {
+            Toast.show('Remove failed: ' + (e.message || e), true);
+          }
+        });
+        return m;
+      };
+
+      more.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const wasOpen = menu && menu.isConnected;
+        closeBookMenus();
+        if (wasOpen) return;
+        if (!menu) menu = buildMenu();
+        document.body.appendChild(menu);
+        menu.classList.remove('hidden');
+        menu.style.position = 'fixed';
+        menu.style.right = 'auto';
+        menu.style.left = '0px';
+        menu.style.top = '0px';
+        menu.style.visibility = 'hidden';
+        const rect = more.getBoundingClientRect();
+        const m = menu.getBoundingClientRect();
+        menu.style.left = Math.max(8, Math.min(window.innerWidth - m.width - 8, rect.right - m.width)) + 'px';
+        menu.style.top = Math.max(8, Math.min(window.innerHeight - m.height - 8, rect.bottom + 4)) + 'px';
+        menu.style.visibility = 'visible';
       });
-      addItem('设置封面', async () => {
-        try {
-          const r = await Api.setCover(book.id);
-          if (r && r.cancelled) return;
-          Toast.show('封面已更新');
-          this.render();
-        } catch (e) {
-          Toast.show('设置封面失败：' + (e.message || e), true);
-        }
-      });
-      addItem('恢复默认封面', async () => {
-        try {
-          await Api.resetCover(book.id);
-          Toast.show('已恢复默认封面');
-          this.render();
-        } catch (e) {
-          Toast.show('恢复封面失败：' + (e.message || e), true);
-        }
-      });
-      addItem('从书架移除', async () => {
-        if (!confirm('Remove "' + (book.title || '') + '" from the shelf?\n(The original file is kept.)')) return;
-        try {
-          await Api.removeBook(book.id);
-          Toast.show('Removed');
-          this.render();
-        } catch (e) {
-          Toast.show('Remove failed: ' + (e.message || e), true);
-        }
-      });
-      actions.appendChild(menu);
+      actions.appendChild(more);
       return actions;
     },
 

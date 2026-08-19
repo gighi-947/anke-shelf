@@ -548,14 +548,14 @@
     cover.className = 'book-row-cover';
     const fb = document.createElement('span');
     fb.className = 'book-row-cover-fallback';
-    if (Number(book.nga_tid) > 0 && !book.cover_url) {
+    if (Number(book.nga_tid) > 0 && !book.cover_rel) {
       fb.classList.add('cover-dice');
       fb.appendChild(Icons.icon('dice', 24));
     } else {
       fb.textContent = (book.title || '书').slice(0, 2);
     }
     cover.appendChild(fb);
-    if (book.cover_url) {
+    if (book.cover_rel && book.cover_url) {
       const img = new Image();
       img.alt = book.title || '';
       img.loading = 'lazy';
