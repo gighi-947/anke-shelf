@@ -18,7 +18,7 @@
   function displayTitle(title) {
     const raw = title || '(No Title)';
     if (!(App.state.settings && App.state.settings.hide_title_brackets)) return raw;
-    return raw.replace(/^【[^】]*】/, '').trim() || raw;
+    return raw.replace(/^(?:【[^】]*】|\[[^\]]*\])[\s　]*/g, '').trim() || raw;
   }
 
   function gululuBadge(book) {
@@ -27,6 +27,10 @@
     badge.className = 'gululu-badge';
     badge.textContent = '骨碌碌';
     return badge;
+  }
+
+  function closeBookMenus() {
+    document.querySelectorAll('.book-menu').forEach((m) => m.classList.add('hidden'));
   }
 
   window.Shelf = {
@@ -181,7 +185,7 @@
       if (sourceBadge) main.appendChild(sourceBadge);
       main.appendChild(cover);
 
-      const actions = this._actions(book);
+      const actions = this._gridActions(book);
 
       const meta = document.createElement('div');
       meta.className = 'book-meta';
@@ -365,6 +369,98 @@
       return actions;
     },
 
+    _gridActions(book) {
+      const actions = document.createElement('div');
+      actions.className = 'book-actions';
+      if (book.nga_tid) {
+        const upd = document.createElement('button');
+        upd.className = 'export-btn update-btn';
+        upd.title = '更新帖子（可调整只看楼主/主题等设置）';
+        upd.appendChild(Icons.icon('refresh', 14));
+        upd.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          if (window.NgaDownload) NgaDownload.open({ bookId: book.id, focusUpdate: true });
+        });
+        actions.appendChild(upd);
+      }
+      const more = document.createElement('button');
+      more.className = 'rename-btn';
+      more.title = '更多管理';
+      more.setAttribute('aria-label', '更多管理');
+      more.appendChild(Icons.icon('dots', 14));
+      more.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const menu = actions.querySelector('.book-menu');
+        const wasHidden = menu.classList.contains('hidden');
+        closeBookMenus();
+        if (wasHidden) menu.classList.remove('hidden');
+      });
+      actions.appendChild(more);
+
+      const menu = document.createElement('div');
+      menu.className = 'book-menu hidden';
+      const addItem = (label, fn) => {
+        const b = document.createElement('button');
+        b.className = 'book-menu-item';
+        b.textContent = label;
+        b.addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          menu.classList.add('hidden');
+          await fn();
+        });
+        menu.appendChild(b);
+      };
+      if (book.nga_tid) {
+        addItem('导出帖子（EPUB / Markdown）', async () => {
+          if (window.NgaDownload) NgaDownload.open({ bookId: book.id });
+        });
+      }
+      addItem('重命名', async () => {
+        const name = prompt('Rename book:', book.title || '');
+        if (name === null) return;
+        const trimmed = name.trim();
+        if (!trimmed || trimmed === book.title) return;
+        try {
+          await Api.renameBook(book.id, trimmed);
+          Toast.show('Renamed');
+          this.render();
+        } catch (e) {
+          Toast.show('Rename failed: ' + (e.message || e), true);
+        }
+      });
+      addItem('设置封面', async () => {
+        try {
+          const r = await Api.setCover(book.id);
+          if (r && r.cancelled) return;
+          Toast.show('封面已更新');
+          this.render();
+        } catch (e) {
+          Toast.show('设置封面失败：' + (e.message || e), true);
+        }
+      });
+      addItem('恢复默认封面', async () => {
+        try {
+          await Api.resetCover(book.id);
+          Toast.show('已恢复默认封面');
+          this.render();
+        } catch (e) {
+          Toast.show('恢复封面失败：' + (e.message || e), true);
+        }
+      });
+      addItem('从书架移除', async () => {
+        if (!confirm('Remove "' + (book.title || '') + '" from the shelf?\n(The original file is kept.)')) return;
+        try {
+          await Api.removeBook(book.id);
+          Toast.show('Removed');
+          this.render();
+        } catch (e) {
+          Toast.show('Remove failed: ' + (e.message || e), true);
+        }
+      });
+      actions.appendChild(menu);
+      return actions;
+    },
+
     _importTile() {
       const tile = document.createElement('button');
       tile.className = 'book-import-tile';
@@ -431,6 +527,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('click', (ev) => {
+      if (!ev.target.closest('.book-menu') && !ev.target.closest('.book-actions')) closeBookMenus();
+    });
     document.getElementById('import-btn').addEventListener('click', importBooks);
     const emptyImport = document.getElementById('empty-import-btn');
     if (emptyImport) emptyImport.addEventListener('click', importBooks);

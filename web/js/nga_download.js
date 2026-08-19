@@ -327,6 +327,7 @@
       if (s.stage === 'done') {
         Toast.show(s.detail || '帖子已更新');
         refreshBooks();
+        if (window.Shelf) Shelf.render();
         if (App.state.bookId === s.book_id && App.state.view === 'reader') {
           Reader.loadChapter(App.state.chapterIndex, 0);
         }
@@ -340,6 +341,7 @@
     if (s.stage === 'done') {
       Toast.show('下载完成，已加入书架');
       refreshBooks();
+      if (window.Shelf) Shelf.render();
       const openAfter = check('nga-open-after');
       if (openAfter && s.book_id) {
         close();
@@ -602,6 +604,7 @@
     stopPolling();
     stopExportPolling();
     GululuDownload.stop();
+    if (window.Shelf) Shelf.render();
   }
 
   window.NgaPage = { section, fmtBtn, field, input, numInput, select, checkbox, check, val, makePoller, refreshBooks, startDownload, cancelDownload, loadUpdateDefaults, startUpdate, saveConfig, clearConfig, startExport, openExportDest };

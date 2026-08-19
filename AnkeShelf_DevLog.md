@@ -62,6 +62,26 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 win/android：NGA 在线图片代理修复 + 书架交互收敛
+
+- 背景：用户反馈 NGA 在线图片完全无法显示、网格封面操作按钮超界、隐藏安科前缀不识别 []、
+  下载完成后书架刷新慢。
+- NGA 在线图片：
+  - 根因：Python urllib 请求 img.nga.cn 被 TencentEdgeOne 返回 567 拦截页，curl 可正常 200；
+  - 修复：`app/server.py::_fetch_url` 优先调用系统 `curl` 拉图，失败回退 urllib；
+  - 验证：真实 NGA 图片 curl 代理返回 `image/png`；`tests.test_server` 36 项全绿。
+- 书架网格交互：
+  - 网格封面仅保留“更新”直通按钮，其余（导出/重命名/封面/恢复封面/移除）收进“更多管理”二级菜单；
+  - 新增 `.book-menu` 样式与全局点击关闭。
+- 隐藏安科前缀：
+  - Web/Android 的 `hide_title_brackets` 正则从只识别 `【】` 扩展为同时识别 `[]`，
+    并连续剥离开头多个括号前缀。
+- 设置页：
+  - 新增“书籍管理”标签页，可集中重命名/设置封面/恢复封面/移除书架书籍。
+- 书架刷新：
+  - NGA/Gululu 下载/更新完成后立即调用 `Shelf.render()`；关闭下载面板时也刷新书架。
+- 验证：JS 语法/契约全绿；Android `compileDebugKotlin` BUILD SUCCESSFUL。
+
 ### 2026-08-19 android：P5-E2 应用内 NGA 登录（Android 先行）
 
 - 背景：P5-E2 目标是连 F12/Cookie 都不需要；Android 先行，Windows 后续再做。

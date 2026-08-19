@@ -229,6 +229,7 @@
           : '';
         Toast.show('骨碌碌 EPUB 已加入书架' + warning, status.image_failed > 0);
         refreshBooks();
+        if (window.Shelf) Shelf.render();
         if (check('gululu-open-after') && status.book_id) {
           NgaDownload.close();
           App.showReader(status.book_id);

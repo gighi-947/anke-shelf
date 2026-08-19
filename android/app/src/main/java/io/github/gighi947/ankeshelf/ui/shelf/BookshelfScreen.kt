@@ -375,7 +375,7 @@ private fun BookListRow(
     onExportMd: (BookRecord) -> Unit,
 ) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
-    val displayTitle = if (hideBrackets) ui.record.title.replaceFirst(Regex("^【[^】]*】"), "").ifBlank { ui.record.title } else ui.record.title
+    val displayTitle = if (hideBrackets) ui.record.title.replaceFirst(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*"""), "").ifBlank { ui.record.title } else ui.record.title
     var exportMenu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
@@ -473,7 +473,7 @@ private fun BookCard(
     onExportMd: (BookRecord) -> Unit,
 ) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
-    val displayTitle = if (hideBrackets) ui.record.title.replaceFirst(Regex("^【[^】]*】"), "").ifBlank { ui.record.title } else ui.record.title
+    val displayTitle = if (hideBrackets) ui.record.title.replaceFirst(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*"""), "").ifBlank { ui.record.title } else ui.record.title
     var exportMenu by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier

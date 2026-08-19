@@ -70,6 +70,9 @@
     const stats = panelById.stats;
     stats.appendChild(SettingsUI.section('阅读统计', SettingsPanels.statsRow()));
 
+    const books = panelById.books;
+    books.appendChild(SettingsUI.section('安科/书籍管理', SettingsPanels.booksRow()));
+
     const data = panelById.data;
     data.appendChild(SettingsUI.section('数据', SettingsPanels.dataRow()));
 
@@ -165,6 +168,7 @@
       const el = ensureBuilt();
       sync();
       el.classList.remove('hidden');
+      if (SettingsPanels.refreshBooksPanel) SettingsPanels.refreshBooksPanel();
       Api.getVersion().then((v) => {
         const f = document.getElementById('sp-version');
         if (f) f.textContent = '安科书架 v' + v;

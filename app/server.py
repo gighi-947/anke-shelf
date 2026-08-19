@@ -29,6 +29,9 @@ import threading
 import urllib.error
 import urllib.parse
 import urllib.request
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -175,7 +178,48 @@ def _rewrite_nga_image_src(html: str, book_id: str) -> str:
 
 
 def _fetch_url(url: str, headers: dict) -> tuple[bytes, str]:
-    """代理拉取图片；返回 (字节, mime)。供测试替换。"""
+    """代理拉取图片；返回 (字节, mime)。供测试替换。
+
+    优先使用系统 curl：NGA 图床的 TencentEdgeOne 会对 Python urllib 的
+    TLS 指纹返回 567 拦截页，而 curl 可正常拿到图片。curl 不可用时回退 urllib。
+    """
+    curl = shutil.which("curl")
+    if curl:
+        tmp = tempfile.NamedTemporaryFile(delete=False)
+        tmp_path = tmp.name
+        tmp.close()
+        cmd = [
+            curl,
+            "-sS",
+            "--fail",
+            "--max-time",
+            "15",
+            "-A",
+            headers.get("User-Agent", ""),
+            "-e",
+            headers.get("Referer", ""),
+            "-H",
+            f"Cookie: {headers.get('Cookie', '')}",
+            "-o",
+            tmp_path,
+            "-w",
+            "%{content_type}",
+            url,
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, timeout=20)
+            if proc.returncode == 0:
+                data = Path(tmp_path).read_bytes()
+                mime = proc.stdout.decode("ascii", "replace").strip()
+                return data, mime or "application/octet-stream"
+        except (OSError, subprocess.SubprocessError):
+            pass
+        finally:
+            try:
+                Path(tmp_path).unlink(missing_ok=True)
+            except OSError:
+                pass
+
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=15) as resp:
         mime = resp.headers.get_content_type() or "image/jpeg"

@@ -643,6 +643,38 @@ html, body {
 .rename-btn:hover { color: var(--primary); background: var(--base-100); }
 .update-btn:hover { color: var(--warning); background: var(--base-100); }
 
+
+.book-menu {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  z-index: 6;
+  min-width: 160px;
+  background: var(--base-200);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  padding: 4px;
+}
+.book-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--base-content);
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.book-menu-item:hover {
+  background: color-mix(in srgb, var(--base-300) 60%, transparent);
+  color: var(--base-content);
+}
+
 .book-import-tile {
   position: relative;
   margin: 8px 0;

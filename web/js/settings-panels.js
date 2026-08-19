@@ -520,5 +520,82 @@
     Toast.show('正在清除全部数据…');
   }
 
-  window.SettingsPanels = { appearanceRow, paletteRow, customColorsRow, readingRow, interfaceRow, assistRow, shortcutsRow, statsRow, dataRow, uninstallAndClear };
+
+  function booksRow() {
+    const wrap = document.createElement('div');
+    wrap.className = 'settings-controls';
+    const list = document.createElement('div');
+    list.id = 'sp-books-list';
+    list.className = 'settings-controls';
+    const hint = document.createElement('p');
+    hint.className = 'muted settings-hint';
+    hint.textContent = '管理书架中的安科/书籍：重命名、设置封面、恢复封面或移除。';
+    wrap.append(list, hint);
+    return wrap;
+  }
+
+  async function refreshBooksPanel() {
+    const list = document.getElementById('sp-books-list');
+    if (!list) return;
+    let books = [];
+    try {
+      books = await Api.getShelf();
+    } catch (e) {
+      list.textContent = '书架加载失败';
+      return;
+    }
+    list.innerHTML = '';
+    if (!books.length) {
+      const empty = document.createElement('p');
+      empty.className = 'muted';
+      empty.textContent = '书架为空';
+      list.appendChild(empty);
+      return;
+    }
+    for (const book of books) {
+      const row = document.createElement('div');
+      row.className = 'settings-row sp-book-row';
+      const label = document.createElement('span');
+      label.className = 'settings-label';
+      label.textContent = book.title || '(No Title)';
+      label.title = book.title || '';
+      const actions = document.createElement('span');
+      actions.className = 'settings-control-inline';
+      const mk = (text, fn) => {
+        const b = document.createElement('button');
+        b.className = 'vm-btn';
+        b.textContent = text;
+        b.addEventListener('click', async () => {
+          await fn();
+          await refreshBooksPanel();
+          if (window.Shelf) Shelf.render();
+        });
+        actions.appendChild(b);
+      };
+      mk('重命名', async () => {
+        const name = prompt('重命名书籍：', book.title || '');
+        if (name === null) return;
+        const trimmed = name.trim();
+        if (trimmed && trimmed !== book.title) await Api.renameBook(book.id, trimmed);
+      });
+      mk('设置封面', async () => {
+        const r = await Api.setCover(book.id);
+        if (r && r.cancelled) return;
+        Toast.show('封面已更新');
+      });
+      mk('恢复封面', async () => {
+        await Api.resetCover(book.id);
+        Toast.show('已恢复默认封面');
+      });
+      mk('移除', async () => {
+        const nl = String.fromCharCode(92) + 'n';
+        if (!confirm('Remove "' + (book.title || '') + '" from the shelf?' + nl + '(The original file is kept.)')) return;
+        await Api.removeBook(book.id);
+        Toast.show('Removed');
+      });
+      row.append(label, actions);
+      list.appendChild(row);
+    }
+  }
+  window.SettingsPanels = { appearanceRow, paletteRow, customColorsRow, readingRow, interfaceRow, assistRow, shortcutsRow, statsRow, dataRow, booksRow, refreshBooksPanel, uninstallAndClear };
 })();
