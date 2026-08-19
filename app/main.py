@@ -212,6 +212,8 @@ def main() -> int:
         from .shelf import BookRecord
 
         book = books.register(path)
+        existing = shelf.get(book.id)
+        cover_rel = shelf.extract_cover(book) or (existing.cover_rel if existing else None)
         rec = BookRecord(
             id=book.id,
             path=book.path,
@@ -221,7 +223,7 @@ def main() -> int:
             chapter_count=len(book.chapters),
             file_size=Path(path).stat().st_size,
             file_mtime=file_mtime(path),
-            cover_rel=shelf.extract_cover(book),
+            cover_rel=cover_rel,
         )
         shelf.upsert(rec)
         shelf.save()

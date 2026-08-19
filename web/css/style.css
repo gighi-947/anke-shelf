@@ -563,6 +563,18 @@ html, body {
 .recent-cover-fallback.cover-dice {
   color: var(--muted);
 }
+
+.nga-tag {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-content);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
 .nga-badge,
 .gululu-badge {
   position: absolute;

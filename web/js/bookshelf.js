@@ -216,6 +216,13 @@
         ? (book.author ? book.author + ' · tid ' + book.nga_tid : 'tid ' + book.nga_tid)
         : (book.author || 'Unknown');
 
+      const tagRow = document.createElement('div');
+      if (book.nga_tid) {
+        const tag = document.createElement('span');
+        tag.className = 'nga-tag';
+        tag.textContent = 'NGA';
+        tagRow.appendChild(tag);
+      }
       const pct = book.progress_pct || 0;
       const pctLabel = document.createElement('div');
       pctLabel.className = 'book-progress-pct';
@@ -230,7 +237,7 @@
       progRow.className = 'book-progress-row';
       progRow.appendChild(pctLabel);
       if (pct > 0) progRow.appendChild(track);
-      meta.append(title, author, progRow);
+      meta.append(title, author, tagRow, progRow);
 
       card.append(main, actions, meta);
       card.addEventListener('click', () => App.showReader(book.id));

@@ -177,10 +177,12 @@ def sync_cover_from_epub(shelf, books, book_id: str) -> None:
     try:
         book = books.open(book_id)
         rel = shelf.extract_cover(book)
-        rec = shelf.get(book_id)
-        if rec is not None:
-            rec.cover_rel = rel
-            shelf.save()
+        if rel:
+            rec = shelf.get(book_id)
+            if rec is not None:
+                rec.cover_rel = rel
+                shelf.save()
+        # rel 为空时保留旧封面缓存，避免一次封面获取失败清掉已有封面
     except Exception:
         log.warning("骨碌碌热更新后封面同步失败：%s", book_id, exc_info=True)
 
