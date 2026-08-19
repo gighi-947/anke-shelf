@@ -548,7 +548,7 @@
     cover.className = 'book-row-cover';
     const fb = document.createElement('span');
     fb.className = 'book-row-cover-fallback';
-    if (Number(book.nga_tid) > 0 && !book.cover_rel) {
+    if (Number(book.nga_tid) > 0) {
       fb.classList.add('cover-dice');
       fb.appendChild(Icons.icon('dice', 24));
     } else {

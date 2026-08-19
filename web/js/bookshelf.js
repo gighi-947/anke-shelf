@@ -115,7 +115,7 @@
       cover.className = 'recent-cover';
       const fb = document.createElement('span');
       fb.className = 'recent-cover-fallback';
-      if (book.nga_tid && !book.cover_rel) {
+      if (book.nga_tid) {
         fb.classList.add('cover-dice');
         fb.appendChild(Icons.icon('dice', 20));
       } else {
@@ -144,8 +144,8 @@
       const meta = document.createElement('span');
       meta.className = 'recent-meta';
       const parts = [];
+      if (book.author) parts.push(book.author);
       if (book.nga_tid) parts.push('NGA');
-      else if (book.author) parts.push(book.author);
       if (book.progress_pct > 0) parts.push(Math.round(book.progress_pct * 100) + '%');
       meta.textContent = parts.join(' · ');
 
@@ -169,7 +169,7 @@
 
       const cover = document.createElement('div');
       cover.className = 'book-cover';
-      if (book.nga_tid && !book.cover_rel) {
+      if (book.nga_tid) {
         const dice = document.createElement('span');
         dice.className = 'cover-dice';
         dice.appendChild(Icons.icon('dice', 40));
@@ -247,7 +247,7 @@
       cover.className = 'book-row-cover';
       const fb = document.createElement('div');
       fb.className = 'book-row-cover-fallback';
-      if (book.nga_tid && !book.cover_rel) {
+      if (book.nga_tid) {
         fb.classList.add('cover-dice');
         fb.appendChild(Icons.icon('dice', 24));
       } else {
