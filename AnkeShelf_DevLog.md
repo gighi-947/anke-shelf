@@ -21,7 +21,7 @@
   （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.5.0`（已发布，AnkeShelf-v1.5.0.zip）；
-  Android `android-v1.1.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
+  Android `android-v1.1.0`（已发布，AnkeShelf-v1.1.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 303 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；

@@ -21,7 +21,7 @@
 > 2026-08-20：P5-E2 Android 完成；NGA 楼层/引用/评论样式随主题自适应；
 > NGA 下载深浅色选择移除；默认封面骰子图随主题/色板自适应。
 > 各节“状态”注明进度。
-> 当前版本：Windows v1.4.0，Android android-v1.0.0
+> 当前版本：Windows v1.5.0，Android android-v1.1.0
 > 来源文档（均在工作区外 H 盘）：
 > - `I:\AnkeShelf_Review_Archive\AnkeShelf_Architecture_Improvement_Proposal.md`（架构改进提案）
 > - `I:\AnkeShelf_Review_Archive\review1.md`（外部工程评审）
