@@ -43,7 +43,24 @@
   }
 
   function savePreferences() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.prefs)); } catch (error) { /* optional */ }
+    try {
+      if (window.Api) Api.saveSettings({ gululu_immersive: { ...state.prefs } }).catch(() => {});
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.prefs));
+    } catch (error) { /* optional */ }
+  }
+
+  function syncPreferences() {
+    const saved = App.state.settings && App.state.settings.gululu_immersive;
+    if (!saved) return;
+    const savedVolume = Number(saved.volume);
+    state.prefs = {
+      autoMusic: saved.autoMusic !== false,
+      backgrounds: saved.backgrounds !== false,
+      vfx: saved.vfx !== false,
+      volume: Number.isFinite(savedVolume)
+        ? Math.max(0, Math.min(1, savedVolume)) : DEFAULTS.volume,
+    };
+    applyControls();
   }
 
   function safeHttpsUrl(value) {
@@ -541,6 +558,7 @@
 
   window.GululuImmersive = {
     setBook,
+    syncPreferences,
     onChapterLoaded: bindChapter,
     closePanel,
     togglePanel: (trigger) => togglePanel(undefined, trigger, true),

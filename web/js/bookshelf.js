@@ -123,6 +123,12 @@
       img.addEventListener('error', () => img.remove(), { once: true });
       if (book.cover_url) img.src = book.cover_url;
       cover.appendChild(img);
+      if (book.nga_tid) {
+        const badge = document.createElement('span');
+        badge.className = 'nga-badge';
+        badge.textContent = 'NGA';
+        cover.appendChild(badge);
+      }
       const badge = gululuBadge(book);
       if (badge) cover.appendChild(badge);
 
@@ -299,6 +305,35 @@
           if (window.NgaDownload) NgaDownload.open({ bookId: book.id });
         });
         actions.appendChild(exp);
+      } else if (Number(book.gululu_source_id) > 0) {
+        const upd = document.createElement('button');
+        upd.className = 'export-btn update-btn';
+        upd.title = '检查骨碌碌更新';
+        upd.appendChild(Icons.icon('refresh', 14));
+        upd.addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          try {
+            await Api.gululuStartUpdate(String(book.gululu_source_id), 'online');
+            if (window.NgaDownload) NgaDownload.open({ tab: 'dl-gululu' });
+          } catch (e) {
+            Toast.show('更新失败：' + (e.message || e), true);
+          }
+        });
+        actions.appendChild(upd);
+        const exp = document.createElement('button');
+        exp.className = 'export-btn';
+        exp.title = '导出帖子（含评论 EPUB）';
+        exp.appendChild(Icons.icon('download', 14));
+        exp.addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          try {
+            await Api.gululuStartExport(String(book.gululu_source_id), 'online');
+            if (window.NgaDownload) NgaDownload.open({ tab: 'dl-gululu' });
+          } catch (e) {
+            Toast.show('导出失败：' + (e.message || e), true);
+          }
+        });
+        actions.appendChild(exp);
       }
       const rn = document.createElement('button');
       rn.className = 'rename-btn';
@@ -382,6 +417,21 @@
           if (window.NgaDownload) NgaDownload.open({ bookId: book.id, focusUpdate: true });
         });
         actions.appendChild(upd);
+      } else if (Number(book.gululu_source_id) > 0) {
+        const upd = document.createElement('button');
+        upd.className = 'export-btn update-btn';
+        upd.title = '检查骨碌碌更新';
+        upd.appendChild(Icons.icon('refresh', 14));
+        upd.addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          try {
+            await Api.gululuStartUpdate(String(book.gululu_source_id), 'online');
+            if (window.NgaDownload) NgaDownload.open({ tab: 'dl-gululu' });
+          } catch (e) {
+            Toast.show('更新失败：' + (e.message || e), true);
+          }
+        });
+        actions.appendChild(upd);
       }
       const more = document.createElement('button');
       more.className = 'rename-btn';
@@ -393,7 +443,15 @@
         const menu = actions.querySelector('.book-menu');
         const wasHidden = menu.classList.contains('hidden');
         closeBookMenus();
-        if (wasHidden) menu.classList.remove('hidden');
+        if (wasHidden) {
+          menu.classList.remove('hidden');
+          const rect = more.getBoundingClientRect();
+          const m = menu.getBoundingClientRect();
+          menu.style.position = 'fixed';
+          menu.style.right = 'auto';
+          menu.style.left = Math.max(8, Math.min(window.innerWidth - m.width - 8, rect.right - m.width)) + 'px';
+          menu.style.top = Math.max(8, Math.min(window.innerHeight - m.height - 8, rect.bottom + 4)) + 'px';
+        }
       });
       actions.appendChild(more);
 
@@ -413,6 +471,15 @@
       if (book.nga_tid) {
         addItem('导出帖子（EPUB / Markdown）', async () => {
           if (window.NgaDownload) NgaDownload.open({ bookId: book.id });
+        });
+      } else if (Number(book.gululu_source_id) > 0) {
+        addItem('导出帖子（含评论 EPUB）', async () => {
+          try {
+            await Api.gululuStartExport(String(book.gululu_source_id), 'online');
+            if (window.NgaDownload) NgaDownload.open({ tab: 'dl-gululu' });
+          } catch (e) {
+            Toast.show('导出失败：' + (e.message || e), true);
+          }
         });
       }
       addItem('重命名', async () => {

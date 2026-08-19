@@ -1474,6 +1474,27 @@
 .settings-desc { font-size: 11px; line-height: 1.5; }
 .settings-controls { display: flex; flex-direction: column; gap: 8px; }
 .settings-control-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.sp-book-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--base-100);
+}
+.sp-book-row .settings-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-book-row .settings-control-inline {
+  flex-shrink: 0;
+}
 .settings-control-inline input[type="range"] { width: 200px; accent-color: var(--primary); }
 .settings-shortcuts {
   display: grid;

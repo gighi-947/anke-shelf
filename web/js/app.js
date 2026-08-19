@@ -28,6 +28,9 @@
         } catch (e) {
           Api.logFrontend( 'init:get_settings_failed: ' + (e.message || e)).catch(() => {});
         }
+        if (window.GululuImmersive && GululuImmersive.syncPreferences) {
+          GululuImmersive.syncPreferences();
+        }
         Theme.applySettings(state.settings);
         Theme.applyReaderPrefs(state.settings.font_size, state.settings.line_height);
         this.setBarsPinned(!!state.settings.bars_pinned);
