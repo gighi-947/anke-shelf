@@ -316,12 +316,10 @@ class ServerTestCase(unittest.TestCase):
         )
         out = _rewrite_nga_image_src(html, self.book.id)
         self.assertIn(f'/img/{self.book.id}?u=', out)
-        self.assertNotIn('src="https://img4.nga.178.com', out)
+        # 官方表情图保持直连，不代理
+        self.assertIn('src="https://img4.nga.178.com/ngabbs/post/smile/abc.png"', out)
         self.assertNotIn('src="https://img.nga.cn', out)
         self.assertIn('src="https://example.com/x.png"', out)
-        # 代理 URL 完整保留原始地址
-        encoded = quote("https://img4.nga.178.com/ngabbs/post/smile/abc.png", safe="")
-        self.assertIn(f'/img/{self.book.id}?u={encoded}', out)
 
 
 if __name__ == "__main__":

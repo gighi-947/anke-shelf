@@ -360,9 +360,13 @@
             const t = e.target;
             if (t && t.tagName === 'IMG') {
               const placeholder = document.createElement('span');
-              placeholder.className = 'img-error-placeholder';
+              placeholder.className = t.classList.contains('smile')
+                ? 'smile-fallback'
+                : 'img-error-placeholder';
               placeholder.setAttribute('data-textpos-exclude', '');
-              placeholder.textContent = '图片加载失败';
+              placeholder.textContent = t.classList.contains('smile')
+                ? (t.alt ? '(' + t.alt + ')' : '[表情]')
+                : '图片加载失败';
               t.replaceWith(placeholder);
               onImgChange();
             }

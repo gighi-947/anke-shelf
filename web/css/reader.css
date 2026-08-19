@@ -2193,6 +2193,15 @@ mark.hl-mark.hl-flash { animation: hl-flash 1.2s ease-out; }
   white-space: nowrap;
 }
 /* NGA 图片/表情加载失败占位卡（文案 data-textpos-exclude，不进坐标） */
+.smile-fallback {
+  display: inline-block;
+  padding: 0 4px;
+  color: var(--reader-fg, #888);
+  font-size: 13px;
+  line-height: 1.4;
+  vertical-align: middle;
+  white-space: nowrap;
+}
 .img-error-placeholder {
   display: inline-block;
   min-width: 96px;

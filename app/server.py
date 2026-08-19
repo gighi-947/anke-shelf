@@ -184,6 +184,9 @@ def _rewrite_nga_image_src(html: str, book_id: str) -> str:
         attr, quote, url = m.group(1), m.group(2), m.group(3)
         if not _is_nga_image_url(url):
             return m.group(0)
+        # 官方表情图走直连；若失败由前端降级为文字表情。
+        if "/ngabbs/post/smile/" in url:
+            return m.group(0)
         proxy = f"/img/{book_id}?u={urllib.parse.quote(url, safe='')}"
         return f"{attr}={quote}{proxy}{quote}"
     return _IMG_ATTR_RE.sub(repl, html)
