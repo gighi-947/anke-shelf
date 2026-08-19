@@ -8,12 +8,12 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-19）
+## 1. 当前状态（2026-08-20）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
   沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入；
   P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统、
-  P5-E1 Cookie 粘贴解析、P5-E2 Android 应用内登录
+  P5-E1 Cookie 粘贴解析、P5-E2 Android 应用内登录、NGA 主题自适应
   （含 UI 图标规范核查）；多轮架构收敛已完成：
   EventBus→显式回调、API 错误统一到 HTTP/ApiError、reader-lite 状态机
   Step 0–4、TaskManager 统一 NGA/Gululu/Export；
@@ -22,7 +22,7 @@
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.4.0`（已发布，AnkeShelf-v1.4.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
-- 测试基线（Windows / JS / Android JVM 于 2026-08-19 实跑复核）：
+- 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 303 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、

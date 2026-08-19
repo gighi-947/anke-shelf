@@ -1,6 +1,6 @@
 # AnkeShelf 架构整合路线图（下阶段任务参考）
 
-> 文档日期：2026-08-12（2026-08-19 状态核对）
+> 文档日期：2026-08-12（2026-08-20 状态核对）
 > 分析基线：`main` / `1ea4c95`（分析时点）；2026-08-13 核对：HEAD 已推进至
 > `4810d0c`（docs-only 提交）；2026-08-14 再核对：HEAD 已推进至 `c8f90cf`，
 > P0 / P1 已按本路线图落地；随后推进至 `edaf442`（依赖锁定，另含 ADR/治理文档），
@@ -18,6 +18,8 @@
 > 2026-08-19：P5-B 裂图修复与 P5-D 封面系统完成，并完成 UI 图标规范核查。
 > 2026-08-19：多轮架构收敛完成（EventBus→回调、ApiError 统一、TaskManager 统一、
 > reader-lite 状态机 Step 0–4、MOCKS 移除、SettingsPatch 收敛、数据层日志化）。
+> 2026-08-20：P5-E2 Android 完成；NGA 楼层/引用/评论样式随主题自适应；
+> NGA 下载深浅色选择移除；默认封面骰子图随主题/色板自适应。
 > 各节“状态”注明进度。
 > 当前版本：Windows v1.4.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
@@ -65,7 +67,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 303 项（3.14：4 跳；bundled 3.12：全量通过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 55 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37377 字节）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
-| Android JVM 单测 | 128 过 / 1 跳（2026-08-19 实跑复核） |
+| Android JVM 单测 | 128 过 / 1 跳（2026-08-20 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
@@ -76,23 +78,23 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 文件 | 行数 | 关注点 |
 | --- | --- | --- |
-| `android/.../data/Html5Entities.kt` | 2129 | 机械生成表，正常 |
-| `android/.../ui/reader/WebViewChapterView.kt` | 622 | 桥与宿主；已审查并补充失败日志 |
-| `android/.../ui/shelf/BookshelfScreen.kt` | 604 | 书架页，未拆分 |
-| `android/.../data/NativeBook.kt` | 579 | 原生书数据层 |
-| `android/.../ui/settings/SettingsScreen.kt` | 536 | 已按 Panel 拆分 |
-| `android/.../ui/search/SearchScreen.kt` | 547 | 搜索页，未拆分 |
-| `android/.../data/Epub.kt` | 526 | EPUB 数据层 |
-| `android/.../ui/reader/native/NativeReaderScreen.kt` | 455 | 外壳已拆 Chrome |
-| `android/.../ui/download/DownloadScreen.kt` | 334 | 已拆分面板 |
-| `android/.../assets/reader/reader-lite.js` | 994 | 现役渲染内核（parts 模块化；状态机 Step 0–4 已收敛） |
-| `web/js/reader.js` | 708 | 核心编排；已移除必然存在模块的防御包装 |
-| `web/js/nga_download.js` | 562 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
-| `app/gululu_service.py` | 456 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |
-| `app/gululu_update.py` | 364 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
-| `app/nga_service.py` | 629 | 下载/更新/清理语义集中；已迁入 TaskManager |
-| `web/js/settings.js` | 163 | 已拆 settings-ui / settings-panels |
-| `web/css/reader.css` | 2043 | 样式，暂不处理 |
+| `android/.../data/Html5Entities.kt` | 2130 | 机械生成表，正常 |
+| `android/.../ui/reader/WebViewChapterView.kt` | 650 | 桥与宿主；已审查并补充失败日志 |
+| `android/.../ui/shelf/BookshelfScreen.kt` | 629 | 书架页，未拆分 |
+| `android/.../data/NativeBook.kt` | 636 | 原生书数据层 |
+| `android/.../ui/settings/SettingsScreen.kt` | 564 | 已按 Panel 拆分 |
+| `android/.../ui/search/SearchScreen.kt` | 565 | 搜索页，未拆分 |
+| `android/.../data/Epub.kt` | 571 | EPUB 数据层 |
+| `android/.../ui/reader/native/NativeReaderScreen.kt` | 476 | 外壳已拆 Chrome |
+| `android/.../ui/download/DownloadScreen.kt` | 349 | 已拆分面板 |
+| `android/.../assets/reader/reader-lite.js` | 1055 | 现役渲染内核（parts 模块化；状态机 Step 0–4 已收敛） |
+| `web/js/reader.js` | 762 | 核心编排；已移除必然存在模块的防御包装 |
+| `web/js/nga_download.js` | 615 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
+| `app/gululu_service.py` | 488 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |
+| `app/gululu_update.py` | 429 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
+| `app/nga_service.py` | 701 | 下载/更新/清理语义集中；已迁入 TaskManager |
+| `web/js/settings.js` | 184 | 已拆 settings-ui / settings-panels |
+| `web/css/reader.css` | 2219 | 样式，暂不处理 |
 
 ### 2.3 已确认的架构债
 
