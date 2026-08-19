@@ -118,6 +118,29 @@ class NgaConfig(private val file: File) {
     }
 }
 
+/** 从完整 Cookie 文本中解析出的 NGA 凭据片段。 */
+data class NgaCookieParts(
+    val uid: String = "",
+    val cid: String = "",
+)
+
+/** 从任意文本/完整 Cookie 头中提取 ngaPassportUid / ngaPassportCid。 */
+fun parseNgaCookieText(text: String): NgaCookieParts {
+    val uid = Regex("""ngaPassportUid\s*=\s*["']?([^;"'\s]+)""", RegexOption.IGNORE_CASE)
+        .find(text)
+        ?.groupValues
+        ?.getOrNull(1)
+        .orEmpty()
+        .trim()
+    val cid = Regex("""ngaPassportCid\s*=\s*["']?([^;"'\s]+)""", RegexOption.IGNORE_CASE)
+        .find(text)
+        ?.groupValues
+        ?.getOrNull(1)
+        .orEmpty()
+        .trim()
+    return NgaCookieParts(uid = uid, cid = cid)
+}
+
 data class NgaConfigPatch(
     val uid: String? = null,
     val cid: String? = null,

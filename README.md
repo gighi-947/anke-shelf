@@ -198,8 +198,10 @@ gradlew.bat assembleRelease      :: 签名发布包（需本地 android/keystore
 
 1. 浏览器打开 <https://bbs.nga.cn> 并登录；
 2. `F12` →「应用程序 / 存储」→ Cookies → `https://bbs.nga.cn`；
-3. 复制 `ngaPassportUid`（数字 ID）与 `ngaPassportCid`（会话凭证）；
-4. 安卓在「下载 → 登录配置」、Windows 在「NGA 下载 → 配置」中粘贴保存。
+3. 复制 `ngaPassportUid`（数字 ID）与 `ngaPassportCid`（会话凭证），
+   也可以直接整段复制 Cookie 字符串；
+4. 安卓在「下载 → 登录配置」、Windows 在「NGA 下载 → 配置」中粘贴保存；
+   粘贴完整 Cookie 时会自动解析并填入 uid/cid 两栏。
 
 凭据只保存在本机（安卓为应用私有目录、Windows 为 `%APPDATA%\AnkeShelf\`），
 不会上传到任何服务器，仓库与发行包均不含真实凭据；Cookie 过期时按上述步骤

@@ -159,11 +159,25 @@
   function buildConfigSection() {
     const cfgBox = document.createElement('div');
     cfgBox.className = 'settings-controls';
+    const uidInput = input('nga-cfg-uid', '浏览器 Cookie 中的 ngaPassportUid');
+    const cidInput = input('nga-cfg-cid', '浏览器 Cookie 中的 ngaPassportCid');
     cfgBox.append(
-      field('ngaPassportUid', input('nga-cfg-uid', '浏览器 Cookie 中的 ngaPassportUid')),
-      field('ngaPassportCid', input('nga-cfg-cid', '浏览器 Cookie 中的 ngaPassportCid')),
+      field('ngaPassportUid', uidInput),
+      field('ngaPassportCid', cidInput),
       field('User-Agent', input('nga-cfg-ua', '浏览器 UA（已默认填入）')),
     );
+    const raw = document.createElement('textarea');
+    raw.id = 'nga-cfg-cookie-raw';
+    raw.className = 'nga-cookie-raw';
+    raw.placeholder = '可整段粘贴浏览器 Cookie 或包含 ngaPassportUid / ngaPassportCid 的文本，自动提取填入上方两栏';
+    raw.autocomplete = 'off';
+    raw.spellcheck = false;
+    raw.addEventListener('input', () => {
+      const parsed = window.parseNgaCookieText(raw.value);
+      if (parsed.uid) uidInput.value = parsed.uid;
+      if (parsed.cid) cidInput.value = parsed.cid;
+    });
+    cfgBox.appendChild(field('完整 Cookie（自动解析）', raw));
     const hint = document.createElement('p');
     hint.className = 'muted settings-hint';
     hint.textContent = 'Cookie 仅保存在本机数据目录，用于访问需要登录可见的帖子；发行版不包含任何个人登录配置。';

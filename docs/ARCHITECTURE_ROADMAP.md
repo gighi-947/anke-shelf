@@ -61,11 +61,11 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（`d0e184e`、`91b6206`、P5-B、P5-D）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）（HEAD 以 `git log` 为准） |
+| 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（`d0e184e`、`91b6206`、P5-B、P5-D、P5-E1）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 303 项（3.14：4 跳；bundled 3.12：全量通过） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 55 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37377 字节）+ 启动失败诊断 + `reader-session` OK |
-| Android JVM 单测 | 123 过 / 1 跳（2026-08-19 实跑复核） |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 55 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37377 字节）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
+| Android JVM 单测 | 128 过 / 1 跳（2026-08-19 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
@@ -396,7 +396,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
   reader-lite parts 重打包。
 
 #### P5-C：滚动到底自动翻章（连续阅读）
-> 状态（2026-08-19）：待办，尚未开工。
+> 状态（2026-08-19）：暂不实施（按用户要求）。
 
 - 现状：双端滚动/分页到章尾即停。改动：新设置 `auto_chapter_turn`（默认
   关），滚动模式距底 ≤48px 且停留 ≥800ms 触发 `nextChapter`（沿用现有
@@ -424,12 +424,13 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - 验证：`test_gululu_epub` 封面用例、Android `ShelfTest` 封面更新用例。
 
 #### P5-E：NGA 凭据傻瓜化（分级）
-> 状态（2026-08-19）：待办；E1 低成本优先，E2 随 Android 版本排期。
+> 状态（2026-08-19）：E1 已完成；E2 随 Android 版本排期。
 
-- E1（低成本，随 P5-A 并行）：粘贴完整 Cookie 字符串自动解析——用户整段
+- E1（低成本）✅ 已完成（2026-08-19）：粘贴完整 Cookie 字符串自动解析——用户整段
   复制 F12 Cookie（或含 uid/cid 的任意文本），粘贴后自动提取
   `ngaPassportUid`/`ngaPassportCid` 填入两栏。双端。
-  文件：`web/js/nga_download.js`、Android 登录配置面板。验证：解析函数单测。
+  文件：`web/js/nga-cookie.js`、`nga-download-panels.js`、Android `NgaConfig.kt`/
+  `DownloadPanels.kt`。验证：`tests/js/nga-cookie.test.js`、`NgaCookieParserTest`。
 - E2（中成本，Android 先行）：应用内 WebView 打开 NGA 登录页，登录后从
   CookieManager 提取 uid/cid 一键保存。安全边界：仅登录用途、URI 固定
   bbs.nga.cn、拿到凭据即关窗，不加载任意页面；Windows 可用 pywebview
@@ -437,7 +438,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - 成功标准：小白不接触 F12 完成配置。
 
 #### P5-F：NGA 楼中楼评论（最大件，最后做）
-> 状态（2026-08-19）：待办，最大件，最后做。
+> 状态（2026-08-19）：暂不实施（按用户要求）；最大件，最后做。
 
 - 现状（已核实）：数据管道全通——`Floor.comments` 递归结构、
   `analyze_floors` 已解析页响应自带 comments、floors.json/native_book
@@ -469,10 +470,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
    （严格红→绿→回归）。
 5. **之后（随变化点）**：P3 拆分与 TaskManager 试点、存储恢复、开源治理；
    P4 等网络与真实需求触发。
-6. **当前批次（P5 用户反馈，2026-08-18 起）**：A 快赢、B 裂图修复、D 封面
-  已完成；剩余顺序 C 自动翻章 → E1 Cookie 粘贴 → F 楼中楼；
-  E2 WebView 登录随 Android 版本排期。进度类改动（C/F）必跑
-  "滚动/翻页 → 退出 → 重进"回归。
+6. **当前批次（P5 用户反馈，2026-08-18 起）**：A/B/D/E1 已完成；
+   C 自动翻章与 F 楼中楼暂不实施（按用户要求）；
+   E2 WebView 登录随 Android 版本排期。进度类改动（C/F）若实施必跑
+   "滚动/翻页 → 退出 → 重进"回归。
 
 ---
 

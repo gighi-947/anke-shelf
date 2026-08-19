@@ -29,8 +29,8 @@
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37377 字节）、
-    `node tests/js/reader-session.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 123 过 / 1 跳；DisciplineTest 在岗；
+    `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
+  - Android JVM：`gradlew testDebugUnitTest` = 128 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
   - 骨碌碌正式冒烟 `formal_ui_smoke.js`（桌面 + 430px，含骰点菜单/段落评论/总览/
@@ -60,6 +60,22 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 win/android：P5-E1 Cookie 粘贴自动解析
+
+- 背景：P5-E1 目标是让小白不接触 F12 也能配置 NGA；P5-C/F 按用户要求暂不实施。
+- Windows/Web：
+  - 新增 `web/js/nga-cookie.js` 纯函数 `parseNgaCookieText`，从任意文本/完整 Cookie
+    头提取 `ngaPassportUid` / `ngaPassportCid`（大小写不敏感、支持引号值）；
+  - NGA 配置页新增“完整 Cookie（自动解析）”文本框，粘贴时自动填入 uid/cid 两栏；
+  - `tests/js/nga-cookie.test.js` 覆盖完整头/带说明文本/大小写/引号/缺失；
+  - `windows.yml` 增加该 JS 测试。
+- Android：
+  - `NgaConfig.kt` 新增同语义 `parseNgaCookieText` 纯函数 + `NgaCookieParts`；
+  - `ConfigPanel` 新增“完整 Cookie（自动解析）”多行输入，输入时自动填充 uid/cid；
+  - 新增 `NgaCookieParserTest` 5 个用例。
+- 验证：JS 语法/契约/nga-cookie 测试全绿；Android `testDebugUnitTest --rerun-tasks`
+  BUILD SUCCESSFUL（128 过 / 1 跳）。
 
 ### 2026-08-19 docs/android：P5 状态文档同步 + 管理菜单间距微调
 
@@ -1768,11 +1784,10 @@
 **真实待办（按优先级）：**
 
 - P5（当前批次，2026-08-18 用户 issue）：A 快赢、B NGA 裂图修复、
-  D 封面系统已完成；剩余：
-  - C 滚动到底自动翻章（设置 `auto_chapter_turn`，双端；进度类必跑回归）
-  - E1 粘贴完整 Cookie 自动解析 uid/cid（双端；低成本）
+  D 封面系统、E1 Cookie 粘贴解析已完成；剩余/暂缓：
   - E2 应用内 WebView 登录 NGA 提取凭据（Android 先行，中成本）
-  - F NGA 楼中楼评论（最大件，最后做；涉及 meta/渲染/text_offset 红线）
+  - C 滚动到底自动翻章（暂不实施，按用户要求；进度类必跑回归）
+  - F NGA 楼中楼评论（暂不实施，按用户要求；最大件）
   子项明细见 ROADMAP §3 P5。
 - P3：Android 数据完整性校验入口——Android 已有 `isolateCorrupt` 但缺
   `verify_data_integrity` 等价 API 与设置页入口（Windows 已有完整实现可参照）。

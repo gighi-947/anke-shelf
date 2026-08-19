@@ -58,10 +58,11 @@ jobs:
           }
           if ($failed) { exit 1 }
 
-      - name: Contract JS tests (textpos + reader-session)
+      - name: Contract JS tests (textpos + reader-session + nga-cookie)
         run: |
           node contracts/tests/textpos.test.js
           node tests/js/reader-session.test.js
+          node tests/js/nga-cookie.test.js
 
       - name: Unit tests
         run: python -m unittest discover tests

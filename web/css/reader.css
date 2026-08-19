@@ -1637,6 +1637,23 @@
   font-size: 13px;
   color: var(--base-content);
 }
+.download-view textarea.nga-cookie-raw {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--base-100);
+  color: var(--base-content);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.download-view textarea.nga-cookie-raw:focus {
+  outline: none;
+  border-color: var(--primary);
+}
 .vm-stats .vm-value { min-width: 84px; text-align: left; }
 
 /* ---- 独立全文检索页 ---- */

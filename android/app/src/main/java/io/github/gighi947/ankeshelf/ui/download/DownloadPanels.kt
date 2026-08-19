@@ -85,6 +85,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.NgaConfigPatch
+import io.github.gighi947.ankeshelf.data.parseNgaCookieText
 import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.AppContainer
@@ -120,6 +121,7 @@ internal fun ConfigPanel(container: AppContainer) {
     var uid by remember { mutableStateOf(initial.uid) }
     var cid by remember { mutableStateOf(initial.cid) }
     var ua by remember { mutableStateOf(initial.ua) }
+    var rawCookie by remember { mutableStateOf("") }
     var configured by remember { mutableStateOf(initial.configured) }
 
     DownloadList {
@@ -147,6 +149,23 @@ internal fun ConfigPanel(container: AppContainer) {
                 onValueChange = { ua = it },
                 label = { Text("User-Agent（留空用默认）") },
                 singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = AnkeSpacing.sm),
+            )
+            OutlinedTextField(
+                value = rawCookie,
+                onValueChange = { text ->
+                    rawCookie = text
+                    val parsed = parseNgaCookieText(text)
+                    if (parsed.uid.isNotEmpty()) uid = parsed.uid
+                    if (parsed.cid.isNotEmpty()) cid = parsed.cid
+                },
+                label = { Text("完整 Cookie（自动解析）") },
+                placeholder = { Text("可整段粘贴浏览器 Cookie，自动填入上方两栏") },
+                minLines = 2,
+                maxLines = 4,
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
                     .fillMaxWidth()
