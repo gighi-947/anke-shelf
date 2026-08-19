@@ -155,8 +155,7 @@
         restoreScrollOffset(offset, state.restoreRatio);
         // 滚动模式：字体就绪后的最终位置才是真位置，重采样并落盘，
         // 避免“切换模式后滚动段落记录错位”。
-        var so = 0;
-        try { so = currentOffsetScroll(); } catch (e) { /* ignore */ }
+        var so = currentOffsetScrollSafe();
         if (so > 0) {
           log('[settle-save] so=' + so);
           state.scrollAnchor = so;

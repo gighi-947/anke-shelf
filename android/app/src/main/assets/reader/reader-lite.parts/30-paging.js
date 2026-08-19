@@ -200,6 +200,10 @@
     try { return currentOffset(); } catch (e) { return 0; }
   }
 
+  function currentOffsetScrollSafe() {
+    try { return currentOffsetScroll(); } catch (e) { return 0; }
+  }
+
   function sampleOffsetY() {
     return Math.max(8, Math.round(viewH() * 0.45));
   }

@@ -27,7 +27,7 @@
     `node contracts/tests/api-contract.test.js`（52 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37311 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37377 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
@@ -59,6 +59,14 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 android：reader-lite 收敛 currentOffsetScroll 安全兜底
+
+- 背景：`requestSettle` 内仍有一处 `try { currentOffsetScroll() } catch { }`，
+  与已有的 `currentOffsetSafe` 模式不一致。
+- 改动：新增 `currentOffsetScrollSafe()`，替换该处重复 try/catch；
+  rebundle 为 6 parts / 37377 字节。
+- 验证：JS 守卫全绿；Android `gradlew testDebugUnitTest --rerun-tasks` BUILD SUCCESSFUL。
 
 ### 2026-08-19 android：SettingsPatch 改用 JSON 合并，消除 30 字段 copy 样板
 
