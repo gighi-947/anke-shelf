@@ -11,7 +11,7 @@ Windows 另支持把骨碌碌公开书籍转换为标准 EPUB。两端共享同�
 
 | 平台 | 当前版本 | 技术栈 | 发布标签 | 安装包 |
 | --- | --- | --- | --- | --- |
-| Windows 桌面端 | **v1.5.0** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
+| Windows 桌面端 | **v1.5.1** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
 | Android 手机端 | **v1.1.0** | Kotlin + Jetpack Compose（正文用安卓专用 WebView 渲染内核） | `android-vX.Y.Z` | `AnkeShelf-vX.Y.Z-android.apk` |
 
 > **版本线文档权威**：本表是版本线的唯一文档事实源；代码事实源为 Windows `app/__init__.py`、Android `android/app/build.gradle.kts`。其他文档（DevLog / MAINTENANCE_GUIDE / ROADMAP 等）中的版本线以本表为准。
@@ -36,7 +36,7 @@ Windows 另支持把骨碌碌公开书籍转换为标准 EPUB。两端共享同�
 
 ## ✨ 功能特性
 
-### Windows 桌面端（v1.5.0）
+### Windows 桌面端（v1.5.1）
 
 - **骨碌碌 EPUB 导入**：顶栏「下载安科」→「骨碌碌」粘贴书籍 ID / 链接，
   后台分批获取楼层、按站点目录分章并自动加入书架；支持取消、进度反馈和完成后打开，
@@ -125,7 +125,7 @@ NGA 下载：登录配置、下载 / 更新、已下载管理
 ![阅读页·浅色](docs/screenshots/android/android-reader-light.jpg)
 阅读页（浅色）：掷骰结果与插图原样还原
 
-### Windows（v1.5.0）
+### Windows（v1.5.1）
 
 ![书架主页](docs/screenshots/bookshelf.png)
 书架：网格视图、最近阅读与安科下载入口
@@ -253,7 +253,7 @@ gradlew.bat compileDebugAndroidTestKotlin :: 仪器测试编译
 
 ## 📦 版本与发布
 
-- **版本线分离**：Windows 用 `vX.Y.Z`（当前 v1.5.0）；Android 用
+- **版本线分离**：Windows 用 `vX.Y.Z`（当前 v1.5.1）；Android 用
   `android-vX.Y.Z`（当前 v1.1.0），唯一版本定义在
   `android/app/build.gradle.kts`。
 - **标签与资产**：`vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；`android-vX.Y.Z` +

@@ -29,9 +29,6 @@ import threading
 import urllib.error
 import urllib.parse
 import urllib.request
-import shutil
-import subprocess
-import tempfile
 from pathlib import Path
 from typing import Optional
 
@@ -213,45 +210,23 @@ def _rewrite_nga_image_src(html: str, book_id: str) -> str:
 def _fetch_url(url: str, headers: dict) -> tuple[bytes, str]:
     """代理拉取图片；返回 (字节, mime)。供测试替换。
 
-    优先使用系统 curl：NGA 图床的 TencentEdgeOne 会对 Python urllib 的
-    TLS 指纹返回 567 拦截页，而 curl 可正常拿到图片。curl 不可用时回退 urllib。
+    优先使用 curl_cffi 的浏览器 TLS 指纹（Chrome），避免 Python urllib 被
+    NGA 图床 TencentEdgeOne 返回 567；curl_cffi 不可用时回退 urllib。
+    不再调用系统 curl 子进程，避免窗口版发行包中弹出控制台窗口。
     """
-    curl = shutil.which("curl")
-    if curl:
-        tmp = tempfile.NamedTemporaryFile(delete=False)
-        tmp_path = tmp.name
-        tmp.close()
-        cmd = [
-            curl,
-            "-sS",
-            "--fail",
-            "--max-time",
-            "15",
-            "-A",
-            headers.get("User-Agent", ""),
-            "-e",
-            headers.get("Referer", ""),
-            "-H",
-            f"Cookie: {headers.get('Cookie', '')}",
-            "-o",
-            tmp_path,
-            "-w",
-            "%{content_type}",
-            url,
-        ]
+    try:
+        from curl_cffi import requests as curl_requests
+    except Exception:
+        curl_requests = None
+
+    if curl_requests is not None:
         try:
-            proc = subprocess.run(cmd, capture_output=True, timeout=20)
-            if proc.returncode == 0:
-                data = Path(tmp_path).read_bytes()
-                mime = proc.stdout.decode("ascii", "replace").strip()
-                return data, mime or "application/octet-stream"
-        except (OSError, subprocess.SubprocessError):
+            resp = curl_requests.get(url, headers=headers, impersonate="chrome", timeout=15)
+            if resp.status_code == 200:
+                mime = resp.headers.get("Content-Type") or "image/jpeg"
+                return resp.content, mime
+        except Exception:
             pass
-        finally:
-            try:
-                Path(tmp_path).unlink(missing_ok=True)
-            except OSError:
-                pass
 
     req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=15) as resp:
