@@ -11,7 +11,7 @@
 ## 1. 当前状态（2026-08-20）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
-  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入；
+  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.0；五批接手风险修复已合入；
   P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统、
   P5-E1 Cookie 粘贴解析、P5-E2 Android 应用内登录、NGA 主题自适应
   （含 UI 图标规范核查）；多轮架构收敛已完成：
@@ -20,8 +20,8 @@
   文档漂移治理已强化
   （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
   精确提交与远端状态以 `git log` / `git status` 为准。
-- 版本线：Windows `v1.4.0`（已发布，AnkeShelf-v1.4.0.zip）；
-  Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
+- 版本线：Windows `v1.5.0`（已发布，AnkeShelf-v1.5.0.zip）；
+  Android `android-v1.1.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 303 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
@@ -62,6 +62,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 release：Windows v1.5.0 / Android v1.1.0
+
+- 版本：Windows `v1.5.0`；Android `android-v1.1.0`（versionCode 2）。
+- 产物：`dist/AnkeShelf-v1.5.0.zip`、`dist/AnkeShelf-v1.1.0-android.apk`。
+- 内容：P5-D 封面系统、P5-E1/E2 NGA 凭据傻瓜化、NGA 主题自适应、
+  默认封面随主题/色板自适应、NGA 官方表情图直连与文字降级、
+  骨碌碌封面本地缓存与热更新同步、书籍管理页、更多管理二级菜单等。
+- 验证：Windows 303 项、JS 契约全绿、Android JVM 128/1、Android assembleRelease 成功。
 ### 2026-08-20 win/android：移除 NGA 下载深/浅色选择
 
 - 背景：主题已自适应，NGA 下载不再需要深/浅色选项。

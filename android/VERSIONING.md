@@ -5,9 +5,9 @@
 
 ## 1. 版本线
 
-- 安卓独立版本线：`0.1.0 → 0.2.0 → 0.3.0 → 1.0.0`。
+- 安卓独立版本线：`0.1.0 → 0.2.0 → 0.3.0 → 1.0.0 → 1.1.0`。
 - 唯一版本定义位置：`android/app/build.gradle.kts`（`versionName` / `versionCode`）。
-  `versionCode` 每次发布递增 1（当前：versionCode=1，versionName=1.0.0）。
+  `versionCode` 每次发布递增 1（当前：versionCode=2，versionName=1.1.0）。
 - 里程碑与当前进度（2026-08-08）：
 
 | 版本 | 内容 | 状态 |
@@ -17,8 +17,8 @@
 | v0.3.0 | M4 UI/搜索/标注/统计/图片/字体 | 已完成（未发布） |
 | v1.0.0 | 功能对齐 Windows v1.2.0（M4 验收通过） | **已发布（android-v1.0.0，2026-08-09）** |
 
-> 因 v0.1.0–v0.3.0 均未发布，首个 Release 建议直接 `android-v1.0.0`
-> （versionCode=1，versionName=1.0.0），避免无意义的占位版本。
+> 因 v0.1.0–v0.3.0 均未发布，首个 Release 已发布 `android-v1.0.0`；本次发布 `android-v1.1.0`
+> （versionCode=2，versionName=1.1.0），避免无意义的占位版本。
 
 ## 2. 标签与 Release 命名
 
@@ -137,3 +137,4 @@
 | 版本 | 标签 | 日期 | 资产 | SHA256 |
 | --- | --- | --- | --- | --- |
 | v1.0.0 | `android-v1.0.0` | 2026-08-09 | `AnkeShelf-v1.0.0-android.apk`（16,538,184 字节） | `5CD70CA083A0C11F6465302AFEC0B62EC453EA582AB355FB7B62779D7D52F4D0`（2026-08-10 正式 Logo 最终包） |
+| v1.1.0 | `android-v1.1.0` | 2026-08-20 | `AnkeShelf-v1.1.0-android.apk`（16,719,933 字节） | `BF58AD7215AAFA8416736D371FA20FDED76D8CF76879B548785227243C285B7E` |
