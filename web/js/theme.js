@@ -80,7 +80,8 @@
   function effectiveCoverColors(settings) {
     const s = settings || {};
     const resolved = resolveTheme(s);
-    const palette = PALETTES.find((p) => p.id === resolved) || PALETTES[0];
+    const paletteId = resolved === 'dark' ? 'night' : resolved === 'light' ? 'default-light' : resolved;
+    const palette = PALETTES.find((p) => p.id === paletteId) || PALETTES[0];
     return {
       bg: s.custom_bg || palette.bg,
       fg: s.custom_text || palette.text,
