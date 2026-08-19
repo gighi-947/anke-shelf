@@ -115,7 +115,7 @@
       cover.className = 'recent-cover';
       const fb = document.createElement('span');
       fb.className = 'recent-cover-fallback';
-      if (book.nga_tid) {
+      if (book.nga_tid || Number(book.gululu_source_id) > 0) {
         fb.classList.add('cover-dice');
         fb.appendChild(Icons.icon('dice', 20));
       } else {
@@ -169,7 +169,7 @@
 
       const cover = document.createElement('div');
       cover.className = 'book-cover';
-      if (book.nga_tid) {
+      if (book.nga_tid || Number(book.gululu_source_id) > 0) {
         const dice = document.createElement('span');
         dice.className = 'cover-dice';
         dice.appendChild(Icons.icon('dice', 40));
@@ -247,7 +247,7 @@
       cover.className = 'book-row-cover';
       const fb = document.createElement('div');
       fb.className = 'book-row-cover-fallback';
-      if (book.nga_tid) {
+      if (book.nga_tid || Number(book.gululu_source_id) > 0) {
         fb.classList.add('cover-dice');
         fb.appendChild(Icons.icon('dice', 24));
       } else {

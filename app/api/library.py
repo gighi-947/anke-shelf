@@ -102,11 +102,22 @@ def set_cover(ctx: ApiContext, book_id: str) -> dict:
 
 
 def reset_cover(ctx: ApiContext, book_id: str) -> dict:
-    """删除自定义封面，恢复为无封面。"""
+    """删除自定义封面；若书籍内嵌有原始封面则重新提取，否则保持无封面（前端回退骰子）。"""
     rec = ctx.shelf.get(book_id)
     if rec is None:
         raise ApiError(ErrorCode.BOOK_NOT_FOUND, "书籍不存在")
     ctx.shelf.reset_cover(book_id)
+    restored = None
+    try:
+        book = ctx.books.open(book_id)
+        restored = ctx.shelf.extract_cover(book)
+    except Exception:
+        log.warning("恢复默认封面时重新提取封面失败：%s", book_id, exc_info=True)
+    if restored:
+        rec = ctx.shelf.get(book_id)
+        if rec is not None:
+            rec.cover_rel = restored
+            ctx.shelf.save()
     return record_to_dict(ctx.shelf.get(book_id) or rec)
 
 
