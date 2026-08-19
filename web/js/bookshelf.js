@@ -115,7 +115,12 @@
       cover.className = 'recent-cover';
       const fb = document.createElement('span');
       fb.className = 'recent-cover-fallback';
-      fb.textContent = displayTitle(book.title).slice(0, 1);
+      if (book.nga_tid && !book.cover_url) {
+        fb.classList.add('cover-dice');
+        fb.appendChild(Icons.icon('dice', 20));
+      } else {
+        fb.textContent = displayTitle(book.title).slice(0, 1);
+      }
       cover.appendChild(fb);
       const img = new Image();
       img.alt = displayTitle(book.title);
@@ -164,15 +169,22 @@
 
       const cover = document.createElement('div');
       cover.className = 'book-cover';
-      const ft = document.createElement('div');
-      ft.className = 'cover-fallback-title';
-      ft.textContent = displayTitle(book.title);
-      const fa = document.createElement('div');
-      fa.className = 'cover-fallback-author';
-      fa.textContent = book.nga_tid
-        ? (book.author || '') + ' · tid ' + book.nga_tid
-        : (book.author || 'Unknown');
-      cover.append(ft, fa);
+      if (book.nga_tid && !book.cover_url) {
+        const dice = document.createElement('span');
+        dice.className = 'cover-dice';
+        dice.appendChild(Icons.icon('dice', 40));
+        cover.appendChild(dice);
+      } else {
+        const ft = document.createElement('div');
+        ft.className = 'cover-fallback-title';
+        ft.textContent = displayTitle(book.title);
+        const fa = document.createElement('div');
+        fa.className = 'cover-fallback-author';
+        fa.textContent = book.nga_tid
+          ? (book.author || '') + ' · tid ' + book.nga_tid
+          : (book.author || 'Unknown');
+        cover.append(ft, fa);
+      }
 
       const img = new Image();
       img.alt = displayTitle(book.title);
@@ -235,7 +247,12 @@
       cover.className = 'book-row-cover';
       const fb = document.createElement('div');
       fb.className = 'book-row-cover-fallback';
-      fb.textContent = displayTitle(book.title).slice(0, 2);
+      if (book.nga_tid && !book.cover_url) {
+        fb.classList.add('cover-dice');
+        fb.appendChild(Icons.icon('dice', 24));
+      } else {
+        fb.textContent = displayTitle(book.title).slice(0, 2);
+      }
       const img = new Image();
       img.alt = displayTitle(book.title);
       img.loading = 'lazy';
@@ -444,13 +461,17 @@
         const wasHidden = menu.classList.contains('hidden');
         closeBookMenus();
         if (wasHidden) {
+          menu.style.position = 'fixed';
+          menu.style.right = 'auto';
+          menu.style.left = '0px';
+          menu.style.top = '0px';
+          menu.style.visibility = 'hidden';
           menu.classList.remove('hidden');
           const rect = more.getBoundingClientRect();
           const m = menu.getBoundingClientRect();
-          menu.style.position = 'fixed';
-          menu.style.right = 'auto';
           menu.style.left = Math.max(8, Math.min(window.innerWidth - m.width - 8, rect.right - m.width)) + 'px';
           menu.style.top = Math.max(8, Math.min(window.innerHeight - m.height - 8, rect.bottom + 4)) + 'px';
+          menu.style.visibility = 'visible';
         }
       });
       actions.appendChild(more);

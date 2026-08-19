@@ -548,6 +548,21 @@ html, body {
   overflow: hidden;
 }
 
+
+.cover-dice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.book-cover > .cover-dice {
+  width: 100%;
+  height: 100%;
+}
+.book-row-cover-fallback.cover-dice,
+.recent-cover-fallback.cover-dice {
+  color: var(--muted);
+}
 .nga-badge,
 .gululu-badge {
   position: absolute;

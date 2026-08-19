@@ -39,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FolderOpen
@@ -323,7 +324,11 @@ internal fun LibraryBookRow(
                     contentScale = ContentScale.Crop,
                 )
             } else {
-                Text(book.title.take(1).ifBlank { "书" }, style = MaterialTheme.typography.titleMedium)
+                Icon(
+                    Icons.Filled.Casino,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         Column(
@@ -403,7 +408,12 @@ internal fun LibraryBookCard(
                     contentScale = ContentScale.Crop,
                 )
             } else {
-                Text(book.title.take(1).ifBlank { "书" }, style = MaterialTheme.typography.headlineMedium)
+                Icon(
+                    Icons.Filled.Casino,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Row(
                 modifier = Modifier

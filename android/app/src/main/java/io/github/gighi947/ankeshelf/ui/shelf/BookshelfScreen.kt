@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Refresh
@@ -375,7 +376,7 @@ private fun BookListRow(
     onExportMd: (BookRecord) -> Unit,
 ) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
-    val displayTitle = if (hideBrackets) ui.record.title.replaceFirst(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*"""), "").ifBlank { ui.record.title } else ui.record.title
+    val displayTitle = if (hideBrackets) ui.record.title.replace(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*"""), "").ifBlank { ui.record.title } else ui.record.title
     var exportMenu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
@@ -397,6 +398,12 @@ private fun BookListRow(
                     contentDescription = displayTitle,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
+                )
+            } else if (ui.record.nga_tid > 0) {
+                Icon(
+                    Icons.Filled.Casino,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 Text(displayTitle.take(1).ifBlank { "书" }, style = MaterialTheme.typography.titleMedium)
@@ -473,7 +480,7 @@ private fun BookCard(
     onExportMd: (BookRecord) -> Unit,
 ) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
-    val displayTitle = if (hideBrackets) ui.record.title.replaceFirst(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*"""), "").ifBlank { ui.record.title } else ui.record.title
+    val displayTitle = if (hideBrackets) ui.record.title.replace(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*"""), "").ifBlank { ui.record.title } else ui.record.title
     var exportMenu by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
@@ -494,6 +501,13 @@ private fun BookCard(
                     contentDescription = displayTitle,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
+                )
+            } else if (ui.record.nga_tid > 0) {
+                Icon(
+                    Icons.Filled.Casino,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 Text(

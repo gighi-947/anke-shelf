@@ -1485,12 +1485,43 @@
   border-radius: 8px;
   background: var(--base-100);
 }
-.sp-book-row .settings-label {
+.sp-book-row .book-row-cover {
+  flex-shrink: 0;
+}
+.sp-book-meta {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sp-book-title {
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.sp-book-author {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#sp-books-search {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--base-100);
+  color: var(--base-content);
+  font-size: 13px;
+  font-family: inherit;
+}
+#sp-books-search:focus {
+  outline: none;
+  border-color: var(--primary);
 }
 .sp-book-row .settings-control-inline {
   flex-shrink: 0;

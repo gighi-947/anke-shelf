@@ -521,44 +521,88 @@
   }
 
 
+  let booksCache = [];
+
   function booksRow() {
     const wrap = document.createElement('div');
     wrap.className = 'settings-controls';
+    const search = document.createElement('input');
+    search.id = 'sp-books-search';
+    search.type = 'search';
+    search.placeholder = '搜索书名 / 作者…';
+    search.autocomplete = 'off';
+    search.spellcheck = false;
+    search.addEventListener('input', () => refreshBooksPanel());
     const list = document.createElement('div');
     list.id = 'sp-books-list';
-    list.className = 'settings-controls';
+    list.className = 'settings-controls sp-books-list';
     const hint = document.createElement('p');
     hint.className = 'muted settings-hint';
-    hint.textContent = '管理书架中的安科/书籍：重命名、设置封面、恢复封面或移除。';
-    wrap.append(list, hint);
+    hint.textContent = '管理书架中的安科/书籍：搜索、导出、重命名、封面或移除。';
+    wrap.append(search, list, hint);
     return wrap;
+  }
+
+  function spBookCover(book) {
+    const cover = document.createElement('span');
+    cover.className = 'book-row-cover';
+    const fb = document.createElement('span');
+    fb.className = 'book-row-cover-fallback';
+    if (Number(book.nga_tid) > 0 && !book.cover_url) {
+      fb.classList.add('cover-dice');
+      fb.appendChild(Icons.icon('dice', 24));
+    } else {
+      fb.textContent = (book.title || '书').slice(0, 2);
+    }
+    cover.appendChild(fb);
+    if (book.cover_url) {
+      const img = new Image();
+      img.alt = book.title || '';
+      img.loading = 'lazy';
+      img.addEventListener('error', () => img.remove(), { once: true });
+      img.src = book.cover_url;
+      cover.appendChild(img);
+    }
+    return cover;
   }
 
   async function refreshBooksPanel() {
     const list = document.getElementById('sp-books-list');
     if (!list) return;
-    let books = [];
     try {
-      books = await Api.getShelf();
+      booksCache = await Api.getShelf();
     } catch (e) {
       list.textContent = '书架加载失败';
       return;
     }
+    const q = (document.getElementById('sp-books-search')?.value || '').trim().toLowerCase();
+    const books = booksCache.filter((b) =>
+      !q ||
+      (b.title || '').toLowerCase().includes(q) ||
+      (b.author || '').toLowerCase().includes(q)
+    );
     list.innerHTML = '';
     if (!books.length) {
       const empty = document.createElement('p');
       empty.className = 'muted';
-      empty.textContent = '书架为空';
+      empty.textContent = booksCache.length ? '没有匹配的书籍' : '书架为空';
       list.appendChild(empty);
       return;
     }
     for (const book of books) {
       const row = document.createElement('div');
-      row.className = 'settings-row sp-book-row';
-      const label = document.createElement('span');
-      label.className = 'settings-label';
-      label.textContent = book.title || '(No Title)';
-      label.title = book.title || '';
+      row.className = 'sp-book-row';
+      const cover = spBookCover(book);
+      const meta = document.createElement('div');
+      meta.className = 'sp-book-meta';
+      const title = document.createElement('div');
+      title.className = 'sp-book-title';
+      title.textContent = book.title || '(No Title)';
+      title.title = book.title || '';
+      const author = document.createElement('div');
+      author.className = 'sp-book-author';
+      author.textContent = book.author || (Number(book.nga_tid) > 0 ? 'NGA 安科' : 'Unknown');
+      meta.append(title, author);
       const actions = document.createElement('span');
       actions.className = 'settings-control-inline';
       const mk = (text, fn) => {
@@ -572,13 +616,24 @@
         });
         actions.appendChild(b);
       };
+      if (Number(book.nga_tid) > 0) {
+        mk('导出', async () => {
+          await Api.exportStart(book.id, 'both');
+          if (window.NgaDownload) NgaDownload.open({ tab: 'dl-export' });
+        });
+      } else if (Number(book.gululu_source_id) > 0) {
+        mk('导出', async () => {
+          await Api.gululuStartExport(String(book.gululu_source_id), 'online');
+          if (window.NgaDownload) NgaDownload.open({ tab: 'dl-gululu' });
+        });
+      }
       mk('重命名', async () => {
         const name = prompt('重命名书籍：', book.title || '');
         if (name === null) return;
         const trimmed = name.trim();
         if (trimmed && trimmed !== book.title) await Api.renameBook(book.id, trimmed);
       });
-      mk('设置封面', async () => {
+      mk('封面', async () => {
         const r = await Api.setCover(book.id);
         if (r && r.cancelled) return;
         Toast.show('封面已更新');
@@ -593,7 +648,7 @@
         await Api.removeBook(book.id);
         Toast.show('Removed');
       });
-      row.append(label, actions);
+      row.append(cover, meta, actions);
       list.appendChild(row);
     }
   }
