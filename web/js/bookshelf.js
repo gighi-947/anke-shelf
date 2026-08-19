@@ -24,7 +24,7 @@
   function gululuBadge(book) {
     if (!Number(book && book.gululu_source_id)) return null;
     const badge = document.createElement('span');
-    badge.className = 'gululu-badge';
+    badge.className = 'gululu-tag';
     badge.textContent = '骨碌碌';
     return badge;
   }
@@ -128,18 +128,22 @@
       img.addEventListener('error', () => img.remove(), { once: true });
       if (book.cover_url) img.src = book.cover_url;
       cover.appendChild(img);
-      const badge = gululuBadge(book);
-      if (badge) cover.appendChild(badge);
-
       const title = document.createElement('span');
       title.className = 'recent-title';
       title.textContent = displayTitle(book.title);
 
+      const gululuTag = gululuBadge(book);
       let tagRow = null;
-      if (book.nga_tid) {
+      if (book.nga_tid || gululuTag) {
         tagRow = document.createElement('span');
-        tagRow.className = 'nga-tag';
-        tagRow.textContent = 'NGA';
+        tagRow.className = 'recent-tags';
+        if (book.nga_tid) {
+          const tag = document.createElement('span');
+          tag.className = 'nga-tag';
+          tag.textContent = 'NGA';
+          tagRow.appendChild(tag);
+        }
+        if (gululuTag) tagRow.appendChild(gululuTag);
       }
 
       const meta = document.createElement('span');
@@ -202,8 +206,6 @@
         badge.textContent = 'NGA';
         main.appendChild(badge);
       }
-      const sourceBadge = gululuBadge(book);
-      if (sourceBadge) main.appendChild(sourceBadge);
       main.appendChild(cover);
 
       const actions = this._gridActions(book);
@@ -226,6 +228,8 @@
         tag.textContent = 'NGA';
         tagRow.appendChild(tag);
       }
+      const gululuTag = gululuBadge(book);
+      if (gululuTag) tagRow.appendChild(gululuTag);
       const pct = book.progress_pct || 0;
       const pctLabel = document.createElement('div');
       pctLabel.className = 'book-progress-pct';

@@ -564,6 +564,26 @@ html, body {
   color: var(--muted);
 }
 
+
+.gululu-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: var(--success);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.recent-tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+.recent-tags .nga-tag,
+.recent-tags .gululu-tag {
+  margin-top: 0;
+}
 .nga-tag {
   display: inline-block;
   margin-top: 4px;
