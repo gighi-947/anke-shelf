@@ -77,11 +77,21 @@
   }
 
   /** 解析实际生效的主题：system → 跟随系统深浅色；固定模式 → 模式本身；否则 theme。 */
+  function effectiveCoverColors(settings) {
+    const s = settings || {};
+    const resolved = resolveTheme(s);
+    const palette = PALETTES.find((p) => p.id === resolved) || PALETTES[0];
+    return {
+      bg: s.custom_bg || palette.bg,
+      fg: s.custom_text || palette.text,
+    };
+  }
+
   function coverUrl(url) {
     if (!url) return url;
-    const theme = resolveTheme(window.App ? App.state.settings : {});
+    const colors = effectiveCoverColors(window.App ? App.state.settings : {});
     const sep = url.includes('?') ? '&' : '?';
-    return url + sep + 'theme=' + encodeURIComponent(theme);
+    return url + sep + 'bg=' + encodeURIComponent(colors.bg) + '&fg=' + encodeURIComponent(colors.fg);
   }
 
   function resolveTheme(settings) {
@@ -103,6 +113,7 @@
     isDark,
     resolveTheme,
     coverUrl,
+    effectiveCoverColors,
 
     /** 应用主题到 <html data-theme>，并把用户自定义颜色叠加覆盖到 CSS 变量上。
      *  custom 为空串的项保持“跟随主题”；文字色还会派生 muted/border 等半透明变量。

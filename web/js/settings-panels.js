@@ -25,6 +25,7 @@
         s.theme_mode = mode;
         if (mode !== 'system') s.theme = mode;
         Theme.applySettings(s);
+        if (window.Shelf) Shelf.render();
         if (window.Reader) Reader.updateOverrides();
         if (window.App) App.updateThemeIcons();
         Api.saveSettings( { theme: s.theme, theme_mode: mode });
@@ -78,6 +79,7 @@
         s.custom_primary = p.primary;
         s.custom_accent = p.accent;
         Theme.applySettings(s);
+        if (window.Shelf) Shelf.render();
         if (window.Reader) Reader.updateOverrides();
         Api.saveSettings( {
           custom_bg: p.bg, custom_text: p.text,

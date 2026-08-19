@@ -279,6 +279,14 @@ class ServerTestCase(unittest.TestCase):
         self.assertIn(b"#ffffff", body)
         self.assertIn(b"#171717", body)
 
+    def test_cover_missing_dice_svg_respects_custom_colors(self):
+        status, _, body = self.get(
+            f"/cover/{'1' * 32}?bg=%23fdf6e3&fg=%23657b83",
+        )
+        self.assertEqual(status, 200)
+        self.assertIn(b"#fdf6e3", body)
+        self.assertIn(b"#657b83", body)
+
     # ---------- NGA 图片代理 ----------
 
     def test_img_proxy_rejects_bad_book(self):

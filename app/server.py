@@ -48,14 +48,24 @@ _TRANSPARENT_GIF = base64.b64decode(
 )
 
 # 无封面时的平面骰子占位图（SVG，纯色无文字，按主题自适应）
-def _dice_cover_svg(theme: str = "dark") -> str:
-    t = (theme or "").lower()
-    if t == "light":
-        bg, fg = "#ffffff", "#171717"
-    elif t == "sepia":
-        bg, fg = "#f1e8d0", "#5b4636"
-    else:
-        bg, fg = "#222222", "#e0e0e0"
+def _dice_cover_svg(theme: str = "dark", bg: Optional[str] = None, fg: Optional[str] = None) -> str:
+    hex_re = re.compile(r"^#[0-9a-fA-F]{6}$")
+    if not (isinstance(bg, str) and hex_re.fullmatch(bg)):
+        t = (theme or "").lower()
+        if t == "light":
+            bg, fg = "#ffffff", "#171717"
+        elif t == "sepia":
+            bg, fg = "#f1e8d0", "#5b4636"
+        else:
+            bg, fg = "#222222", "#e0e0e0"
+    if not (isinstance(fg, str) and hex_re.fullmatch(fg)):
+        t = (theme or "").lower()
+        if t == "light":
+            fg = "#171717"
+        elif t == "sepia":
+            fg = "#5b4636"
+        else:
+            fg = "#e0e0e0"
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420">
   <rect width="300" height="420" fill="{bg}"/>
   <rect x="90" y="150" width="120" height="120" rx="16" fill="none" stroke="{fg}" stroke-width="6"/>
@@ -497,9 +507,12 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
             self._send_bytes(data, _mime_for(f.name), cache="max-age=86400")
             return
         # 无封面统一回退平面骰子占位图，按前端主题参数自适应颜色。
-        theme = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("theme", [""])[0]
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        theme = query.get("theme", [""])[0]
+        bg = query.get("bg", [None])[0]
+        fg = query.get("fg", [None])[0]
         self._send_bytes(
-            _dice_cover_svg(theme).encode("utf-8"),
+            _dice_cover_svg(theme, bg=bg, fg=fg).encode("utf-8"),
             "image/svg+xml",
             cache="max-age=86400",
         )

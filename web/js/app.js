@@ -75,6 +75,7 @@
       const onChange = () => {
         if (state.settings.theme_mode !== 'system') return;
         Theme.applySettings(state.settings);
+        if (state.view === 'shelf' && window.Shelf) Shelf.render();
         if (state.view === 'reader' && window.Reader) Reader.updateOverrides();
         this.updateThemeIcons();
         if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
@@ -283,6 +284,7 @@
         state.settings.theme = Theme.nextTheme(current);
         state.settings.theme_mode = state.settings.theme;
         Theme.applySettings(state.settings);
+        if (state.view === 'shelf' && window.Shelf) Shelf.render();
         if (state.view === 'reader' && window.Reader) Reader.updateOverrides();
         this.updateThemeIcons();
         Api.saveSettings( {
