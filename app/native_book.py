@@ -197,9 +197,58 @@ def _themes():
 
 
 def _css(theme: str) -> str:
-    from ngapost2md.epub import _build_css
+    """自适应阅读器主题的楼层/引用/评论样式。
 
-    return _build_css(theme)
+    下载时不再把浅/深主题色写死进章节；内联样式由这里的 !important 覆盖，
+    颜色一律从 WebView 注入的 --reader-bg/--reader-fg/--reader-accent 派生。
+    """
+    del theme
+    return """
+    body {
+      color: var(--reader-fg, #222);
+    }
+    .nga-floor {
+      border: 1px solid color-mix(in srgb, var(--reader-fg, #222) 18%, transparent) !important;
+      border-left: 4px solid var(--reader-accent, #77bbee) !important;
+      background: color-mix(in srgb, var(--reader-bg, #fff) 55%, transparent) !important;
+      padding: 12px 14px !important;
+      margin: 14px 0 !important;
+      border-radius: 2px !important;
+    }
+    .floor-head {
+      color: color-mix(in srgb, var(--reader-fg, #222) 55%, transparent) !important;
+      font-size: 0.82em !important;
+      border-bottom: 1px dotted color-mix(in srgb, var(--reader-fg, #222) 18%, transparent) !important;
+      padding-bottom: 6px !important;
+      margin-bottom: 8px !important;
+    }
+    .nga-comment {
+      background: color-mix(in srgb, var(--reader-fg, #222) 6%, transparent) !important;
+      border: 1px solid color-mix(in srgb, var(--reader-fg, #222) 18%, transparent) !important;
+      padding: 8px 10px !important;
+      margin: 6px 0 6px 14px !important;
+      font-size: 0.92em !important;
+    }
+    .comment-head {
+      color: color-mix(in srgb, var(--reader-fg, #222) 55%, transparent) !important;
+      font-size: 0.8em !important;
+      display: block !important;
+      margin-bottom: 4px !important;
+    }
+    blockquote.nga-quote {
+      border-left: 3px solid var(--reader-accent, #77bbee) !important;
+      background: color-mix(in srgb, var(--reader-fg, #222) 6%, transparent) !important;
+      padding: 8px 12px !important;
+      margin: 10px 0 !important;
+      font-size: 0.95em !important;
+    }
+    .quote-author {
+      color: color-mix(in srgb, var(--reader-fg, #222) 60%, transparent) !important;
+    }
+    .nga-dice {
+      color: var(--reader-accent, #77bbee) !important;
+    }
+    """
 
 
 def _render_floor_html(f, theme: dict, img_src) -> str:

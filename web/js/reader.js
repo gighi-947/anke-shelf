@@ -19,6 +19,7 @@
       family: ReaderUtils.resolveFamily(),
       fontSize: cs.getPropertyValue('--reader-font-size').trim() || '18px',
       lineHeight: cs.getPropertyValue('--reader-line-height').trim() || '1.8',
+      bg: cs.getPropertyValue('--reader-bg').trim() || '#ffffff',
       fg: cs.getPropertyValue('--reader-fg').trim() || '#e0e0e0',
       accent: cs.getPropertyValue('--reader-accent').trim() || '#77bbee',
     };
@@ -33,6 +34,12 @@
       doc.head.appendChild(el);
     }
     const v = readVars();
+    const root = doc.documentElement;
+    if (root) {
+      root.style.setProperty('--reader-bg', v.bg);
+      root.style.setProperty('--reader-fg', v.fg);
+      root.style.setProperty('--reader-accent', v.accent);
+    }
     const isNga = !!(App.state.book && App.state.book.nga);
     let css = isNga ? NGA_OVERRIDE : BASE_OVERRIDE;
     if (App.state.book && App.state.book.gululu) css += GULULU_OVERRIDE;

@@ -62,6 +62,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 win/android：NGA 楼层/引用/评论框随主题自适应
+
+- 背景：NGA 下载时把浅/深主题色写死进章节 HTML，读者切换主题后会出现文字被遮挡。
+- 修复：
+  - Windows `native_book._css` 改为自适应 CSS，用 `--reader-bg/--reader-fg/--reader-accent` 和 `color-mix` 覆盖楼层/引用/评论内联样式；
+  - Web 阅读器在 iframe 根节点注入这三个 CSS 变量；
+  - Android `reader.css` 增加 `.nga-quote/.nga-comment/.floor-head/.comment-head/.nga-dice` 的自适应覆盖。
+- 效果：不再需要按浅/深模式分别下载；阅读器当前主题自动决定对比度。
+- 验证：Python native/server 相关 42 项 OK；JS 语法 OK；Android `assembleDebug` BUILD SUCCESSFUL。
 ### 2026-08-20 win：默认深色主题映射夜间色板
 
 - 背景：默认 dark 主题在 PALETTES 中没有对应 id，导致封面取到浅色背景。
