@@ -126,7 +126,7 @@
       img.alt = displayTitle(book.title);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
-      if (book.cover_rel && book.cover_url) img.src = book.cover_url;
+      if (book.cover_url) img.src = book.cover_url;
       cover.appendChild(img);
       if (book.nga_tid) {
         const badge = document.createElement('span');
@@ -190,7 +190,7 @@
       img.alt = displayTitle(book.title);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
-      if (book.cover_rel && book.cover_url) img.src = book.cover_url;
+      if (book.cover_url) img.src = book.cover_url;
       cover.appendChild(img);
 
       if (book.nga_tid && book.cover_rel) {
@@ -257,7 +257,7 @@
       img.alt = displayTitle(book.title);
       img.loading = 'lazy';
       img.addEventListener('error', () => img.remove(), { once: true });
-      if (book.cover_rel && book.cover_url) img.src = book.cover_url;
+      if (book.cover_url) img.src = book.cover_url;
       cover.append(fb, img);
 
       const meta = document.createElement('div');
