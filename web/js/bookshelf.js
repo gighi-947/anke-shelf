@@ -315,6 +315,37 @@
         }
       });
       actions.appendChild(rn);
+      const coverBtn = document.createElement('button');
+      coverBtn.className = 'rename-btn';
+      coverBtn.title = '设置封面';
+      coverBtn.textContent = '封面';
+      coverBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        try {
+          const r = await Api.setCover( book.id);
+          if (r && r.cancelled) return;
+          Toast.show('封面已更新');
+          this.render();
+        } catch (e) {
+          Toast.show('设置封面失败：' + (e.message || e), true);
+        }
+      });
+      actions.appendChild(coverBtn);
+      const resetCoverBtn = document.createElement('button');
+      resetCoverBtn.className = 'rename-btn';
+      resetCoverBtn.title = '恢复默认封面';
+      resetCoverBtn.textContent = '恢复';
+      resetCoverBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        try {
+          await Api.resetCover( book.id);
+          Toast.show('已恢复默认封面');
+          this.render();
+        } catch (e) {
+          Toast.show('恢复封面失败：' + (e.message || e), true);
+        }
+      });
+      actions.appendChild(resetCoverBtn);
       const del = document.createElement('button');
       del.className = 'delete-btn';
       del.title = 'Remove from shelf';

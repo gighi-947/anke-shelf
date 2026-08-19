@@ -17,6 +17,7 @@ import io.github.gighi947.ankeshelf.data.Shelf
 import io.github.gighi947.ankeshelf.data.SpineItem
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.data.nowIso
+import io.github.gighi947.ankeshelf.data.sniffImageExt
 import io.github.gighi947.ankeshelf.data.queryDisplayName
 import java.io.Closeable
 import java.io.File
@@ -286,6 +287,36 @@ class BookRepository(
             runCatching { NativeBookWriter.renameTitle(f, title) }
         }
         return updated
+    }
+
+    /** 设置自定义封面：复制图片到 covers/<id>.<ext> 并更新书架记录。 */
+    fun setCustomCover(rec: BookRecord, uri: Uri, context: Context): RepoResult<BookRecord> {
+        return try {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                ?: return RepoResult.Err(BookRepoError.NotFound)
+            if (bytes.isEmpty()) return RepoResult.Err(BookRepoError.Io("封面文件为空"))
+            val ext = sniffImageExt(bytes)
+            val target = File(appPaths.coversDir, "${rec.id}.$ext")
+            target.parentFile?.mkdirs()
+            target.writeBytes(bytes)
+            val updated = rec.copy(cover_rel = "covers/${rec.id}.$ext")
+            shelf.upsert(updated)
+            shelf.save()
+            RepoResult.Ok(updated)
+        } catch (e: Exception) {
+            RepoResult.Err(BookRepoError.Io(e.toString()))
+        }
+    }
+
+    /** 恢复默认封面：清除 cover_rel 并删除封面缓存文件。 */
+    fun resetCover(rec: BookRecord): RepoResult<BookRecord> {
+        val updated = rec.copy(cover_rel = null)
+        shelf.upsert(updated)
+        shelf.save()
+        rec.cover_rel?.let { old ->
+            runCatching { File(appPaths.coversDir, old.substringAfterLast('/')).delete() }
+        }
+        return RepoResult.Ok(updated)
     }
 
     fun progressOf(bookId: String): ProgressEntry? = progress.get(bookId)

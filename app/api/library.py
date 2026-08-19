@@ -86,6 +86,30 @@ def remove_book(ctx: ApiContext, book_id: str) -> bool:
     return True
 
 
+def set_cover(ctx: ApiContext, book_id: str) -> dict:
+    """选择一张图片作为书籍封面，复制到 covers/<id>.<ext>。"""
+    rec = ctx.shelf.get(book_id)
+    if rec is None:
+        raise ApiError(ErrorCode.BOOK_NOT_FOUND, "书籍不存在")
+    paths = pick_paths(ctx, "image")
+    if not paths:
+        return {"cancelled": True}
+    try:
+        ctx.shelf.set_custom_cover(book_id, Path(paths[0]))
+    except OSError as e:
+        raise ApiError(ErrorCode.BOOK_INVALID, f"封面设置失败：{e}") from e
+    return record_to_dict(ctx.shelf.get(book_id) or rec)
+
+
+def reset_cover(ctx: ApiContext, book_id: str) -> dict:
+    """删除自定义封面，恢复为无封面。"""
+    rec = ctx.shelf.get(book_id)
+    if rec is None:
+        raise ApiError(ErrorCode.BOOK_NOT_FOUND, "书籍不存在")
+    ctx.shelf.reset_cover(book_id)
+    return record_to_dict(ctx.shelf.get(book_id) or rec)
+
+
 def rename_book(ctx: ApiContext, book_id: str, new_title: str) -> dict:
     """重命名书籍显示标题：书架记录 + 原生书 meta.json（EPUB 仅书架记录）。
 

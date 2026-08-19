@@ -407,6 +407,31 @@ class TestBuildGululuEpub(unittest.TestCase):
                 self.assertIn("[图片已省略]", chapters)
                 self.assertNotIn("https://image.gululu.world/", chapters)
 
+    def test_fetch_cover_embeds_cover_image(self):
+        floors = _fixture("floors.json")["data"]
+        png = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+            b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "cover.epub"
+            build_epub(
+                detail=_fixture("detail.json")["data"],
+                floor_index=_fixture("floor_index.json")["data"],
+                chapter_index=_fixture("chapter_index.json")["data"]["chapterIndex"],
+                floors=floors,
+                output_path=target,
+                image_mode="none",
+                image_fetcher=lambda url: (png, "image/png"),
+                fetch_cover=True,
+            )
+
+            with zipfile.ZipFile(target) as zf:
+                cover_names = [name for name in zf.namelist() if name.lower().endswith("cover.png")]
+                self.assertTrue(cover_names, "EPUB 缺少封面图片")
+                self.assertEqual(zf.read(cover_names[0]), png)
+
     def test_embedded_images_are_packaged_and_failures_become_placeholders(self):
         floors = _fixture("floors.json")["data"]
         for floor in floors:

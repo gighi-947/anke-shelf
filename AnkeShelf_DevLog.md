@@ -21,15 +21,15 @@
 - 版本线：Windows `v1.4.0`（已发布，AnkeShelf-v1.4.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-19 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 300 项
+  - Windows Python：`python -m unittest discover tests` = 303 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（53 方法一致）、
+    `node contracts/tests/api-contract.test.js`（55 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37377 字节）、
     `node tests/js/reader-session.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 117 过 / 1 跳；DisciplineTest 在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 123 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
   - 骨碌碌正式冒烟 `formal_ui_smoke.js`（桌面 + 430px，含骰点菜单/段落评论/总览/
@@ -59,6 +59,24 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 win/android：P5-D 封面系统（骨碌碌封面 + 自定义封面）
+
+- 背景：P5-D 需求为骨碌碌导入生成封面，并支持双端自定义封面/恢复默认。
+- Windows：
+  - `gululu_epub.py` 新增 `fetch_cover` 参数：读取 `detail.cover.picUrl`，
+    下载并写入 EPUB3 cover；失败记日志不阻断导入；导入/导出/更新链路均开启；
+  - `Shelf.set_custom_cover/reset_cover`：复制用户图片到 `covers/<id>.<ext>`
+    或删除并清空 `cover_rel`；
+  - 新增 API `set_cover` / `reset_cover`；`dialogs.py` 增加图片选择；
+  - `bookshelf.js` 书架操作增加“封面 / 恢复”按钮。
+- Android：
+  - `BookRepository.setCustomCover/resetCover`；
+  - `BookManagementOverlay` 增加“设置封面 / 恢复默认封面”入口；
+  - `BookshelfScreen` / `DownloadLibraryPanels` 接入 SAF 选图并刷新。
+- 测试：新增 gululu cover 用例、Windows Shelf 自定义封面用例、Android reset cover 用例；
+  Windows Python 303 项 OK（4 跳）；JS 契约 55 方法一致；Android JVM 123 过 / 1 跳。
+- 文档：ROADMAP P5-D 标记完成，测试基线同步。
 
 ### 2026-08-19 docs：全面文档漂移扫描与同步
 

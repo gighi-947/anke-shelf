@@ -24,6 +24,11 @@ _DIALOGS = {
         "filter": "备份包 (*.zip)|*.zip",
         "multi": False,
     },
+    "image": {
+        "title": "选择封面图片",
+        "filter": "图片文件 (*.jpg;*.jpeg;*.png;*.gif;*.webp)|*.jpg;*.jpeg;*.png;*.gif;*.webp",
+        "multi": False,
+    },
 }
 
 

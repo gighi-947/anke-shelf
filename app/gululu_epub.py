@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
@@ -38,7 +39,14 @@ from .gululu_images import (
 from .gululu_source import extract_book_id, parse_book_id, parse_gululu_identifier
 
 
+log = logging.getLogger("gululu_epub")
+
 FALLBACK_FLOORS_PER_CHAPTER = 20
+
+
+def _cover_url_from_detail(detail: dict) -> str:
+    cover = detail.get("cover") if isinstance(detail.get("cover"), dict) else {}
+    return str(cover.get("picUrl") or "").strip()
 
 
 @dataclass(frozen=True)
@@ -151,6 +159,7 @@ def build_epub(
     image_fetcher: Optional[ImageFetcher] = None,
     progress: Optional[Callable[[str, int, int, str], None]] = None,
     cancel: Optional[Callable[[], bool]] = None,
+    fetch_cover: bool = False,
 ) -> GululuBuildResult:
     """把已获取的数据快照打包为现有 Windows 阅读器可导入的 EPUB3。"""
     from ebooklib import epub
@@ -216,6 +225,23 @@ def build_epub(
     else:
         image_resolver = embedded_sources.get
 
+    cover_item = None
+    if fetch_cover:
+        cover_url = _cover_url_from_detail(detail)
+        if cover_url:
+            try:
+                cover_batch = prepare_embedded_images(
+                    [cover_url],
+                    fetcher=image_fetcher,
+                    cancel=cancel,
+                )
+                if cover_batch.resources:
+                    cover_item = cover_batch.resources[0]
+                for failure in cover_batch.failures:
+                    log.warning("骨碌碌封面获取失败：%s", failure.error)
+            except Exception as exc:  # noqa: BLE001 - 封面失败不阻断导入
+                log.warning("骨碌碌封面获取失败：%s", exc)
+
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
     book = epub.EpubBook()
@@ -236,6 +262,9 @@ def build_epub(
         content=GULULU_EPUB_CSS,
     )
     book.add_item(style)
+    if cover_item is not None:
+        ext = Path(cover_item.file_name).suffix.lstrip(".")
+        book.set_cover(f"cover.{ext}", cover_item.content, create_page=False)
     for resource in image_batch.resources:
         uid = "gululu-image-" + Path(resource.file_name).stem
         book.add_item(epub.EpubImage(
@@ -339,6 +368,7 @@ def download_epub(source: str | int, output_path: str | Path) -> Path:
         floors=snapshot.floors,
         comments_by_floor=snapshot.comments_by_floor,
         output_path=output_path,
+        fetch_cover=True,
     ).path
 
 

@@ -80,6 +80,25 @@ class TestShelf(unittest.TestCase):
         self.assertFalse(cover.exists())
         self.assertIsNone(self.shelf.get("a" * 32))
 
+    def test_set_custom_cover_copies_and_updates(self):
+        self.shelf.upsert(_make_rec("/a.epub", "甲"))
+        source = Path(self.tmp.name) / "custom.png"
+        source.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+        rel = self.shelf.set_custom_cover("a" * 32, source)
+        self.assertEqual(rel, f"covers/{'a' * 32}.png")
+        self.assertTrue((self.covers / f"{'a' * 32}.png").exists())
+        self.assertEqual(self.shelf.get("a" * 32).cover_rel, rel)
+
+    def test_reset_cover_deletes_and_clears(self):
+        self.shelf.upsert(_make_rec("/a.epub", "甲"))
+        cover = self.covers / f"{'a' * 32}.png"
+        cover.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+        rec = self.shelf.get("a" * 32)
+        rec.cover_rel = f"covers/{'a' * 32}.png"
+        self.assertTrue(self.shelf.reset_cover("a" * 32))
+        self.assertFalse(cover.exists())
+        self.assertIsNone(self.shelf.get("a" * 32).cover_rel)
+
     def test_atomic_write_valid_json(self):
         self.shelf.upsert(_make_rec("/a.epub", "甲"))
         self.shelf.save()

@@ -8,6 +8,7 @@ import io.github.gighi947.ankeshelf.data.Shelf
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -107,6 +108,34 @@ class BookRepositoryTest {
             val result = repo.registerNativeDir(nativeDir, tid = 1)
 
             assertEquals(BookRepoError.Corrupt, (result as RepoResult.Err).error)
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `reset cover clears cover_rel and deletes file`() {
+        val tmp = kotlin.io.path.createTempDirectory("repo-").toFile()
+        try {
+            val paths = AppPaths(File(tmp, "AnkeShelf")).also { it.ensure() }
+            val shelf = Shelf(paths.shelfFile, paths.coversDir)
+            val repo = BookRepository(paths, shelf, ProgressStore(paths.progressFile))
+            val rec = BookRecord(
+                id = "a".repeat(32),
+                path = File(tmp, "book.epub").absolutePath,
+                title = "t",
+                cover_rel = "covers/${"a".repeat(32)}.png",
+            )
+            shelf.upsert(rec)
+            shelf.save()
+            val cover = File(paths.coversDir, "${"a".repeat(32)}.png").apply { writeBytes(byteArrayOf(1)) }
+
+            val result = repo.resetCover(rec)
+
+            assertTrue(result is RepoResult.Ok)
+            assertNull((result as RepoResult.Ok).value.cover_rel)
+            assertTrue(!cover.exists())
+            assertNull(shelf.get("a".repeat(32))?.cover_rel)
         } finally {
             tmp.deleteRecursively()
         }

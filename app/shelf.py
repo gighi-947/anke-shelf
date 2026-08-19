@@ -143,6 +143,38 @@ class Shelf:
         except OSError:
             return None
 
+    def set_custom_cover(self, book_id: str, source: Path) -> Optional[str]:
+        """把用户选择的图片复制为封面缓存，更新 cover_rel 并落盘。"""
+        data = source.read_bytes()
+        if not data:
+            raise OSError("所选封面文件为空")
+        ext = _sniff_image_ext(data)
+        rel = f"covers/{book_id}.{ext}"
+        (self._covers_dir / f"{book_id}.{ext}").write_bytes(data)
+        with self._lock:
+            rec = self._books.get(book_id)
+            if rec is None:
+                return None
+            rec.cover_rel = rel
+            self.save()
+        return rel
+
+    def reset_cover(self, book_id: str) -> bool:
+        """删除自定义封面，恢复为无封面（cover_rel=None）。"""
+        with self._lock:
+            rec = self._books.get(book_id)
+            if rec is None:
+                return False
+            old = rec.cover_rel
+            rec.cover_rel = None
+            if old:
+                try:
+                    (self._covers_dir / Path(old).name).unlink(missing_ok=True)
+                except OSError:
+                    pass
+            self.save()
+            return True
+
 
 def _sniff_image_ext(data: bytes) -> str:
     """按魔数推断图片扩展名。"""

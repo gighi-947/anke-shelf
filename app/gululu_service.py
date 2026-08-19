@@ -273,6 +273,7 @@ class GululuService:
                 image_mode=image_mode,
                 progress=update,
                 cancel=cancelled,
+                fetch_cover=True,
             )
             if cancelled():
                 raise GululuCancelled("骨碌碌导入已取消")
@@ -417,6 +418,7 @@ class GululuService:
                 image_mode=image_mode,
                 progress=update,
                 cancel=cancelled,
+                fetch_cover=True,
             )
             if cancelled():
                 raise GululuCancelled("骨碌碌导出已取消")

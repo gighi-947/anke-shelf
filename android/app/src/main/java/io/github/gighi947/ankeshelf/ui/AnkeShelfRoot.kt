@@ -1,6 +1,7 @@
 package io.github.gighi947.ankeshelf.ui
 
 import android.app.Activity
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
@@ -251,6 +252,18 @@ fun AnkeShelfRoot(container: AppContainer) {
                                                 Toast.LENGTH_LONG,
                                             ).show()
                                         }
+                                        refresh++
+                                    },
+                                    onSetCover = { rec, uri ->
+                                        when (val result = container.repository.setCustomCover(rec, uri, context)) {
+                                            is RepoResult.Ok -> Unit
+                                            is RepoResult.Err ->
+                                                Toast.makeText(context, result.error.message, Toast.LENGTH_SHORT).show()
+                                        }
+                                        refresh++
+                                    },
+                                    onResetCover = { rec ->
+                                        container.repository.resetCover(rec)
                                         refresh++
                                     },
                                     onShelfViewChange = { view ->

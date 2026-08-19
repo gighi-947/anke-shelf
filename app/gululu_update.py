@@ -120,6 +120,7 @@ def execute_update(
         image_mode=prepared.image_mode,
         progress=progress,
         cancel=cancel,
+        fetch_cover=True,
     )
     if cancel():
         raise GululuCancelled("骨碌碌更新已取消")

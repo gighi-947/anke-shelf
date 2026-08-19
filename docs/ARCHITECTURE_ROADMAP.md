@@ -62,9 +62,9 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | --- | --- |
 | 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（`d0e184e`、`91b6206`、P5-B）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
-| Windows Python 单测 | 300 项（3.14：4 跳；bundled 3.12：全量通过） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 53 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37377 字节）+ 启动失败诊断 + `reader-session` OK |
-| Android JVM 单测 | 117 过 / 1 跳（2026-08-19 实跑复核） |
+| Windows Python 单测 | 303 项（3.14：4 跳；bundled 3.12：全量通过） |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 55 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37377 字节）+ 启动失败诊断 + `reader-session` OK |
+| Android JVM 单测 | 123 过 / 1 跳（2026-08-19 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
@@ -405,7 +405,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
   40-layout）重打包、双端 Settings 契约扩展。
 - 验证：UI harness 新用例（到底触发换章、退出重进位置一致）；Android 真机。
 
-#### P5-D：封面系统（骨碌碌封面 + 自定义封面）
+#### P5-D：封面系统（骨碌碌封面 + 自定义封面）✅ 已完成（2026-08-19）
 
 - 现状（已核实）：`gululu_epub.py` 不生成封面；双端 `cover_rel` 机制已有
   （extract_cover→covers/），Android 书架已显示封面文件，但无自定义入口。

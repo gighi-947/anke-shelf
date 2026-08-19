@@ -92,6 +92,8 @@ fun BookshelfScreen(
     onOpenGuide: () -> Unit,
     onRename: (BookRecord, String) -> Unit,
     onDelete: (BookRecord) -> Unit,
+    onSetCover: (BookRecord, Uri) -> Unit,
+    onResetCover: (BookRecord) -> Unit,
     onOpen: (BookRecord) -> Unit,
     shelfView: String,
     onShelfViewChange: (String) -> Unit,
@@ -342,6 +344,8 @@ fun BookshelfScreen(
             onDismiss = { manageBook = null },
             onRename = onRename,
             onDelete = onDelete,
+            onSetCover = onSetCover,
+            onResetCover = onResetCover,
         )
 
         updateTarget?.let { book ->

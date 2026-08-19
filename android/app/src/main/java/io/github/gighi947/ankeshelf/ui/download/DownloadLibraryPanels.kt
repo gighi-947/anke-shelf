@@ -87,6 +87,7 @@ import androidx.core.content.ContextCompat
 import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.NgaConfigPatch
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.service.RepoResult
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.NgaDownloadService
@@ -233,6 +234,20 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
             if (!container.repository.removeBook(rec)) {
                 Toast.makeText(context, "删除书籍文件失败，书架条目已移除", Toast.LENGTH_LONG).show()
             }
+            onChanged()
+            tick++
+        },
+        onSetCover = { rec, uri ->
+            when (val result = container.repository.setCustomCover(rec, uri, context)) {
+                is RepoResult.Ok -> Unit
+                is RepoResult.Err ->
+                    Toast.makeText(context, result.error.message, Toast.LENGTH_SHORT).show()
+            }
+            onChanged()
+            tick++
+        },
+        onResetCover = { rec ->
+            container.repository.resetCover(rec)
             onChanged()
             tick++
         },
