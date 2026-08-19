@@ -20,11 +20,11 @@
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.4.0`（已发布，AnkeShelf-v1.4.0.zip）；
   Android `android-v1.0.0`（已发布，AnkeShelf-v1.0.0-android.apk）。
-- 测试基线（Windows / JS / Android JVM 于 2026-08-18 实跑复核）：
+- 测试基线（Windows / JS / Android JVM 于 2026-08-19 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 300 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（52 方法一致）、
+    `node contracts/tests/api-contract.test.js`（53 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37377 字节）、
@@ -59,6 +59,19 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 docs：全面文档漂移扫描与同步
+
+- 运行 `scripts/check-doc-drift.ps1 -RunTests`（脚本输出因 PowerShell stderr 中断，
+  但测试已单独验证通过）。
+- 发现并修复：
+  - DevLog §1：测试复核日期 08-18→08-19；`api-contract` 52→53 方法；
+  - ROADMAP 头部：补充 2026-08-19 架构收敛状态；
+  - ROADMAP §2.2：代码规模热点行数同步到当前实际值；
+  - MAINTENANCE_GUIDE §10：快照日期与主线描述更新；
+  - 其余高漂移文档（README 版本表、MAINTENANCE §7、GLOSSARY、contracts README、
+    docs/README）经核对无新增漂移。
+- 验证：Windows Python 300 项 OK（4 跳）；JS 契约 53 方法一致。
 
 ### 2026-08-19 android：SettingsMiscPanels 备份操作失败增加日志
 

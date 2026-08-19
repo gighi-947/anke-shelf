@@ -1,6 +1,6 @@
 # AnkeShelf 架构整合路线图（下阶段任务参考）
 
-> 文档日期：2026-08-12（2026-08-18 状态核对）
+> 文档日期：2026-08-12（2026-08-19 状态核对）
 > 分析基线：`main` / `1ea4c95`（分析时点）；2026-08-13 核对：HEAD 已推进至
 > `4810d0c`（docs-only 提交）；2026-08-14 再核对：HEAD 已推进至 `c8f90cf`，
 > P0 / P1 已按本路线图落地；随后推进至 `edaf442`（依赖锁定，另含 ADR/治理文档），
@@ -15,6 +15,8 @@
 > 2026-08-18 文档漂移治理强化：AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`
 > （HEAD 以 `git log` 为准）；
 > 2026-08-18 P5：用户 issue 转化为开发批次（`d0e184e`），P5-A 快赢批合入（`91b6206`）。
+> 2026-08-19：多轮架构收敛完成（EventBus→回调、ApiError 统一、TaskManager 统一、
+> reader-lite 状态机 Step 0–4、MOCKS 移除、SettingsPatch 收敛、数据层日志化）。
 > 各节“状态”注明进度。
 > 当前版本：Windows v1.4.0，Android android-v1.0.0
 > 来源文档（均在工作区外 H 盘）：
@@ -73,23 +75,23 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 文件 | 行数 | 关注点 |
 | --- | --- | --- |
-| `android/.../data/Html5Entities.kt` | 2130 | 机械生成表，正常 |
-| `android/.../ui/reader/WebViewChapterView.kt` | 645 | 桥与宿主；本轮已审查模式分流增量 |
-| `android/.../ui/shelf/BookshelfScreen.kt` | 611 | 书架页，未拆分 |
-| `android/.../data/NativeBook.kt` | 635 | 原生书数据层 |
-| `android/.../ui/settings/SettingsScreen.kt` | 560 | 已按 Panel 拆分 |
-| `android/.../ui/search/SearchScreen.kt` | 564 | 搜索页，未拆分 |
-| `android/.../data/Epub.kt` | 569 | EPUB 数据层 |
-| `android/.../ui/reader/native/NativeReaderScreen.kt` | 451 | 外壳已拆 Chrome |
-| `android/.../ui/download/DownloadScreen.kt` | 345 | 已拆分面板 |
-| `android/.../assets/reader/reader-lite.js` | 1037 | 现役渲染内核（parts 模块化） |
-| `web/js/reader.js` | 761 | 核心编排；本轮审查确认仍是单一阅读生命周期，后续只在出现第二个真实调用边界时拆分 |
-| `web/js/nga_download.js` | 625 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
-| `app/gululu_service.py` | 498 | 导入/导出/更新任务状态、取消与事件编排；客户端、评论缓存和增量更新已拆分 |
-| `app/gululu_update.py` | 406 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
-| `app/nga_service.py` | 576 | 下载/更新/清理语义集中 |
-| `web/js/settings.js` | 177 | 已拆 settings-ui / settings-panels |
-| `web/css/reader.css` | 2125 | 样式，暂不处理 |
+| `android/.../data/Html5Entities.kt` | 2129 | 机械生成表，正常 |
+| `android/.../ui/reader/WebViewChapterView.kt` | 622 | 桥与宿主；已审查并补充失败日志 |
+| `android/.../ui/shelf/BookshelfScreen.kt` | 604 | 书架页，未拆分 |
+| `android/.../data/NativeBook.kt` | 579 | 原生书数据层 |
+| `android/.../ui/settings/SettingsScreen.kt` | 536 | 已按 Panel 拆分 |
+| `android/.../ui/search/SearchScreen.kt` | 547 | 搜索页，未拆分 |
+| `android/.../data/Epub.kt` | 526 | EPUB 数据层 |
+| `android/.../ui/reader/native/NativeReaderScreen.kt` | 455 | 外壳已拆 Chrome |
+| `android/.../ui/download/DownloadScreen.kt` | 334 | 已拆分面板 |
+| `android/.../assets/reader/reader-lite.js` | 994 | 现役渲染内核（parts 模块化；状态机 Step 0–4 已收敛） |
+| `web/js/reader.js` | 708 | 核心编排；已移除必然存在模块的防御包装 |
+| `web/js/nga_download.js` | 562 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
+| `app/gululu_service.py` | 456 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |
+| `app/gululu_update.py` | 364 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
+| `app/nga_service.py` | 629 | 下载/更新/清理语义集中；已迁入 TaskManager |
+| `web/js/settings.js` | 163 | 已拆 settings-ui / settings-panels |
+| `web/css/reader.css` | 2043 | 样式，暂不处理 |
 
 ### 2.3 已确认的架构债
 
