@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from app import __version__
 from app.annotations import AnnotationStore
 from app.api import Api
 from app.book_manager import BookManager
@@ -110,7 +111,7 @@ class ApiServiceTest(unittest.TestCase):
 
     def test_get_version(self):
         api = self._make_api(BookManager())
-        self.assertEqual(api.get_version(), "1.4.0")
+        self.assertEqual(api.get_version(), __version__)
 
     def test_open_book_error_code(self):
         api = self._make_api(BookManager())
