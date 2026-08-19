@@ -266,9 +266,11 @@ class ServerTestCase(unittest.TestCase):
         self.assertEqual(headers["Content-Type"], "image/png")
         self.assertTrue(body.startswith(b"\x89PNG"))
 
-    def test_cover_missing_404(self):
-        status, _, _ = self.get(f"/cover/{'1' * 32}")
-        self.assertEqual(status, 404)
+    def test_cover_missing_falls_back_to_dice_svg(self):
+        status, headers, body = self.get(f"/cover/{'1' * 32}")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "image/svg+xml")
+        self.assertIn(b"<svg", body)
 
     # ---------- NGA 图片代理 ----------
 

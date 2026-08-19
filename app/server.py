@@ -47,6 +47,18 @@ _TRANSPARENT_GIF = base64.b64decode(
     "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
 )
 
+# 无封面时的平面骰子占位图（SVG，纯色无文字）
+_DICE_COVER_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="300" height="420" viewBox="0 0 300 420">
+  <rect width="300" height="420" fill="#222222"/>
+  <rect x="90" y="150" width="120" height="120" rx="16" fill="none" stroke="#e0e0e0" stroke-width="6"/>
+  <circle cx="120" cy="180" r="9" fill="#e0e0e0"/>
+  <circle cx="180" cy="180" r="9" fill="#e0e0e0"/>
+  <circle cx="120" cy="240" r="9" fill="#e0e0e0"/>
+  <circle cx="180" cy="240" r="9" fill="#e0e0e0"/>
+  <circle cx="150" cy="210" r="9" fill="#e0e0e0"/>
+</svg>
+"""
+
 # 章节响应 CSP：禁止脚本；允许 https 图片/媒体（NGA 在线图片模式 EPUB 需要，
 # 图片/音视频不会执行脚本，风险可控）
 _CSP = (
@@ -473,7 +485,12 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
                 continue
             self._send_bytes(data, _mime_for(f.name), cache="max-age=86400")
             return
-        self._send_error(404, "no cover")
+        # 无封面统一回退平面骰子占位图，避免前端出现文字封面/裂图。
+        self._send_bytes(
+            _DICE_COVER_SVG.encode("utf-8"),
+            "image/svg+xml",
+            cache="max-age=86400",
+        )
 
     def _serve_font(self, rest: str) -> None:
         kind, _, name = rest.partition("/")
