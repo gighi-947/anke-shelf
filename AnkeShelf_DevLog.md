@@ -12,7 +12,8 @@
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
   沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.4.0；五批接手风险修复已合入；
-  P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复；多轮架构收敛已完成：
+  P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统
+  （含 UI 图标规范核查）；多轮架构收敛已完成：
   EventBus→显式回调、API 错误统一到 HTTP/ApiError、reader-lite 状态机
   Step 0–4、TaskManager 统一 NGA/Gululu/Export；
   文档漂移治理已强化
@@ -59,6 +60,14 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-19 docs/android：P5 状态文档同步 + 管理菜单间距微调
+
+- 文档同步：DevLog §1/§5、ROADMAP 顶部核对块/§2.1/§3 P5-C/E/F 状态/§4 执行顺序、
+  MAINTENANCE §10 更新为“P5-A/B/D 已完成，剩余 C/E1/E2/F”。
+- Android：`BookManagementOverlay` 管理行图标与文字间距从 `AnkeSpacing.md` 改为
+  `AnkeSpacing.sm`，对齐设计令牌“图标与文字间距 = sm”。
+- 验证：Android `compileDebugKotlin` 通过；doc-drift 扫描待跑。
 
 ### 2026-08-19 win/android：UI 图标规范核查与修正
 
@@ -1758,9 +1767,12 @@
 
 **真实待办（按优先级）：**
 
-- P5（当前批次，2026-08-18 用户 issue）：A 快赢（骨碌碌链接提取/书名前缀
-  隐藏/Windows 重命名）→ B NGA 裂图修复（Windows 图片代理 + 双端失败占位）
-  → C 滚动自动翻章 → D 封面系统 → E1 Cookie 粘贴解析 → F NGA 楼中楼。
+- P5（当前批次，2026-08-18 用户 issue）：A 快赢、B NGA 裂图修复、
+  D 封面系统已完成；剩余：
+  - C 滚动到底自动翻章（设置 `auto_chapter_turn`，双端；进度类必跑回归）
+  - E1 粘贴完整 Cookie 自动解析 uid/cid（双端；低成本）
+  - E2 应用内 WebView 登录 NGA 提取凭据（Android 先行，中成本）
+  - F NGA 楼中楼评论（最大件，最后做；涉及 meta/渲染/text_offset 红线）
   子项明细见 ROADMAP §3 P5。
 - P3：Android 数据完整性校验入口——Android 已有 `isolateCorrupt` 但缺
   `verify_data_integrity` 等价 API 与设置页入口（Windows 已有完整实现可参照）。

@@ -179,12 +179,13 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 ## 10. 当前状态（2026-08-19 快照）
 
 - 基线 `main`（HEAD 以 `git log` 为准）；`win/gululu-reader-interaction` 已并入主干；
-  最近主线为骨碌碌适配（v1.3.0 / v1.4.0）、五批接手风险修复、P5 批次（P5-A/B）与
+  最近主线为骨碌碌适配（v1.3.0 / v1.4.0）、五批接手风险修复、P5 批次（P5-A/B/D）与
   多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）；
   文档漂移治理已强化（AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
 - 版本线：Windows v1.4.0、Android android-v1.0.0，均已发布。
 - 待办与延后项见 DevLog §5 与 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
-  （真实待办仅 Android 数据完整性校验入口；其余大文件拆分 /
+  （真实待办：P5-C 自动翻章、P5-E1/E2 Cookie 傻瓜化、P5-F 楼中楼，
+  以及 Android 数据完整性校验入口；其余大文件拆分 /
   P4 参考仓库 3/8 待补：readest / Kavita / LibreraReader，均保持延后）。
 
 ## 11. 已知问题与风险

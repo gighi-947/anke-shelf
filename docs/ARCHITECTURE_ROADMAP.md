@@ -15,6 +15,7 @@
 > 2026-08-18 文档漂移治理强化：AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`
 > （HEAD 以 `git log` 为准）；
 > 2026-08-18 P5：用户 issue 转化为开发批次（`d0e184e`），P5-A 快赢批合入（`91b6206`）。
+> 2026-08-19：P5-B 裂图修复与 P5-D 封面系统完成，并完成 UI 图标规范核查。
 > 2026-08-19：多轮架构收敛完成（EventBus→回调、ApiError 统一、TaskManager 统一、
 > reader-lite 状态机 Step 0–4、MOCKS 移除、SettingsPatch 收敛、数据层日志化）。
 > 各节“状态”注明进度。
@@ -60,7 +61,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（`d0e184e`、`91b6206`、P5-B）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）（HEAD 以 `git log` 为准） |
+| 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（`d0e184e`、`91b6206`、P5-B、P5-D）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 303 项（3.14：4 跳；bundled 3.12：全量通过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 55 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37377 字节）+ 启动失败诊断 + `reader-session` OK |
@@ -395,6 +396,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
   reader-lite parts 重打包。
 
 #### P5-C：滚动到底自动翻章（连续阅读）
+> 状态（2026-08-19）：待办，尚未开工。
 
 - 现状：双端滚动/分页到章尾即停。改动：新设置 `auto_chapter_turn`（默认
   关），滚动模式距底 ≤48px 且停留 ≥800ms 触发 `nextChapter`（沿用现有
@@ -422,6 +424,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - 验证：`test_gululu_epub` 封面用例、Android `ShelfTest` 封面更新用例。
 
 #### P5-E：NGA 凭据傻瓜化（分级）
+> 状态（2026-08-19）：待办；E1 低成本优先，E2 随 Android 版本排期。
 
 - E1（低成本，随 P5-A 并行）：粘贴完整 Cookie 字符串自动解析——用户整段
   复制 F12 Cookie（或含 uid/cid 的任意文本），粘贴后自动提取
@@ -434,6 +437,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - 成功标准：小白不接触 F12 完成配置。
 
 #### P5-F：NGA 楼中楼评论（最大件，最后做）
+> 状态（2026-08-19）：待办，最大件，最后做。
 
 - 现状（已核实）：数据管道全通——`Floor.comments` 递归结构、
   `analyze_floors` 已解析页响应自带 comments、floors.json/native_book
@@ -465,10 +469,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
    （严格红→绿→回归）。
 5. **之后（随变化点）**：P3 拆分与 TaskManager 试点、存储恢复、开源治理；
    P4 等网络与真实需求触发。
-6. **当前批次（P5 用户反馈，2026-08-18 起）**：A 快赢 → B 裂图修复（用户
-   标致命）→ C 自动翻章 → D 封面 → E1 Cookie 粘贴（可与 A 并行）→
-   F 楼中楼；E2 WebView 登录随 Android 版本排期。进度类改动（C/F）必跑
-   "滚动/翻页 → 退出 → 重进"回归。
+6. **当前批次（P5 用户反馈，2026-08-18 起）**：A 快赢、B 裂图修复、D 封面
+  已完成；剩余顺序 C 自动翻章 → E1 Cookie 粘贴 → F 楼中楼；
+  E2 WebView 登录随 Android 版本排期。进度类改动（C/F）必跑
+  "滚动/翻页 → 退出 → 重进"回归。
 
 ---
 

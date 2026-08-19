@@ -172,7 +172,7 @@ private fun ManageRow(
             } else {
                 MaterialTheme.colorScheme.onSurface
             },
-            modifier = Modifier.padding(start = AnkeSpacing.md),
+            modifier = Modifier.padding(start = AnkeSpacing.sm),
         )
     }
 }
