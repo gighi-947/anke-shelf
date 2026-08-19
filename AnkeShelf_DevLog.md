@@ -60,6 +60,17 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 android：SettingsPatch 改用 JSON 合并，消除 30 字段 copy 样板
+
+- 背景：`SettingsPatch` 的 `update()` 手写 30 个 `?: data.x` 字段复制，属于
+  “机械噪音”样板。
+- 改动：
+  - `SettingsPatch` 标记 `@Serializable`；
+  - `Settings.update()` 改为：当前 `SettingsData` 与 patch 序列化为 JSON 对象，
+    过滤 `JsonNull` 后合并再反序列化；
+  - 行为不变：只有非空 patch 字段覆盖。
+- 验证：Android `gradlew testDebugUnitTest --rerun-tasks` BUILD SUCCESSFUL。
+
 ### 2026-08-19 win：移除 bridge.js 内置 50 个调试 MOCKS
 
 - 背景：`bridge.js` 为“浏览器直开调试”内置了 50 个假方法，形成第三份 API 清单，

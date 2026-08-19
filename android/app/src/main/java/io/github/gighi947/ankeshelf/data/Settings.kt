@@ -2,6 +2,10 @@ package io.github.gighi947.ankeshelf.data
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -56,6 +60,7 @@ data class SettingsData(
 )
 
 /** 设置补丁：非空字段才更新（等价桌面 Settings.update 的类型检查语义）。 */
+@Serializable
 data class SettingsPatch(
     val theme: String? = null,
     val theme_mode: String? = null,
@@ -142,37 +147,13 @@ class Settings(private val file: File) {
 
     fun update(patch: SettingsPatch) {
         lock.withLock {
-            data = data.copy(
-                theme = patch.theme ?: data.theme,
-                theme_mode = patch.theme_mode ?: data.theme_mode,
-                font_size = patch.font_size ?: data.font_size,
-                line_height = patch.line_height ?: data.line_height,
-                ui_font_scale = patch.ui_font_scale ?: data.ui_font_scale,
-                font_family = patch.font_family ?: data.font_family,
-                custom_font = patch.custom_font ?: data.custom_font,
-                book_fonts = patch.book_fonts ?: data.book_fonts,
-                custom_bg = patch.custom_bg ?: data.custom_bg,
-                custom_primary = patch.custom_primary ?: data.custom_primary,
-                custom_accent = patch.custom_accent ?: data.custom_accent,
-                custom_text = patch.custom_text ?: data.custom_text,
-                page_width = patch.page_width ?: data.page_width,
-                bars_pinned = patch.bars_pinned ?: data.bars_pinned,
-                pagination = patch.pagination ?: data.pagination,
-                dual_page = patch.dual_page ?: data.dual_page,
-                auto_dual = patch.auto_dual ?: data.auto_dual,
-                shelf_view = patch.shelf_view ?: data.shelf_view,
-                shelf_sort = patch.shelf_sort ?: data.shelf_sort,
-                hide_title_brackets = patch.hide_title_brackets ?: data.hide_title_brackets,
-                margin_px = patch.margin_px ?: data.margin_px,
-                gap_px = patch.gap_px ?: data.gap_px,
-                brightness = patch.brightness ?: data.brightness,
-                rsvp_rate = patch.rsvp_rate ?: data.rsvp_rate,
-                autoscroll_speed = patch.autoscroll_speed ?: data.autoscroll_speed,
-                show_ruler = patch.show_ruler ?: data.show_ruler,
-                show_statusbar = patch.show_statusbar ?: data.show_statusbar,
-                shortcuts = patch.shortcuts ?: data.shortcuts,
-                window_size = patch.window_size ?: data.window_size,
-                last_open_book = patch.last_open_book ?: data.last_open_book,
+            // 用 JSON 合并实现类型安全的 partial update，避免 30 个字段手写 copy。
+            val current = Shelf.json.encodeToJsonElement(SettingsData.serializer(), data).jsonObject
+            val patchFields = Shelf.json.encodeToJsonElement(SettingsPatch.serializer(), patch).jsonObject
+                .filterValues { it !is JsonNull }
+            data = Shelf.json.decodeFromJsonElement(
+                SettingsData.serializer(),
+                JsonObject(current + patchFields),
             )
             save()
         }
