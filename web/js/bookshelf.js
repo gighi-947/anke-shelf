@@ -193,7 +193,7 @@
       if (book.cover_rel && book.cover_url) img.src = book.cover_url;
       cover.appendChild(img);
 
-      if (book.nga_tid) {
+      if (book.nga_tid && book.cover_rel) {
         const badge = document.createElement('span');
         badge.className = 'nga-badge';
         badge.textContent = 'NGA';
