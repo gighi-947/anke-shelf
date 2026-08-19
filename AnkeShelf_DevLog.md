@@ -60,6 +60,12 @@
 
 ## 4. 最近流水
 
+### 2026-08-19 android：SettingsMiscPanels 备份操作失败增加日志
+
+- 背景：设置页备份创建/验证/恢复的 `runCatching` 失败后只弹 toast，无日志。
+- 改动：三处 `runCatching` 增加 `onFailure { Log.w(...) }`，行为不变。
+- 验证：Android `gradlew testDebugUnitTest --rerun-tasks` BUILD SUCCESSFUL。
+
 ### 2026-08-19 android：reader-lite 收敛 currentOffsetScroll 安全兜底
 
 - 背景：`requestSettle` 内仍有一处 `try { currentOffsetScroll() } catch { }`，

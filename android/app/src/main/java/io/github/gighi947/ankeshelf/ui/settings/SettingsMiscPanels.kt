@@ -2,6 +2,7 @@ package io.github.gighi947.ankeshelf.ui.settings
 
 import android.content.Context
 import android.provider.OpenableColumns
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -213,7 +214,8 @@ internal fun DataPanel(
                         diagContext.contentResolver.openOutputStream(it)?.use { os ->
                             backupCache.inputStream().use { inp -> inp.copyTo(os) }
                         } != null
-                    }.getOrDefault(false)
+                    }.onFailure { Log.w("AnkeShelf", "备份创建失败：${it.message}") }
+                        .getOrDefault(false)
                 }
                 toast(if (ok) "备份已创建" else "备份失败", error = !ok)
             }
@@ -231,7 +233,8 @@ internal fun DataPanel(
                             backupCache.outputStream().use { out -> input.copyTo(out) }
                         }
                         Backup.verifyBackupZip(backupCache)
-                    }.getOrNull()
+                    }.onFailure { Log.w("AnkeShelf", "备份验证失败：${it.message}") }
+                        .getOrNull()
                 }
                 when {
                     report == null -> toast("验证失败", error = true)
@@ -252,7 +255,8 @@ internal fun DataPanel(
                             backupCache.outputStream().use { out -> input.copyTo(out) }
                         }
                         Backup.restoreBackupZip(backupCache, backupPaths, overwrite = false)
-                    }.getOrNull()
+                    }.onFailure { Log.w("AnkeShelf", "备份恢复失败：${it.message}") }
+                        .getOrNull()
                 }
                 when {
                     result == null -> toast("导入失败", error = true)
