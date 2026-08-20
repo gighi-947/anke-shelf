@@ -33,7 +33,7 @@
     `node contracts/tests/reader-lite-parts.test.js`（8 parts / 50881 字节）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 140 项（139 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 144 项（143 过 / 1 跳）；
     DisciplineTest 8 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
@@ -64,6 +64,23 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-20 android：对齐批 3（前半）—— 数据完整性入口 / 契约字段修补 / 作者排序
+
+- **跨端数据丢失修复（重要）**：Android `SettingsData` 缺 `gululu_immersive` 字段，
+  而 `Settings.save()` 用 `encodeDefaults=true` 全量回写——桌面写的沉浸偏好在
+  Android 保存任意设置后会被整块抹掉。新增 `GululuImmersivePrefs`（字段与契约 §4
+  同名同缺省）并加往返回归测试（读桌面 JSON → 改字号 → 落盘仍保留 autoMusic/volume）。
+- 数据完整性校验入口（roadmap §3.3 #2 关闭）：`data/Storage.kt` 新增
+  `verifyJsonFile` / `verifyDataIntegrity`，语义对齐桌面 `storage.verify_json_file`
+  （缺失=健康、解析失败=显式报错、顶层非对象=结构损坏，只看版本号不读内容值）；
+  设置页「数据」区新增「校验数据完整性」入口与结果弹窗。
+- 书架排序补 `author`（并把桌面取值 `title` 作为 `name` 的别名一起接受），
+  作者为空的书排到末尾再按标题排序。
+- 验证：`gradlew testDebugUnitTest` = 144 项（143 过 / 1 跳），新增
+  `DataIntegrityTest` 4 例；`compileDebugKotlin` 通过。
+- 批 3 剩余（下一轮）：G8 —— NGA 下载参数 `page_limit` / `toc_pid` /
+  `toc_mode=split`（按目录楼分章，需移植桌面 `_group_floors_by_toc` 并补 fixture）。
 
 ### 2026-08-20 android：对齐批 2 —— 阅读辅助 / 代码高亮 / 按书字体 / 进度精度
 

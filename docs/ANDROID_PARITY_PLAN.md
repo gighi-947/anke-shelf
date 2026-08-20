@@ -33,10 +33,10 @@
 | G5 | 代码块高亮 | `web/js/highlight.js` | ✅ 批 2 已实现（`48-assist.js` 同款 tokenizer + `reader.css` 同色 `.syntax`） | 2 |
 | G6 | 按书字体覆盖 | `book_fonts` + reader 解析 | ✅ 批 2 已实现（`buildReaderHtml(bookId)` + 阅读辅助面板字体选择） | 2 |
 | G7 | 进度百分比精度（章号 + 章内比例） | `app/api/common.py:progress_pct()` | ✅ 批 2 已实现（`BookRepository.progressPercent`：分页用 page_index/page_total，滚动用 scroll_ratio） | 2 |
-| G8 | NGA 下载参数：`page_limit`、`toc_pid`、`toc_mode=split`（按目录楼分章） | `_build_cfg` + `write_container(toc_mode)` | `NgaDownloadParams` 缺三项；`NativeBook.meta.toc_mode` 有字段但 writer 只走 index | 3 |
-| G9 | 数据完整性校验入口 | `verify_data_integrity` + 设置页 | 有 `isolateCorrupt` 无入口（roadmap §3.3 #2） | 3 |
-| G10 | `settings.json` 缺 `gululu_immersive` 字段 → Android 回写会丢失 Windows 该设置 | `DEFAULTS["gululu_immersive"]`、契约 §4 已列 | `SettingsData` 无该字段 | 3 |
-| G11 | 书架按作者排序 | `shelf_sort=author` | 只有 recent/name/added | 3 |
+| G8 | NGA 下载参数：`page_limit`、`toc_pid`、`toc_mode=split`（按目录楼分章） | `_build_cfg` + `write_container(toc_mode)` | ⏳ 批 3 待做（`NgaDownloadParams` 缺三项；`NativeBook.meta.toc_mode` 有字段但 writer 只走 index） | 3 |
+| G9 | 数据完整性校验入口 | `verify_data_integrity` + 设置页 | ✅ 批 3 已实现（`data/Storage.kt:verifyJsonFile/verifyDataIntegrity` + 设置页「校验数据完整性」） | 3 |
+| G10 | `settings.json` 缺 `gululu_immersive` 字段 → Android 回写会丢失 Windows 该设置 | `DEFAULTS["gululu_immersive"]`、契约 §4 已列 | ✅ 批 3 已修（`GululuImmersivePrefs` 字段 + 往返回归测试） | 3 |
+| G11 | 书架按作者排序 | `shelf_sort=author` | ✅ 批 3 已实现（`author` 排序 + `title` 别名兼容桌面取值） | 3 |
 | **G20** | **骨碌碌全链路（最大件，Android 0 命中）** | `app/gululu_*.py`（12 模块）+ `web/js/gululu-*.js`（8 模块） | 完全缺失 | 4–9 |
 | G20.1 | 来源识别 + 公开 API 客户端（detail / floor·index-list / opus·chapter-index / floor·content-by-ids，`platform:1`，20 条一批，缺失楼层显式失败） | `gululu_source.py` / `gululu_client.py` | — | 4 |
 | G20.2 | 富文本 AST → XHTML（marks 安全色、paragraph id、heading 降级、image HTTPS、hardBreak、collapsibleBlock） | `gululu_ast.py` | — | 4 |
@@ -105,7 +105,7 @@
 | --- | --- | --- |
 | 1 阅读器交互对齐 | ✅ 代码完成，待真机复核 | `ef54a4c`；G1/G2/G3 + `TocTree` + 跨端折叠契约；Android JVM 135 项、APK 内 reader-lite 45559B 校验通过；真机待验「长按选中 → 高亮/笔记/书签 → 退出重进一致」 |
 | 2 阅读辅助与显示精度 | ✅ 代码完成，待真机复核 | G4/G5/G6/G7；Android JVM 140 项、APK 内 reader-lite 50881B + reader.css 校验通过；真机待验自动滚动/速读/标尺与按书字体 |
-| 3 下载参数与数据完整性 | ⏳ 未开始 | — |
+| 3 下载参数与数据完整性 | 🚧 G9/G10/G11 已完成；G8（NGA split 目录分章 / page_limit / toc_pid）待做 | Android JVM 144 项；`gululu_immersive` 往返回归测试在岗 |
 | 4 骨碌碌数据层 | ⏳ 未开始 | — |
 | 5 骨碌碌协议层 | ⏳ 未开始 | — |
 | 6 骨碌碌导入 | ⏳ 未开始 | — |

@@ -42,7 +42,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 319 项（3.14：全过；bundled 3.12：全过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 59 methods + `bridge-contract`（桥版本 1 / 能力含 annotation·assist）+ `reader-lite-parts`（8 parts / 50881 字节）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
-| Android JVM 单测 | 140 项（139 过 / 1 跳；2026-08-20 实跑复核） |
+| Android JVM 单测 | 144 项（143 过 / 1 跳；2026-08-20 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
@@ -138,11 +138,13 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### 3.3 真实待办（按优先级）
 
-1. **P5-E2 真机手工验证**：Windows 端「安科下载 → 配置 → 在应用内登录」
+1. **Android 全量对齐专项**：以 [ANDROID_PARITY_PLAN.md](ANDROID_PARITY_PLAN.md) 为
+   基线——批 1（标注/目录/滑块）、批 2（阅读辅助/代码高亮/按书字体/进度精度）已完成；
+   批 3 前半（数据完整性入口 / `gululu_immersive` 契约字段 / 作者排序）已完成，
+   剩 G8（NGA `page_limit` / `toc_pid` / `toc_mode=split`）；批 4–9 为骨碌碌全链路，
+   批 10 收尾发布。
+2. **P5-E2 真机手工验证**：Windows 端「安科下载 → 配置 → 在应用内登录」
    实机走一遍；Android 端登录弹窗真机验证。
-2. **P3 Android 数据完整性校验入口**：Android 已有 `isolateCorrupt`，缺
-   `verify_data_integrity` 等价 API 与设置页入口（可参照 Windows
-   `app/backup.py` / 设置页实现）。
 3. **P4 参考仓库剩余 3 个**：`readest` / `Kavita` / `LibreraReader` 待克隆
    并补 `docs/REFERENCE_MATRIX.md`（需网络通道）。
 
@@ -158,8 +160,9 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ## 4. 推荐执行顺序
 
-1. P5-E2 双端真机手工验证（当前批收尾）；
-2. P3 Android 数据完整性校验入口（低风险、可参照 Windows）；
+1. Android 全量对齐专项按 [ANDROID_PARITY_PLAN.md](ANDROID_PARITY_PLAN.md) 批次推进
+   （当前：批 3 剩余 G8 → 批 4 骨碌碌数据层）；
+2. P5-E2 双端真机手工验证；
 3. 用户放行后，P5-C 先于 P5-F（C 小、F 大，且都属进度类改动，必跑回归）；
 4. P4 剩余参考仓库——有网络通道时补研究；
 5. 其余保持延后，直到触发条件出现。

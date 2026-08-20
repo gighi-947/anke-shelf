@@ -129,7 +129,12 @@ fun BookshelfScreen(
     val sortedBooks = remember(books, sort) {
         when (sort) {
             "added" -> books.sortedByDescending { it.record.added_at }
-            "name" -> books.sortedBy { it.record.title }
+            // 桌面 shelf_sort 取值为 recent/title/author/added；"name" 是安卓早期别名，
+            // 两者都映射到按标题排序，保持双端设置值互通。
+            "name", "title" -> books.sortedBy { it.record.title }
+            "author" -> books.sortedWith(
+                compareBy({ it.record.author.ifBlank { "\uFFFF" } }, { it.record.title }),
+            )
             else -> books.sortedByDescending { it.record.last_read_at }
         }
     }
@@ -160,6 +165,10 @@ fun BookshelfScreen(
                             DropdownMenuItem(
                                 text = { Text("\u6309\u540d\u79f0") },
                                 onClick = { onSortChange("name"); sortMenu = false },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("\u6309\u4f5c\u8005") },
+                                onClick = { onSortChange("author"); sortMenu = false },
                             )
                         }
                     }

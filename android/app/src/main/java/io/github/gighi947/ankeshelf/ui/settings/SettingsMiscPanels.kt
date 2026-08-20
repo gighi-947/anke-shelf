@@ -94,9 +94,11 @@ import io.github.gighi947.ankeshelf.data.Backup
 import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.data.AnnotationStore
 import io.github.gighi947.ankeshelf.data.EnrichedStats
+import io.github.gighi947.ankeshelf.data.JsonFileHealth
 import io.github.gighi947.ankeshelf.data.Settings
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
+import io.github.gighi947.ankeshelf.data.verifyDataIntegrity
 import io.github.gighi947.ankeshelf.ui.theme.PALETTES
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.ReaderPalette
@@ -222,6 +224,7 @@ internal fun DataPanel(
         }
     }
     var pendingRestore by remember { mutableStateOf(false) }
+    var healthReport by remember { mutableStateOf<List<JsonFileHealth>?>(null) }
     val verifyLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -305,6 +308,12 @@ internal fun DataPanel(
                     onClick = { restoreLauncher.launch(arrayOf("application/zip")) },
                 ) { Text("导入") }
             }
+            SettingsRow("校验数据完整性", "检查五个 JSON 存储能否解析与版本字段（不读取内容值）") {
+                Button(
+                    shape = MaterialTheme.shapes.small,
+                    onClick = { healthReport = verifyDataIntegrity(appPaths) },
+                ) { Text("校验") }
+            }
             SettingsRow("清除全部数据", "删除书架、进度、标注、NGA 配置与统计") {
                 Button(shape = MaterialTheme.shapes.small, onClick = onClearAll) { Text("清除") }
             }
@@ -349,6 +358,42 @@ internal fun DataPanel(
             dismissButton = {
                 TextButton(onClick = { pendingRestore = false }) { Text("取消") }
             },
+        )
+    }
+    healthReport?.let { report ->
+        val healthy = report.all { it.ok }
+        AlertDialog(
+            onDismissRequest = { healthReport = null },
+            title = { Text(if (healthy) "数据完整" else "发现异常") },
+            text = {
+                Column {
+                    report.forEach { f ->
+                        val detail = when {
+                            !f.ok -> "损坏：${f.error}"
+                            f.error == "missing" -> "尚未创建"
+                            else -> "版本 ${f.version ?: "?"} · ${f.size} 字节"
+                        }
+                        Text(
+                            "${if (f.ok) "✓" else "✗"} ${f.name} — $detail",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (f.ok) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
+                        )
+                    }
+                    if (!healthy) {
+                        Text(
+                            "损坏文件已在加载时隔离为 .corrupt-*，可用「导入备份」恢复。",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = AnkeSpacing.sm),
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { healthReport = null }) { Text("关闭") } },
         )
     }
 }

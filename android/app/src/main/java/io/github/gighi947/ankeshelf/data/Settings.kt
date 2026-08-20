@@ -13,6 +13,19 @@ import java.io.File
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
+/**
+ * 骨碌碌沉浸体验偏好（双端契约 `settings.json:gululu_immersive`）。
+ * Android 端在骨碌碌链路落地前不消费这些值，但必须保留字段，
+ * 否则 Android 保存设置会把 Windows 的偏好整块丢掉。
+ */
+@Serializable
+data class GululuImmersivePrefs(
+    val autoMusic: Boolean = true,
+    val backgrounds: Boolean = true,
+    val vfx: Boolean = true,
+    val volume: Double = 0.45,
+)
+
 @Serializable
 data class SettingsData(
     val settings_version: Int = 3,
@@ -36,6 +49,8 @@ data class SettingsData(
     val shelf_view: String = "grid",
     val shelf_sort: String = "recent",
     val hide_title_brackets: Boolean = false,
+    /** 骨碌碌沉浸体验偏好（双端契约字段；Android 尚未消费，但必须原样往返不丢）。 */
+    val gululu_immersive: GululuImmersivePrefs = GululuImmersivePrefs(),
     val margin_px: Int = 40,
     val gap_px: Int = 28,
     val brightness: Double = 0.0,
@@ -82,6 +97,7 @@ data class SettingsPatch(
     val shelf_view: String? = null,
     val shelf_sort: String? = null,
     val hide_title_brackets: Boolean? = null,
+    val gululu_immersive: GululuImmersivePrefs? = null,
     val margin_px: Int? = null,
     val gap_px: Int? = null,
     val brightness: Double? = null,

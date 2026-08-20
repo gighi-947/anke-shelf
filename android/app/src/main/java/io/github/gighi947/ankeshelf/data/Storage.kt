@@ -86,3 +86,51 @@ internal fun isolateCorrupt(file: File): File? {
 internal fun logWarn(tag: String, message: String) {
     runCatching { android.util.Log.w(tag, message) }
 }
+
+/** 单文件完整性检查结果（对齐桌面 `storage.verify_json_file` 的字段语义）。 */
+data class JsonFileHealth(
+    val name: String,
+    val ok: Boolean,
+    val error: String,
+    val size: Long,
+    val version: Int?,
+)
+
+private val VERSION_FIELD_RE = Regex("\"(?:version|settings_version)\"\\s*:\\s*(-?\\d+)")
+
+/**
+ * 完整性检查：只判断"能否解析 + 有无版本字段"，不读取任何内容值
+ * （与桌面 `verify_json_file` 一致：缺失视为健康，损坏/IO 失败显式报错）。
+ */
+fun verifyJsonFile(file: File): JsonFileHealth {
+    if (!file.exists()) {
+        return JsonFileHealth(file.name, ok = true, error = "missing", size = 0, version = null)
+    }
+    val size = file.length()
+    val text = try {
+        file.readText(Charsets.UTF_8)
+    } catch (e: Exception) {
+        return JsonFileHealth(file.name, ok = false, error = e.toString(), size = size, version = null)
+    }
+    return try {
+        val element = Shelf.json.parseToJsonElement(text)
+        val version = VERSION_FIELD_RE.find(text)?.groupValues?.get(1)?.toIntOrNull()
+        // 顶层必须是对象：数组/标量说明文件结构不对，属于损坏而不是"版本未知"。
+        if (element !is kotlinx.serialization.json.JsonObject) {
+            JsonFileHealth(file.name, ok = false, error = "顶层不是 JSON 对象", size = size, version = version)
+        } else {
+            JsonFileHealth(file.name, ok = true, error = "", size = size, version = version)
+        }
+    } catch (e: Exception) {
+        JsonFileHealth(file.name, ok = false, error = e.toString(), size = size, version = null)
+    }
+}
+
+/** 五个权威存储的完整性检查（书架/进度/设置/标注/统计），供设置页入口调用。 */
+fun verifyDataIntegrity(paths: AppPaths): List<JsonFileHealth> = listOf(
+    paths.shelfFile,
+    paths.progressFile,
+    paths.settingsFile,
+    paths.annotationsFile,
+    paths.statisticsFile,
+).map { verifyJsonFile(it) }
