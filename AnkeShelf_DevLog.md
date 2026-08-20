@@ -63,6 +63,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 docs：整理路线图（ARCHITECTURE_ROADMAP）
+
+- 背景：路线图 §3/§4 仍保留大量已关闭批次的展开说明，当前待办被淹没。
+- 改动：
+  - `docs/ARCHITECTURE_ROADMAP.md` 头部精简；§3 改为“已关闭批次简表 /
+    暂不实施 / 真实待办 / 保持延后”四段，§4 更新为当前执行顺序；
+  - 保留 §2 现状核验（测试基线/代码规模热点/架构债）供漂移扫描使用；
+  - 旧 P0–P4 细节不再在路线图展开（历史记录见 DevLog / DEVLOG_ARCHIVE）。
+- 验证：`scripts/check-doc-drift.ps1` 通过；路线图 §2 关键行与
+  `MAINTENANCE_GUIDE.md` §7 一致。
 ### 2026-08-20 release：Windows v1.5.1 / Android v1.1.0
 
 - 版本：Windows `v1.5.1`；Android `android-v1.1.0`（versionCode 2）。
