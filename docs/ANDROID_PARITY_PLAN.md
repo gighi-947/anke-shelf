@@ -29,10 +29,10 @@
 | G1 | 阅读器内标注交互：选中文本 → 高亮 6 色/笔记、书签增删、章内高亮渲染、标注抽屉跳转 | `web/js/annotations.js` + `highlight.js` + `sidebar.js` | ✅ 批 1 已实现（`ui/reader/native/NativeReaderAnnotations.kt` + `reader-lite.parts/45-annotation.js`） | 1 |
 | G2 | 嵌套目录（多级 + 当前项高亮） | `web/js/toc.js` | ✅ 批 1 已实现（`ui/reader/TocNode.kt` + `BookSession.tocNodes()`） | 1 |
 | G3 | 进度滑块跳转（拖动跳全书比例） | `#progress-slider` + `Reader.jumpToFraction` | ✅ 批 1 已实现（`ReaderBottomBar` Slider，松手才跳转） | 1 |
-| G4 | 阅读辅助三件套：自动滚动、RSVP 速读、阅读标尺 | `web/js/assist.js` | `autoscroll_speed` / `rsvp_rate` / `show_ruler` 字段存在但零使用（仅 `Settings.kt` 定义） | 2 |
-| G5 | 代码块高亮 | `web/js/highlight.js` | 无（`codeHighlight` 0 命中） | 2 |
-| G6 | 按书字体覆盖 | `book_fonts` + reader 解析 | `book_fonts` 仅 `Settings.kt` 定义 | 2 |
-| G7 | 进度百分比精度（章号 + 章内比例） | `app/api/common.py:progress_pct()` | `BookRepository.listBooks` 只用 `chapter_index/chapter_count` | 2 |
+| G4 | 阅读辅助三件套：自动滚动、RSVP 速读、阅读标尺 | `web/js/assist.js` | ✅ 批 2 已实现（`reader-lite.parts/48-assist.js` 自动滚动 + `ui/reader/RsvpTokenizer.kt` / `NativeReaderAssist.kt`）；标尺按触屏改为可拖动横线 | 2 |
+| G5 | 代码块高亮 | `web/js/highlight.js` | ✅ 批 2 已实现（`48-assist.js` 同款 tokenizer + `reader.css` 同色 `.syntax`） | 2 |
+| G6 | 按书字体覆盖 | `book_fonts` + reader 解析 | ✅ 批 2 已实现（`buildReaderHtml(bookId)` + 阅读辅助面板字体选择） | 2 |
+| G7 | 进度百分比精度（章号 + 章内比例） | `app/api/common.py:progress_pct()` | ✅ 批 2 已实现（`BookRepository.progressPercent`：分页用 page_index/page_total，滚动用 scroll_ratio） | 2 |
 | G8 | NGA 下载参数：`page_limit`、`toc_pid`、`toc_mode=split`（按目录楼分章） | `_build_cfg` + `write_container(toc_mode)` | `NgaDownloadParams` 缺三项；`NativeBook.meta.toc_mode` 有字段但 writer 只走 index | 3 |
 | G9 | 数据完整性校验入口 | `verify_data_integrity` + 设置页 | 有 `isolateCorrupt` 无入口（roadmap §3.3 #2） | 3 |
 | G10 | `settings.json` 缺 `gululu_immersive` 字段 → Android 回写会丢失 Windows 该设置 | `DEFAULTS["gululu_immersive"]`、契约 §4 已列 | `SettingsData` 无该字段 | 3 |
@@ -103,8 +103,8 @@
 
 | 批 | 状态 | 提交 / 备注 |
 | --- | --- | --- |
-| 1 阅读器交互对齐 | ✅ 代码完成，待真机复核 | G1/G2/G3 + `TocTree` + 跨端折叠契约；Android JVM 135 项、APK 内 reader-lite 45559B 校验通过；真机待验「长按选中 → 高亮/笔记/书签 → 退出重进一致」 |
-| 2 阅读辅助与显示精度 | ⏳ 未开始 | — |
+| 1 阅读器交互对齐 | ✅ 代码完成，待真机复核 | `ef54a4c`；G1/G2/G3 + `TocTree` + 跨端折叠契约；Android JVM 135 项、APK 内 reader-lite 45559B 校验通过；真机待验「长按选中 → 高亮/笔记/书签 → 退出重进一致」 |
+| 2 阅读辅助与显示精度 | ✅ 代码完成，待真机复核 | G4/G5/G6/G7；Android JVM 140 项、APK 内 reader-lite 50881B + reader.css 校验通过；真机待验自动滚动/速读/标尺与按书字体 |
 | 3 下载参数与数据完整性 | ⏳ 未开始 | — |
 | 4 骨碌碌数据层 | ⏳ 未开始 | — |
 | 5 骨碌碌协议层 | ⏳ 未开始 | — |

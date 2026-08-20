@@ -88,7 +88,7 @@ class BookSession(
     override fun close() = closeFn()
 }
 
-/** 书架条目 + 阅读进度百分比（M2 近似：按章号占比）。 */
+/** 书架条目 + 阅读进度百分比（章号 + 章内比例，见 [BookRepository.listBooks]）。 */
 data class BookUi(
     val record: BookRecord,
     val progressPct: Double,
@@ -121,11 +121,7 @@ class BookRepository(
 
     fun listBooks(): List<BookUi> = shelf.listBooks().map { rec ->
         val p = progress.get(rec.id)
-        val pct = if (rec.chapter_count > 0 && p != null) {
-            (p.chapter_index.coerceIn(0, rec.chapter_count - 1).toDouble() / rec.chapter_count) * 100.0
-        } else {
-            0.0
-        }
+        val pct = progressPercent(p, rec.chapter_count)
         BookUi(rec, pct, rec.chapter_count)
     }
 
@@ -373,6 +369,27 @@ class BookRepository(
         fun offsetForRatio(ratio: Double, plainLength: Int): Int {
             if (plainLength <= 0) return 0
             return (ratio.coerceIn(0.0, 1.0) * plainLength).roundToInt().coerceIn(0, plainLength)
+        }
+
+        /**
+         * 书架进度百分比 = (章索引 + 章内比例) / 总章数 × 100（对齐桌面
+         * `app/api/common.py:progress_pct` 的语义）。
+         *
+         * 桌面用「text_offset / 章纯文本长」求章内比例，需要全文索引就绪；
+         * 书架列表不打开书籍，因此这里用已持久化的安卓扩展字段近似：
+         * 分页模式用 `page_index / page_total`，滚动模式用 `scroll_ratio`，
+         * 两者都没有时退回纯章号占比（与旧行为一致，不会倒退）。
+         */
+        fun progressPercent(entry: ProgressEntry?, chapterCount: Int): Double {
+            if (entry == null || chapterCount <= 0) return 0.0
+            val idx = entry.chapter_index.coerceIn(0, chapterCount - 1)
+            val inChapter = when {
+                entry.page_total > 0 && entry.page_index >= 0 ->
+                    (entry.page_index.toDouble() / entry.page_total).coerceIn(0.0, 1.0)
+                entry.scroll_ratio in 0.0..1.0 -> entry.scroll_ratio
+                else -> 0.0
+            }
+            return (((idx + inChapter) / chapterCount) * 100.0).coerceIn(0.0, 100.0)
         }
     }
 }

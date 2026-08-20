@@ -89,10 +89,12 @@
   }
 
   /**
-   * 章节首次建坐标：宿主带来本章高亮时先注入再建坐标（与桌面 reader.js
-   * 「注入高亮后重建坐标」同顺序），保证恢复定位与采样都基于最终 DOM。
+   * 章节首次建坐标：先做代码块高亮，再注入宿主带来的本章高亮，最后建坐标
+   * （与桌面 reader.js「代码高亮 + 标注注入后重建坐标」同顺序）。
+   * 两类注入元素（.syntax / .hl-mark）按折叠规则内部无缝，text_offset 不变。
    */
   function buildTextWithHighlights(payload) {
+    highlightCodeBlocks();
     if (payload) {
       applyHighlights(payload);
       if (state.textCtx) return state.textCtx;

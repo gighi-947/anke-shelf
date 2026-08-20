@@ -27,13 +27,15 @@ android/
   saveProgressNow / pageChanged / requestChapter / openImage / onScrollMoved /
   onMode / onSettled / onSelection / onHighlightTap`；Kotlin 下发
   `init / applyTheme / applyTypography / setMode / flipPage / setInsets /
-  gotoOffset / gotoTextOffset / applyHighlights / clearSelection / openImageAt /
-  onResize`。ready 握手版本见 `ui/reader/BridgeProtocol.kt`（当前 1，能力为追加式
-  扩展：`paged / scroll / scrollRatio / image / settled / annotation`），
+  gotoOffset / gotoTextOffset / applyHighlights / clearSelection /
+  startAutoScroll / stopAutoScroll / openImageAt / onResize`。ready 握手版本见
+  `ui/reader/BridgeProtocol.kt`（当前 1，能力为追加式扩展：
+  `paged / scroll / scrollRatio / image / settled / annotation / assist`），
   不兼容时显式失败并记诊断。
-- 标注注入红线：高亮以 `<mark class="hl-mark">` 注入正文，折叠规则把注入节点内部
-  视为无缝（不产生分隔空格），因此 `text_offset` 不随注入变化；跨端对照见
-  `contracts/tests/reader-lite-textpos.test.js`。
+- 标注与代码高亮注入红线：高亮以 `<mark class="hl-mark">`、代码高亮以
+  `<span class="tok-*">`（父级 `.syntax`）注入正文，折叠规则把注入节点内部视为无缝
+  （不产生分隔空格），因此 `text_offset` 不随注入变化；两类注入都必须在建坐标之前完成。
+  跨端对照见 `contracts/tests/reader-lite-textpos.test.js`。
 - 版本：`android-vX.Y.Z` 独立标签与 Release 资产。
 
 ## 必须保留的桌面语义（移植红线）

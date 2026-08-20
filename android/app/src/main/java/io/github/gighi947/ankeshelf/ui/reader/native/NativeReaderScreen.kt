@@ -146,6 +146,11 @@ fun NativeReaderScreen(
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
     var editingNote by remember { mutableStateOf<Highlight?>(null) }
     var showAnnotations by remember { mutableStateOf(false) }
+    // 阅读辅助（批 2）：面板 / 自动滚动 / 标尺 / 速读
+    var showAssist by remember { mutableStateOf(false) }
+    var autoScrollOn by remember { mutableStateOf(false) }
+    var rulerOn by remember { mutableStateOf(readerSettings.show_ruler) }
+    var rsvpOn by remember { mutableStateOf(false) }
     var annotationsTick by remember { mutableIntStateOf(0) }
     var jump by remember { mutableStateOf<ReaderJump?>(null) }
     var jumpToken by remember { mutableIntStateOf(0) }
@@ -215,12 +220,12 @@ fun NativeReaderScreen(
 
     // 章节 HTML：换章/换书时后台组装一次；主题/字号后续用 JS 桥更新，不重载页面。
     // 读取失败进入显式分支（NotFound/Corrupt/Io），不静默渲染空白。
-    val chapterState = remember(session.id, chapterIndex) {
+    val chapterState = remember(session.id, chapterIndex, readerSettings.book_fonts, readerSettings.custom_font) {
         when (val r = session.chapterText(chapterIndex)) {
             is ChapterReadResult.Success -> runCatching {
                 val parts = extractReaderParts(r.text)
                 val plain = TextExtractor.extractDomText(parts.body)
-                val html = buildReaderHtml(parts, theme, readerSettings)
+                val html = buildReaderHtml(parts, theme, readerSettings, session.id)
                 ChapterUiState.Html(html, plain)
             }.getOrElse { e -> ChapterUiState.Error(e.message ?: "章节渲染失败") }
             is ChapterReadResult.NotFound -> ChapterUiState.Error("章节不存在，请返回目录")
@@ -266,6 +271,17 @@ fun NativeReaderScreen(
     val tocNodes = remember(session.id) {
         session.tocNodes().ifEmpty {
             TocTree.fromChapters(session.chapters) { session.chapterTitle(it) }
+        }
+    }
+    // 可选字体：内置 + 系统 + 已导入字体文件（与设置页 ReadingPanel 同来源）。
+    val availableFonts = remember(session.id) {
+        buildList {
+            add("sys:weidqczfkyxk.ttf")
+            add("system")
+            container.appPaths.fontsDir.listFiles()
+                ?.filter { it.isFile && it.extension.lowercase() in setOf("ttf", "otf") }
+                ?.sortedBy { it.name }
+                ?.forEach { add(it.name) }
         }
     }
     val bookProgress = remember(chapterIndex, liveOffset, chapterState, session.id) {
@@ -435,6 +451,8 @@ fun NativeReaderScreen(
                 highlightsJson = highlightsJson,
                 jump = jump,
                 clearSelectionToken = clearSelectionToken,
+                autoScroll = autoScrollOn,
+                autoScrollSpeed = readerSettings.autoscroll_speed,
                 session = session,
                 container = container,
                 callbacks = WebViewReaderCallbacks(
@@ -572,7 +590,49 @@ fun NativeReaderScreen(
             onFontInc = { onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size + 1).coerceAtMost(28))) },
             onThemeChange = { onSettingsPatch(SettingsPatch(theme = it)) },
             onTogglePagination = { onSettingsPatch(SettingsPatch(pagination = !readerSettings.pagination)) },
+            onOpenAssist = { showAssist = true },
         )
+
+        ReaderAssistSheet(
+            visible = showAssist,
+            barBg = barBg,
+            fg = fg,
+            autoScroll = autoScrollOn,
+            autoScrollSpeed = readerSettings.autoscroll_speed,
+            rulerOn = rulerOn,
+            rsvpOn = rsvpOn,
+            fonts = availableFonts,
+            bookFont = readerSettings.book_fonts[session.id].orEmpty(),
+            onToggleAutoScroll = { autoScrollOn = it },
+            onSpeedChange = {
+                onSettingsPatch(SettingsPatch(autoscroll_speed = (it * 10).roundToInt() / 10.0))
+            },
+            onToggleRuler = {
+                rulerOn = it
+                onSettingsPatch(SettingsPatch(show_ruler = it))
+            },
+            onToggleRsvp = { rsvpOn = it },
+            onBookFontChange = { font ->
+                val next = readerSettings.book_fonts.toMutableMap()
+                if (font.isBlank()) next.remove(session.id) else next[session.id] = font
+                onSettingsPatch(SettingsPatch(book_fonts = next))
+            },
+            onDismiss = { showAssist = false },
+        )
+
+        ReaderRulerOverlay(visible = rulerOn, fg = fg)
+
+        if (rsvpOn) {
+            ReaderRsvpOverlay(
+                plainText = (chapterState as? ChapterUiState.Html)?.plain.orEmpty(),
+                fromOffset = liveOffset,
+                rate = readerSettings.rsvp_rate,
+                barBg = barBg,
+                fg = fg,
+                onRateChange = { onSettingsPatch(SettingsPatch(rsvp_rate = it)) },
+                onClose = { rsvpOn = false },
+            )
+        }
 
         ReaderTocDrawer(
             visible = showToc,

@@ -131,6 +131,9 @@ fun WebViewChapterView(
     jump: ReaderJump? = null,
     /** 清除 WebView 文本选区；token 变化触发一次（标注操作后收起系统选择手柄）。 */
     clearSelectionToken: Int = 0,
+    /** 自动滚动/自动翻页开关与速度倍率（对齐桌面 assist.js setAutoScroll）。 */
+    autoScroll: Boolean = false,
+    autoScrollSpeed: Double = 2.0,
     session: BookSession,
     container: AppContainer,
     callbacks: WebViewReaderCallbacks,
@@ -303,6 +306,17 @@ fun WebViewChapterView(
     LaunchedEffect(clearSelectionToken) {
         if (clearSelectionToken == 0 || !pageReady.value) return@LaunchedEffect
         webViewRef.value?.evaluateJavascript("AnkeReader.clearSelection();", null)
+    }
+
+    // 自动滚动：开关/速度/章节切换后重新下发（JS 状态随页面销毁，换章需重启）。
+    LaunchedEffect(autoScroll, autoScrollSpeed, chapterIndex, pageReady.value, settled.value) {
+        if (!pageReady.value) return@LaunchedEffect
+        val web = webViewRef.value ?: return@LaunchedEffect
+        if (autoScroll && settled.value) {
+            web.evaluateJavascript("AnkeReader.startAutoScroll($autoScrollSpeed);", null)
+        } else {
+            web.evaluateJavascript("AnkeReader.stopAutoScroll();", null)
+        }
     }
 
     val bridge = remember {

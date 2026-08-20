@@ -136,10 +136,12 @@ fun buildReaderHtml(
     parts: ReaderHtmlParts,
     theme: ReaderThemeColors,
     settings: SettingsData,
+    bookId: String = "",
 ): String {
     // 正文字体："" / "sys:*" = 内置 LXGW（reader.css 默认栈）；
     // "system" = 系统默认；其余 = 已导入字体文件名（经 shouldInterceptRequest 提供 file:///android_fonts/）。
-    val customFont = settings.custom_font
+    // 按书字体优先于全局（对齐桌面 reader-utils.js resolveFamily 的 book_fonts 覆盖）。
+    val customFont = settings.book_fonts[bookId]?.takeIf { it.isNotBlank() } ?: settings.custom_font
     val fontFace = if (
         customFont.isNotBlank() &&
         !customFont.startsWith("sys:") &&

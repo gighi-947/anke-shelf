@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.AlertDialog
@@ -201,6 +202,7 @@ internal fun BoxScope.ReaderBottomBar(
     onFontInc: () -> Unit,
     onThemeChange: (String) -> Unit,
     onTogglePagination: () -> Unit,
+    onOpenAssist: () -> Unit,
 ) {
     var dragging by remember { mutableStateOf<Float?>(null) }
     val sliderValue = (dragging ?: bookProgress).coerceIn(0f, 1f)
@@ -239,6 +241,9 @@ internal fun BoxScope.ReaderBottomBar(
                 }
                 IconButton(onClick = onNextChapter) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "下一章", tint = fg)
+                }
+                IconButton(onClick = onOpenAssist) {
+                    Icon(Icons.Filled.Speed, contentDescription = "阅读辅助", tint = fg)
                 }
             }
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

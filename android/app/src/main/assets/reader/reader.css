@@ -146,6 +146,32 @@ body.paged #paged-scroll code {
     word-break: break-all;
 }
 
+/* 代码块高亮（与桌面 reader.css 的 .syntax 同色；span 内部无缝，不改 text_offset） */
+.syntax .tok-kw {
+    color: #c586c0;
+}
+
+.syntax .tok-str {
+    color: #ce9178;
+}
+
+.syntax .tok-num {
+    color: #b5cea8;
+}
+
+.syntax .tok-com {
+    color: #6a9955;
+    font-style: italic;
+}
+
+.syntax .tok-fn {
+    color: #dcdcaa;
+}
+
+.syntax .tok-punc {
+    color: #9cdcfe;
+}
+
 /* 滚动模式底部换章按钮（对齐桌面 chapter-nav-row；分页模式隐藏） */
 .chapter-nav-row {
     display: flex;

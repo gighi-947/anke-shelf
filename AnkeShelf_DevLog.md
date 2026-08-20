@@ -30,10 +30,10 @@
     `node contracts/tests/api-contract.test.js`（59 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（7 parts / 45559 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（8 parts / 50881 字节）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 135 项（134 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 140 项（139 过 / 1 跳）；
     DisciplineTest 8 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
@@ -64,6 +64,35 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-20 android：对齐批 2 —— 阅读辅助 / 代码高亮 / 按书字体 / 进度精度
+
+- 背景：`autoscroll_speed` / `rsvp_rate` / `show_ruler` / `book_fonts` 四个设置字段
+  长期只有定义没有实现（空转），书架百分比只按章号取整。
+- 改动：
+  - 新增 `reader-lite.parts/48-assist.js`：移植桌面 `highlight.js` 的 tokenizer
+    （关键字/字符串/数字/注释/函数/标点 6 类，`.syntax` 类，折叠规则内部无缝，
+    不改 text_offset），以及自动滚动/自动翻页（滚动模式逐帧推进 speed×150 px/s，
+    分页模式按页停留，到章尾 `requestChapter(1)`）。桥能力追加 `assist`。
+  - 代码高亮在 `buildTextWithHighlights` 内**先于建坐标**执行（与桌面同顺序），
+    由 DisciplineTest 守护。
+  - 新增 `ui/reader/RsvpTokenizer.kt`（纯函数 + 单测）：桌面按空白切词，中文正文
+    会退化成"整段一个词"导致速读不可用；这里按字符类别切分（拉丁按词、CJK 两字一块、
+    标点吸附前块且不跨空白吸附）。
+  - 新增 `ui/reader/native/NativeReaderAssist.kt`：阅读辅助面板（自动滚动 + 速度、
+    速读开关、标尺开关、本书字体选择）+ RSVP 覆盖层 + 可拖动阅读标尺；底栏加入口。
+  - 按书字体：`buildReaderHtml(..., bookId)` 优先取 `book_fonts[bookId]`
+    （对齐桌面 `reader-utils.js` 的 resolveFamily）。
+  - 书架百分比：新增 `BookRepository.progressPercent`，= (章索引 + 章内比例) / 总章数；
+    章内比例分页用 `page_index/page_total`、滚动用 `scroll_ratio`（都缺省时退回章号占比）。
+    桌面用 text_offset/章长需索引就绪，书架列表不打开书籍，故用已持久化的安卓扩展字段近似。
+- 教训：RSVP 分词第一版把全角标点（U+FF0C 等）当成汉字凑进词块（出现"，出"），
+  且 `a = b` 的 `=` 被吸附成 `2d6=`；两条都是单测先判红后修正——
+  `isCjk` 必须加 `isLetter()` 闸门，标点吸附必须要求"中间无空白"。
+- 验证：`gradlew testDebugUnitTest` = 140 项（139 过 / 1 跳）；`assembleDebug` 成功；
+  解包 APK 校验 `reader-lite.js` = 50881 字节、`reader.css` 含 `.syntax .tok-kw`；
+  JS 契约全绿（桥能力 `...,annotation,assist`）。
+- 待办：真机验证自动滚动（滚动/分页两种模式到章尾换章）、速读、标尺拖动、按书字体切换。
 
 ### 2026-08-20 android：对齐批 1 —— 阅读器标注交互 / 嵌套目录 / 进度滑块
 

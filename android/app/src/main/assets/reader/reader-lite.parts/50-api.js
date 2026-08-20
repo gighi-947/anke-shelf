@@ -410,6 +410,10 @@
     },
     clearSelection: clearSelection,
     gotoTextOffset: gotoTextOffset,
+    // 阅读辅助（批 2）：自动滚动/自动翻页
+    startAutoScroll: startAutoScroll,
+    stopAutoScroll: stopAutoScroll,
+    isAutoScrolling: isAutoScrolling,
     bridgeVersion: function () { return BRIDGE_VERSION; },
     bridgeReadyPayload: bridgeReadyPayload,
     emitReady: emitReady,

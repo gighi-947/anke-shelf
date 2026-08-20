@@ -214,6 +214,19 @@ class DisciplineTest {
             "桥能力必须声明 annotation（宿主据此启用标注交互）",
             js.contains("'annotation'"),
         )
+        // 代码高亮同样是显示层注入（.syntax），必须在建坐标之前完成，
+        // 否则首次坐标基于未高亮 DOM，注入后 ranges 全部失效。
+        assertTrue(
+            "代码高亮必须在 buildTextWithHighlights 内先执行",
+            js.contains("function buildTextWithHighlights(payload)") &&
+                js.substringAfter("function buildTextWithHighlights(payload)")
+                    .substringBefore("}")
+                    .contains("highlightCodeBlocks()"),
+        )
+        assertTrue(
+            "代码高亮必须给 code 加 .syntax（折叠规则据此无缝）",
+            js.contains("code.classList.add('syntax')"),
+        )
         // 标注跳转必须以文本锚点/页码落盘：saveProgressNow 永远 ratio=-1，
         // 滚动比例兜底只允许出现在防抖采样路径（saveProgress）。
         assertTrue(
