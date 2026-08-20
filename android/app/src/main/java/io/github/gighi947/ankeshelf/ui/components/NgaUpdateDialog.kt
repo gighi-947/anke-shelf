@@ -55,6 +55,9 @@ fun NgaUpdateDialog(
     }
     var themeDark by remember(book.id) { mutableStateOf((defaults?.theme ?: "light") == "dark") }
     var perChapterText by remember(book.id) { mutableStateOf((defaults?.perChapter ?: 20).toString()) }
+    var pageLimitText by remember(book.id) {
+        mutableStateOf((defaults?.pageLimit ?: 0).takeIf { it > 0 }?.toString() ?: "")
+    }
     var imageMode by remember(book.id) { mutableStateOf(defaults?.imageMode ?: "online") }
 
     AlertDialog(
@@ -123,6 +126,16 @@ fun NgaUpdateDialog(
                     shape = AnkeRadius.medium,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OutlinedTextField(
+                    value = pageLimitText,
+                    onValueChange = { pageLimitText = it.filter { c -> c.isDigit() } },
+                    label = { Text("本次最多新增页数（0=不限）") },
+                    singleLine = true,
+                    shape = AnkeRadius.medium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = AnkeSpacing.sm),
+                )
                 Text(
                     "更新设置仅对本次新增楼层生效，不影响已有楼层。",
                     style = MaterialTheme.typography.bodySmall,
@@ -142,6 +155,7 @@ fun NgaUpdateDialog(
                             imageMode = imageMode,
                             theme = if (themeDark) "dark" else "light",
                             perChapter = perChapterText.trim().toIntOrNull()?.coerceIn(1, 200) ?: 20,
+                            pageLimit = pageLimitText.trim().toIntOrNull() ?: 0,
                         ),
                     )
                 },
@@ -163,6 +177,7 @@ fun launchNgaUpdate(context: Context, book: BookRecord, params: NgaDownloadParam
         putExtra("authorId", params.authorId)
         putExtra("theme", params.theme)
         putExtra("perChapter", params.perChapter)
+        putExtra("pageLimit", params.pageLimit)
         putExtra("imageMode", params.imageMode)
     }
     ContextCompat.startForegroundService(context, intent)

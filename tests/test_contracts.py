@@ -120,5 +120,63 @@ class SchemaTest(unittest.TestCase):
         self.jsonschema.validate({"settings_version": 3, "theme": "dark"}, schema)
 
 
+class NgaTocFixtureTest(unittest.TestCase):
+    """NGA 目录楼解析 + split 分章的双端 golden 对照（Android 侧同夹具见 NgaTocParserTest）。"""
+
+    FIXTURE = CONTRACTS / "fixtures" / "nga-toc"
+
+    def setUp(self):
+        import sys
+
+        from app.nga_service import _nga_root
+
+        root = _nga_root().as_posix()
+        if root not in sys.path:
+            sys.path.insert(0, root)
+
+    def _expected(self):
+        return json.loads((self.FIXTURE / "expected-toc.json").read_text(encoding="utf-8"))
+
+    def test_parse_toc_matches_fixture(self):
+        from ngapost2md.toc import parse_toc
+
+        from app.native_book import _serialize_toc
+
+        content = (self.FIXTURE / "toc-floor.html").read_text(encoding="utf-8")
+        serialized = _serialize_toc(parse_toc(content))
+        want = self._expected()["chapters"]
+        # 无条目的折叠块：Windows _serialize_toc 会保留空 entries，契约要求两端都丢弃
+        serialized = [c for c in serialized if c["entries"]]
+        self.assertEqual(len(serialized), len(want))
+        for got, exp in zip(serialized, want):
+            self.assertEqual(got["title"], exp["title"])
+            self.assertEqual(got["entries"], [[t, p] for t, p in exp["entries"]])
+
+    def test_split_grouping_matches_fixture(self):
+        from ngapost2md.toc import parse_toc
+
+        from app.native_book import _group_floors_by_toc
+
+        class _Floor:
+            def __init__(self, pid, lou):
+                self.pid = pid
+                self.lou = lou
+
+        grouping = self._expected()["split_grouping"]
+        floors = [_Floor(f["pid"], f["lou"]) for f in grouping["floors"]]
+        toc_chapters = parse_toc((self.FIXTURE / "toc-floor.html").read_text(encoding="utf-8"))
+        grouped = _group_floors_by_toc(floors, toc_chapters)
+        got = [
+            {
+                "title": title,
+                "first_lou": group[0].lou,
+                "last_lou": group[-1].lou,
+                "floor_count": len(group),
+            }
+            for title, group in grouped
+        ]
+        self.assertEqual(got, grouping["expected"])
+
+
 if __name__ == "__main__":
     unittest.main()

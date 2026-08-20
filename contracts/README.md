@@ -19,6 +19,7 @@ contracts/
 │                       reader-lite-parts / reader-lite-textpos 跨端折叠对照）
 └── fixtures/
     └── native-book/basic-nga/   最小原生书 fixture（meta/floors/chapters + 期望纯文本）
+    └── nga-toc/       NGA 目录楼 fixture（原始楼层 HTML + 期望章节与 split 分章结果）
     └── progress/      进度事件序列夹具（滚动防抖/翻页即时/模式隔离/比例锚点/
                        换章 flush/dispose 迟到事件/连续重进；Kotlin 决策层消费）
 ```
@@ -44,6 +45,11 @@ contracts/
    `web/js/textpos.js` 与 Android `assets/reader/reader-lite.js` 的 `foldItems`，
    逐项比对 `text/raw/mapRaw/ranges`。**注入节点（`.hl-mark` / `.syntax`）内部无缝**
    是标注注入不移动 `text_offset` 的前提，任何一端删除该分支即为契约漂移。
+8. NGA 目录楼跨端对照（`fixtures/nga-toc/`）：Windows
+   `ngapost2md/toc.py` + `app/native_book._serialize_toc` / `_group_floors_by_toc`
+   与 Android `data/NgaTocParser` + `NativeBookWriter` 消费同一份夹具
+   （`tests/test_contracts.py::NgaTocFixtureTest` 与 `NgaTocParserTest`）。
+   无条目的折叠块两端都必须丢弃；`toc_mode=split` 的分章边界以夹具 `expected` 为准。
 
 ## 版本
 

@@ -239,6 +239,9 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
     var authorIdText by remember { mutableStateOf("") }
     var maxFloorsText by remember { mutableStateOf("") }
     var perChapterText by remember { mutableStateOf("20") }
+    var pageLimitText by remember { mutableStateOf("") }
+    var tocPidText by remember { mutableStateOf("") }
+    var tocMode by remember { mutableStateOf("index") }
     var imageMode by remember { mutableStateOf("online") }
     var status by remember { mutableStateOf(NgaServiceStatus.snapshot()) }
 
@@ -304,6 +307,47 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                     .fillMaxWidth()
                     .padding(top = AnkeSpacing.sm),
             )
+            OutlinedTextField(
+                value = pageLimitText,
+                onValueChange = { pageLimitText = it.filter { c -> c.isDigit() } },
+                label = { Text("本次最多下载页数（0=不限）") },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = AnkeSpacing.sm),
+            )
+            OutlinedTextField(
+                value = tocPidText,
+                onValueChange = { tocPidText = it.filter { c -> c.isDigit() } },
+                label = { Text("目录楼 pid（0=不解析目录）") },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = AnkeSpacing.sm),
+            )
+            // 分章方式：目录楼解析成功时才能按目录分章，否则自动退回按楼数分章。
+            Text(
+                "分章方式",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = AnkeSpacing.sm),
+            )
+            FlowRow(
+                modifier = Modifier.padding(top = AnkeSpacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+            ) {
+                listOf("index" to "按楼数", "split" to "按目录楼")
+                    .forEach { (value, label) ->
+                        FilterChip(
+                            selected = tocMode == value,
+                            onClick = { tocMode = value },
+                            label = { Text(label) },
+                            enabled = value == "index" || (tocPidText.trim().toLongOrNull() ?: 0L) > 0,
+                        )
+                    }
+            }
             // 图片选项独立分组（主题已改为自适应，不再在下载时选择）。
             Text(
                 "图片",
@@ -341,6 +385,9 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                             putExtra("authorId", authorIdText.trim().toLongOrNull() ?: 0L)
                             putExtra("maxFloors", maxFloorsText.trim().toIntOrNull() ?: 0)
                             putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
+                            putExtra("pageLimit", pageLimitText.trim().toIntOrNull() ?: 0)
+                            putExtra("tocPid", tocPidText.trim().toLongOrNull() ?: 0L)
+                            putExtra("tocMode", tocMode)
                             putExtra("imageMode", imageMode)
                             // 已存在同 tid 书时点击“重新下载”= 强制全量重下；
                             // 否则（首次）走全量，已存在场景由下载器自动转为增量。
@@ -361,7 +408,8 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                                 putExtra("bookId", existing.id)
                                 putExtra("tid", tid)
                                 putExtra("authorId", authorIdText.trim().toLongOrNull() ?: 0L)
-                                    putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
+                                putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
+                                putExtra("pageLimit", pageLimitText.trim().toIntOrNull() ?: 0)
                                 putExtra("imageMode", imageMode)
                             }
                             ContextCompat.startForegroundService(context, intent)

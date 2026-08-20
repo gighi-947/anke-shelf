@@ -1,0 +1,38 @@
+{
+  "_comment": "NGA 目录楼解析的双端权威期望：Windows ngapost2md/toc.py + app/native_book._serialize_toc，Android data/NgaTocParser。entries 为 [标题, pid] 有序数组（lead 在前，随后按 Day 顺序展开）；无条目的折叠块两端都必须丢弃。",
+  "chapters": [
+    {
+      "title": "第一章 起点 & 序幕",
+      "entries": [
+        ["开场", 100],
+        ["清晨的选择", 101],
+        ["午后的骰点", 102],
+        ["夜谈", 103]
+      ]
+    },
+    {
+      "title": "第二章 转折",
+      "entries": [
+        ["再会", 200]
+      ]
+    }
+  ],
+  "split_grouping": {
+    "_comment": "以上目录 + 楼层序列（pid/lou）经 toc_mode=split 分章后的期望结果：主楼独占首章，其余各章从该章首个可定位条目所在楼层开始。",
+    "floors": [
+      { "pid": 0, "lou": 0 },
+      { "pid": 100, "lou": 1 },
+      { "pid": 101, "lou": 5 },
+      { "pid": 102, "lou": 9 },
+      { "pid": 103, "lou": 14 },
+      { "pid": 150, "lou": 20 },
+      { "pid": 200, "lou": 40 },
+      { "pid": 201, "lou": 41 }
+    ],
+    "expected": [
+      { "title": "序章 · 主楼", "first_lou": 0, "last_lou": 0, "floor_count": 1 },
+      { "title": "第一章 起点 & 序幕", "first_lou": 1, "last_lou": 20, "floor_count": 5 },
+      { "title": "第二章 转折", "first_lou": 40, "last_lou": 41, "floor_count": 2 }
+    ]
+  }
+}

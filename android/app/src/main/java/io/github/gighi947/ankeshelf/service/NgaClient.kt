@@ -82,6 +82,40 @@ class NgaClient(
         return parsePageFull(tid, request(tid, page, authorId))
     }
 
+    /**
+     * 按 pid 取单楼原始正文（目录楼解析用，对齐桌面
+     * `nga.py` 里 `post&__act=list` 带 `pid` 的调用）。
+     * 找不到该楼或接口失败返回空串——目录是可选增强，调用方回退按楼分章。
+     */
+    fun fetchFloorContent(tid: Long, pid: Long): String {
+        val form = FormBody.Builder()
+            .add("tid", tid.toString())
+            .add("pid", pid.toString())
+            .build()
+        val request = Request.Builder()
+            .url("$base/app_api.php?__lib=post&__act=list")
+            .ngaHeaders(cookieUid, cookieCid, userAgent)
+            .post(form)
+            .build()
+        val body = try {
+            client.newCall(request).execute().use { resp ->
+                if (!resp.isSuccessful) return ""
+                resp.body.string().orEmpty()
+            }
+        } catch (e: Exception) {
+            throw NgaHttpException("无法连接 NGA（目录楼 pid=$pid）：${e.message}", e)
+        }
+        val root = try {
+            json.parseToJsonElement(body).jsonObject
+        } catch (e: Exception) {
+            return ""
+        }
+        if ((root["code"]?.jsonPrimitive?.intOrNull ?: -1) != 0) return ""
+        val result = root["result"]
+        if (result !is JsonArray || result.isEmpty()) return ""
+        return result.first().jsonObject["content"]?.jsonPrimitive?.content.orEmpty()
+    }
+
     /** 解析完整楼层（对齐桌面 analyze_floors：lou/pid/timestamp/author/comments 递归）。 */
     fun parsePageFull(tid: Long, body: String): NgaPageData {
         val root = try {

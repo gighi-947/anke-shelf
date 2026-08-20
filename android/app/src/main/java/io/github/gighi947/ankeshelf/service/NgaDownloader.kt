@@ -6,6 +6,8 @@ import io.github.gighi947.ankeshelf.data.NativeBookWriter
 import io.github.gighi947.ankeshelf.data.NativeFloor
 import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.NgaFormatHtml
+import io.github.gighi947.ankeshelf.data.NativeTocChapter
+import io.github.gighi947.ankeshelf.data.NgaTocParser
 import io.github.gighi947.ankeshelf.data.atomicWriteJson
 import io.github.gighi947.ankeshelf.data.nowIso
 import kotlinx.serialization.Serializable
@@ -19,9 +21,15 @@ data class NgaDownloadParams(
     val tid: Long,
     val authorId: Long = 0,
     val maxFloors: Int = 0,
+    /** 单次最多新增页数（0=不限制；对齐桌面 cfg.page_download_limit）。 */
+    val pageLimit: Int = 0,
     val imageMode: String = "online",
     val theme: String = "light",
     val perChapter: Int = 20,
+    /** 目录楼 pid（>0 时解析该楼为章节目录；对齐桌面 cfg.epub_toc_pid）。 */
+    val tocPid: Long = 0,
+    /** 分章方式：index=每章固定楼数；split=按目录楼分章（需 tocPid 解析成功）。 */
+    val tocMode: String = "index",
     val fullRedownload: Boolean = false,
 )
 
@@ -43,6 +51,10 @@ data class NgaDownloadState(
     val theme: String = "light",
     val image_mode: String = "online",
     val per_chapter: Int = 20,
+    /** 最近一次使用的参数（热更新表单默认值；对齐桌面 download_settings.json）。 */
+    val page_limit: Int = 0,
+    val toc_pid: Long = 0,
+    val toc_mode: String = "index",
 )
 
 /**
@@ -164,18 +176,24 @@ class NgaDownloader(
                 throw NgaHttpException("NGA 返回代码不为 0：${first.code} ${first.msg}")
             }
             val totalPage = first.totalPage.coerceAtLeast(1)
-            var lastPage = totalPage
+            // 页数上限：对齐桌面 cfg.page_download_limit（0=不限制），从第 1 页起算。
+            val lastWanted = if (params.pageLimit > 0) {
+                minOf(totalPage, params.pageLimit)
+            } else {
+                totalPage
+            }
+            var lastPage = lastWanted
             val floors = mutableListOf<NativeFloor>()
             floors.addAll(first.floors)
-            progress("pages", 1, totalPage, "正在下载第 1/$totalPage 页")
-            for (p in 2..totalPage) {
+            progress("pages", 1, lastWanted, "正在下载第 1/$lastWanted 页")
+            for (p in 2..lastWanted) {
                 checkCancel()
                 val pageData = client.fetchPageFull(params.tid, p, params.authorId)
                 if (pageData.code != 0) {
                     throw NgaHttpException("NGA 返回代码不为 0：${pageData.code} ${pageData.msg}")
                 }
                 floors.addAll(pageData.floors)
-                progress("pages", p, totalPage, "正在下载第 $p/$totalPage 页")
+                progress("pages", p, lastWanted, "正在下载第 $p/$lastWanted 页")
                 if (params.maxFloors > 0 &&
                     floors.count { it.lou != -1 } >= params.maxFloors
                 ) {
@@ -186,6 +204,7 @@ class NgaDownloader(
             checkCancel()
             val valid = validFloors(floors, params.maxFloors)
             val bookId = nativeBookId(nativeDir)
+            val tocChapters = fetchTocChapters(client, params)
             if (valid.isNotEmpty()) {
                 val imagesDir = File(appPaths.root, "images/$bookId")
                 if (params.imageMode == "embedded") downloadImages(valid, bookId)
@@ -204,6 +223,8 @@ class NgaDownloader(
                     imageMode = params.imageMode,
                     theme = params.theme,
                     bookId = bookId,
+                    tocChapters = tocChapters,
+                    tocMode = params.tocMode,
                     imagesDir = imagesDir,
                 )
                 saveState(folderName, lastPage, valid, params)
@@ -214,7 +235,7 @@ class NgaDownloader(
             } else {
                 throw NgaHttpException("没有可用的楼层内容")
             }
-            progress("done", totalPage, totalPage, "下载完成")
+            progress("done", lastWanted, lastWanted, "下载完成")
             LogEvents.event(
                 "nga",
                 "download_done",
@@ -273,17 +294,23 @@ class NgaDownloader(
             throw NgaHttpException("NGA 返回代码不为 0：${first.code} ${first.msg}")
         }
         val totalPage = first.totalPage.coerceAtLeast(1)
+        // 页数上限：只约束本次新增页（桌面 page_download_limit 同语义，从断点页起算）。
+        val lastWanted = if (params.pageLimit > 0) {
+            minOf(totalPage, startPage + params.pageLimit - 1)
+        } else {
+            totalPage
+        }
         val newFloors = mutableListOf<NativeFloor>()
         newFloors.addAll(first.floors)
-        var lastPage = totalPage
-        for (p in (startPage + 1)..totalPage) {
+        var lastPage = lastWanted
+        for (p in (startPage + 1)..lastWanted) {
             checkCancel()
             val pageData = client.fetchPageFull(tid, p, authorId)
             if (pageData.code != 0) {
                 throw NgaHttpException("NGA 返回代码不为 0：${pageData.code} ${pageData.msg}")
             }
             newFloors.addAll(pageData.floors)
-            progress("pages", p, totalPage, "正在下载第 $p/$totalPage 页")
+            progress("pages", p, lastWanted, "正在下载第 $p/$lastWanted 页")
             if (params.maxFloors > 0 &&
                 validFloors(newFloors, params.maxFloors).size >= params.maxFloors
             ) {
@@ -307,8 +334,43 @@ class NgaDownloader(
             imagesDir = imagesDir,
         )
         saveState(folderName, lastPage, valid, params.copy(tid = tid))
-        progress("done", totalPage, totalPage, if (added > 0) "已更新 $added 楼" else "已是最新")
+        progress("done", lastWanted, lastWanted, if (added > 0) "已更新 $added 楼" else "已是最新")
         return added
+    }
+
+    /**
+     * 目录楼 → 章节目录（tocPid<=0 或解析不出条目时返回 null，调用方回退按楼分章）。
+     * 目录是可选增强：网络/解析失败只记诊断并降级，不让整本下载失败。
+     */
+    private fun fetchTocChapters(
+        client: NgaClient,
+        params: NgaDownloadParams,
+    ): List<NativeTocChapter>? {
+        if (params.tocPid <= 0) return null
+        progress("format", 0, 0, "正在解析目录楼…")
+        val content = try {
+            client.fetchFloorContent(params.tid, params.tocPid)
+        } catch (e: NgaHttpException) {
+            LogEvents.event(
+                "nga",
+                "toc_fetch_failed",
+                "task_id" to taskId,
+                "tid" to params.tid,
+                "toc_pid" to params.tocPid,
+                "error" to e.toString(),
+            )
+            return null
+        }
+        val chapters = NgaTocParser.parseToc(content)
+        LogEvents.event(
+            "nga",
+            "toc_parsed",
+            "task_id" to taskId,
+            "tid" to params.tid,
+            "toc_pid" to params.tocPid,
+            "chapters" to chapters.size,
+        )
+        return chapters.ifEmpty { null }
     }
 
     /**
@@ -341,6 +403,9 @@ class NgaDownloader(
             theme = if (state.theme in setOf("light", "dark")) state.theme else meta.theme,
             perChapter = maxOf(1, state.per_chapter),
             maxFloors = 0,
+            pageLimit = maxOf(0, state.page_limit),
+            tocPid = maxOf(0, state.toc_pid),
+            tocMode = if (state.toc_mode in setOf("index", "split")) state.toc_mode else meta.toc_mode,
         )
     }
 
@@ -369,6 +434,9 @@ class NgaDownloader(
                     theme = params.theme,
                     image_mode = params.imageMode,
                     per_chapter = params.perChapter,
+                    page_limit = params.pageLimit,
+                    toc_pid = params.tocPid,
+                    toc_mode = params.tocMode,
                 ),
             ),
         )

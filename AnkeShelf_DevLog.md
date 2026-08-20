@@ -24,7 +24,7 @@
 - 版本线：Windows `v1.5.1`（已发布，AnkeShelf-v1.5.1.zip）；
   Android `android-v1.1.0`（已发布，AnkeShelf-v1.1.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 319 项
+  - Windows Python：`python -m unittest discover tests` = 321 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（59 方法一致）、
@@ -33,7 +33,7 @@
     `node contracts/tests/reader-lite-parts.test.js`（8 parts / 50881 字节）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 144 项（143 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 148 项（147 过 / 1 跳）；
     DisciplineTest 8 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
@@ -65,6 +65,31 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 android：对齐批 3（G8 收尾）—— NGA 目录楼分章 / 页数上限
+
+- 背景：Android `NativeBookWriter` 其实早就支持 `toc_mode=split` 与 `groupFloorsByToc`
+  （与桌面 `_group_floors_by_toc` 逐行对照），但没有任何代码**生产** `tocChapters`，
+  参数里也没有 `page_limit` / `toc_pid` / `toc_mode`——功能等于关着。
+- 改动：
+  - 新增 `data/NgaTocParser.kt`：Kotlin 版 `ngapost2md/toc.py`（foldBox 折叠块 →
+    章节标题 + `<h4>Day` 分段 → `[url=…pid=N]` 条目），输出直接是 `meta.toc` 的扁平
+    结构（lead 在前、随后按 Day 顺序），与桌面 `_serialize_toc` 等价；
+    `cleanHtml` 复用 HTML5 实体表并保留 `[昴星团行动]` 这类合法标题内容。
+  - `NgaClient.fetchFloorContent(tid, pid)`：按 pid 取单楼正文（目录是可选增强，
+    接口失败/无该楼返回空串 → 回退按楼分章，不让整本下载失败）。
+  - `NgaDownloadParams` / `download.json` 断点状态 / `defaultsFor` / 前台服务 Intent /
+    下载表单 / 更新对话框全链路补上 `pageLimit`、`tocPid`、`tocMode`。
+  - 页数上限语义对齐桌面 `cfg.page_download_limit`：首次下载从第 1 页起算，
+    热更新只约束"本次新增页"（从断点页起算）。
+- 双端 golden（新增 `contracts/fixtures/nga-toc/`）：同一份目录楼 HTML + 期望章节 +
+  split 分章边界，Windows 由 `tests/test_contracts.py::NgaTocFixtureTest`
+  （`parse_toc` + `_serialize_toc` + `_group_floors_by_toc`）消费，Android 由
+  `NgaTocParserTest` 消费（含 index 模式对照与异常回退）。夹具明确要求
+  **无条目的折叠块两端都必须丢弃**。
+- 验证：Android `gradlew testDebugUnitTest` = 148 项（147 过 / 1 跳）、`assembleDebug` 成功；
+  Windows `python -m unittest discover tests` = 321 项 OK；JS 契约全绿。
+- 批 3 完成；下一步进入批 4（骨碌碌数据层：来源识别 + 公开 API 客户端 + AST + 图片三态）。
+
 ### 2026-08-20 android：对齐批 3（前半）—— 数据完整性入口 / 契约字段修补 / 作者排序
 
 - **跨端数据丢失修复（重要）**：Android `SettingsData` 缺 `gululu_immersive` 字段，
@@ -79,8 +104,8 @@
   作者为空的书排到末尾再按标题排序。
 - 验证：`gradlew testDebugUnitTest` = 144 项（143 过 / 1 跳），新增
   `DataIntegrityTest` 4 例；`compileDebugKotlin` 通过。
-- 批 3 剩余（下一轮）：G8 —— NGA 下载参数 `page_limit` / `toc_pid` /
-  `toc_mode=split`（按目录楼分章，需移植桌面 `_group_floors_by_toc` 并补 fixture）。
+- 批 3 剩余（已在下一条流水完成）：G8 —— NGA 下载参数 `page_limit` / `toc_pid` /
+  `toc_mode=split`。
 
 ### 2026-08-20 android：对齐批 2 —— 阅读辅助 / 代码高亮 / 按书字体 / 进度精度
 

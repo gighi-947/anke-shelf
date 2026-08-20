@@ -87,9 +87,12 @@ class NgaDownloadService : Service() {
                     tid = tid,
                     authorId = intent.getLongExtra("authorId", 0L),
                     maxFloors = intent.getIntExtra("maxFloors", 0),
+                    pageLimit = intent.getIntExtra("pageLimit", 0),
                     imageMode = intent.getStringExtra("imageMode") ?: "online",
                     theme = intent.getStringExtra("theme") ?: "light",
                     perChapter = intent.getIntExtra("perChapter", 20).coerceIn(1, 200),
+                    tocPid = intent.getLongExtra("tocPid", 0L),
+                    tocMode = intent.getStringExtra("tocMode") ?: "index",
                     fullRedownload = intent.getBooleanExtra("fullRedownload", false),
                 )
                 val bookId = intent.getStringExtra("bookId") ?: ""
@@ -142,6 +145,9 @@ class NgaDownloadService : Service() {
                         theme = if (params.theme in setOf("light", "dark")) params.theme else d.theme,
                         perChapter = if (params.perChapter > 0) params.perChapter else d.perChapter,
                         maxFloors = 0,
+                        pageLimit = if (params.pageLimit > 0) params.pageLimit else d.pageLimit,
+                        tocPid = if (params.tocPid > 0) params.tocPid else d.tocPid,
+                        tocMode = if (params.tocMode in setOf("index", "split")) params.tocMode else d.tocMode,
                     )
                 } else {
                     params
