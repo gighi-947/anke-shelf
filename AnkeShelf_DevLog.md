@@ -24,7 +24,7 @@
 - 版本线：Windows `v1.5.1`（已发布，AnkeShelf-v1.5.1.zip）；
   Android `android-v1.1.0`（已发布，AnkeShelf-v1.1.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 318 项
+  - Windows Python：`python -m unittest discover tests` = 319 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（59 方法一致）、
@@ -32,7 +32,7 @@
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37377 字节）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 128 过 / 1 跳；DisciplineTest 在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 129 过 / 1 跳；DisciplineTest 在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
   - 骨碌碌正式冒烟 `formal_ui_smoke.js`（桌面 + 430px，含骰点菜单/段落评论/总览/
@@ -73,6 +73,16 @@
   - 旧 P0–P4 细节不再在路线图展开（历史记录见 DevLog / DEVLOG_ARCHIVE）。
 - 验证：`scripts/check-doc-drift.ps1` 通过；路线图 §2 关键行与
   `MAINTENANCE_GUIDE.md` §7 一致。
+### 2026-08-20 win/android：对齐前基础审计（消除隐患）
+
+- 背景：安卓对齐桌面版开发启动前，对双端契约、测试基线、任务设施做排查。
+- 修复：
+  - Windows `Shelf.save` 不再把运行时字段 `progress_pct` 写入 `shelf.json`
+    （回归测试 `test_save_does_not_persist_runtime_progress_pct`）；
+  - `app/tasks.py` 过期注释修正：NGA/Gululu/Export 均已接入 TaskManager；
+  - 本机补齐 jsonschema 后 schema 契约测试 4 项由跳过转为通过；
+  - 测试基线同步：Windows 319 项全过、Android JVM 129 过 / 1 跳。
+- 结论：双端数据契约字段一致；主要功能差距在骨碌碌（Windows 独有）。
 ### 2026-08-20 release：Windows v1.5.1 / Android v1.1.0
 
 - 版本：Windows `v1.5.1`；Android `android-v1.1.0`（versionCode 2）。
@@ -80,7 +90,7 @@
 - 内容：P5-D 封面系统、P5-E1/E2 NGA 凭据傻瓜化、NGA 主题自适应、
   默认封面随主题/色板自适应、NGA 官方表情图直连与文字降级、
   骨碌碌封面本地缓存与热更新同步、书籍管理页、更多管理二级菜单等。
-- 验证：Windows 318 项、JS 契约全绿（59 方法一致）、Android JVM 128/1、Android assembleRelease 成功。
+- 验证：Windows 319 项、JS 契约全绿（59 方法一致）、Android JVM 129/1、Android assembleRelease 成功。
 ### 2026-08-20 win：P5-E2 Windows 应用内 NGA 登录（pywebview 二级窗）
 
 - 背景：P5-E2 Android 先行已完成；Windows 端仍需从 F12/Cookie 粘贴配置，
@@ -92,7 +102,7 @@
   - API 新增 `nga_login_start/status/extract/cancel`；
   - 下载面板「配置」页新增“在应用内登录”按钮与提取/取消操作，轮询登录窗状态；
   - 主窗口关闭时先销毁登录二级窗，避免其阻止应用退出。
-- 验证：`python -m unittest discover tests` = 318 项 OK（4 跳）；
+- 验证：`python -m unittest discover tests` = 319 项 OK；
   `node contracts/tests/api-contract.test.js` 59 方法一致；JS 语法全绿。
 ### 2026-08-20 win/android：移除 NGA 下载深/浅色选择
 

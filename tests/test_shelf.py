@@ -108,6 +108,15 @@ class TestShelf(unittest.TestCase):
         # 无残留 tmp 文件
         self.assertEqual(list(self.shelf._file.parent.glob("*.tmp")), [])
 
+    def test_save_does_not_persist_runtime_progress_pct(self):
+        self.shelf.upsert(_make_rec("/a.epub", "甲"))
+        rec = self.shelf.get("a" * 32)
+        rec.progress_pct = 0.42  # 运行时合成字段
+        self.shelf.save()
+        with open(self.shelf._file, encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertNotIn("progress_pct", data["books"][0])
+
     def test_load_corrupt_file(self):
         self.shelf._file.write_text("{corrupt", encoding="utf-8")
         self.shelf.load()

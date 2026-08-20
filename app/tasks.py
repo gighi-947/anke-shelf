@@ -5,8 +5,8 @@
 - 不同 lane 可并行（如导出与下载）；
 - 取消通过 cancel 标志由任务方检查（TaskCancelled）。
 
-注意：NgaService 暂不迁移（保持其自身单飞锁），本模块供新任务
-（大文件导入/导出/索引重建）接入。
+当前接入方：NgaService（lane=network:nga）、GululuService 与 ExportService
+均已走 TaskManager；新增大文件导入/索引重建等任务时直接复用本模块。
 """
 import threading
 from dataclasses import dataclass

@@ -38,6 +38,13 @@ class BookRecord:
     nga_tid: int = 0           # >0 表示该书记录为 NGA 帖子下载
 
 
+def _record_to_dict(r: BookRecord) -> dict:
+    """BookRecord → shelf.json 字段；progress_pct 为运行时合成值，不落盘。"""
+    data = asdict(r)
+    data.pop("progress_pct", None)
+    return data
+
+
 def _record_from_dict(d: dict) -> BookRecord:
     return BookRecord(
         id=d.get("id", ""),
@@ -77,7 +84,7 @@ class Shelf:
 
     def save(self) -> None:
         with self._lock:
-            data = {"version": 1, "books": [asdict(r) for r in self._books.values()]}
+            data = {"version": 1, "books": [_record_to_dict(r) for r in self._books.values()]}
         with self._write_lock:
             atomic_write_json(self._file, data)
 
