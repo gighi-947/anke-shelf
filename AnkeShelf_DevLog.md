@@ -24,7 +24,7 @@
 - 版本线：Windows `v1.5.1`（已发布，AnkeShelf-v1.5.1.zip）；
   Android `android-v1.1.0`（已发布，AnkeShelf-v1.1.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 321 项
+  - Windows Python：`python -m unittest discover tests` = 322 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（59 方法一致）、
@@ -33,7 +33,7 @@
     `node contracts/tests/reader-lite-parts.test.js`（8 parts / 50881 字节）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 148 项（147 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 166 项（165 过 / 1 跳）；
     DisciplineTest 8 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
@@ -64,6 +64,36 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-20 android：对齐批 4 —— 骨碌碌数据层（来源/客户端/AST/图片三态）
+
+- 范围：只做数据层，不接 UI（导入服务与 EPUB 生成在批 6）。三块与桌面逐函数对照：
+  - `data/GululuSource.kt` ← `app/gululu_source.py`：ID/链接/整段文本提取、
+    EPUB `dc:identifier` 识别。桌面抛 ValueError，这里返回
+    `GululuIdResult.Ok/Err`（文案一致，调用方直接展示）。
+  - `service/GululuClient.kt` ← `app/gululu_client.py`：`platform:1` 头、
+    `code != 200` 视为业务失败、楼层正文 20 条一批、**缺失楼层显式报错**。
+    把信封校验 / 索引校验 / 分批合并拆成公开纯函数
+    （`parseDataPayload` / `parseIndexPayloads` / `mergeFloorBatches`），
+    沿用 `NgaClient.parsePageFull` 的可单测惯例，无需 MockWebServer。
+  - `data/GululuAst.kt` ← `app/gululu_ast.py`：marks（含安全色白名单）、
+    paragraph `data-paragraph-id`、heading 降级到 h3–h6、image 仅 HTTPS +
+    三态 resolver + avatar 包裹、hardBreak、collapsibleBlock、未知节点可见占位。
+    转义与 Python `html.escape(quote=True)` 逐字符对齐（含 `'` → `&#x27;`）。
+    扩展点 `GululuNodeRenderer` 对应桌面 `render_assistant_node` /
+    `render_immersive_node`（批 5 按此接入，核心渲染不动）。
+  - `service/GululuImages.kt` ← `app/gululu_images.py`：三态枚举、正文图片收集
+    （仅 HTTPS、去重保序）、6 路并发内嵌、单图 25 MB 上限、**按文件签名判类型**
+    （不信 HTTP 头）、逐张失败记录、可取消、资源命名 `images/<sha256 前16位>.<ext>`。
+- 跨端 golden（新增 `contracts/fixtures/gululu/ast-cases.json`，21 例）：
+  marks 嵌套顺序、rgb 归一化、危险色丢弃、未知 mark 可见、转义、段落 id、
+  空段落、heading 钳制、三态图片、非 HTTPS 拒绝、avatar、折叠块、未知节点。
+  Windows 由 `tests/test_contracts.py::GululuAstFixtureTest` 消费，
+  Android 由 `GululuAstTest` 消费；两端**逐字符**一致（同构 EPUB 决定 text_offset）。
+- 验证：Android `gradlew testDebugUnitTest` = 166 项（165 过 / 1 跳）、`assembleDebug` 成功；
+  Windows = 322 项 OK；AST golden 首次运行即双端一致。
+- 下一步（批 5）：助手协议（折叠/引用/骰点/迷雾/秘密/线索）、沉浸指令（音乐/背景/视效）、
+  评论（分页 + 子回复 + 缓存），全部通过 `GululuNodeRenderer` 接入并扩展同一份 golden。
 
 ### 2026-08-20 android：对齐批 3（G8 收尾）—— NGA 目录楼分章 / 页数上限
 

@@ -20,6 +20,7 @@ contracts/
 └── fixtures/
     └── native-book/basic-nga/   最小原生书 fixture（meta/floors/chapters + 期望纯文本）
     └── nga-toc/       NGA 目录楼 fixture（原始楼层 HTML + 期望章节与 split 分章结果）
+    └── gululu/        骨碌碌富文本 AST → XHTML 期望（ast-cases.json；批 5 追加助手/沉浸用例）
     └── progress/      进度事件序列夹具（滚动防抖/翻页即时/模式隔离/比例锚点/
                        换章 flush/dispose 迟到事件/连续重进；Kotlin 决策层消费）
 ```
@@ -50,6 +51,10 @@ contracts/
    与 Android `data/NgaTocParser` + `NativeBookWriter` 消费同一份夹具
    （`tests/test_contracts.py::NgaTocFixtureTest` 与 `NgaTocParserTest`）。
    无条目的折叠块两端都必须丢弃；`toc_mode=split` 的分章边界以夹具 `expected` 为准。
+9. 骨碌碌 AST 跨端对照（`fixtures/gululu/ast-cases.json`）：Windows
+   `app/gululu_ast.render_ast` 与 Android `data/GululuAst.render` 必须**逐字符一致**
+   （`tests/test_contracts.py::GululuAstFixtureTest` 与 `GululuAstTest`）。
+   两端生成同构 EPUB，章节 XHTML 决定 `text_offset`，标签/空白差异会直接让进度与标注错位。
 
 ## 版本
 

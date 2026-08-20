@@ -1,0 +1,173 @@
+{
+  "_comment": "骨碌碌富文本 AST → XHTML 的双端权威期望：Windows app/gululu_ast.py render_ast，Android data/GululuAst.render。两端产物必须逐字符一致（同一 EPUB 决定 text_offset 坐标）。image_mode: online=原 URL、none=空串（省略）、embedded=按 image_map 映射。助手/沉浸协议节点的用例在批 5 追加到本文件。",
+  "cases": [
+    {
+      "id": "marks-basic",
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            { "type": "text", "text": "粗体", "marks": [{ "type": "bold" }] },
+            { "type": "text", "text": "斜体", "marks": [{ "type": "italic" }] },
+            { "type": "text", "text": "删除", "marks": [{ "type": "strike" }] },
+            { "type": "text", "text": "下划", "marks": [{ "type": "underline" }] }
+          ]
+        }
+      ],
+      "expected": "<p><strong>粗体</strong><em>斜体</em><del>删除</del><u>下划</u></p>"
+    },
+    {
+      "id": "marks-nesting-order",
+      "nodes": [
+        { "type": "text", "text": "x", "marks": [{ "type": "bold" }, { "type": "italic" }] }
+      ],
+      "expected": "<em><strong>x</strong></em>"
+    },
+    {
+      "id": "textstyle-hex-color",
+      "nodes": [
+        {
+          "type": "text",
+          "text": "红",
+          "marks": [{ "type": "textStyle", "attrs": { "color": "#ff0000" } }]
+        }
+      ],
+      "expected": "<span style=\"color:#ff0000\">红</span>"
+    },
+    {
+      "id": "textstyle-rgb-normalized",
+      "nodes": [
+        {
+          "type": "text",
+          "text": "绿",
+          "marks": [{ "type": "textStyle", "attrs": { "color": "rgb(1,2,3)" } }]
+        }
+      ],
+      "expected": "<span style=\"color:rgb(1, 2, 3)\">绿</span>"
+    },
+    {
+      "id": "textstyle-unsafe-color-dropped",
+      "nodes": [
+        {
+          "type": "text",
+          "text": "危",
+          "marks": [{ "type": "textStyle", "attrs": { "color": "javascript:alert(1)" } }]
+        }
+      ],
+      "expected": "危"
+    },
+    {
+      "id": "unknown-mark-kept-visible",
+      "nodes": [{ "type": "text", "text": "x", "marks": [{ "type": "glow" }] }],
+      "expected": "<span class=\"unsupported-mark\" data-mark=\"glow\">x</span>"
+    },
+    {
+      "id": "escape-html-and-quotes",
+      "nodes": [{ "type": "text", "text": "<a>&\"'" }],
+      "expected": "&lt;a&gt;&amp;&quot;&#x27;"
+    },
+    {
+      "id": "paragraph-with-id",
+      "nodes": [
+        {
+          "type": "paragraph",
+          "attrs": { "id": "p-7" },
+          "content": [{ "type": "text", "text": "内容" }]
+        }
+      ],
+      "expected": "<p data-paragraph-id=\"p-7\">内容</p>"
+    },
+    {
+      "id": "empty-paragraph-with-id",
+      "nodes": [{ "type": "paragraph", "attrs": { "id": "p-8" }, "content": [] }],
+      "expected": "<p class=\"empty-paragraph\" data-paragraph-id=\"p-8\">&#160;</p>"
+    },
+    {
+      "id": "empty-paragraph-without-id",
+      "nodes": [{ "type": "paragraph" }],
+      "expected": "<p class=\"empty-paragraph\">&#160;</p>"
+    },
+    {
+      "id": "heading-clamped-to-h3-h6",
+      "nodes": [
+        { "type": "heading", "attrs": { "level": 1 }, "content": [{ "type": "text", "text": "一" }] },
+        { "type": "heading", "attrs": { "level": 2 }, "content": [{ "type": "text", "text": "二" }] },
+        { "type": "heading", "attrs": { "level": 5 }, "content": [{ "type": "text", "text": "五" }] },
+        { "type": "heading", "attrs": { "level": 9 }, "content": [{ "type": "text", "text": "九" }] }
+      ],
+      "expected": "<h3>一</h3><h3>二</h3><h6>五</h6><h6>九</h6>"
+    },
+    {
+      "id": "hard-break",
+      "nodes": [{ "type": "hardBreak" }],
+      "expected": "<br/>"
+    },
+    {
+      "id": "image-online",
+      "image_mode": "online",
+      "nodes": [
+        {
+          "type": "image",
+          "attrs": { "src": "https://img.example/a.png?x=1&y=2", "alt": "图" }
+        }
+      ],
+      "expected": "<figure class=\"gululu-image\"><img src=\"https://img.example/a.png?x=1&amp;y=2\" alt=\"图\" loading=\"lazy\" decoding=\"async\"/></figure>"
+    },
+    {
+      "id": "image-alt-default",
+      "image_mode": "online",
+      "nodes": [{ "type": "image", "attrs": { "src": "https://img.example/b.png" } }],
+      "expected": "<figure class=\"gululu-image\"><img src=\"https://img.example/b.png\" alt=\"图片\" loading=\"lazy\" decoding=\"async\"/></figure>"
+    },
+    {
+      "id": "image-avatar-wrapped",
+      "image_mode": "online",
+      "nodes": [
+        {
+          "type": "image",
+          "attrs": { "src": "https://img.example/c.png", "alt": "头", "avatar": true }
+        }
+      ],
+      "expected": "<figure class=\"gululu-image\"><span class=\"avatar-image\"><img src=\"https://img.example/c.png\" alt=\"头\" loading=\"lazy\" decoding=\"async\"/></span></figure>"
+    },
+    {
+      "id": "image-non-https-rejected",
+      "image_mode": "online",
+      "nodes": [{ "type": "image", "attrs": { "src": "http://img.example/d.png" } }],
+      "expected": "<p class=\"image-unavailable\">[图片地址不可用]</p>"
+    },
+    {
+      "id": "image-omitted-in-none-mode",
+      "image_mode": "none",
+      "nodes": [{ "type": "image", "attrs": { "src": "https://img.example/e.png" } }],
+      "expected": "<p class=\"image-omitted\">[图片已省略]</p>"
+    },
+    {
+      "id": "image-embedded-mapped",
+      "image_mode": "embedded",
+      "image_map": { "https://img.example/f.png": "../images/abc123.png" },
+      "nodes": [{ "type": "image", "attrs": { "src": "https://img.example/f.png", "alt": "内嵌" } }],
+      "expected": "<figure class=\"gululu-image\"><img src=\"../images/abc123.png\" alt=\"内嵌\" loading=\"lazy\" decoding=\"async\"/></figure>"
+    },
+    {
+      "id": "collapsible-block-default-closed",
+      "nodes": [
+        {
+          "type": "collapsibleBlock",
+          "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "秘" }] }]
+        }
+      ],
+      "expected": "<details class=\"gululu-fold\"><summary>折叠内容</summary><p>秘</p></details>"
+    },
+    {
+      "id": "unsupported-node-visible",
+      "nodes": [{ "type": "videoBlock" }],
+      "expected": "<div class=\"unsupported-node\">[暂不支持的内容：videoBlock]</div>"
+    },
+    {
+      "id": "unsupported-node-without-type",
+      "nodes": [{ "attrs": {} }],
+      "expected": "<div class=\"unsupported-node\">[暂不支持的内容：unknown]</div>"
+    }
+  ]
+}

@@ -178,5 +178,29 @@ class NgaTocFixtureTest(unittest.TestCase):
         self.assertEqual(got, grouping["expected"])
 
 
+class GululuAstFixtureTest(unittest.TestCase):
+    """骨碌碌 AST → XHTML 的双端 golden 对照（Android 侧同夹具见 GululuAstTest）。"""
+
+    FIXTURE = CONTRACTS / "fixtures" / "gululu" / "ast-cases.json"
+
+    def test_render_ast_matches_fixture(self):
+        from app.gululu_ast import render_ast
+
+        cases = json.loads(self.FIXTURE.read_text(encoding="utf-8"))["cases"]
+        self.assertGreaterEqual(len(cases), 15)
+        for case in cases:
+            with self.subTest(case=case["id"]):
+                mode = case.get("image_mode", "online")
+                mapping = case.get("image_map", {})
+                if mode == "none":
+                    resolver = lambda url: ""  # noqa: E731
+                elif mode == "embedded":
+                    resolver = lambda url, m=mapping: m.get(url, "")  # noqa: E731
+                else:
+                    resolver = lambda url: url  # noqa: E731
+                got = render_ast(case["nodes"], image_resolver=resolver)
+                self.assertEqual(got, case["expected"])
+
+
 if __name__ == "__main__":
     unittest.main()

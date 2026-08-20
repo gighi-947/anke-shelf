@@ -38,9 +38,9 @@
 | G10 | `settings.json` 缺 `gululu_immersive` 字段 → Android 回写会丢失 Windows 该设置 | `DEFAULTS["gululu_immersive"]`、契约 §4 已列 | ✅ 批 3 已修（`GululuImmersivePrefs` 字段 + 往返回归测试） | 3 |
 | G11 | 书架按作者排序 | `shelf_sort=author` | ✅ 批 3 已实现（`author` 排序 + `title` 别名兼容桌面取值） | 3 |
 | **G20** | **骨碌碌全链路（最大件，Android 0 命中）** | `app/gululu_*.py`（12 模块）+ `web/js/gululu-*.js`（8 模块） | 完全缺失 | 4–9 |
-| G20.1 | 来源识别 + 公开 API 客户端（detail / floor·index-list / opus·chapter-index / floor·content-by-ids，`platform:1`，20 条一批，缺失楼层显式失败） | `gululu_source.py` / `gululu_client.py` | — | 4 |
-| G20.2 | 富文本 AST → XHTML（marks 安全色、paragraph id、heading 降级、image HTTPS、hardBreak、collapsibleBlock） | `gululu_ast.py` | — | 4 |
-| G20.3 | 图片三态 online/embedded/none（HTTPS 位图、并发、25MB 上限、签名识别、失败占位 + 计数） | `gululu_images.py` | — | 4 |
+| G20.1 | 来源识别 + 公开 API 客户端（detail / floor·index-list / opus·chapter-index / floor·content-by-ids，`platform:1`，20 条一批，缺失楼层显式失败） | `gululu_source.py` / `gululu_client.py` | ✅ 批 4（`data/GululuSource.kt` + `service/GululuClient.kt`；信封/索引/合并均为可单测纯函数） | 4 |
+| G20.2 | 富文本 AST → XHTML（marks 安全色、paragraph id、heading 降级、image HTTPS、hardBreak、collapsibleBlock） | `gululu_ast.py` | ✅ 批 4（`data/GululuAst.kt` + 跨端 golden `contracts/fixtures/gululu/ast-cases.json` 21 例逐字符一致） | 4 |
+| G20.3 | 图片三态 online/embedded/none（HTTPS 位图、并发、25MB 上限、签名识别、失败占位 + 计数） | `gululu_images.py` | ✅ 批 4（`service/GululuImages.kt`；6 路并发、签名判类型、逐张失败、可取消） | 4 |
 | G20.4 | 全能助手协议：折叠 / 引用（同书锚点 + 跨书 URL）/ 骰点稳定分组 / 迷雾锁 / 秘密密文 / 线索 / jumpFloor / sensitive | `gululu_assistant.py` | — | 5 |
 | G20.5 | 沉浸指令：音乐·自动音乐·停止、氛围背景（跨章继承）、六类视效，仅无凭据 HTTPS | `gululu_immersive.py` | — | 5 |
 | G20.6 | 评论：分页 + 子回复 + 公开字段、5 分钟缓存 + 离线回退、EPUB 评论块 | `gululu_comments.py` / `gululu_comment_service.py` | — | 5 |
@@ -106,7 +106,7 @@
 | 1 阅读器交互对齐 | ✅ 代码完成，待真机复核 | `ef54a4c`；G1/G2/G3 + `TocTree` + 跨端折叠契约；Android JVM 135 项、APK 内 reader-lite 45559B 校验通过；真机待验「长按选中 → 高亮/笔记/书签 → 退出重进一致」 |
 | 2 阅读辅助与显示精度 | ✅ 代码完成，待真机复核 | G4/G5/G6/G7；Android JVM 140 项、APK 内 reader-lite 50881B + reader.css 校验通过；真机待验自动滚动/速读/标尺与按书字体 |
 | 3 下载参数与数据完整性 | ✅ 代码完成，待真机复核 | G8/G9/G10/G11 全部落地；Android JVM 148 项、Windows 321 项；新增 `contracts/fixtures/nga-toc/` 双端 golden；真机待验目录楼分章下载 |
-| 4 骨碌碌数据层 | ⏳ 未开始 | — |
+| 4 骨碌碌数据层 | ✅ 代码完成（纯数据层，无 UI 入口） | G20.1/G20.2/G20.3；`contracts/fixtures/gululu/ast-cases.json` 21 例双端逐字符一致；Android JVM 166 项、Windows 322 项 |
 | 5 骨碌碌协议层 | ⏳ 未开始 | — |
 | 6 骨碌碌导入 | ⏳ 未开始 | — |
 | 7 骨碌碌热更新 | ⏳ 未开始 | — |
