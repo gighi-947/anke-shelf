@@ -53,6 +53,7 @@
 
   const downloadPoller = makePoller();
   const exportPoller = makePoller();
+  const loginPoller = makePoller();
 
   function ensureBuilt() {
     let el = view();
@@ -390,6 +391,107 @@
     }
   }
 
+  // ---------- NGA 应用内登录（Windows 二级窗） ----------
+
+  function updateNgaLoginUi(s) {
+    const startBtn = document.getElementById('nga-login-start');
+    const extractBtn = document.getElementById('nga-login-extract');
+    const cancelBtn = document.getElementById('nga-login-cancel');
+    const hint = document.getElementById('nga-login-hint');
+    const open = !!(s && (s.open || s.state === 'waiting'));
+    if (startBtn) startBtn.disabled = open;
+    if (extractBtn) extractBtn.classList.toggle('hidden', !open);
+    if (cancelBtn) cancelBtn.classList.toggle('hidden', !open);
+    if (hint) {
+      if (s && s.state === 'done') {
+        hint.textContent = '已从登录窗口提取并保存 NGA 配置。';
+      } else if (s && s.state === 'cancelled') {
+        hint.textContent = '登录已取消。';
+      } else if (s && s.state === 'error' && s.error) {
+        hint.textContent = s.error;
+      } else if (open) {
+        hint.textContent = '登录窗口已打开：请在「NGA 登录」窗口中完成登录，然后回到本页点击「提取并保存」。';
+      } else {
+        hint.textContent = '点击后打开 NGA 登录窗口，登录成功后回到本页点击「提取并保存」。';
+      }
+    }
+  }
+
+  function startLoginPoller() {
+    loginPoller.start(
+      async () => {
+        const st = await Api.ngaLoginStatus();
+        return Object.assign({}, st, { running: st.open });
+      },
+      updateNgaLoginUi,
+      (s) => {
+        if (s.state === 'done') {
+          refreshConfig();
+          Toast.show('NGA 登录配置已提取并保存');
+        } else if (s.state === 'cancelled') {
+          Toast.show('NGA 登录已取消');
+        }
+      },
+    );
+  }
+
+  async function refreshNgaLoginStatus() {
+    try {
+      const s = await Api.ngaLoginStatus();
+      updateNgaLoginUi(s);
+      if (s.open) startLoginPoller();
+    } catch (e) { /* 后端不支持时保持表单可用 */ }
+  }
+
+  async function startNgaLogin() {
+    updateNgaLoginUi({ state: 'waiting', open: true, error: '' });
+    try {
+      const s = await Api.ngaLoginStart();
+      updateNgaLoginUi(s);
+      if (s.open) {
+        startLoginPoller();
+      } else if (s.state === 'error') {
+        Toast.show(s.error || '打开 NGA 登录窗口失败', true);
+      }
+    } catch (e) {
+      updateNgaLoginUi({ state: 'error', open: false, error: e.message || String(e) });
+      Toast.show('打开 NGA 登录窗口失败：' + (e.message || e), true);
+    }
+  }
+
+  async function extractNgaLogin() {
+    loginPoller.stop();
+    try {
+      const s = await Api.ngaLoginExtract();
+      updateNgaLoginUi(s);
+      if (s.state === 'done') {
+        await refreshConfig();
+        Toast.show('NGA 登录配置已提取并保存');
+      } else if (s.state === 'error') {
+        Toast.show(s.error || '提取失败', true);
+        if (s.open) startLoginPoller();
+      } else {
+        Toast.show('提取失败：' + (s.error || '未知错误'), true);
+      }
+    } catch (e) {
+      updateNgaLoginUi({ state: 'error', open: true, error: e.message || String(e) });
+      Toast.show('提取失败：' + (e.message || e), true);
+      startLoginPoller();
+    }
+  }
+
+  async function cancelNgaLogin() {
+    loginPoller.stop();
+    try {
+      const s = await Api.ngaLoginCancel();
+      updateNgaLoginUi(s);
+      Toast.show('NGA 登录已取消');
+    } catch (e) {
+      updateNgaLoginUi({ state: 'error', open: false, error: e.message || String(e) });
+      Toast.show('取消失败：' + (e.message || e), true);
+    }
+  }
+
   // ---------- 导出 ----------
 
   function fillBookSelect(sel, books, placeholder) {
@@ -578,6 +680,7 @@
     const el = ensureBuilt();
     refreshBooks(opts && opts.bookId);
     refreshConfig();
+    refreshNgaLoginStatus();
     const openBtn = document.getElementById('dl-export-open');
     if (openBtn) openBtn.disabled = true;
     pollDownload(false);
@@ -600,11 +703,12 @@
     if (el) el.classList.add('hidden');
     stopPolling();
     stopExportPolling();
+    loginPoller.stop();
     GululuDownload.stop();
     if (window.Shelf) Shelf.render();
   }
 
-  window.NgaPage = { section, fmtBtn, field, input, numInput, select, checkbox, check, val, makePoller, refreshBooks, startDownload, cancelDownload, loadUpdateDefaults, startUpdate, saveConfig, clearConfig, startExport, openExportDest };
+  window.NgaPage = { section, fmtBtn, field, input, numInput, select, checkbox, check, val, makePoller, refreshBooks, startDownload, cancelDownload, loadUpdateDefaults, startUpdate, saveConfig, clearConfig, startExport, openExportDest, startNgaLogin, extractNgaLogin, cancelNgaLogin, refreshNgaLoginStatus };
 
   window.NgaDownload = { open, close };
 

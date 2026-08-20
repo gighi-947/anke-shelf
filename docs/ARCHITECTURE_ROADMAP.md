@@ -18,7 +18,7 @@
 > 2026-08-19：P5-B 裂图修复与 P5-D 封面系统完成，并完成 UI 图标规范核查。
 > 2026-08-19：多轮架构收敛完成（EventBus→回调、ApiError 统一、TaskManager 统一、
 > reader-lite 状态机 Step 0–4、MOCKS 移除、SettingsPatch 收敛、数据层日志化）。
-> 2026-08-20：P5-E2 Android 完成；NGA 楼层/引用/评论样式随主题自适应；
+> 2026-08-20：P5-E2 双端完成（Android 应用内登录 + Windows pywebview 二级窗）；NGA 楼层/引用/评论样式随主题自适应；
 > NGA 下载深浅色选择移除；默认封面骰子图随主题/色板自适应。
 > 各节“状态”注明进度。
 > 当前版本：Windows v1.5.1，Android android-v1.1.0
@@ -65,8 +65,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | --- | --- |
 | 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（`d0e184e`、`91b6206`、P5-B、P5-D、P5-E1）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
-| Windows Python 单测 | 303 项（3.14：4 跳；bundled 3.12：全量通过） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 55 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37377 字节）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
+| Windows Python 单测 | 318 项（3.14：4 跳；bundled 3.12：全量通过） |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 59 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37377 字节）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
 | Android JVM 单测 | 128 过 / 1 跳（2026-08-20 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
@@ -89,7 +89,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | `android/.../ui/download/DownloadScreen.kt` | 349 | 已拆分面板 |
 | `android/.../assets/reader/reader-lite.js` | 1055 | 现役渲染内核（parts 模块化；状态机 Step 0–4 已收敛） |
 | `web/js/reader.js` | 762 | 核心编排；已移除必然存在模块的防御包装 |
-| `web/js/nga_download.js` | 615 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
+| `web/js/nga_download.js` | 719 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
 | `app/gululu_service.py` | 488 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |
 | `app/gululu_update.py` | 429 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
 | `app/nga_service.py` | 701 | 下载/更新/清理语义集中；已迁入 TaskManager |
@@ -426,18 +426,23 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 - 验证：`test_gululu_epub` 封面用例、Android `ShelfTest` 封面更新用例。
 
 #### P5-E：NGA 凭据傻瓜化（分级）
-> 状态（2026-08-19）：E1 双端完成；E2 Android 完成，Windows 二级窗待后续。
+> 状态（2026-08-20）：E1 双端完成；E2 双端完成。
 
 - E1（低成本）✅ 已完成（2026-08-19）：粘贴完整 Cookie 字符串自动解析——用户整段
   复制 F12 Cookie（或含 uid/cid 的任意文本），粘贴后自动提取
   `ngaPassportUid`/`ngaPassportCid` 填入两栏。双端。
   文件：`web/js/nga-cookie.js`、`nga-download-panels.js`、Android `NgaConfig.kt`/
   `DownloadPanels.kt`。验证：`tests/js/nga-cookie.test.js`、`NgaCookieParserTest`。
-- E2（中成本，Android 先行）✅ Android 已完成（2026-08-19）：应用内 WebView
-  打开 NGA 登录页，登录后从 CookieManager 提取 uid/cid 一键保存。
-  安全边界：仅登录用途、URI 固定 bbs.nga.cn、拿到凭据即关窗，不加载任意页面；
-  Windows 可用 pywebview 二级窗（待后续）。
-  文件：`NgaLoginDialog.kt`、`DownloadPanels.kt`。验证：编译/单测通过，真机手工待做。
+- E2（中成本）✅ 双端已完成（Android 2026-08-19；Windows 2026-08-20）：
+  Android 应用内 WebView 打开 NGA 登录页，登录后从 CookieManager 提取 uid/cid
+  一键保存；Windows 用 pywebview 二级窗（下载面板「应用内登录」按钮打开，
+  固定 bbs.nga.cn，登录后回面板「提取并保存」，从 WebView2 Cookie 提取 uid/cid
+  并保存到 nga_config.ini）。安全边界：仅登录用途、URI 固定 bbs.nga.cn、
+  拿到凭据即关窗并清理 WebView Cookie，不加载任意页面。
+  文件：`NgaLoginDialog.kt`、`DownloadPanels.kt`（Android）；
+  `app/nga_login.py`、`app/api/nga_api.py`、`web/js/nga_download.js`、
+  `web/js/nga-download-panels.js`（Windows）。验证：双端单测/契约通过；
+  Android 真机手工待做，Windows 真机手工待做。
 - 成功标准：小白不接触 F12 完成配置。
 
 #### P5-F：NGA 楼中楼评论（最大件，最后做）
@@ -475,7 +480,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
    P4 等网络与真实需求触发。
 6. **当前批次（P5 用户反馈，2026-08-18 起）**：A/B/D/E1 已完成；
    C 自动翻章与 F 楼中楼暂不实施（按用户要求）；
-   E2 Android WebView 登录已完成，Windows 二级窗待后续。进度类改动（C/F）若实施必跑
+   E2 双端应用内登录已完成（Android WebView + Windows pywebview 二级窗）。进度类改动（C/F）若实施必跑
    "滚动/翻页 → 退出 → 重进"回归。
 
 ---

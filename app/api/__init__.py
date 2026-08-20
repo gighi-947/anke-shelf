@@ -60,6 +60,10 @@ _HANDLERS = (
     ("nga_get_config", nga_api.nga_get_config),
     ("nga_save_config", nga_api.nga_save_config),
     ("nga_clear_config", nga_api.nga_clear_config),
+    ("nga_login_start", nga_api.nga_login_start),
+    ("nga_login_status", nga_api.nga_login_status),
+    ("nga_login_extract", nga_api.nga_login_extract),
+    ("nga_login_cancel", nga_api.nga_login_cancel),
     ("nga_update_book", nga_api.nga_update_book),
     ("nga_update_defaults", nga_api.nga_update_defaults),
     ("export_start", nga_api.export_start),
@@ -112,6 +116,7 @@ class Api(ApiRegistry):
         frontend_ready=None,
         file_dialog=None,
         window_toggle=None,
+        nga_login=None,
     ):
         super().__init__()
         ctx = ApiContext(
@@ -128,6 +133,7 @@ class Api(ApiRegistry):
             frontend_ready=frontend_ready,
             file_dialog=file_dialog,
             window_toggle=window_toggle,
+            nga_login=nga_login,
         )
         self._ctx = ctx
         for name, fn in _HANDLERS:

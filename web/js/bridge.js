@@ -22,6 +22,8 @@
     import_books: 300000,
     pick_font_file: 180000,
     nga_start_download: 60000,
+    nga_login_start: 60000,
+    nga_login_extract: 60000,
     gululu_start_import: 60000,
     gululu_start_export: 60000,
     gululu_start_update: 60000,

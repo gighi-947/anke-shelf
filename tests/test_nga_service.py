@@ -13,9 +13,42 @@ sys.path.insert(0, str(PROJECT / "ngapost2md-python"))
 
 from app.errors import ApiError
 from app.nga_config import DEFAULT_UA, ensure_nga_config, load_nga_config, save_nga_config
+from app.nga_login import NgaLoginController, parse_nga_cookie_text
 from app.nga_service import NgaService, _parse_tid
 from app.server import _CSP
 from app.shelf import BookRecord, Shelf, _record_from_dict
+
+
+class TestParseNgaCookieText(unittest.TestCase):
+    def test_full_cookie_header(self):
+        parsed = parse_nga_cookie_text(
+            "ngaPassportUid=12345; ngaPassportCid=abcdef; other=1"
+        )
+        self.assertEqual(parsed["uid"], "12345")
+        self.assertEqual(parsed["cid"], "abcdef")
+
+    def test_quoted_and_spaced(self):
+        parsed = parse_nga_cookie_text(
+            "ngaPassportUid = '111'; ngaPassportCid=\"xyz\""
+        )
+        self.assertEqual(parsed["uid"], "111")
+        self.assertEqual(parsed["cid"], "xyz")
+
+    def test_missing_is_empty(self):
+        parsed = parse_nga_cookie_text("a=b; c=d")
+        self.assertEqual(parsed["uid"], "")
+        self.assertEqual(parsed["cid"], "")
+
+
+class TestNgaLoginControllerStatus(unittest.TestCase):
+    def test_idle_status_shape(self):
+        ctl = NgaLoginController()
+        with patch("app.nga_login.load_nga_config", return_value={"configured": False}):
+            st = ctl.status()
+        self.assertEqual(st["state"], "idle")
+        self.assertFalse(st["open"])
+        self.assertFalse(st["configured"])
+        self.assertEqual(st["error"], "")
 
 
 class TestParseTid(unittest.TestCase):

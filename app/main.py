@@ -17,6 +17,7 @@ import webview
 
 from .dpi import enable_per_monitor_dpi
 from .instance_guard import cleanup_stale_instance, release_instance_lock
+from .nga_login import NgaLoginController
 
 
 class _PyWebViewNoiseFilter(logging.Filter):
@@ -244,6 +245,7 @@ def main() -> int:
             raise RuntimeError("窗口尚未就绪")
         window_fullscreen_toggle(entering)
 
+    nga_login = NgaLoginController()
     api = Api(
         books=books,
         shelf=shelf,
@@ -257,6 +259,7 @@ def main() -> int:
         export_service=export_svc,
         frontend_ready=frontend_ready,
         window_toggle=_toggle_window_fullscreen,
+        nga_login=nga_login,
     )
     token = secrets.token_urlsafe(16)
     port = start_server(web_dir(), books, covers_dir(), api=api, token=token)
@@ -280,6 +283,11 @@ def main() -> int:
     window.events.loaded += lambda: _pin_webview_zoom(window)
 
     def on_closing() -> None:
+        # 登录二级窗若仍开着，先关掉，避免它阻止主窗口退出
+        try:
+            nga_login.shutdown()
+        except Exception:
+            logging.getLogger("app.startup").exception("关闭 NGA 登录二级窗失败")
         # 记忆窗口尺寸（下次启动恢复）
         try:
             # 沉浸式全屏中不把全屏分辨率记成窗口尺寸

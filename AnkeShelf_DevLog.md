@@ -13,7 +13,8 @@
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
   沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；五批接手风险修复已合入；
   P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统、
-  P5-E1 Cookie 粘贴解析、P5-E2 Android 应用内登录、NGA 主题自适应
+  P5-E1 Cookie 粘贴解析、P5-E2 双端应用内登录（Android WebView +
+  Windows pywebview 二级窗）、NGA 主题自适应
   （含 UI 图标规范核查）；多轮架构收敛已完成：
   EventBus→显式回调、API 错误统一到 HTTP/ApiError、reader-lite 状态机
   Step 0–4、TaskManager 统一 NGA/Gululu/Export；
@@ -23,10 +24,10 @@
 - 版本线：Windows `v1.5.1`（已发布，AnkeShelf-v1.5.1.zip）；
   Android `android-v1.1.0`（已发布，AnkeShelf-v1.1.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 303 项
+  - Windows Python：`python -m unittest discover tests` = 318 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（55 方法一致）、
+    `node contracts/tests/api-contract.test.js`（59 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
     `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37377 字节）、
@@ -69,7 +70,20 @@
 - 内容：P5-D 封面系统、P5-E1/E2 NGA 凭据傻瓜化、NGA 主题自适应、
   默认封面随主题/色板自适应、NGA 官方表情图直连与文字降级、
   骨碌碌封面本地缓存与热更新同步、书籍管理页、更多管理二级菜单等。
-- 验证：Windows 303 项、JS 契约全绿、Android JVM 128/1、Android assembleRelease 成功。
+- 验证：Windows 318 项、JS 契约全绿（59 方法一致）、Android JVM 128/1、Android assembleRelease 成功。
+### 2026-08-20 win：P5-E2 Windows 应用内 NGA 登录（pywebview 二级窗）
+
+- 背景：P5-E2 Android 先行已完成；Windows 端仍需从 F12/Cookie 粘贴配置，
+  本次补齐 pywebview 二级窗登录。
+- 改动：
+  - 新增 `app/nga_login.py`：惰性创建 NGA 登录二级窗（固定 bbs.nga.cn），
+    从 WebView2 Cookie 提取 `ngaPassportUid`/`ngaPassportCid` 保存到
+    `nga_config.ini`，成功后关窗并清理 WebView Cookie；
+  - API 新增 `nga_login_start/status/extract/cancel`；
+  - 下载面板「配置」页新增“在应用内登录”按钮与提取/取消操作，轮询登录窗状态；
+  - 主窗口关闭时先销毁登录二级窗，避免其阻止应用退出。
+- 验证：`python -m unittest discover tests` = 318 项 OK（4 跳）；
+  `node contracts/tests/api-contract.test.js` 59 方法一致；JS 语法全绿。
 ### 2026-08-20 win/android：移除 NGA 下载深/浅色选择
 
 - 背景：主题已自适应，NGA 下载不再需要深/浅色选项。
@@ -207,7 +221,7 @@
 
 - P5（当前批次，2026-08-18 用户 issue）：A 快赢、B NGA 裂图修复、
   D 封面系统、E1 Cookie 粘贴解析已完成；剩余/暂缓：
-  - E2 Android 应用内 WebView 登录已完成；Windows E2 二级窗待后续
+  - E2 双端应用内登录已完成（Android WebView + Windows pywebview 二级窗）
   - C 滚动到底自动翻章（暂不实施，按用户要求；进度类必跑回归）
   - F NGA 楼中楼评论（暂不实施，按用户要求；最大件）
   子项明细见 ROADMAP §3 P5。

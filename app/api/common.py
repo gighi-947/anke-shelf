@@ -15,6 +15,7 @@ from ..shelf import BookRecord, ProgressStore, Shelf
 
 if TYPE_CHECKING:
     from ..gululu_service import GululuService
+    from ..nga_login import NgaLoginController
 
 log = logging.getLogger("app.api")
 
@@ -36,6 +37,7 @@ class ApiContext:
     frontend_ready: Optional[threading.Event] = None
     file_dialog: Optional[Callable[[str], list[str]]] = None
     window_toggle: Optional[Callable[[bool], None]] = None
+    nga_login: Optional["NgaLoginController"] = None
     fullscreen: bool = False
 
 

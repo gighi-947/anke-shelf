@@ -17,6 +17,32 @@ def nga_clear_config(ctx: ApiContext) -> dict:
     return clear_nga_config()
 
 
+def _login_controller(ctx: ApiContext):
+    if ctx.nga_login is None:
+        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "应用内登录仅 Windows 桌面版可用")
+    return ctx.nga_login
+
+
+def nga_login_start(ctx: ApiContext) -> dict:
+    """打开 NGA 登录二级窗（固定 bbs.nga.cn）。"""
+    return _login_controller(ctx).start()
+
+
+def nga_login_status(ctx: ApiContext) -> dict:
+    """查询登录二级窗状态（idle/waiting/done/cancelled/error）。"""
+    return _login_controller(ctx).status()
+
+
+def nga_login_extract(ctx: ApiContext) -> dict:
+    """从登录二级窗 Cookie 提取 uid/cid 并保存，成功后关窗。"""
+    return _login_controller(ctx).extract()
+
+
+def nga_login_cancel(ctx: ApiContext) -> dict:
+    """关闭登录二级窗并清理 WebView Cookie。"""
+    return _login_controller(ctx).cancel()
+
+
 def nga_update_book(ctx: ApiContext, book_id: str, params: dict) -> dict:
     """对已下载的 NGA 帖子做增量热更新。"""
     if ctx.nga_service is None:

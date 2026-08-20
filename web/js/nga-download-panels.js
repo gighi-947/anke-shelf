@@ -174,6 +174,41 @@
     hint.className = 'muted settings-hint';
     hint.textContent = 'Cookie 仅保存在本机数据目录，用于访问需要登录可见的帖子；发行版不包含任何个人登录配置。';
     cfgBox.appendChild(hint);
+
+    // 应用内登录（Windows 二级窗）：打开 pywebview 登录窗，登录后回此页提取保存。
+    const appLogin = document.createElement('div');
+    appLogin.className = 'nga-app-login';
+    const appLoginStart = document.createElement('button');
+    appLoginStart.className = 'btn';
+    appLoginStart.id = 'nga-login-start';
+    appLoginStart.textContent = '在应用内登录（打开 NGA 登录窗口）';
+    appLoginStart.addEventListener('click', () => {
+      if (window.NgaPage) window.NgaPage.startNgaLogin();
+    });
+    const appLoginHint = document.createElement('p');
+    appLoginHint.className = 'muted settings-hint';
+    appLoginHint.id = 'nga-login-hint';
+    appLoginHint.textContent = '点击后打开 NGA 登录窗口，登录成功后回到本页点击「提取并保存」。';
+    const appLoginActions = document.createElement('div');
+    appLoginActions.className = 'nga-actions';
+    const appLoginExtract = document.createElement('button');
+    appLoginExtract.className = 'btn btn-primary hidden';
+    appLoginExtract.id = 'nga-login-extract';
+    appLoginExtract.textContent = '提取并保存';
+    appLoginExtract.addEventListener('click', () => {
+      if (window.NgaPage) window.NgaPage.extractNgaLogin();
+    });
+    const appLoginCancel = document.createElement('button');
+    appLoginCancel.className = 'btn hidden';
+    appLoginCancel.id = 'nga-login-cancel';
+    appLoginCancel.textContent = '取消登录';
+    appLoginCancel.addEventListener('click', () => {
+      if (window.NgaPage) window.NgaPage.cancelNgaLogin();
+    });
+    appLoginActions.append(appLoginExtract, appLoginCancel);
+    appLogin.append(appLoginStart, appLoginHint, appLoginActions);
+    cfgBox.appendChild(appLogin);
+
     const btns = document.createElement('div');
     btns.className = 'nga-actions';
     const save = document.createElement('button');

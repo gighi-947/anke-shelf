@@ -34,6 +34,7 @@ UI 入口 → 下载器 → HTTP 客户端 → 格式化 → 落盘/追加
 | Windows | `app/gululu_immersive.py` → EPUB `data-*` → `web/js/gululu-immersive.js` | 正文音乐/背景/视效指令解析，无凭据 HTTPS 校验，宿主层播放器、背景与动态视效 |
 | Windows | `app/gululu_assistant.py` → `app/gululu_ast.py` → EPUB `data-*` → `web/js/gululu-assistant-reader.js` / `gululu-secrets.js` → `app/api/gululu_api.py` | 全能助手折叠/引用/骰点/迷雾/秘密/线索协议；书内解锁持久化，CryptoJS AES 按需解密，明文只在宿主弹窗展示 |
 | Windows | `app/native_book.py` | 原生书容器：meta.json + floors.json + chapters/*.xhtml，纯增量追加 |
+| Windows | `web/js/nga_download.js` → `app/nga_login.py` → `app/nga_config.py` | NGA 应用内登录二级窗（pywebview 固定 bbs.nga.cn），提取 Cookie 保存到 nga_config.ini |
 | Android | `ui/download/DownloadScreen.kt` → `service/NgaDownloader.kt` / `NgaDownloadService.kt` | 参数表单、前台服务、进度通知、取消清理 |
 | Android | `service/NgaClient.kt` / `NgaHttp.kt` | OkHttp + CookieJar + UA + Referer（图片代理统一入口） |
 | Android | `data/NgaFormatHtml.kt` / `NgaSmileMap.kt` | NGA HTML 清洗、表情/匿名映射 |

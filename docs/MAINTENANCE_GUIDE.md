@@ -135,8 +135,8 @@ NgaConfig / StatsStore / AnnotationStore / BookRepository / OkHttp）+ 四 Tab �
 
 | 范围 | 基线（2026-08-18 实测） | 命令 / 位置 |
 | --- | --- | --- |
-| Windows Python | 303 项（3.14：4 跳；bundled 3.12 全过） | `python -m unittest discover tests` |
-| JS 契约 | textpos 15 例、api-contract 55 方法、launch 诊断、bridge v1、parts 6/37377B、reader-session、nga-cookie OK | `node contracts/tests/*.test.js` + `node tests/js/*.test.js` |
+| Windows Python | 318 项（3.14：4 跳；bundled 3.12 全过） | `python -m unittest discover tests` |
+| JS 契约 | textpos 15 例、api-contract 59 方法、launch 诊断、bridge v1、parts 6/37377B、reader-session、nga-cookie OK | `node contracts/tests/*.test.js` + `node tests/js/*.test.js` |
 | Android JVM | 128 过 / 1 跳 + DisciplineTest | `cd android && gradlew.bat testDebugUnitTest` |
 | 真机 | instrumentation 11/11（ELE-AL00） | adb instrument |
 | UI harness | 97 项 PASS（需桌面 WebView2，CI 无头跳过） | `python -m tests.ui.runner` |
@@ -179,12 +179,12 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 ## 10. 当前状态（2026-08-20 快照）
 
 - 基线 `main`（HEAD 以 `git log` 为准）；`win/gululu-reader-interaction` 已并入主干；
-  最近主线为骨碌碌适配（v1.3.0 / v1.5.1）、五批接手风险修复、P5 批次（P5-A/B/D/E1/E2-Android）、NGA 主题自适应与深浅色下载选项移除与
+  最近主线为骨碌碌适配（v1.3.0 / v1.5.1）、五批接手风险修复、P5 批次（P5-A/B/D/E1/E2 双端）、NGA 主题自适应与深浅色下载选项移除与
   多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）；
   文档漂移治理已强化（AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
 - 版本线：Windows v1.5.1、Android android-v1.1.0，均已发布。
 - 待办与延后项见 DevLog §5 与 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
-  （真实待办：P5-E2 Windows 二级窗；P5-C 自动翻章与 P5-F 楼中楼暂不实施，
+  （真实待办：P5-E2 已完成双端；P5-C 自动翻章与 P5-F 楼中楼暂不实施，
   以及 Android 数据完整性校验入口；其余大文件拆分 /
   P4 参考仓库 3/8 待补：readest / Kavita / LibreraReader，均保持延后）。
 
