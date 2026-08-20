@@ -19,6 +19,8 @@ import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.data.nowIso
 import io.github.gighi947.ankeshelf.data.sniffImageExt
 import io.github.gighi947.ankeshelf.data.queryDisplayName
+import io.github.gighi947.ankeshelf.ui.reader.TocNode
+import io.github.gighi947.ankeshelf.ui.reader.TocTree
 import java.io.Closeable
 import java.io.File
 import java.util.concurrent.Executors
@@ -69,10 +71,15 @@ class BookSession(
     private val closeFn: () -> Unit,
     private val baseDirFn: (Int) -> String = { "" },
     private val assetFn: ((Int, String) -> ByteArray?)? = null,
+    /** 嵌套目录（EPUB nav/NCX 层级）；缺省为空表示按 spine 章节扁平展示。 */
+    private val tocFn: () -> List<TocNode> = { emptyList() },
 ) : Closeable {
     fun chapterText(index: Int): ChapterReadResult = textFn(index)
     fun chapterTitle(index: Int): String = titleFn(index)
     fun chapterBaseDir(index: Int): String = baseDirFn(index)
+
+    /** 目录节点（嵌套已扁平化）；为空时调用方回退 spine 章节列表。 */
+    fun tocNodes(): List<TocNode> = tocFn()
 
     /** 读章节相对资源（EPUB 图片等）；原生书返回 null（走远程/本地图拦截）。 */
     fun readAsset(chapterIndex: Int, rel: String): ByteArray? =
@@ -250,6 +257,7 @@ class BookRepository(
                         closeFn = { eb.close() },
                         baseDirFn = { eb.chapterBaseDir(it) },
                         assetFn = { idx, rel -> eb.resolveAsset(idx, rel) },
+                        tocFn = { TocTree.flatten(eb.toc.toList()) { href -> eb.tocSpineIndex(href) } },
                     ),
                 )
             }

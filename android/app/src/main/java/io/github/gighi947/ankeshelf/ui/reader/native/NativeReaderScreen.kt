@@ -67,6 +67,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.ViewCompat
 import io.github.gighi947.ankeshelf.data.ChapterReadResult
+import io.github.gighi947.ankeshelf.data.AnnotationPatch
+import io.github.gighi947.ankeshelf.data.Highlight
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.TextExtractor
@@ -77,10 +79,14 @@ import io.github.gighi947.ankeshelf.service.ngaHeaders
 import io.github.gighi947.ankeshelf.ui.reader.extractReaderParts
 import io.github.gighi947.ankeshelf.ui.reader.buildReaderHtml
 import io.github.gighi947.ankeshelf.ui.reader.ChapterProgressTracker
+import io.github.gighi947.ankeshelf.ui.reader.ReaderJump
+import io.github.gighi947.ankeshelf.ui.reader.ReaderSelection
+import io.github.gighi947.ankeshelf.ui.reader.TocTree
 import io.github.gighi947.ankeshelf.ui.reader.WebViewChapterView
 import io.github.gighi947.ankeshelf.ui.reader.WebViewReaderCallbacks
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.readerTheme
+import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -96,7 +102,11 @@ import kotlin.math.roundToInt
 
 /** 章节内容 UI 状态：读取失败走显式错误分支，不静默渲染空白页。 */
 private sealed interface ChapterUiState {
-    data class Html(val html: String, val len: Int) : ChapterUiState
+    /** [plain] 为折叠纯文本（text_offset 坐标系），供百分比与书签摘要使用。 */
+    data class Html(val html: String, val plain: String) : ChapterUiState {
+        val len: Int get() = plain.length
+    }
+
     data class Error(val message: String) : ChapterUiState
 }
 
@@ -130,6 +140,19 @@ fun NativeReaderScreen(
     var pendingSeconds by remember { mutableIntStateOf(0) }
     var flippedPages by remember { mutableIntStateOf(0) }
     var pendingSaveUrl by remember { mutableStateOf<String?>(null) }
+    // 标注（批 1）：选区 / 新建笔记 / 编辑已有高亮 / 抽屉 / 章内跳转
+    var selection by remember { mutableStateOf<ReaderSelection?>(null) }
+    var pendingNote by remember { mutableStateOf<ReaderSelection?>(null) }
+    var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
+    var editingNote by remember { mutableStateOf<Highlight?>(null) }
+    var showAnnotations by remember { mutableStateOf(false) }
+    var annotationsTick by remember { mutableIntStateOf(0) }
+    var jump by remember { mutableStateOf<ReaderJump?>(null) }
+    var jumpToken by remember { mutableIntStateOf(0) }
+    var clearSelectionToken by remember { mutableIntStateOf(0) }
+    // 跨章标注跳转：换章后由 init 的 offset 完成定位（与搜索跳转同路径）。
+    var crossJump by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var liveOffset by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // 恢复锚点每章只取一次：书架刷新等外部变化会重建 savedOffset（可能读到旧值），
@@ -145,16 +168,34 @@ fun NativeReaderScreen(
             },
         )
     }
-    val restoreOffset = remember(chapterIndex, session.id) {
+    val restoreOffset = remember(chapterIndex, session.id, crossJump) {
         // desktop loadChapter(i, 0): only the initial open/search jump restores an
         // offset; in-session chapter navigation always starts at the chapter head.
-        if (chapterIndex == initialChapter) progressTracker.restoreOffsetFor(chapterIndex) else 0
+        val cj = crossJump
+        when {
+            cj != null && cj.first == chapterIndex -> cj.second
+            chapterIndex == initialChapter -> progressTracker.restoreOffsetFor(chapterIndex)
+            else -> 0
+        }
     }
-    val restorePage = remember(chapterIndex, session.id) {
-        if (chapterIndex == initialChapter) progressTracker.restorePageFor(chapterIndex) else -1
+    val restorePage = remember(chapterIndex, session.id, crossJump) {
+        // 跨章跳转按文本锚点定位，页码必须让位（否则页码优先会跳回旧页）。
+        if (crossJump?.first == chapterIndex) {
+            -1
+        } else if (chapterIndex == initialChapter) {
+            progressTracker.restorePageFor(chapterIndex)
+        } else {
+            -1
+        }
     }
-    val restoreTotal = remember(chapterIndex, session.id) {
-        if (chapterIndex == initialChapter) progressTracker.restoreTotalFor(chapterIndex) else -1
+    val restoreTotal = remember(chapterIndex, session.id, crossJump) {
+        if (crossJump?.first == chapterIndex) {
+            -1
+        } else if (chapterIndex == initialChapter) {
+            progressTracker.restoreTotalFor(chapterIndex)
+        } else {
+            -1
+        }
     }
     val restoreRatio = remember(chapterIndex, session.id) {
         if (chapterIndex == initialChapter) progressTracker.restoreRatioFor(chapterIndex) else -1.0
@@ -178,13 +219,63 @@ fun NativeReaderScreen(
         when (val r = session.chapterText(chapterIndex)) {
             is ChapterReadResult.Success -> runCatching {
                 val parts = extractReaderParts(r.text)
-                val len = TextExtractor.extractDomText(parts.body).length
+                val plain = TextExtractor.extractDomText(parts.body)
                 val html = buildReaderHtml(parts, theme, readerSettings)
-                ChapterUiState.Html(html, len)
+                ChapterUiState.Html(html, plain)
             }.getOrElse { e -> ChapterUiState.Error(e.message ?: "章节渲染失败") }
             is ChapterReadResult.NotFound -> ChapterUiState.Error("章节不存在，请返回目录")
             is ChapterReadResult.Corrupt -> ChapterUiState.Error("章节文件损坏：${r.detail}")
             is ChapterReadResult.Io -> ChapterUiState.Error("章节读取失败：${r.detail}")
+        }
+    }
+
+    // 标注数据：annotationsTick 变化即重读（CRUD 后刷新正文注入与抽屉列表）。
+    val allHighlights = remember(session.id, annotationsTick) {
+        container.annotations.getHighlights(session.id).sortedWith(
+            compareBy({ it.chapter_index }, { it.start_offset }),
+        )
+    }
+    val allBookmarks = remember(session.id, annotationsTick) {
+        container.annotations.getBookmarks(session.id).sortedWith(
+            compareBy({ it.chapter_index }, { it.offset }),
+        )
+    }
+    val chapterHighlights = remember(allHighlights, chapterIndex) {
+        allHighlights.filter { it.chapter_index == chapterIndex }
+    }
+    // 传给 WebView 的注入载荷：只包含定位与配色所需字段（不带笔记正文）。
+    val highlightsJson = remember(chapterHighlights) {
+        buildString {
+            append('[')
+            chapterHighlights.forEachIndexed { i, h ->
+                if (i > 0) append(',')
+                append("{\"id\":").append(JSONObject.quote(h.id))
+                append(",\"start\":").append(h.start_offset)
+                append(",\"end\":").append(h.end_offset)
+                append(",\"color\":").append(JSONObject.quote(h.color))
+                append('}')
+            }
+            append(']')
+        }
+    }
+    val bookmarkAtCurrent = remember(allBookmarks, chapterIndex, liveOffset) {
+        allBookmarks.firstOrNull {
+            it.chapter_index == chapterIndex && kotlin.math.abs(it.offset - liveOffset) <= 80
+        }
+    }
+    val tocNodes = remember(session.id) {
+        session.tocNodes().ifEmpty {
+            TocTree.fromChapters(session.chapters) { session.chapterTitle(it) }
+        }
+    }
+    val bookProgress = remember(chapterIndex, liveOffset, chapterState, session.id) {
+        val total = session.chapters.size
+        if (total <= 0) {
+            0f
+        } else {
+            val len = (chapterState as? ChapterUiState.Html)?.len ?: 0
+            val inChapter = if (len > 0) (liveOffset.toFloat() / len).coerceIn(0f, 1f) else 0f
+            ((chapterIndex + inChapter) / total).coerceIn(0f, 1f)
         }
     }
 
@@ -264,6 +355,11 @@ fun NativeReaderScreen(
         flushProgress("reader_action")
     }
 
+    // 换章/换书：当前位置回到本章恢复锚点（书签命中判定与进度滑块用）。
+    LaunchedEffect(session.id, chapterIndex, restoreOffset) {
+        liveOffset = restoreOffset
+    }
+
     // 5 秒心跳统计。
     LaunchedEffect(Unit) {
         while (isActive) {
@@ -336,12 +432,16 @@ fun NativeReaderScreen(
                 // 滚动比例只属于滚动模式：分页模式打开时强制 -1（跨模式隔离，
                 // 全图页的滚动比例不能参与分页文本定位，避免“上次全图退出→本次分页打开”错位）。
                 initialRatio = if (!readerSettings.pagination) restoreRatio else -1.0,
+                highlightsJson = highlightsJson,
+                jump = jump,
+                clearSelectionToken = clearSelectionToken,
                 session = session,
                 container = container,
                 callbacks = WebViewReaderCallbacks(
                     onProgress = { ch, offset, _, _, ratio ->
                         progressTracker.onOffset(ch, offset, ratio)
                         if (ch == chapterIndex) {
+                            liveOffset = offset
                             // UI 百分比：全图页直接用 JS 滚动比例，文本页用 text_offset 比例。
                             scrollRatio = if (ratio in 0.0..1.0) {
                                 ratio.toFloat()
@@ -354,10 +454,12 @@ fun NativeReaderScreen(
                     },
                     onPagedAnchor = { ch, offset ->
                         progressTracker.onPagedAnchor(ch, offset)
+                        if (ch == chapterIndex) liveOffset = offset
                     },
                     onProgressNow = { ch, offset, page, total, _ ->
                         // 翻页/换章立即落盘（不等待 500ms 防抖），退出时进度不落后。
                         progressTracker.onPageTurn(ch, offset, page, total)
+                        if (ch == chapterIndex) liveOffset = offset
                     },
                     // 唤出浮动栏后发生新的滚动才自动收起（滚动事件发生时即时通知，
                     // 不等防抖保存回调，避免唤出前的迟到滚动把刚唤出的控制条误收）。
@@ -391,12 +493,21 @@ fun NativeReaderScreen(
                         chapterIndex = (chapterIndex + delta)
                             .coerceIn(0, session.chapters.lastIndex.coerceAtLeast(0))
                     },
+                    onSelection = { selection = it },
+                    onHighlightTap = { id ->
+                        editingHighlight = allHighlights.firstOrNull { it.id == id }
+                    },
+                    onReady = {
+                        // 跨章跳转已由本章 init 定位完成：清除一次性锚点，
+                        // 之后再回到本章仍按"换章从章首开始"的语义。
+                        if (crossJump?.first == chapterIndex) crossJump = null
+                    },
                 ),
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
-        // ?????
+        // 亮度遮罩（阅读器外层）
         ReaderBrightnessOverlay(brightness = readerSettings.brightness)
 
         ReaderTopBar(
@@ -404,7 +515,30 @@ fun NativeReaderScreen(
             title = session.chapterTitle(chapterIndex),
             barBg = barBg,
             fg = fg,
+            bookmarked = bookmarkAtCurrent != null,
             onBack = { saveProgress(); onBack() },
+            onToggleBookmark = {
+                val existing = bookmarkAtCurrent
+                if (existing != null) {
+                    container.annotations.deleteBookmark(session.id, existing.id)
+                } else {
+                    val plain = (chapterState as? ChapterUiState.Html)?.plain.orEmpty()
+                    val label = if (plain.isNotEmpty()) {
+                        val from = liveOffset.coerceIn(0, plain.length)
+                        plain.substring(from, (from + 60).coerceAtMost(plain.length)).trim()
+                    } else {
+                        ""
+                    }
+                    container.annotations.addBookmark(
+                        bookId = session.id,
+                        chapterIndex = chapterIndex,
+                        offset = liveOffset,
+                        text = label.ifBlank { session.chapterTitle(chapterIndex) },
+                    )
+                }
+                annotationsTick++
+            },
+            onOpenAnnotations = { showAnnotations = true },
             onToggleToc = { showToc = !showToc },
         )
 
@@ -416,6 +550,22 @@ fun NativeReaderScreen(
             pagination = readerSettings.pagination,
             pageInfo = pageInfo,
             scrollRatio = scrollRatio,
+            bookProgress = bookProgress,
+            onSeek = { fraction ->
+                val total = session.chapters.size
+                if (total > 0) {
+                    val target = (fraction * total).toInt().coerceIn(0, total - 1)
+                    val len = (chapterState as? ChapterUiState.Html)?.len ?: 0
+                    if (target == chapterIndex && len > 0) {
+                        val within = (fraction * total) - target
+                        jumpToken++
+                        jump = ReaderJump(jumpToken, (within * len).toInt().coerceIn(0, len))
+                    } else if (target != chapterIndex) {
+                        saveProgress()
+                        chapterIndex = target
+                    }
+                }
+            },
             onPrevChapter = { chapterIndex = (chapterIndex - 1).coerceAtLeast(0) },
             onNextChapter = { chapterIndex = (chapterIndex + 1).coerceAtMost(session.chapters.lastIndex) },
             onFontDec = { onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size - 1).coerceAtLeast(14))) },
@@ -426,12 +576,131 @@ fun NativeReaderScreen(
 
         ReaderTocDrawer(
             visible = showToc,
-            chapters = session.chapters,
+            nodes = tocNodes,
             currentChapter = chapterIndex,
-            titleFn = { session.chapterTitle(it) },
             onDismiss = { showToc = false },
             onSelect = { i -> saveProgress(); chapterIndex = i; showToc = false },
         )
+
+        ReaderAnnotationsDrawer(
+            visible = showAnnotations,
+            highlights = allHighlights,
+            bookmarks = allBookmarks,
+            chapterTitleFn = { session.chapterTitle(it) },
+            onJump = { ch, offset ->
+                showAnnotations = false
+                saveProgress()
+                if (ch == chapterIndex) {
+                    jumpToken++
+                    jump = ReaderJump(jumpToken, offset)
+                } else {
+                    // 跨章跳转：换章后由 init 的 offset 完成定位（与搜索跳转同路径）。
+                    crossJump = ch to offset
+                    chapterIndex = ch.coerceIn(0, session.chapters.lastIndex.coerceAtLeast(0))
+                }
+            },
+            onDeleteHighlight = { id ->
+                container.annotations.deleteAnnotation(session.id, id)
+                annotationsTick++
+            },
+            onDeleteBookmark = { id ->
+                container.annotations.deleteBookmark(session.id, id)
+                annotationsTick++
+            },
+            onDismiss = { showAnnotations = false },
+        )
+
+        selection?.let { sel ->
+            ReaderSelectionBar(
+                selection = sel,
+                barBg = barBg,
+                fg = fg,
+                onColor = { color ->
+                    container.annotations.addHighlight(
+                        bookId = session.id,
+                        chapterIndex = chapterIndex,
+                        startOffset = sel.start,
+                        endOffset = sel.end,
+                        text = sel.text,
+                        color = color,
+                    )
+                    annotationsTick++
+                    selection = null
+                    clearSelectionToken++
+                },
+                onNote = {
+                    pendingNote = sel
+                    selection = null
+                    clearSelectionToken++
+                },
+                onDismiss = {
+                    selection = null
+                    clearSelectionToken++
+                },
+            )
+        }
+
+        pendingNote?.let { sel ->
+            ReaderNoteDialog(
+                initialNote = "",
+                quote = sel.text,
+                onConfirm = { note ->
+                    container.annotations.addHighlight(
+                        bookId = session.id,
+                        chapterIndex = chapterIndex,
+                        startOffset = sel.start,
+                        endOffset = sel.end,
+                        text = sel.text,
+                        note = note,
+                    )
+                    annotationsTick++
+                    pendingNote = null
+                },
+                onDismiss = { pendingNote = null },
+            )
+        }
+
+        editingHighlight?.let { h ->
+            ReaderHighlightDialog(
+                highlight = h,
+                onColor = { color ->
+                    container.annotations.updateAnnotation(
+                        session.id,
+                        h.id,
+                        AnnotationPatch(color = color),
+                    )
+                    annotationsTick++
+                    editingHighlight = null
+                },
+                onEditNote = {
+                    editingNote = h
+                    editingHighlight = null
+                },
+                onDelete = {
+                    container.annotations.deleteAnnotation(session.id, h.id)
+                    annotationsTick++
+                    editingHighlight = null
+                },
+                onDismiss = { editingHighlight = null },
+            )
+        }
+
+        editingNote?.let { h ->
+            ReaderNoteDialog(
+                initialNote = h.note,
+                quote = h.text,
+                onConfirm = { note ->
+                    container.annotations.updateAnnotation(
+                        session.id,
+                        h.id,
+                        AnnotationPatch(note = note),
+                    )
+                    annotationsTick++
+                    editingNote = null
+                },
+                onDismiss = { editingNote = null },
+            )
+        }
 
         lightboxSrc?.let { src ->
             ReaderLightbox(

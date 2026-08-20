@@ -253,27 +253,27 @@ mark.hl-mark {
 }
 
 mark.hl-yellow {
-    background: rgba(255, 214, 0, 0.45);
+    background: rgba(250, 204, 21, 0.40);
 }
 
 mark.hl-green {
-    background: rgba(76, 175, 80, 0.40);
+    background: rgba(74, 222, 128, 0.35);
 }
 
 mark.hl-blue {
-    background: rgba(33, 150, 243, 0.40);
+    background: rgba(56, 189, 248, 0.35);
 }
 
 mark.hl-pink {
-    background: rgba(233, 30, 99, 0.35);
+    background: rgba(244, 114, 182, 0.35);
 }
 
 mark.hl-purple {
-    background: rgba(156, 39, 176, 0.35);
+    background: rgba(192, 132, 252, 0.35);
 }
 
 mark.hl-cyan {
-    background: rgba(0, 188, 212, 0.40);
+    background: rgba(34, 211, 238, 0.35);
 }
 
 /* NGA 图片/表情加载失败占位卡：无文本节点，文案走 ::after，不进 text_offset */

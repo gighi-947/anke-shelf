@@ -253,11 +253,11 @@
     state.paged = !!opts.paged && !state.huge;
     callBridge('onMode', state.paged);
     if (state.paged) {
-      state.textCtx = TextPos.build(document);
+      state.textCtx = buildTextWithHighlights(opts.highlights);
     } else {
       state.textCtx = null;
       setTimeout(function () {
-        state.textCtx = TextPos.build(document);
+        state.textCtx = buildTextWithHighlights(opts.highlights);
         state.phase = 'restoring';
         log('[state] restoring (scroll init)');
         if (state.restorePending && state.restoreOffset > 0) {
@@ -285,6 +285,7 @@
     root.style.setProperty('--reader-top-inset', state.topInset + 'px');
     root.style.setProperty('--reader-bottom-inset', state.bottomInset + 'px');
     bindImages();
+    bindSelection();
     // 滚动模式底部换章按钮（分页模式下由 CSS 隐藏）。
     var prevBtn = document.getElementById('android-prev-chapter');
     var nextBtn = document.getElementById('android-next-chapter');
@@ -386,7 +387,7 @@
     return 'false';
   }
 
-  window.AnkeReader = {
+  var AnkeReaderApi = {
     init: init,
     applyTheme: applyTheme,
     applyTypography: applyTypography,
@@ -401,8 +402,24 @@
     geometry: geometry,
     shouldAutoDual: shouldAutoDual,
     buildText: TextPos.build,
+    // 标注（批 1）：注入高亮 / 读取选区 / 清选区 / 按 text_offset 跳转
+    applyHighlights: applyHighlights,
+    selectionInfo: function () {
+      var info = currentSelectionInfo();
+      return info ? JSON.stringify(info) : '';
+    },
+    clearSelection: clearSelection,
+    gotoTextOffset: gotoTextOffset,
     bridgeVersion: function () { return BRIDGE_VERSION; },
     bridgeReadyPayload: bridgeReadyPayload,
     emitReady: emitReady,
   };
+
+  if (typeof window !== 'undefined') {
+    window.AnkeReader = AnkeReaderApi;
+  }
+  // Node 契约测试入口：只导出与 DOM 无关的纯函数（跨端折叠规则对照）。
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { foldItems: foldItems, AnkeReader: AnkeReaderApi };
+  }
 })();

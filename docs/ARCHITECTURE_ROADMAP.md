@@ -38,11 +38,11 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（P5-A/B/D/E 已完成；P5-C/F 暂缓）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）（HEAD 以 `git log` 为准） |
+| 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（P5-A/B/D/E 已完成；P5-C/F 暂缓）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）；2026-08-20 起进入 Android 全量对齐专项（见 `ANDROID_PARITY_PLAN.md`，批 1 已落地）（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 319 项（3.14：全过；bundled 3.12：全过） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 59 methods + `bridge-contract`（桥版本 1）+ `reader-lite-parts`（6 parts / 37377 字节）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
-| Android JVM 单测 | 129 过 / 1 跳（2026-08-20 实跑复核） |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 59 methods + `bridge-contract`（桥版本 1 / 能力含 annotation）+ `reader-lite-parts`（7 parts / 45559 字节）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
+| Android JVM 单测 | 135 项（134 过 / 1 跳；2026-08-20 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |

@@ -30,9 +30,11 @@
     `node contracts/tests/api-contract.test.js`（59 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（6 parts / 37377 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（7 parts / 45559 字节）、
+    `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 129 过 / 1 跳；DisciplineTest 在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 135 项（134 过 / 1 跳）；
+    DisciplineTest 8 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
   - 骨碌碌正式冒烟 `formal_ui_smoke.js`（桌面 + 430px，含骰点菜单/段落评论/总览/
@@ -62,6 +64,43 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-20 android：对齐批 1 —— 阅读器标注交互 / 嵌套目录 / 进度滑块
+
+- 背景：接手评估发现 Android 相比 Windows 缺口很大（骨碌碌全链路零实现、
+  标注只有数据层与设置页导出、目录抽屉扁平、无进度滑块、阅读辅助字段空转）。
+  先产出差距矩阵与分批规划（新增 `docs/ANDROID_PARITY_PLAN.md`，10 批），
+  本次落地第 1 批。
+- 改动（均在 `android/` 内 + 共享 contracts/docs）：
+  - **折叠规则补齐（前置红线）**：`reader-lite.parts/20-textpos.js` 抽出纯函数
+    `foldItems(items)`，补上桌面同款「注入节点（`.hl-mark`/`.syntax`）内部无缝」与
+    「仅注释分隔不插空格」规则，并新增 `TextPos.rangeToOffsets`。
+    没有这条规则，注入高亮会让本章 `text_offset` 整体后移（进度与标注一起漂移）。
+  - 新增 `reader-lite.parts/45-annotation.js`：`applyHighlights`（倒序注入
+    `<mark class="hl-mark">`、注入后重建坐标）、`currentSelectionInfo`（选区 →
+    text_offset 区间 + 视口矩形）、`bindSelection`（selectionchange 上报 /
+    点击高亮上报）、`clearSelection`、`gotoTextOffset`（书签跳转）。
+  - 桥能力追加 `annotation`（`BRIDGE_VERSION` 保持 1，能力为追加式扩展）；
+    新增桥事件 `onSelection / onHighlightTap`，Kotlin 下发
+    `applyHighlights / clearSelection / gotoTextOffset`。
+  - `reader-lite.js` 现在可被 Node 加载（`window`/`module` 双守卫），
+    仅导出与 DOM 无关的纯函数供契约测试使用。
+  - Compose：新增 `ui/reader/native/NativeReaderAnnotations.kt`（选中工具条 6 色 +
+    笔记、高亮编辑弹窗、笔记弹窗、标注与书签抽屉）；顶栏加书签开关与标注入口；
+    底栏加全书进度滑块（松手才跳转）；目录抽屉改为嵌套（`ui/reader/TocNode.kt` +
+    `BookSession.tocNodes()`，缩进 + 当前项高亮 + 自动滚到当前项）。
+  - `assets/reader/reader.css` 的 6 色高亮改为与桌面 `COLOR_HEX` 同值。
+- 语义决策：`saveProgressNow` 永远 `ratio=-1`（显式跳转/翻页以文本锚点或页码为准），
+  滚动比例兜底只出现在防抖采样路径 `saveProgress`——由 DisciplineTest 守护。
+  这条不变量是被既有纪律测试逼出来的：第一版让滚动跳转携带 `state.scrollRatio`，
+  纪律测试直接判红。
+- 测试：新增 `contracts/tests/reader-lite-textpos.test.js`（Windows `textpos.js` 与
+  Android `reader-lite.js` 的 `foldItems` 逐项对照，12 例）+
+  `TocTreeTest`（5 例）+ DisciplineTest 新增「标注注入不得改变 text_offset 折叠规则」。
+- 验证：`gradlew testDebugUnitTest` = 135 项（134 过 / 1 跳）；`assembleDebug` 成功；
+  解包 APK 校验 `assets/reader/reader-lite.js` = 45559 字节且含新函数；
+  `node contracts/tests/*.test.js` 全绿；Windows 侧 319 项未受影响。
+- 待办：真机验证「长按选中 → 高亮/笔记/书签 → 退出重进位置与高亮一致」（批 1 收尾）。
 
 ### 2026-08-20 docs：整理路线图（ARCHITECTURE_ROADMAP）
 

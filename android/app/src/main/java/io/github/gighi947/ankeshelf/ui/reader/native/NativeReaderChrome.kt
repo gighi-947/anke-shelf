@@ -30,23 +30,29 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -84,6 +90,8 @@ import io.github.gighi947.ankeshelf.service.ngaHeaders
 import io.github.gighi947.ankeshelf.ui.reader.extractReaderParts
 import io.github.gighi947.ankeshelf.ui.reader.buildReaderHtml
 import io.github.gighi947.ankeshelf.ui.reader.ChapterProgressTracker
+import io.github.gighi947.ankeshelf.ui.reader.TocNode
+import io.github.gighi947.ankeshelf.ui.reader.TocTree
 import io.github.gighi947.ankeshelf.ui.reader.WebViewChapterView
 import io.github.gighi947.ankeshelf.ui.reader.WebViewReaderCallbacks
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
@@ -121,14 +129,17 @@ internal fun ReaderBrightnessOverlay(brightness: Double) {
     }
 }
 
-/** 顶部浮动栏：返回 / 章节标题 / 目录。 */
+/** 顶部浮动栏：返回 / 章节标题 / 书签 / 标注 / 目录。 */
 @Composable
 internal fun BoxScope.ReaderTopBar(
     visible: Boolean,
     title: String,
     barBg: Color,
     fg: Color,
+    bookmarked: Boolean,
     onBack: () -> Unit,
+    onToggleBookmark: () -> Unit,
+    onOpenAnnotations: () -> Unit,
     onToggleToc: () -> Unit,
 ) {
     AnimatedVisibility(
@@ -155,6 +166,16 @@ internal fun BoxScope.ReaderTopBar(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            IconButton(onClick = onToggleBookmark) {
+                Icon(
+                    if (bookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = if (bookmarked) "删除书签" else "添加书签",
+                    tint = if (bookmarked) MaterialTheme.colorScheme.primary else fg,
+                )
+            }
+            IconButton(onClick = onOpenAnnotations) {
+                Icon(Icons.Filled.Bookmarks, contentDescription = "标注与书签", tint = fg)
+            }
             IconButton(onClick = onToggleToc) {
                 Icon(Icons.Filled.Menu, contentDescription = "目录", tint = fg)
             }
@@ -162,7 +183,7 @@ internal fun BoxScope.ReaderTopBar(
     }
 }
 
-/** 底部浮动栏：换章 / 字号 / 主题 / 分页切换与进度指示。 */
+/** 底部浮动栏：换章 / 字号 / 主题 / 分页切换 + 全书进度滑块。 */
 @Composable
 internal fun BoxScope.ReaderBottomBar(
     visible: Boolean,
@@ -172,6 +193,8 @@ internal fun BoxScope.ReaderBottomBar(
     pagination: Boolean,
     pageInfo: Pair<Int, Int>,
     scrollRatio: Float,
+    bookProgress: Float,
+    onSeek: (Float) -> Unit,
     onPrevChapter: () -> Unit,
     onNextChapter: () -> Unit,
     onFontDec: () -> Unit,
@@ -179,6 +202,8 @@ internal fun BoxScope.ReaderBottomBar(
     onThemeChange: (String) -> Unit,
     onTogglePagination: () -> Unit,
 ) {
+    var dragging by remember { mutableStateOf<Float?>(null) }
+    val sliderValue = (dragging ?: bookProgress).coerceIn(0f, 1f)
     AnimatedVisibility(
         visible = visible,
         modifier = Modifier.align(Alignment.BottomCenter),
@@ -224,28 +249,44 @@ internal fun BoxScope.ReaderBottomBar(
                         tint = fg,
                     )
                 }
+                // 全书进度滑块（对齐桌面 #progress-slider）：拖动松手才跳转，
+                // 拖动过程只更新滑块位置，避免每一帧都触发定位与落盘。
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { dragging = it },
+                    onValueChangeFinished = {
+                        dragging?.let { onSeek(it.coerceIn(0f, 1f)) }
+                        dragging = null
+                    },
+                    modifier = Modifier.weight(1f).padding(horizontal = AnkeSpacing.sm),
+                    colors = SliderDefaults.colors(
+                        thumbColor = fg,
+                        activeTrackColor = fg.copy(alpha = 0.72f),
+                        inactiveTrackColor = fg.copy(alpha = 0.24f),
+                    ),
+                )
                 Text(
                     if (pagination && pageInfo.second > 0) {
                         "第 ${pageInfo.first + 1} / ${pageInfo.second} 页"
                     } else {
                         "${(scrollRatio * 100).roundToInt()}%"
                     },
-                    modifier = Modifier.weight(1f).padding(end = AnkeSpacing.md),
+                    modifier = Modifier.padding(end = AnkeSpacing.sm),
                     color = fg,
                     textAlign = TextAlign.End,
+                    style = MaterialTheme.typography.labelMedium,
                 )
             }
         }
     }
 }
 
-/** 目录弹层：遮罩 + 右侧抽屉。 */
+/** 目录弹层：遮罩 + 右侧抽屉（支持 EPUB 多级目录，缩进显示、当前项高亮）。 */
 @Composable
 internal fun BoxScope.ReaderTocDrawer(
     visible: Boolean,
-    chapters: List<SpineItem>,
+    nodes: List<TocNode>,
     currentChapter: Int,
-    titleFn: (Int) -> String,
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
@@ -271,6 +312,15 @@ internal fun BoxScope.ReaderTocDrawer(
         enter = slideInHorizontally(initialOffsetX = { it }),
         exit = slideOutHorizontally(targetOffsetX = { it }),
     ) {
+        val activeIndex = remember(nodes, currentChapter) {
+            TocTree.activeIndex(nodes, currentChapter)
+        }
+        val listState = rememberLazyListState()
+        LaunchedEffect(visible, activeIndex) {
+            if (visible && activeIndex >= 0) {
+                listState.scrollToItem(activeIndex.coerceAtMost((nodes.size - 1).coerceAtLeast(0)))
+            }
+        }
         Column(
             modifier = Modifier
                 .fillMaxHeight()
@@ -280,22 +330,46 @@ internal fun BoxScope.ReaderTocDrawer(
                 .padding(AnkeSpacing.md),
         ) {
             Text("目录", style = MaterialTheme.typography.titleMedium)
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                itemsIndexed(chapters) { i, _ ->
-                    TextButton(onClick = { onSelect(i) }) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                itemsIndexed(nodes) { i, node ->
+                    val active = i == activeIndex
+                    val enabled = node.chapterIndex != null
+                    TextButton(
+                        onClick = { node.chapterIndex?.let(onSelect) },
+                        enabled = enabled,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = tocIndent(node.depth)),
+                    ) {
                         Text(
-                            titleFn(i),
-                            color = if (i == currentChapter) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
+                            node.label,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = when {
+                                active -> MaterialTheme.colorScheme.primary
+                                !enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+                                else -> MaterialTheme.colorScheme.onSurface
                             },
+                            style = if (node.depth == 0) {
+                                MaterialTheme.typography.bodyMedium
+                            } else {
+                                MaterialTheme.typography.bodySmall
+                            },
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
         }
     }
+}
+
+/** 目录缩进：每级 12dp，最多 3 级（超深目录不再继续缩进，避免标题被挤成竖条）。 */
+private fun tocIndent(depth: Int) = when (depth.coerceAtMost(3)) {
+    0 -> 0.dp
+    1 -> AnkeSpacing.md
+    2 -> AnkeSpacing.xl
+    else -> AnkeSpacing.xxl
 }
 
 /** 图片查看遮罩：长按打开、双击缩放、保存/关闭。 */

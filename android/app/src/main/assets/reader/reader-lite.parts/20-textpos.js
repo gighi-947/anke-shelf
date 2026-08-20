@@ -10,6 +10,83 @@
     return false;
   }
 
+  /**
+   * 注入元素（高亮 mark / 代码高亮 span）内的文本节点：这些是显示层注入，
+   * 不应产生「相邻文本节点边界空格」，否则 text_offset 会与导入期 HTML
+   * （Kotlin TextExtractor / Python extract_dom_text）漂移。
+   * 识别：.hl-mark 或 .syntax 祖先（与桌面 web/js/textpos.js 同规则）。
+   */
+  function isInjectedText(node) {
+    var el = node.parentElement;
+    while (el) {
+      if (el.classList && (el.classList.contains('hl-mark') || el.classList.contains('syntax'))) {
+        return true;
+      }
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  /** 两个文本节点之间是否只有注释节点（无元素边界 → 不产生分隔空格）。 */
+  function separatedByCommentOnly(a, b) {
+    var s = b.previousSibling;
+    while (s && s.nodeType === Node.COMMENT_NODE) s = s.previousSibling;
+    return s === a;
+  }
+
+  /**
+   * 纯函数：文本项数组 → 折叠纯文本与坐标映射。
+   * items: [{ text, isInj, noSep }]；与桌面 web/js/textpos.js 的 foldItems
+   * 逐字符一致（跨端 golden 对照见 contracts/tests/reader-lite-textpos.test.js）。
+   */
+  function foldItems(items) {
+    var raw = '';
+    var sawPrev = false;
+    var lastWasInj = false;
+    var i;
+    var it;
+    for (i = 0; i < items.length; i++) {
+      it = items[i];
+      if (sawPrev && !(it.isInj && lastWasInj) && !it.noSep) {
+        raw += ' ';
+      }
+      sawPrev = true;
+      lastWasInj = !!it.isInj;
+      it.rawStart = raw.length;
+      raw += it.text;
+      it.rawEnd = raw.length;
+    }
+
+    var text = raw.replace(/\s+/g, ' ').trim();
+    var mapRaw = new Int32Array(raw.length);
+    var tIdx = 0;
+    var prevSpace = false;
+    var k = 0;
+    while (k < raw.length && RE_WS.test(raw[k])) { mapRaw[k] = 0; k++; }
+    for (; k < raw.length; k++) {
+      if (RE_WS.test(raw[k])) {
+        if (prevSpace) { mapRaw[k] = tIdx - 1; }
+        else { mapRaw[k] = tIdx; tIdx++; prevSpace = true; }
+      } else {
+        mapRaw[k] = tIdx; tIdx++; prevSpace = false;
+      }
+    }
+
+    var ranges = [];
+    for (i = 0; i < items.length; i++) {
+      it = items[i];
+      if (it.rawEnd <= it.rawStart) continue;
+      ranges.push({
+        node: it.node,
+        start: mapRaw[it.rawStart],
+        end: mapRaw[it.rawEnd - 1] + 1,
+        rawStart: it.rawStart,
+      });
+    }
+
+    return { raw: raw, text: text, mapRaw: mapRaw, ranges: ranges };
+  }
+
   var TextPos = {
     build: function (doc) {
       var items = [];
@@ -20,45 +97,22 @@
       });
       var node;
       while ((node = walker.nextNode())) {
-        items.push({ node: node, text: node.data });
-      }
-      var raw = '';
-      var sawPrev = false;
-      var i;
-      for (i = 0; i < items.length; i++) {
-        var it = items[i];
-        if (sawPrev) raw += ' ';
-        sawPrev = true;
-        it.rawStart = raw.length;
-        raw += it.text;
-        it.rawEnd = raw.length;
-      }
-      var text = raw.replace(/\s+/g, ' ').trim();
-      var mapRaw = new Int32Array(raw.length);
-      var tIdx = 0;
-      var prevSpace = false;
-      var k = 0;
-      while (k < raw.length && RE_WS.test(raw[k])) { mapRaw[k] = 0; k++; }
-      for (; k < raw.length; k++) {
-        if (RE_WS.test(raw[k])) {
-          if (prevSpace) { mapRaw[k] = tIdx - 1; }
-          else { mapRaw[k] = tIdx; tIdx++; prevSpace = true; }
-        } else {
-          mapRaw[k] = tIdx; tIdx++; prevSpace = false;
-        }
-      }
-      var ranges = [];
-      for (i = 0; i < items.length; i++) {
-        it = items[i];
-        if (it.rawEnd <= it.rawStart) continue;
-        ranges.push({
-          node: it.node,
-          start: mapRaw[it.rawStart],
-          end: mapRaw[it.rawEnd - 1] + 1,
-          rawStart: it.rawStart,
+        var prev = items.length ? items[items.length - 1] : null;
+        var noSep = !!(prev && prev.node && separatedByCommentOnly(prev.node, node));
+        items.push({
+          node: node,
+          text: node.data,
+          isInj: isInjectedText(node),
+          noSep: noSep,
         });
       }
-      return { doc: doc, text: text, ranges: ranges, mapRaw: mapRaw };
+      var folded = foldItems(items);
+      return {
+        doc: doc,
+        text: folded.text,
+        ranges: folded.ranges,
+        mapRaw: folded.mapRaw,
+      };
     },
 
     nodeCharToPlain: function (ctx, range, charIndex) {
@@ -88,6 +142,14 @@
       }
       if (ci > data.length) ci = data.length;
       return { node: r.node, charIndex: ci };
+    },
+
+    /** DOM Range → [start, end]（plain 坐标）；无法映射返回 null。 */
+    rangeToOffsets: function (ctx, range) {
+      var s = pointToOffset(ctx, range.startContainer, range.startOffset, false);
+      var e = pointToOffset(ctx, range.endContainer, range.endOffset, true);
+      if (s === null || e === null) return null;
+      return [Math.min(s, e), Math.max(s, e)];
     },
 
     currentOffsetFromPoint: function (ctx, x, y) {

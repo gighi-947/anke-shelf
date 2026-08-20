@@ -7,6 +7,8 @@ on:
       - 'app/api/**'
       - 'web/js/api-client.js'
       - 'web/js/bridge.js'
+      - 'web/js/textpos.js'
+      - 'android/app/src/main/assets/reader/**'
       - 'tests/test_contracts.py'
       - 'tests/test_api_contract.py'
       - '.github/workflows/contracts.yml'
@@ -16,6 +18,8 @@ on:
       - 'app/api/**'
       - 'web/js/api-client.js'
       - 'web/js/bridge.js'
+      - 'web/js/textpos.js'
+      - 'android/app/src/main/assets/reader/**'
       - 'tests/test_contracts.py'
       - 'tests/test_api_contract.py'
       - '.github/workflows/contracts.yml'
@@ -38,7 +42,10 @@ jobs:
         run: |
           node contracts/tests/api-contract.test.js
           node contracts/tests/api-contract-launch.test.js
-      - name: Node textpos contract
-        run: node contracts/tests/textpos.test.js
+      - name: Node textpos contract（含 Android reader-lite 跨端折叠对照）
+        run: |
+          node contracts/tests/textpos.test.js
+          node contracts/tests/reader-lite-textpos.test.js
+          node contracts/tests/reader-lite-parts.test.js
       - name: Python contract and API contract tests
         run: python -m unittest tests.test_api_contract tests.test_contracts

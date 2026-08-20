@@ -189,4 +189,44 @@ class DisciplineTest {
         ).readText()
         assertTrue("Kotlin 侧协议版本必须为 1", kotlin.contains("const val VERSION = 1"))
     }
+
+    @Test
+    fun `标注注入不得改变 text_offset 折叠规则`() {
+        val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
+
+        // 注入节点（高亮 mark / 代码高亮 span）内部不产生分隔空格：
+        // 删掉这条规则会让「注入高亮后 text_offset 整体后移」，进度与标注全部漂移。
+        assertTrue(
+            "reader-lite.js 必须保留注入节点识别（hl-mark / syntax）",
+            js.contains("function isInjectedText(node)") &&
+                js.contains("contains('hl-mark')") &&
+                js.contains("contains('syntax')"),
+        )
+        assertTrue(
+            "foldItems 必须按 isInj/noSep 决定分隔空格（与桌面 textpos.js 同规则）",
+            js.contains("if (sawPrev && !(it.isInj && lastWasInj) && !it.noSep)"),
+        )
+        assertTrue(
+            "注释分隔的相邻文本节点不得插入分隔空格",
+            js.contains("function separatedByCommentOnly(a, b)"),
+        )
+        assertTrue(
+            "桥能力必须声明 annotation（宿主据此启用标注交互）",
+            js.contains("'annotation'"),
+        )
+        // 标注跳转必须以文本锚点/页码落盘：saveProgressNow 永远 ratio=-1，
+        // 滚动比例兜底只允许出现在防抖采样路径（saveProgress）。
+        assertTrue(
+            "gotoTextOffset 分页分支必须显式 ratio=-1",
+            js.contains(
+                "callBridge('saveProgressNow', state.chapterIndex, target, true, m.current, m.total, -1)",
+            ),
+        )
+        assertTrue(
+            "gotoTextOffset 滚动分支必须显式 page/total/ratio=-1",
+            js.contains(
+                "callBridge('saveProgressNow', state.chapterIndex, target, true, -1, -1, -1)",
+            ),
+        )
+    }
 }

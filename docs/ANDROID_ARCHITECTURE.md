@@ -25,9 +25,15 @@ android/
   `filesDir/AnkeShelf/`，原子写，为未来跨端导入留路。
 - 阅读桥：JS 上报 `onReady({bridgeVersion, capabilities}) / saveProgress /
   saveProgressNow / pageChanged / requestChapter / openImage / onScrollMoved /
-  onMode / onSettled`；Kotlin 下发 `init / applyTheme / applyTypography / setMode /
-  flipPage / setInsets / gotoOffset / openImageAt / onResize`。ready 握手版本见
-  `ui/reader/BridgeProtocol.kt`（当前 1），不兼容时显式失败并记诊断。
+  onMode / onSettled / onSelection / onHighlightTap`；Kotlin 下发
+  `init / applyTheme / applyTypography / setMode / flipPage / setInsets /
+  gotoOffset / gotoTextOffset / applyHighlights / clearSelection / openImageAt /
+  onResize`。ready 握手版本见 `ui/reader/BridgeProtocol.kt`（当前 1，能力为追加式
+  扩展：`paged / scroll / scrollRatio / image / settled / annotation`），
+  不兼容时显式失败并记诊断。
+- 标注注入红线：高亮以 `<mark class="hl-mark">` 注入正文，折叠规则把注入节点内部
+  视为无缝（不产生分隔空格），因此 `text_offset` 不随注入变化；跨端对照见
+  `contracts/tests/reader-lite-textpos.test.js`。
 - 版本：`android-vX.Y.Z` 独立标签与 Release 资产。
 
 ## 必须保留的桌面语义（移植红线）

@@ -15,7 +15,8 @@ contracts/
 ├── annotation/        annotations.json 的 JSON Schema
 ├── settings/          settings.json 的 JSON Schema
 ├── text/              文本规范化用例（HTML → 折叠纯文本 + text_offset 采样点）
-├── tests/             Node 契约测试（textpos / api-contract / bridge-contract）
+├── tests/             Node 契约测试（textpos / api-contract / bridge-contract /
+│                       reader-lite-parts / reader-lite-textpos 跨端折叠对照）
 └── fixtures/
     └── native-book/basic-nga/   最小原生书 fixture（meta/floors/chapters + 期望纯文本）
     └── progress/      进度事件序列夹具（滚动防抖/翻页即时/模式隔离/比例锚点/
@@ -39,6 +40,10 @@ contracts/
 6. 进度事件序列夹具（`contracts/fixtures/progress/`）由 Android 纯决策层
    `ProgressModel` 消费；JS 桥测试（`bridge-contract.test.js`）校验 ready 握手
    版本与能力清单。改进度语义先改用例（红），再改实现（绿）。
+7. 折叠规则跨端对照（`reader-lite-textpos.test.js`）同时加载 Windows
+   `web/js/textpos.js` 与 Android `assets/reader/reader-lite.js` 的 `foldItems`，
+   逐项比对 `text/raw/mapRaw/ranges`。**注入节点（`.hl-mark` / `.syntax`）内部无缝**
+   是标注注入不移动 `text_offset` 的前提，任何一端删除该分支即为契约漂移。
 
 ## 版本
 

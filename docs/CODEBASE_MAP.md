@@ -68,9 +68,9 @@ Compose 外壳 → WebView 渲染内核 → CSS/JS 排版 → text_offset
 | 端 | 文件 | 说明 |
 | --- | --- | --- |
 | Windows | `web/js/reader.js`（核心编排）+ `reader-utils.js` / `reader-session.js` / `reader-navigation.js` / `reader-help.js` / `reader-image.js` + `paged.js` / `textpos.js` / `web/css/*` | iframe 章节渲染、分页/滚动、TextPos 坐标、阅读会话 |
-| Android | `ui/reader/native/NativeReaderScreen.kt` | Compose 外壳：目录、控制条、图片查看、主题、沉浸式 |
-| Android | `ui/reader/WebViewChapterView.kt` | WebView 内核宿主：桥、换章捕获、dispose 查询、在线图片代理 |
-| Android | `assets/reader/reader-lite.js` | **现役**渲染桥：分页几何、TextPos、滚动比例、事件上报 |
+| Android | `ui/reader/native/NativeReaderScreen.kt` | Compose 外壳：目录（嵌套）、控制条、进度滑块、标注交互、图片查看、主题、沉浸式 |
+| Android | `ui/reader/WebViewChapterView.kt` | WebView 内核宿主：桥、换章捕获、dispose 查询、在线图片代理、高亮注入与选区上报 |
+| Android | `assets/reader/reader-lite.js` | **现役**渲染桥：分页几何、TextPos（含注入节点折叠规则）、滚动比例、标注注入、事件上报 |
 | Android | `ui/reader/ReaderHtml.kt` / `PagedLayout.kt` | HTML 组装；Kotlin 侧分页几何（与 JS 对照） |
 
 > ⚠️ 改渲染必须同时维护 JS 与 Kotlin 双实现的一致性（`ReaderPagedCrossTest` +
@@ -100,7 +100,7 @@ Compose 外壳 → WebView 渲染内核 → CSS/JS 排版 → text_offset
 | 端 | 文件 | 说明 |
 | --- | --- | --- |
 | Windows | `app/annotations.py` + `web/js/annotations.js` / `highlight.js` | 高亮 6 色/笔记/书签/导出 |
-| Android | `data/Annotations.kt`（存储）+ `NativeReaderScreen`（交互）+ `ui/components/BookManagement.kt`（导出入口） | 同语义 |
+| Android | `data/Annotations.kt`（存储）+ `ui/reader/native/NativeReaderAnnotations.kt`（选中工具条/编辑弹窗/标注抽屉）+ `assets/reader/reader-lite.parts/45-annotation.js`（高亮注入与选区上报）+ `ui/settings/SettingsMiscPanels.kt`（导出入口） | 同语义；注入节点内部无缝，`text_offset` 不随高亮变化 |
 
 ## 9. 统计
 

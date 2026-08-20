@@ -56,6 +56,20 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import org.json.JSONObject
 
+/** 正文选区（text_offset 区间 + 视口矩形，CSS px）。 */
+data class ReaderSelection(
+    val start: Int,
+    val end: Int,
+    val text: String,
+    val left: Float,
+    val top: Float,
+    val right: Float,
+    val bottom: Float,
+)
+
+/** 章内跳转请求：token 变化即触发一次跳转（书签/标注定位）。 */
+data class ReaderJump(val token: Int, val offset: Int)
+
 /**
  * Hybrid reader callbacks. Progress events carry the reporting chapter index so
  * stale async events from the previous page are attributed to the correct
@@ -75,6 +89,10 @@ data class WebViewReaderCallbacks(
     val onRequestChapter: (Int) -> Unit = {},
     val onChapterSwitch: (from: Int, to: Int) -> Unit = { _, _ -> },
     val onFlush: () -> Unit = {},
+    /** 选区变化：null = 选区已消失。 */
+    val onSelection: (ReaderSelection?) -> Unit = {},
+    /** 点击已注入的高亮 mark（携带标注 id）。 */
+    val onHighlightTap: (String) -> Unit = {},
 )
 
 /**
@@ -107,6 +125,12 @@ fun WebViewChapterView(
     initialPage: Int = -1,
     initialTotal: Int = -1,
     initialRatio: Double = -1.0,
+    /** 本章高亮（JSON 数组：[{id,start,end,color}]），随创建/删除变化即重新注入。 */
+    highlightsJson: String = "[]",
+    /** 章内跳转（书签/标注定位）；token 变化触发一次。 */
+    jump: ReaderJump? = null,
+    /** 清除 WebView 文本选区；token 变化触发一次（标注操作后收起系统选择手柄）。 */
+    clearSelectionToken: Int = 0,
     session: BookSession,
     container: AppContainer,
     callbacks: WebViewReaderCallbacks,
@@ -139,6 +163,9 @@ fun WebViewChapterView(
     val themeRef = remember { mutableStateOf(theme) }
     val initialOffsetRef = rememberUpdatedState(initialOffset)
     val initialRatioRef = rememberUpdatedState(initialRatio)
+    val highlightsRef = rememberUpdatedState(highlightsJson)
+    // init 已注入的高亮快照：避免章节加载后再重复注入一次（多余重排）。
+    val appliedHighlights = remember { mutableStateOf("") }
     val callbacksRef = rememberUpdatedState(callbacks)
     val sessionRef = rememberUpdatedState(session)
     val containerRef = rememberUpdatedState(container)
@@ -253,6 +280,29 @@ fun WebViewChapterView(
         if (pageReady.value) {
             webViewRef.value?.evaluateJavascript("AnkeReader.onResize();", null)
         }
+    }
+
+    // 高亮变化（新增/改色/删除）后重新注入；首次加载由 init 携带，避免重复排版。
+    LaunchedEffect(highlightsJson, pageReady.value) {
+        if (!pageReady.value) return@LaunchedEffect
+        if (highlightsJson == appliedHighlights.value) return@LaunchedEffect
+        appliedHighlights.value = highlightsJson
+        webViewRef.value?.evaluateJavascript(
+            "AnkeReader.applyHighlights(${JSONObject.quote(highlightsJson)});",
+            null,
+        )
+    }
+
+    // 章内跳转（书签/标注定位）：token 变化触发一次，落盘由 JS 按当前模式完成。
+    LaunchedEffect(jump?.token, pageReady.value, settled.value) {
+        val target = jump ?: return@LaunchedEffect
+        if (!pageReady.value || !settled.value) return@LaunchedEffect
+        webViewRef.value?.evaluateJavascript("AnkeReader.gotoTextOffset(${target.offset});", null)
+    }
+
+    LaunchedEffect(clearSelectionToken) {
+        if (clearSelectionToken == 0 || !pageReady.value) return@LaunchedEffect
+        webViewRef.value?.evaluateJavascript("AnkeReader.clearSelection();", null)
     }
 
     val bridge = remember {
@@ -391,10 +441,12 @@ fun WebViewChapterView(
                         pageReady.value = true
                         val s = settingsRef.value
                         val t = themeRef.value
+                        appliedHighlights.value = highlightsRef.value
                         view.evaluateJavascript(
                             "AnkeReader.init({chapterIndex:${chapterRef.intValue},paged:${pagedRef.value}," +
                                 "offset:${initialOffsetRef.value},margin:${s.marginPx},gap:${s.gapPx}," +
                                 "scrollRatio:${initialRatioRef.value}," +
+                                "highlights:${JSONObject.quote(highlightsRef.value)}," +
                                 "pageWidth:${s.pageWidth},fontSize:${s.fontSize}," +
                                 "lineHeight:${s.lineHeight},dualPage:${s.dualPage}," +
                                 "autoDual:${s.autoDual}," +
@@ -646,5 +698,37 @@ private class LiteBridge(
     @JavascriptInterface
     fun onMode(paged: Boolean) {
         main.post { onMode(paged) }
+    }
+
+    /** 选区变化：空串 = 选区消失（宿主收起标注工具条）。 */
+    @JavascriptInterface
+    fun onSelection(payload: String?) {
+        if (payload.isNullOrBlank()) {
+            main.post { callbacks().onSelection(null) }
+            return
+        }
+        val obj = runCatching { JSONObject(payload) }
+            .onFailure { Log.w("AnkeShelf", "解析 onSelection 失败：${it.message}") }
+            .getOrNull() ?: return
+        val start = obj.optInt("start", -1)
+        val end = obj.optInt("end", -1)
+        if (start < 0 || end <= start) return
+        val selection = ReaderSelection(
+            start = start,
+            end = end,
+            text = obj.optString("text", ""),
+            left = obj.optDouble("left", 0.0).toFloat(),
+            top = obj.optDouble("top", 0.0).toFloat(),
+            right = obj.optDouble("right", 0.0).toFloat(),
+            bottom = obj.optDouble("bottom", 0.0).toFloat(),
+        )
+        main.post { callbacks().onSelection(selection) }
+    }
+
+    @JavascriptInterface
+    fun onHighlightTap(id: String?) {
+        val annId = id?.trim().orEmpty()
+        if (annId.isEmpty()) return
+        main.post { callbacks().onHighlightTap(annId) }
     }
 }
