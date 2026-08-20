@@ -135,9 +135,9 @@ NgaConfig / StatsStore / AnnotationStore / BookRepository / OkHttp）+ 四 Tab �
 
 | 范围 | 基线（2026-08-20 实测） | 命令 / 位置 |
 | --- | --- | --- |
-| Windows Python | 322 项（3.14：全过；bundled 3.12 全过） | `python -m unittest discover tests` |
+| Windows Python | 324 项（3.14：全过；bundled 3.12 全过） | `python -m unittest discover tests` |
 | JS 契约 | textpos 15 例、api-contract 59 方法、launch 诊断、bridge v1（能力含 annotation·assist）、parts 8/50881B、reader-lite-textpos 跨端折叠 12 例、reader-session、nga-cookie OK | `node contracts/tests/*.test.js` + `node tests/js/*.test.js` |
-| Android JVM | 166 项（165 过 / 1 跳）+ DisciplineTest 8 项 | `cd android && gradlew.bat testDebugUnitTest` |
+| Android JVM | 176 项（175 过 / 1 跳）+ DisciplineTest 8 项 | `cd android && gradlew.bat testDebugUnitTest` |
 | 真机 | instrumentation 11/11（ELE-AL00） | adb instrument |
 | UI harness | 97 项 PASS（需桌面 WebView2，CI 无头跳过） | `python -m tests.ui.runner` |
 | 安全回归 | ZIP 炸弹上限 / 穿越拒绝 / CSP `script-src 'none'` | `tests/security/` |

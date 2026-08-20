@@ -55,6 +55,11 @@ contracts/
    `app/gululu_ast.render_ast` 与 Android `data/GululuAst.render` 必须**逐字符一致**
    （`tests/test_contracts.py::GululuAstFixtureTest` 与 `GululuAstTest`）。
    两端生成同构 EPUB，章节 XHTML 决定 `text_offset`，标签/空白差异会直接让进度与标注错位。
+   同一份夹具还包含：
+   - `floor_cases`：完整楼层管线（沉浸指令 → 助手协议 → 骰点/迷雾 → 渲染），
+     并对照该层的 `expected_vfx` / `expected_background` 副产物；
+   - `comment_cases`：评论公开字段裁剪与 EPUB 评论块渲染。
+   期望值由 Windows 现行实现生成并人工审核锁定（见规则 4）。
 
 ## 版本
 

@@ -5,7 +5,9 @@ import java.io.File
 /**
  * 安卓数据目录布局（等价桌面 %APPDATA%\AnkeShelf）：
  * filesDir/AnkeShelf/{shelf,progress,settings,annotations,statistics}.json
- * filesDir/AnkeShelf/covers/、filesDir/AnkeShelf/nga_library/
+ * filesDir/AnkeShelf/covers/、filesDir/AnkeShelf/nga_library/、
+ * filesDir/AnkeShelf/gululu_library/（骨碌碌 EPUB 与端私有 sidecar：
+ * snapshot.json 增量基线、comments/<floorId>.json 评论缓存）
  */
 class AppPaths(val root: File) {
 
@@ -19,6 +21,7 @@ class AppPaths(val root: File) {
     val fontsDir: File get() = File(root, "fonts")
     val logsDir: File get() = File(root, "logs")
     val ngaLibraryDir: File get() = File(root, "nga_library")
+    val gululuLibraryDir: File get() = File(root, "gululu_library")
     val ngaConfigFile: File get() = File(root, "nga_config.ini")
 
     fun ensure() {
@@ -27,6 +30,7 @@ class AppPaths(val root: File) {
         fontsDir.mkdirs()
         logsDir.mkdirs()
         ngaLibraryDir.mkdirs()
+        gululuLibraryDir.mkdirs()
     }
 
     companion object {

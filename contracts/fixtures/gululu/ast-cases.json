@@ -1,5 +1,8 @@
 {
   "_comment": "骨碌碌富文本 AST → XHTML 的双端权威期望：Windows app/gululu_ast.py render_ast，Android data/GululuAst.render。两端产物必须逐字符一致（同一 EPUB 决定 text_offset 坐标）。image_mode: online=原 URL、none=空串（省略）、embedded=按 image_map 映射。助手/沉浸协议节点的用例在批 5 追加到本文件。",
+  "_authority": "expected/expected_html/expected_public 由 Windows 权威实现生成后人工审核锁定（contracts/README.md 规则 4：期望值以 Windows 现行为准，任一端不符即为契约漂移，不允许只改夹具绕过）。",
+  "_floor_comment": "floor_cases 走完整楼层管线：prepare_immersive_floor → prepare_assistant_nodes → prepare_reader_experience_nodes(floor_id) → render_ast（图片在线模式，jump_map 为同书楼层锚点）。expected_vfx / expected_background 为该层的沉浸副产物。",
+  "_comment_comment": "comment_cases：公开字段裁剪（comment_to_public）与 EPUB 评论块渲染（render_comment_block）的双端期望。paragraphId 为 0/\"\"/null 一律视为非段落评论。",
   "cases": [
     {
       "id": "marks-basic",
@@ -7,10 +10,42 @@
         {
           "type": "paragraph",
           "content": [
-            { "type": "text", "text": "粗体", "marks": [{ "type": "bold" }] },
-            { "type": "text", "text": "斜体", "marks": [{ "type": "italic" }] },
-            { "type": "text", "text": "删除", "marks": [{ "type": "strike" }] },
-            { "type": "text", "text": "下划", "marks": [{ "type": "underline" }] }
+            {
+              "type": "text",
+              "text": "粗体",
+              "marks": [
+                {
+                  "type": "bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "斜体",
+              "marks": [
+                {
+                  "type": "italic"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "删除",
+              "marks": [
+                {
+                  "type": "strike"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "text": "下划",
+              "marks": [
+                {
+                  "type": "underline"
+                }
+              ]
+            }
           ]
         }
       ],
@@ -19,7 +54,18 @@
     {
       "id": "marks-nesting-order",
       "nodes": [
-        { "type": "text", "text": "x", "marks": [{ "type": "bold" }, { "type": "italic" }] }
+        {
+          "type": "text",
+          "text": "x",
+          "marks": [
+            {
+              "type": "bold"
+            },
+            {
+              "type": "italic"
+            }
+          ]
+        }
       ],
       "expected": "<em><strong>x</strong></em>"
     },
@@ -29,7 +75,14 @@
         {
           "type": "text",
           "text": "红",
-          "marks": [{ "type": "textStyle", "attrs": { "color": "#ff0000" } }]
+          "marks": [
+            {
+              "type": "textStyle",
+              "attrs": {
+                "color": "#ff0000"
+              }
+            }
+          ]
         }
       ],
       "expected": "<span style=\"color:#ff0000\">红</span>"
@@ -40,7 +93,14 @@
         {
           "type": "text",
           "text": "绿",
-          "marks": [{ "type": "textStyle", "attrs": { "color": "rgb(1,2,3)" } }]
+          "marks": [
+            {
+              "type": "textStyle",
+              "attrs": {
+                "color": "rgb(1,2,3)"
+              }
+            }
+          ]
         }
       ],
       "expected": "<span style=\"color:rgb(1, 2, 3)\">绿</span>"
@@ -51,19 +111,41 @@
         {
           "type": "text",
           "text": "危",
-          "marks": [{ "type": "textStyle", "attrs": { "color": "javascript:alert(1)" } }]
+          "marks": [
+            {
+              "type": "textStyle",
+              "attrs": {
+                "color": "javascript:alert(1)"
+              }
+            }
+          ]
         }
       ],
       "expected": "危"
     },
     {
       "id": "unknown-mark-kept-visible",
-      "nodes": [{ "type": "text", "text": "x", "marks": [{ "type": "glow" }] }],
+      "nodes": [
+        {
+          "type": "text",
+          "text": "x",
+          "marks": [
+            {
+              "type": "glow"
+            }
+          ]
+        }
+      ],
       "expected": "<span class=\"unsupported-mark\" data-mark=\"glow\">x</span>"
     },
     {
       "id": "escape-html-and-quotes",
-      "nodes": [{ "type": "text", "text": "<a>&\"'" }],
+      "nodes": [
+        {
+          "type": "text",
+          "text": "<a>&\"'"
+        }
+      ],
       "expected": "&lt;a&gt;&amp;&quot;&#x27;"
     },
     {
@@ -71,35 +153,102 @@
       "nodes": [
         {
           "type": "paragraph",
-          "attrs": { "id": "p-7" },
-          "content": [{ "type": "text", "text": "内容" }]
+          "attrs": {
+            "id": "p-7"
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "内容"
+            }
+          ]
         }
       ],
       "expected": "<p data-paragraph-id=\"p-7\">内容</p>"
     },
     {
       "id": "empty-paragraph-with-id",
-      "nodes": [{ "type": "paragraph", "attrs": { "id": "p-8" }, "content": [] }],
+      "nodes": [
+        {
+          "type": "paragraph",
+          "attrs": {
+            "id": "p-8"
+          },
+          "content": []
+        }
+      ],
       "expected": "<p class=\"empty-paragraph\" data-paragraph-id=\"p-8\">&#160;</p>"
     },
     {
       "id": "empty-paragraph-without-id",
-      "nodes": [{ "type": "paragraph" }],
+      "nodes": [
+        {
+          "type": "paragraph"
+        }
+      ],
       "expected": "<p class=\"empty-paragraph\">&#160;</p>"
     },
     {
       "id": "heading-clamped-to-h3-h6",
       "nodes": [
-        { "type": "heading", "attrs": { "level": 1 }, "content": [{ "type": "text", "text": "一" }] },
-        { "type": "heading", "attrs": { "level": 2 }, "content": [{ "type": "text", "text": "二" }] },
-        { "type": "heading", "attrs": { "level": 5 }, "content": [{ "type": "text", "text": "五" }] },
-        { "type": "heading", "attrs": { "level": 9 }, "content": [{ "type": "text", "text": "九" }] }
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 1
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "一"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "二"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 5
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "五"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 9
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "九"
+            }
+          ]
+        }
       ],
       "expected": "<h3>一</h3><h3>二</h3><h6>五</h6><h6>九</h6>"
     },
     {
       "id": "hard-break",
-      "nodes": [{ "type": "hardBreak" }],
+      "nodes": [
+        {
+          "type": "hardBreak"
+        }
+      ],
       "expected": "<br/>"
     },
     {
@@ -108,7 +257,10 @@
       "nodes": [
         {
           "type": "image",
-          "attrs": { "src": "https://img.example/a.png?x=1&y=2", "alt": "图" }
+          "attrs": {
+            "src": "https://img.example/a.png?x=1&y=2",
+            "alt": "图"
+          }
         }
       ],
       "expected": "<figure class=\"gululu-image\"><img src=\"https://img.example/a.png?x=1&amp;y=2\" alt=\"图\" loading=\"lazy\" decoding=\"async\"/></figure>"
@@ -116,7 +268,14 @@
     {
       "id": "image-alt-default",
       "image_mode": "online",
-      "nodes": [{ "type": "image", "attrs": { "src": "https://img.example/b.png" } }],
+      "nodes": [
+        {
+          "type": "image",
+          "attrs": {
+            "src": "https://img.example/b.png"
+          }
+        }
+      ],
       "expected": "<figure class=\"gululu-image\"><img src=\"https://img.example/b.png\" alt=\"图片\" loading=\"lazy\" decoding=\"async\"/></figure>"
     },
     {
@@ -125,7 +284,11 @@
       "nodes": [
         {
           "type": "image",
-          "attrs": { "src": "https://img.example/c.png", "alt": "头", "avatar": true }
+          "attrs": {
+            "src": "https://img.example/c.png",
+            "alt": "头",
+            "avatar": true
+          }
         }
       ],
       "expected": "<figure class=\"gululu-image\"><span class=\"avatar-image\"><img src=\"https://img.example/c.png\" alt=\"头\" loading=\"lazy\" decoding=\"async\"/></span></figure>"
@@ -133,20 +296,44 @@
     {
       "id": "image-non-https-rejected",
       "image_mode": "online",
-      "nodes": [{ "type": "image", "attrs": { "src": "http://img.example/d.png" } }],
+      "nodes": [
+        {
+          "type": "image",
+          "attrs": {
+            "src": "http://img.example/d.png"
+          }
+        }
+      ],
       "expected": "<p class=\"image-unavailable\">[图片地址不可用]</p>"
     },
     {
       "id": "image-omitted-in-none-mode",
       "image_mode": "none",
-      "nodes": [{ "type": "image", "attrs": { "src": "https://img.example/e.png" } }],
+      "nodes": [
+        {
+          "type": "image",
+          "attrs": {
+            "src": "https://img.example/e.png"
+          }
+        }
+      ],
       "expected": "<p class=\"image-omitted\">[图片已省略]</p>"
     },
     {
       "id": "image-embedded-mapped",
       "image_mode": "embedded",
-      "image_map": { "https://img.example/f.png": "../images/abc123.png" },
-      "nodes": [{ "type": "image", "attrs": { "src": "https://img.example/f.png", "alt": "内嵌" } }],
+      "image_map": {
+        "https://img.example/f.png": "../images/abc123.png"
+      },
+      "nodes": [
+        {
+          "type": "image",
+          "attrs": {
+            "src": "https://img.example/f.png",
+            "alt": "内嵌"
+          }
+        }
+      ],
       "expected": "<figure class=\"gululu-image\"><img src=\"../images/abc123.png\" alt=\"内嵌\" loading=\"lazy\" decoding=\"async\"/></figure>"
     },
     {
@@ -154,20 +341,610 @@
       "nodes": [
         {
           "type": "collapsibleBlock",
-          "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "秘" }] }]
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "秘"
+                }
+              ]
+            }
+          ]
         }
       ],
       "expected": "<details class=\"gululu-fold\"><summary>折叠内容</summary><p>秘</p></details>"
     },
     {
       "id": "unsupported-node-visible",
-      "nodes": [{ "type": "videoBlock" }],
+      "nodes": [
+        {
+          "type": "videoBlock"
+        }
+      ],
       "expected": "<div class=\"unsupported-node\">[暂不支持的内容：videoBlock]</div>"
     },
     {
       "id": "unsupported-node-without-type",
-      "nodes": [{ "attrs": {} }],
+      "nodes": [
+        {
+          "attrs": {}
+        }
+      ],
       "expected": "<div class=\"unsupported-node\">[暂不支持的内容：unknown]</div>"
+    }
+  ],
+  "floor_cases": [
+    {
+      "id": "inline-secret-and-clue",
+      "floor_id": 900,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "线索在此<发现秘密>[钥匙]open123</发现秘密>然后<秘密>[真相]U2FsdGVkX1+abc</秘密>"
+            }
+          ]
+        }
+      ],
+      "expected": "<p>线索在此<button type=\"button\" class=\"gululu-clue-cue\" data-gululu-secret-title=\"钥匙\" data-gululu-secret-password=\"open123\">收集线索：钥匙</button>然后<button type=\"button\" class=\"gululu-secret-cue\" data-gululu-secret-title=\"真相\" data-gululu-secret-cipher=\"U2FsdGVkX1+abc\">秘密：真相</button></p>",
+      "expected_vfx": ""
+    },
+    {
+      "id": "inline-quote-cross-book",
+      "floor_id": 901,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "参见<引用 id=\"77\" floor=\"12\">别书的段落</引用>结束"
+            }
+          ]
+        }
+      ],
+      "expected": "<p>参见<a class=\"gululu-assistant-quote\" href=\"https://www.gululu.world/book/77?floorSort=12\">别书的段落</a>结束</p>",
+      "expected_vfx": ""
+    },
+    {
+      "id": "inline-quote-same-book",
+      "floor_id": 902,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "参见<引用 id=\"10\" floor=\"12\">本书段落</引用>结束"
+            }
+          ]
+        }
+      ],
+      "expected": "<p>参见<a class=\"gululu-assistant-quote\" href=\"chapter_0003.xhtml#floor-555\">本书段落</a>结束</p>",
+      "expected_vfx": "",
+      "jump_map": {
+        "12": "chapter_0003.xhtml#floor-555"
+      }
+    },
+    {
+      "id": "fold-block",
+      "floor_id": 903,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<折叠>[幕后]"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "被折叠的正文"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "</折叠结束>"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "折叠外正文"
+            }
+          ]
+        }
+      ],
+      "expected": "<details class=\"gululu-fold gululu-assistant-fold\"><summary>幕后</summary><p>被折叠的正文</p></details><p>折叠外正文</p>",
+      "expected_vfx": ""
+    },
+    {
+      "id": "fold-missing-title",
+      "floor_id": 904,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<折叠>"
+            }
+          ]
+        }
+      ],
+      "expected": "<p class=\"gululu-directive-error\">[折叠指令缺少标题]</p>",
+      "expected_vfx": ""
+    },
+    {
+      "id": "fold-missing-end",
+      "floor_id": 905,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<折叠>[未闭合]"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "内容"
+            }
+          ]
+        }
+      ],
+      "expected": "<details class=\"gululu-fold gululu-assistant-fold\"><summary>未闭合</summary><p>内容</p><p class=\"gululu-directive-error\">[折叠指令缺少结束标记]</p></details>",
+      "expected_vfx": ""
+    },
+    {
+      "id": "quote-block-paragraphs",
+      "floor_id": 906,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<引用 id=\"10\" floor=\"7\">"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "被引用的段落"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "</引用>"
+            }
+          ]
+        }
+      ],
+      "expected": "<a class=\"gululu-assistant-quote\" href=\"chapter_0001.xhtml#floor-111\"><p>被引用的段落</p></a>",
+      "expected_vfx": "",
+      "jump_map": {
+        "7": "chapter_0001.xhtml#floor-111"
+      }
+    },
+    {
+      "id": "dice-group-and-fog",
+      "floor_id": 907,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "掷骰 1d100=【57】 成功"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "骰后被迷雾锁住的段落"
+            }
+          ]
+        }
+      ],
+      "expected": "<p>掷骰 <span class=\"gululu-dice-group\" data-gululu-dice-group=\"907-g-0\">1d100=【<span class=\"gululu-dice-value\" role=\"button\" tabindex=\"0\" data-gululu-dice-group=\"907-g-0\" aria-label=\"揭示骰点结果\">57</span>】<span class=\"gululu-dice-suffix\" data-gululu-dice-group=\"907-g-0\"> 成功</span></span></p><div class=\"gululu-fog-block\" data-gululu-fog-lock=\"907-g-0\"><p>骰后被迷雾锁住的段落</p></div>",
+      "expected_vfx": ""
+    },
+    {
+      "id": "jump-floor-component",
+      "floor_id": 908,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "jumpFloorComponent",
+          "attrs": {
+            "floorNumber": 33,
+            "description": "去第 33 楼"
+          }
+        },
+        {
+          "type": "jumpFloorComponent",
+          "attrs": {
+            "floorNumber": 99
+          }
+        }
+      ],
+      "expected": "<a class=\"gululu-jump-floor\" href=\"chapter_0002.xhtml#floor-333\">去第 33 楼</a><span class=\"gululu-jump-floor\" data-gululu-jump-floor=\"99\">跳至第 99 楼</span>",
+      "expected_vfx": "",
+      "jump_map": {
+        "33": "chapter_0002.xhtml#floor-333"
+      }
+    },
+    {
+      "id": "sensitive-node",
+      "floor_id": 909,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "sensitive",
+          "attrs": {}
+        }
+      ],
+      "expected": "<p class=\"gululu-sensitive-unavailable\">[敏感内容不可用]</p>",
+      "expected_vfx": ""
+    },
+    {
+      "id": "music-manual-and-auto",
+      "floor_id": 910,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<音乐>夜色♪https://cdn.example/a.mp3</音乐结束>"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<自动音乐>晨曦♪https://cdn.example/b.mp3</自动音乐结束>"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<停止音乐>"
+            }
+          ]
+        }
+      ],
+      "expected": "<p class=\"gululu-music-row\"><button type=\"button\" class=\"gululu-music-cue\" data-gululu-music-url=\"https://cdn.example/a.mp3\"><span class=\"gululu-music-kind\">音乐</span><span class=\"gululu-music-title\">夜色</span></button></p><p class=\"gululu-music-row\"><button type=\"button\" class=\"gululu-music-cue\" data-gululu-music-url=\"https://cdn.example/b.mp3\" data-gululu-music-auto=\"true\"><span class=\"gululu-music-kind\">自动音乐</span><span class=\"gululu-music-title\">晨曦</span></button></p><span class=\"gululu-music-stop\" data-gululu-music-stop=\"true\" role=\"button\" tabindex=\"0\" aria-label=\"停止音乐\">&#9632;</span>",
+      "expected_vfx": ""
+    },
+    {
+      "id": "music-insecure-url",
+      "floor_id": 911,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<音乐>不安全♪http://cdn.example/a.mp3</音乐结束>"
+            }
+          ]
+        }
+      ],
+      "expected": "<p class=\"gululu-directive-error\">[音乐链接不可用：不安全]</p>",
+      "expected_vfx": ""
+    },
+    {
+      "id": "vfx-and-unsupported",
+      "floor_id": 912,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<特效：下雨>"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<特效：跳舞>"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "正文"
+            }
+          ]
+        }
+      ],
+      "expected": "<p class=\"gululu-directive-error\">[暂不支持的特效：跳舞]</p><p>正文</p>",
+      "expected_vfx": "rain"
+    },
+    {
+      "id": "background-image-and-clear",
+      "floor_id": 913,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<背景>"
+            }
+          ]
+        },
+        {
+          "type": "image",
+          "attrs": {
+            "src": "https://img.example/bg.png"
+          }
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "</背景>"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<移除背景>"
+            }
+          ]
+        }
+      ],
+      "expected": "<figure class=\"gululu-image\" data-gululu-background-url=\"https://img.example/bg.png\"><img src=\"https://img.example/bg.png\" alt=\"图片\" loading=\"lazy\" decoding=\"async\"/></figure><span class=\"gululu-immersive-marker\" data-gululu-background-clear=\"true\" aria-hidden=\"true\"><wbr/></span>",
+      "expected_vfx": "",
+      "expected_background": ""
+    },
+    {
+      "id": "background-missing-end",
+      "floor_id": 914,
+      "source_book_id": 10,
+      "nodes": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "<背景>"
+            }
+          ]
+        },
+        {
+          "type": "image",
+          "attrs": {
+            "src": "https://img.example/bg2.png"
+          }
+        }
+      ],
+      "expected": "<figure class=\"gululu-image\" data-gululu-background-url=\"https://img.example/bg2.png\"><img src=\"https://img.example/bg2.png\" alt=\"图片\" loading=\"lazy\" decoding=\"async\"/></figure><p class=\"gululu-directive-error\">[背景指令缺少结束标记]</p>",
+      "expected_vfx": "",
+      "expected_background": "https://img.example/bg2.png"
+    }
+  ],
+  "comment_cases": [
+    {
+      "id": "comment-basic-with-reply",
+      "label": "评论",
+      "opus": false,
+      "comments": [
+        {
+          "id": 1001,
+          "content": "第一条评论",
+          "fromUser": {
+            "nickName": "读者甲"
+          },
+          "createTime": "2026-08-01 10:00",
+          "likeNum": 3,
+          "childrenComment": [
+            {
+              "id": 1002,
+              "content": "回复内容",
+              "fromUser": {
+                "nickName": "读者乙"
+              },
+              "replyUser": {
+                "nickName": "读者甲"
+              },
+              "createTime": "2026-08-01 10:05",
+              "likeNum": 1
+            }
+          ]
+        },
+        {
+          "id": 1003,
+          "content": "段落评论",
+          "fromUser": {
+            "nickName": "读者丙"
+          },
+          "createTime": "2026-08-01 11:00",
+          "paragraphId": "p-42"
+        }
+      ],
+      "expected_html": "<details class=\"gululu-comments\" data-comment-count=\"3\"><summary>评论 3</summary><div class=\"gululu-comment-list\"><article class=\"gululu-comment\" data-comment-id=\"1001\"><header class=\"gululu-comment-head\"><strong>读者甲</strong><span>2026-08-01 10:00 · 赞 3</span></header><div class=\"gululu-comment-text\">第一条评论</div><div class=\"gululu-comment-replies\"><article class=\"gululu-comment gululu-comment-reply\" data-comment-id=\"1002\"><header class=\"gululu-comment-head\"><strong>读者乙</strong> 回复 <span class=\"comment-reply-user\">@读者甲</span><span>2026-08-01 10:05 · 赞 1</span></header><div class=\"gululu-comment-text\">回复内容</div></article></div></article><article class=\"gululu-comment\" data-comment-id=\"1003\" data-paragraph-id=\"p-42\"><header class=\"gululu-comment-head\"><strong>读者丙</strong><span>2026-08-01 11:00 · 赞 0</span></header><div class=\"gululu-comment-text\">段落评论</div></article></div></details>",
+      "expected_public": [
+        {
+          "id": 1001,
+          "content": "第一条评论",
+          "author": "读者甲",
+          "reply_user": "",
+          "created_at": "2026-08-01 10:00",
+          "likes": 3,
+          "paragraph_id": "",
+          "children": [
+            {
+              "id": 1002,
+              "content": "回复内容",
+              "author": "读者乙",
+              "reply_user": "读者甲",
+              "created_at": "2026-08-01 10:05",
+              "likes": 1,
+              "paragraph_id": "",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": 1003,
+          "content": "段落评论",
+          "author": "读者丙",
+          "reply_user": "",
+          "created_at": "2026-08-01 11:00",
+          "likes": 0,
+          "paragraph_id": "p-42",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "comment-escape-and-newlines",
+      "label": "评论",
+      "opus": false,
+      "comments": [
+        {
+          "id": 2001,
+          "content": "危险<b>标签</b> & \"引号\"\r\n第二行\n第三行",
+          "createTime": "2026-08-02 09:00"
+        }
+      ],
+      "expected_html": "<details class=\"gululu-comments\" data-comment-count=\"1\"><summary>评论 1</summary><div class=\"gululu-comment-list\"><article class=\"gululu-comment\" data-comment-id=\"2001\"><header class=\"gululu-comment-head\"><strong>匿名用户</strong><span>2026-08-02 09:00 · 赞 0</span></header><div class=\"gululu-comment-text\">危险&lt;b&gt;标签&lt;/b&gt; &amp; &quot;引号&quot;<br/>第二行<br/>第三行</div></article></div></details>",
+      "expected_public": [
+        {
+          "id": 2001,
+          "content": "危险<b>标签</b> & \"引号\"\r\n第二行\n第三行",
+          "author": "匿名用户",
+          "reply_user": "",
+          "created_at": "2026-08-02 09:00",
+          "likes": 0,
+          "paragraph_id": "",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "comment-opus-block",
+      "label": "作品评论",
+      "opus": true,
+      "comments": [
+        {
+          "id": 3001,
+          "content": "整本书的评论",
+          "fromUser": {
+            "nickName": ""
+          },
+          "likeNum": 0
+        }
+      ],
+      "expected_html": "<details class=\"gululu-comments gululu-opus-comments\" data-comment-count=\"1\"><summary>作品评论 1</summary><div class=\"gululu-comment-list\"><article class=\"gululu-comment\" data-comment-id=\"3001\"><header class=\"gululu-comment-head\"><strong>匿名用户</strong><span> · 赞 0</span></header><div class=\"gululu-comment-text\">整本书的评论</div></article></div></details>",
+      "expected_public": [
+        {
+          "id": 3001,
+          "content": "整本书的评论",
+          "author": "匿名用户",
+          "reply_user": "",
+          "created_at": "",
+          "likes": 0,
+          "paragraph_id": "",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "comment-empty-block",
+      "label": "评论",
+      "opus": false,
+      "comments": [],
+      "expected_html": "",
+      "expected_public": []
+    },
+    {
+      "id": "comment-paragraph-zero-treated-as-none",
+      "label": "评论",
+      "opus": false,
+      "comments": [
+        {
+          "id": 4001,
+          "content": "paragraphId=0 视为非段落评论",
+          "paragraphId": 0
+        }
+      ],
+      "expected_html": "<details class=\"gululu-comments\" data-comment-count=\"1\"><summary>评论 1</summary><div class=\"gululu-comment-list\"><article class=\"gululu-comment\" data-comment-id=\"4001\"><header class=\"gululu-comment-head\"><strong>匿名用户</strong><span> · 赞 0</span></header><div class=\"gululu-comment-text\">paragraphId=0 视为非段落评论</div></article></div></details>",
+      "expected_public": [
+        {
+          "id": 4001,
+          "content": "paragraphId=0 视为非段落评论",
+          "author": "匿名用户",
+          "reply_user": "",
+          "created_at": "",
+          "likes": 0,
+          "paragraph_id": "",
+          "children": []
+        }
+      ]
     }
   ]
 }

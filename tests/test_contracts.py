@@ -183,10 +183,13 @@ class GululuAstFixtureTest(unittest.TestCase):
 
     FIXTURE = CONTRACTS / "fixtures" / "gululu" / "ast-cases.json"
 
+    def _fixture(self):
+        return json.loads(self.FIXTURE.read_text(encoding="utf-8"))
+
     def test_render_ast_matches_fixture(self):
         from app.gululu_ast import render_ast
 
-        cases = json.loads(self.FIXTURE.read_text(encoding="utf-8"))["cases"]
+        cases = self._fixture()["cases"]
         self.assertGreaterEqual(len(cases), 15)
         for case in cases:
             with self.subTest(case=case["id"]):
@@ -200,6 +203,49 @@ class GululuAstFixtureTest(unittest.TestCase):
                     resolver = lambda url: url  # noqa: E731
                 got = render_ast(case["nodes"], image_resolver=resolver)
                 self.assertEqual(got, case["expected"])
+
+    def test_floor_pipeline_matches_fixture(self):
+        """完整楼层管线（沉浸 → 助手 → 骰点/迷雾 → 渲染）的双端期望。"""
+        from app.gululu_assistant import prepare_reader_experience_nodes
+        from app.gululu_ast import render_ast
+        from app.gululu_immersive import prepare_immersive_floor
+
+        cases = self._fixture()["floor_cases"]
+        self.assertGreaterEqual(len(cases), 12)
+        for case in cases:
+            with self.subTest(case=case["id"]):
+                immersive = prepare_immersive_floor(case["nodes"])
+                jump_map = case.get("jump_map", {})
+                html = render_ast(
+                    prepare_reader_experience_nodes(immersive.nodes, case["floor_id"]),
+                    image_resolver=lambda url: url,
+                    jump_floor_resolver=lambda floor, m=jump_map: m.get(str(floor), ""),
+                    source_book_id=case["source_book_id"],
+                )
+                self.assertEqual(html, case["expected"])
+                self.assertEqual(immersive.vfx, case.get("expected_vfx", ""))
+                if "expected_background" in case:
+                    self.assertEqual(immersive.background_update, case["expected_background"])
+                else:
+                    self.assertIsNone(immersive.background_update)
+
+
+    def test_comment_cases_match_fixture(self):
+        """评论公开字段与 EPUB 评论块渲染的双端期望。"""
+        from app.gululu_comments import comment_to_public, render_comment_block
+
+        cases = self._fixture()["comment_cases"]
+        self.assertGreaterEqual(len(cases), 4)
+        for case in cases:
+            with self.subTest(case=case["id"]):
+                html = render_comment_block(
+                    case["comments"],
+                    label=case["label"],
+                    opus=case["opus"],
+                )
+                self.assertEqual(html, case["expected_html"])
+                public = [comment_to_public(item) for item in case["comments"]]
+                self.assertEqual(public, case["expected_public"])
 
 
 if __name__ == "__main__":

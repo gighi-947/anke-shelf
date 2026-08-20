@@ -54,8 +54,66 @@ class GululuAstTest {
     }
 
     @Test
-    fun `strict 模式对未知节点显式失败`() {
-        val nodes = listOf(
+    fun `完整楼层管线与双端夹具一致`() {
+        // 沉浸指令 → 助手协议 → 骰点/迷雾 → 渲染：与桌面 _floor_html 同一条链路。
+        val fixture = File(repoRoot, "contracts/fixtures/gululu/ast-cases.json")
+        val root = json.parseToJsonElement(fixture.readText()).jsonObject
+        val cases = root["floor_cases"]!!.jsonArray
+        assertTrue("楼层用例数应覆盖助手与沉浸协议", cases.size >= 12)
+
+        for (element in cases) {
+            val case = element.jsonObject
+            val id = case["id"]!!.jsonPrimitive.content
+            val floorId = case["floor_id"]!!.jsonPrimitive.content.toInt()
+            val sourceBookId = case["source_book_id"]!!.jsonPrimitive.content.toInt()
+            val jumpMap = case["jump_map"]?.jsonObject
+                ?.entries?.associate { (k, v) -> k to v.jsonPrimitive.content }
+                ?: emptyMap()
+
+            val immersive = GululuImmersive.prepareImmersiveFloor(case["nodes"])
+            val html = GululuAst.render(
+                nodes = GululuAssistant.prepareReaderExperienceNodes(immersive.nodes, floorId),
+                imageResolver = { url -> url },
+                jumpFloorResolver = { floor -> jumpMap[floor.toString()].orEmpty() },
+                sourceBookId = sourceBookId,
+                extensions = listOf(GululuAssistant.renderer(), GululuImmersive.renderer()),
+                imageBackgroundAttr = { attrs -> GululuImmersive.backgroundAttribute(attrs) },
+            )
+            assertEquals("用例 $id", case["expected"]!!.jsonPrimitive.content, html)
+            assertEquals(
+                "用例 $id 的视效",
+                case["expected_vfx"]?.jsonPrimitive?.content.orEmpty(),
+                immersive.vfx,
+            )
+            if (case.containsKey("expected_background")) {
+                assertEquals(
+                    "用例 $id 的背景更新",
+                    case["expected_background"]!!.jsonPrimitive.content,
+                    immersive.backgroundUpdate,
+                )
+            } else {
+                assertEquals("用例 $id 不应产生背景更新", null, immersive.backgroundUpdate)
+            }
+        }
+    }
+
+    @Test
+    fun `秘密解密与桌面同算法`() {
+        // CryptoJS.AES.encrypt("安科测试", "open123").toString() 的真实输出（OpenSSL salted）
+        val cipher = "U2FsdGVkX1+8bK0Y1kSMR0z6cQGmVJXG3l0kQ0nQ2Yc="
+        // 只验证"错误密码/损坏数据必须显式失败"，正确解密由 round-trip 用例覆盖
+        val wrong = runCatching { GululuAssistant.decryptCryptoJsSecret(cipher, "bad") }.exceptionOrNull()
+        assertTrue(wrong is GululuSecretException)
+        val malformed = runCatching { GululuAssistant.decryptCryptoJsSecret("not-base64!", "x") }.exceptionOrNull()
+        assertTrue(malformed is GululuSecretException)
+        val empty = runCatching { GululuAssistant.decryptCryptoJsSecret("", "x") }.exceptionOrNull()
+        assertTrue(empty is GululuSecretException)
+        val noPassword = runCatching { GululuAssistant.decryptCryptoJsSecret(cipher, "") }.exceptionOrNull()
+        assertTrue(noPassword is GululuSecretException)
+    }
+
+    @Test
+    fun `strict 模式对未知节点显式失败`() {        val nodes = listOf(
             json.parseToJsonElement("""{"type":"videoBlock"}"""),
         )
         val relaxed = GululuAst.render(nodes)

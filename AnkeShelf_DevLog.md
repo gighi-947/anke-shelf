@@ -24,7 +24,7 @@
 - 版本线：Windows `v1.5.1`（已发布，AnkeShelf-v1.5.1.zip）；
   Android `android-v1.1.0`（已发布，AnkeShelf-v1.1.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 322 项
+  - Windows Python：`python -m unittest discover tests` = 324 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（59 方法一致）、
@@ -33,7 +33,7 @@
     `node contracts/tests/reader-lite-parts.test.js`（8 parts / 50881 字节）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 166 项（165 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 176 项（175 过 / 1 跳）；
     DisciplineTest 8 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
@@ -64,6 +64,37 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-20 android：对齐批 5 —— 骨碌碌协议层（助手 / 沉浸 / 评论）
+
+- 范围：仍是纯协议层（无 UI 入口，EPUB 生成与导入服务在批 6）。三块与桌面逐函数对照：
+  - `data/GululuAssistant.kt` ← `app/gululu_assistant.py`：内联协议（`<秘密>` /
+    `<发现秘密>` / `<引用 id floor>`）、段落折叠（可嵌套、缺标题/缺结束都显式报错）、
+    引用块、骰点稳定分组（`<floorId>-g-<n>`，值/后缀拆成可点击 span）、迷雾锁
+    （骰点之后的节点整块包进 `gululuFogBlock`）、jumpFloor、sensitive，
+    以及 CryptoJS/OpenSSL salted AES 解密（MD5 EVP KDF + AES-CBC + PKCS7）。
+  - `data/GululuImmersive.kt` ← `app/gululu_immersive.py`：音乐/自动音乐/停止音乐、
+    六类视效（每层只取第一个有效值）、背景区间与清除背景、
+    仅接受**无凭据 HTTPS**（含用户名/密码、控制字符、超长一律拒绝）。
+  - `data/GululuComments.kt` + `service/GululuCommentService.kt` +
+    `GululuClient.fetchComments` ← `app/gululu_comments.py` /
+    `gululu_comment_service.py`：一级 100/页、子回复 1000/页按 total 收敛、
+    分页提前结束显式失败；公开字段裁剪（不写入原始用户对象）；
+    评论块 `details/summary` 计数；端私有缓存
+    `gululu_library/<id>/comments/<floorId>.json` + 5 分钟 TTL + **离线回退**。
+- 跨端 golden 扩容（同一份 `contracts/fixtures/gululu/ast-cases.json`）：
+  - `floor_cases` 15 例：完整楼层管线（沉浸 → 助手 → 骰点/迷雾 → 渲染），
+    覆盖内联秘密/线索、同书与跨书引用、折叠（正常/缺标题/缺结束）、引用块、
+    骰点+迷雾、jumpFloor（有/无锚点）、sensitive、音乐（手动/自动/停止/非 HTTPS）、
+    视效（支持/不支持）、背景（区间/清除/缺结束），并对照 `expected_vfx` 与
+    `expected_background` 副产物；
+  - `comment_cases` 5 例：子回复、转义与换行、作品评论块、空块、`paragraphId=0`。
+  期望值由 Windows 现行实现生成后人工逐条审核锁定（契约规则 4）。
+- 结果：Android 侧首次运行即与 Windows **逐字符一致**（21 AST + 15 楼层 + 5 评论）。
+- 验证：Android `gradlew testDebugUnitTest` = 176 项（175 过 / 1 跳）、`assembleDebug` 成功；
+  Windows = 324 项 OK。
+- 下一步（批 6）：骨碌碌 EPUB3 生成（章节分组 / `floor-<id>` 锚点 / 封面 / CSS）
+  与导入前台服务（`.part` 原子替换 + 注册书架）。
 
 ### 2026-08-20 android：对齐批 4 —— 骨碌碌数据层（来源/客户端/AST/图片三态）
 

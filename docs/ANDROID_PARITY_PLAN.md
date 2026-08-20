@@ -41,9 +41,9 @@
 | G20.1 | 来源识别 + 公开 API 客户端（detail / floor·index-list / opus·chapter-index / floor·content-by-ids，`platform:1`，20 条一批，缺失楼层显式失败） | `gululu_source.py` / `gululu_client.py` | ✅ 批 4（`data/GululuSource.kt` + `service/GululuClient.kt`；信封/索引/合并均为可单测纯函数） | 4 |
 | G20.2 | 富文本 AST → XHTML（marks 安全色、paragraph id、heading 降级、image HTTPS、hardBreak、collapsibleBlock） | `gululu_ast.py` | ✅ 批 4（`data/GululuAst.kt` + 跨端 golden `contracts/fixtures/gululu/ast-cases.json` 21 例逐字符一致） | 4 |
 | G20.3 | 图片三态 online/embedded/none（HTTPS 位图、并发、25MB 上限、签名识别、失败占位 + 计数） | `gululu_images.py` | ✅ 批 4（`service/GululuImages.kt`；6 路并发、签名判类型、逐张失败、可取消） | 4 |
-| G20.4 | 全能助手协议：折叠 / 引用（同书锚点 + 跨书 URL）/ 骰点稳定分组 / 迷雾锁 / 秘密密文 / 线索 / jumpFloor / sensitive | `gululu_assistant.py` | — | 5 |
-| G20.5 | 沉浸指令：音乐·自动音乐·停止、氛围背景（跨章继承）、六类视效，仅无凭据 HTTPS | `gululu_immersive.py` | — | 5 |
-| G20.6 | 评论：分页 + 子回复 + 公开字段、5 分钟缓存 + 离线回退、EPUB 评论块 | `gululu_comments.py` / `gululu_comment_service.py` | — | 5 |
+| G20.4 | 全能助手协议：折叠 / 引用（同书锚点 + 跨书 URL）/ 骰点稳定分组 / 迷雾锁 / 秘密密文 / 线索 / jumpFloor / sensitive | `gululu_assistant.py` | ✅ 批 5（`data/GululuAssistant.kt` + CryptoJS/OpenSSL salted AES 解密；15 例楼层管线 golden 双端一致） | 5 |
+| G20.5 | 沉浸指令：音乐·自动音乐·停止、氛围背景（跨章继承）、六类视效，仅无凭据 HTTPS | `gululu_immersive.py` | ✅ 批 5（`data/GululuImmersive.kt`；vfx/背景副产物一并纳入 golden） | 5 |
+| G20.6 | 评论：分页 + 子回复 + 公开字段、5 分钟缓存 + 离线回退、EPUB 评论块 | `gululu_comments.py` / `gululu_comment_service.py` | ✅ 批 5（`data/GululuComments.kt` + `service/GululuCommentService.kt` + 客户端分页；离线回退不变量有专测） | 5 |
 | G20.7 | EPUB3 生成：章节分组（作者章节标记 / 20 楼兜底）、`floor-<id>` 锚点、楼层卡片、封面、CSS | `gululu_epub.py` | — | 6 |
 | G20.8 | 导入任务：前台服务 + 进度/取消、`.part` 原子替换、注册书架 | `gululu_service.py` | — | 6 |
 | G20.9 | 热更新：`snapshot.json` 基线、append-only 前缀不变量、旧书一次性迁移、失败回滚保 `book_id` | `gululu_update.py` | — | 7 |
@@ -107,7 +107,7 @@
 | 2 阅读辅助与显示精度 | ✅ 代码完成，待真机复核 | G4/G5/G6/G7；Android JVM 140 项、APK 内 reader-lite 50881B + reader.css 校验通过；真机待验自动滚动/速读/标尺与按书字体 |
 | 3 下载参数与数据完整性 | ✅ 代码完成，待真机复核 | G8/G9/G10/G11 全部落地；Android JVM 148 项、Windows 321 项；新增 `contracts/fixtures/nga-toc/` 双端 golden；真机待验目录楼分章下载 |
 | 4 骨碌碌数据层 | ✅ 代码完成（纯数据层，无 UI 入口） | G20.1/G20.2/G20.3；`contracts/fixtures/gululu/ast-cases.json` 21 例双端逐字符一致；Android JVM 166 项、Windows 322 项 |
-| 5 骨碌碌协议层 | ⏳ 未开始 | — |
+| 5 骨碌碌协议层 | ✅ 代码完成（纯协议层，无 UI 入口） | G20.4/G20.5/G20.6；golden 扩到 21 AST + 15 楼层管线 + 5 评论用例，双端逐字符一致；Android JVM 176 项、Windows 324 项 |
 | 6 骨碌碌导入 | ⏳ 未开始 | — |
 | 7 骨碌碌热更新 | ⏳ 未开始 | — |
 | 8 骨碌碌阅读交互 A | ⏳ 未开始 | — |

@@ -215,9 +215,104 @@ class GululuClient(
         )
     }
 
+    // ---------- 评论（对齐 app/gululu_comments.py 的抓取部分） ----------
+
+    /**
+     * 读取指定作用域的评论（`floorId=0` 表示作品评论），含子回复。
+     * 与桌面同分页语义：一级 100/页、子回复 1000/页，按 `total` 收敛；
+     * 分页提前结束视为**显式失败**（宁可报错，不静默少评论）。
+     */
+    fun fetchComments(
+        bookId: Int,
+        floorIds: List<Int>,
+        cancel: (() -> Boolean)? = null,
+        onScope: ((current: Int, total: Int) -> Unit)? = null,
+    ): Map<Int, List<JsonObject>> {
+        val scopes = floorIds.distinct()
+        if (scopes.isEmpty()) return emptyMap()
+        if (scopes.any { it < 0 }) throw GululuApiException("骨碌碌评论楼层 ID 格式错误")
+        val out = linkedMapOf<Int, List<JsonObject>>()
+        scopes.forEachIndexed { index, floorId ->
+            if (cancel?.invoke() == true) throw GululuCancelledException("骨碌碌任务已取消")
+            out[floorId] = fetchCommentScope(bookId, floorId, cancel)
+            onScope?.invoke(index + 1, scopes.size)
+        }
+        return out
+    }
+
+    private fun fetchCommentScope(
+        bookId: Int,
+        floorId: Int,
+        cancel: (() -> Boolean)?,
+    ): List<JsonObject> {
+        val records = fetchCommentPage(bookId, floorId.takeIf { it > 0 }, null, cancel)
+        return records.map { item ->
+            if (cancel?.invoke() == true) throw GululuCancelledException("骨碌碌任务已取消")
+            val id = (item["id"] as? JsonPrimitive)?.intOrNull
+                ?: throw GululuApiException("骨碌碌评论条目格式错误")
+            val childrenNum = (item["childrenNum"] as? JsonPrimitive)?.intOrNull ?: 0
+            if (childrenNum < 0) throw GululuApiException("骨碌碌评论 $id 的 childrenNum 格式错误")
+            val children = if (childrenNum > 0) {
+                fetchCommentPage(bookId, null, id, cancel)
+            } else {
+                emptyList()
+            }
+            JsonObject(item.toMutableMap().apply { put("childrenComment", JsonArray(children)) })
+        }
+    }
+
+    private fun fetchCommentPage(
+        bookId: Int,
+        floorId: Int?,
+        parentId: Int?,
+        cancel: (() -> Boolean)?,
+    ): List<JsonObject> {
+        val path = if (parentId != null) {
+            "/reader/opus/comment/page-children"
+        } else {
+            "/reader/opus/comment/page"
+        }
+        val size = if (parentId != null) CHILD_PAGE_SIZE else COMMENT_PAGE_SIZE
+        val records = mutableListOf<JsonObject>()
+        var current = 1
+        while (true) {
+            if (cancel?.invoke() == true) throw GululuCancelledException("骨碌碌任务已取消")
+            val query = buildString {
+                append("?opusId=").append(bookId)
+                append("&current=").append(current)
+                append("&size=").append(size)
+                if (floorId != null) append("&floorId=").append(floorId)
+                if (parentId != null) append("&parentId=").append(parentId)
+            }
+            val page = requestData("GET", path + query) as? JsonObject
+                ?: throw GululuApiException("骨碌碌评论分页格式错误")
+            val pageRecords = page["records"] as? JsonArray
+            val total = (page["total"] as? JsonPrimitive)?.intOrNull
+            if (pageRecords == null || total == null || total < 0) {
+                throw GululuApiException("骨碌碌评论分页缺少 records 或 total")
+            }
+            for (element in pageRecords) {
+                val item = element as? JsonObject
+                    ?: throw GululuApiException("骨碌碌评论条目格式错误")
+                val id = (item["id"] as? JsonPrimitive)?.intOrNull
+                    ?: throw GululuApiException("骨碌碌评论条目格式错误")
+                val content = item["content"] as? JsonPrimitive
+                if (content == null || !content.isString) {
+                    throw GululuApiException("骨碌碌评论 $id 正文格式错误")
+                }
+                records.add(item)
+            }
+            if (records.size >= total) return records
+            if (pageRecords.isEmpty()) throw GululuApiException("骨碌碌评论分页提前结束")
+            current++
+        }
+    }
+
     companion object {
         const val API_BASE = "https://backend.gululu.world"
         const val SITE_BASE = "https://www.gululu.world"
+        private const val COMMENT_PAGE_SIZE = 100
+        private const val CHILD_PAGE_SIZE = 1000
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
     }
 }
