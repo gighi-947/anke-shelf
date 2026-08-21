@@ -334,6 +334,23 @@
       return row;
     },
 
+    async _editTags(book) {
+      const tags = (book.tags || []).map((t) => t.name + ':' + t.color).join(',');
+      const raw = prompt('编辑标签（多个用逗号分隔，格式：名称:颜色，例如 NGA:#2e86ab）：', tags);
+      if (raw === null) return;
+      const parsed = raw.split(/[,，]/).map((p) => p.trim()).filter(Boolean).map((p) => {
+        const [name, color] = p.split(':');
+        return { name: (name || '').trim().slice(0, 10), color: (color || '#8b5a2b').trim() };
+      }).filter((t) => t.name);
+      try {
+        await Api.updateBookTags(book.id, parsed);
+        Toast.show('标签已保存');
+        this.render();
+      } catch (e) {
+        Toast.show('标签保存失败：' + (e.message || e), true);
+      }
+    },
+
     _actions(book) {
       const actions = document.createElement('div');
       actions.className = 'book-actions';
@@ -405,6 +422,15 @@
         }
       });
       actions.appendChild(rn);
+      const tagBtn = document.createElement('button');
+      tagBtn.className = 'rename-btn';
+      tagBtn.title = '编辑标签';
+      tagBtn.appendChild(Icons.icon('bookmark', 14));
+      tagBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        await this._editTags(book);
+      });
+      actions.appendChild(tagBtn);
       const coverBtn = document.createElement('button');
       coverBtn.className = 'rename-btn';
       coverBtn.title = '设置封面';
@@ -519,6 +545,9 @@
             }
           });
         }
+        addItem('标签', async () => {
+          await this._editTags(book);
+        });
         addItem('重命名', async () => {
           const name = prompt('Rename book:', book.title || '');
           if (name === null) return;
