@@ -27,7 +27,7 @@ android/
   saveProgressNow / pageChanged / requestChapter / openImage / onScrollMoved /
   onMode / onSettled / onSelection / onHighlightTap`；Kotlin 下发
   `init / applyTheme / applyTypography / setMode / flipPage / setInsets /
-  gotoOffset / gotoTextOffset / applyHighlights / clearSelection /
+  gotoTextOffset / applyHighlights / clearSelection /
   startAutoScroll / stopAutoScroll / openImageAt / onResize`。ready 握手版本见
   `ui/reader/BridgeProtocol.kt`（当前 1，能力为追加式扩展：
   `paged / scroll / scrollRatio / image / settled / annotation / assist / gululu`），

@@ -8,7 +8,7 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-21）
+## 1. 当前状态（2026-08-22）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
   沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；v1.6.0 / android-v1.3.0 已发布；五批接手风险修复已合入；
@@ -19,21 +19,27 @@
   EventBus→显式回调、API 错误统一到 HTTP/ApiError、reader-lite 状态机
   Step 0–4、TaskManager 统一 NGA/Gululu/Export；
   文档漂移治理已强化
-  （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
+  （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）；
+  2026-08-22 防御性编程审查清理批（第二十二批，见 §4）：
+  Web 进度/标注写入错误出口、Android store 损坏显式化、
+  ApiContext 服务必填、恢复锚点单点化、双端死表面删除。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.6.0`（已发布，AnkeShelf-v1.6.0.zip）；
   Android `android-v1.3.0`（已发布，AnkeShelf-v1.3.0-android.apk）。
-- 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 326 项
-    （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
+- 测试基线（Windows / JS / Android JVM 于 2026-08-22 实跑复核）：
+  - Windows Python：`python -m unittest discover tests` = 327 项
+    （本机 Python 3.14：1 项环境性错误 `test_main_guard`
+    ——tasklist 在本沙箱返回 None，clean main 同样失败、与代码无关；
+    bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（59 方法一致）、
+    `node contracts/tests/api-contract.test.js`（60 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1，能力含 annotation·assist·gululu）、
-    `node contracts/tests/reader-lite-parts.test.js`（9 parts / 62338 字符）、
+    `node contracts/tests/reader-lite-parts.test.js`（9 parts / 动态字节校验）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
+    `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 206 项（205 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 215 项（214 过 / 1 跳）；
     DisciplineTest 9 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
@@ -64,6 +70,60 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-22 win/android：防御性编程审查清理批（第二十二批）
+
+背景：按“设计前提退化成运行时补丁 / 名义安全分支 / 投机抽象 / 碎片化控制流”
+四类反模式对双端代码做全面审查后，按优先级清理五路。每路均先写复现测试
+（红）再修复（绿），单路分支验证后合并 main。
+
+- **① Web 进度/标注写入错误出口**（`win/progress-annotation-error-exits`）：
+  Bridge 失败必 throw，但 reader.js 三处裸 `Api.saveProgress`（防抖/换章/
+  锚点跳转）无任何 catch——后端不可用时进度静默丢失且产生 unhandled
+  rejection。新增 `web/js/reader-save.js`（ProgressSaver：唯一写入出口，
+  失败 console.error + toast 一次、恢复成功后重置）；annotations.js 全部
+  写入路径补 try/catch toast 并删除两个永假的 `r.error` 死分支；
+  新增 `tests/js/reader-save.test.js`（结构守卫：reader.js 不得直写进度）。
+- **② Android store 损坏显式化**（`android/store-corrupt-visibility`）：
+  六个权威 store 把 Corrupt/IoError 一律折叠成空默认且仅 logcat 留痕；
+  shelf.json 损坏即书架清空、随后空数据覆盖权威文件。新增 `loadGuarded`
+  统一入口：Corrupt（已隔离 .corrupt-*）报告 issue 且允许重建；IoError
+  （原文件仍在原位）挂起写保护，ProgressStore.flush 显式失败
+  （StoreWriteProtectedException），恢复成功后解除；AppContainer 汇总
+  `storeLoadIssues`，书架页横幅用户可见；回归测试 StoreProtectionTest 5 项。
+- **③ ApiContext 服务必填化**（`win/apicontext-required`）：
+  annotations/stats/nga/export/gululu/frontend_ready/window_toggle/nga_login
+  全部 Optional + 31 处守卫只为测试部分构造而存在，且读接口把“服务未接线”
+  折叠成 idle/空数据、写接口却 503（语义分裂）。必填化后缺接线在构造处
+  TypeError 暴露；仅 file_dialog 保留可选（None→系统对话框是真实缺省）；
+  toggle_fullscreen 改测真实失败模式（窗口未就绪 RuntimeError→503）；
+  9 个 Api 构造点全部补齐装配。
+- **④ 恢复锚点单点化**（`android/restore-anchor-single-point`）：
+  restoreOffset/Page/Total/Ratio 四个平行 remember 各自维护同一策略，
+  restoreRatio 漏接 crossJump——跨章跳转（标注抽屉/书签）回到初始章时
+  旧滚动比例优先于跳转锚点（reader-lite 对 ratio∈[0,1] 优先于 text_offset），
+  跳转被拉回旧位置。收敛为纯函数 `restoreAnchorFor` + `RestoreAnchor`
+  （crossJump 命中时 page/total/ratio 全部让位），RestoreAnchorTest 4 项；
+  reader-lite 文本锚点定位失败的静默 catch 补 `[restore:fallback-ratio]`
+  诊断日志。
+- **⑤ 双端死表面删除**（`win/remove-dead-surfaces` +
+  `android/remove-dead-surfaces`）：
+  Web 端删除 ReaderSession 零消费者成员（dirty/lastSaved/markSaved/
+  isDirty/elapsedSeconds/mode）与 gululu-comments 已下线 inline 评论模式
+  全套（约 120 行不可达代码 + 注入样式）；Android 端删除 reader-lite 8 个
+  无宿主调用的导出、逐字节相同的双生函数 offsetAtPointPaged/Scroll、
+  两臂相同三目、parseJsonSafe 误标 [ann]、只写不读的 state.pageWidth /
+  contentWidth()、PagedLayout 零引用常量。
+- **有意保留（守卫保护的决策，未在清理批内单方面拆除）**：phase 三态
+  状态机（Step 3 显式决策“phase 取代 settled”，DisciplineTest 断言禁止
+  settled 复活）与 BRIDGE_CAPABILITIES 桥能力声明（bridge-contract 与
+  DisciplineTest 锁定）。审查发现 phase 的 bootstrapping/restoring 两个
+  状态值目前无读取者、capabilities 解析后仅进就绪日志——若未来要简化，
+  属于修订守卫的显式决策而非顺手清理。
+- 验证：Windows Python 327 项（仅既有环境性 main_guard 错误）；Android
+  JVM 215 项（214 过/1 跳）；JS 契约（textpos 15 / api 60 方法 /
+  bridge / parts 动态字节 / 跨端折叠 12 / reader-save / reader-session /
+  nga-cookie）全绿；reader-lite parts 重建并过 bundle 校验。
 
 ### 2026-08-21 release：v1.6.0 / android-v1.3.0 发布与 PR/CI 收尾（第二十一批）
 
