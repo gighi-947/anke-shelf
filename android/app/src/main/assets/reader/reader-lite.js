@@ -1731,13 +1731,14 @@
     }
   }
 
-  /** 命中测试：坐标是否落在骨碌碌交互元素上（宿主据此决定是否把点击当作唤出/收起菜单）。 */
+  /** 命中测试：坐标是否落在交互元素上（宿主据此决定是否把点击当作唤出/收起菜单）。 */
   function hitGululuInteractive(x, y) {
     var el = document.elementFromPoint(x, y);
-    // details 也视为交互区：点 summary 展开/收起折叠内容时不应唤出悬浮栏。
+    // details/链接/按钮都算交互区：点 summary 展开折叠、点链接或按钮时不应唤出悬浮栏。
     return !!(el && el.closest && el.closest(
       '.gululu-dice-value, .gululu-dice-suffix, .gululu-secret-cue, ' +
-      '.gululu-clue-cue, .gululu-music-cue, .gululu-music-stop, .gululu-paragraph-badge, details'
+      '.gululu-clue-cue, .gululu-music-cue, .gululu-music-stop, .gululu-paragraph-badge, ' +
+      'details, a[href], button'
     ));
   }
 
