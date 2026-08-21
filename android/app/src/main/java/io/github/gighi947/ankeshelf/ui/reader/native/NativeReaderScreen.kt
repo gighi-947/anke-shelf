@@ -398,10 +398,13 @@ fun NativeReaderScreen(
             ?.boundingRects
             ?.maxOfOrNull { it.bottom } ?: 0
     }
+    // 安全区自动模式：按挖孔底部 3/8 估算，再下移 50dp（用户测试机反馈
+    // 默认位置仍遮挡顶部内容）。
+    val autoInsetExtraPx = with(density) { 50.dp.toPx().roundToInt() }
     val topInsetPx = if (manualTopInsetDp >= 0) {
         with(density) { manualTopInsetDp.dp.toPx().roundToInt() }
     } else {
-        cutoutBottom * 3 / 8
+        cutoutBottom * 3 / 8 + autoInsetExtraPx
     }
 
     // 图片字节：EPUB 走压缩包相对路径；NGA 在线图走 OkHttp（防盗链头）。
@@ -577,7 +580,9 @@ fun NativeReaderScreen(
                     // 唤出浮动栏后发生新的滚动才自动收起（滚动事件发生时即时通知，
                     // 不等防抖保存回调，避免唤出前的迟到滚动把刚唤出的控制条误收）。
                     onScrollMoved = {
-                        if (!readerSettings.pagination && barsHeld) {
+                        // 滚动模式：只要悬浮栏可见，新滚动就收起；不要求 barsHeld，
+                        // 否则从自动显示进入滚动时不会被收起（骨碌碌反馈）。
+                        if (!readerSettings.pagination && barsVisible) {
                             barsHeld = false
                             barsVisible = false
                         }
@@ -586,6 +591,11 @@ fun NativeReaderScreen(
                         // 纯 UI 事件：页码指示；进度落盘只走 onProgress（JS 端仅在
                         // 用户翻页时上报），恢复/重排的中间页不会污染已保存进度。
                         if (ch == chapterIndex) pageInfo = page to total
+                        // 分页模式翻页后同样收起悬浮栏（对齐桌面翻页隐藏）。
+                        if (readerSettings.pagination && barsVisible) {
+                            barsHeld = false
+                            barsVisible = false
+                        }
                     },
                     onChapterSwitch = { from, _ -> progressTracker.onChapterSwitch(from) },
                     onFlush = { flushProgress("webview") },

@@ -65,6 +65,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈批量修复（第一批）
+
+- 背景：测试机逐项反馈骨碌碌/阅读器问题。
+- 修复：
+  - `sanitizeReaderBody` 放行 `data-*` / `aria-*` 属性（骨碌碌骰点/迷雾/
+    段落评论/音乐等交互钩子此前被清洗丢失）；
+  - 滚动/翻页后自动收起悬浮栏：不再要求 `barsHeld`，悬浮栏可见即收；
+  - 顶部安全区自动模式再下移 50dp；
+  - 「已下载」页扩展为 NGA + 骨碌碌（骨碌碌书支持直接「更新」与「导出 EPUB」，
+    Markdown 导出仅 NGA 显示）；
+- 验证：`compileDebugKotlin testDebugUnitTest` BUILD SUCCESSFUL；
+  `assembleRelease` 成功并 `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：修复骨碌碌楼层卡片容器被清洗丢失（补充根因）
 
 - 背景：上一修只恢复了 EPUB 外部 CSS，测试机反馈楼层卡片仍只有“第xx楼”

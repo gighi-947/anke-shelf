@@ -88,11 +88,14 @@ import androidx.core.content.ContextCompat
 import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.NgaConfigPatch
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.GululuBaseline
+import io.github.gighi947.ankeshelf.data.GululuUpdate
 import io.github.gighi947.ankeshelf.service.RepoResult
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.NgaDownloadService
 import io.github.gighi947.ankeshelf.service.NgaExport
+import io.github.gighi947.ankeshelf.service.GululuImportService
 import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.service.safeExportName
@@ -116,6 +119,30 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+private fun isGululuBook(container: AppContainer, book: BookRecord): Boolean =
+    book.nga_tid <= 0 && book.path.startsWith(container.appPaths.gululuLibraryDir.absolutePath)
+
+private fun gululuSourceIdOf(book: BookRecord): Int? =
+    File(book.path).parentFile?.name?.toIntOrNull()
+
+private fun launchGululuUpdate(
+    context: android.content.Context,
+    container: AppContainer,
+    book: BookRecord,
+) {
+    val sourceId = gululuSourceIdOf(book) ?: return
+    val baselineFile = GululuUpdate.baselineFile(container.appPaths.gululuLibraryDir, sourceId)
+    val baseline = GululuUpdate.loadBaseline(baselineFile, sourceId)
+    val imageMode = (baseline as? GululuBaseline.Ok)?.imageMode ?: "online"
+    val intent = Intent(context, GululuImportService::class.java).apply {
+        action = GululuImportService.ACTION_START
+        putExtra("action", "update")
+        putExtra("sourceId", sourceId)
+        putExtra("imageMode", imageMode)
+    }
+    ContextCompat.startForegroundService(context, intent)
+}
+
 /* ---------------- 已下载 ---------------- */
 
 @Composable
@@ -124,7 +151,10 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
     val scope = rememberCoroutineScope()
     var tick by remember { mutableIntStateOf(0) }
     val books = remember(tick) {
-        container.shelf.listBooks().filter { it.nga_tid > 0 }
+        val gululuDir = container.appPaths.gululuLibraryDir.absolutePath
+        container.shelf.listBooks().filter {
+            it.nga_tid > 0 || (it.nga_tid <= 0 && it.path.startsWith(gululuDir))
+        }
     }
     var manageBook by remember { mutableStateOf<BookRecord?>(null) }
     var deleteTarget by remember { mutableStateOf<BookRecord?>(null) }
@@ -154,7 +184,7 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "已下载 NGA 书（${books.size}）",
+                "已下载书籍（${books.size}）",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),
@@ -173,7 +203,7 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
         when {
             books.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    "暂无已下载的 NGA 书",
+                    "暂无已下载书籍",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -187,6 +217,7 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
                     LibraryBookRow(
                         book = book,
                         coversDir = container.appPaths.coversDir,
+                        isNga = book.nga_tid > 0,
                         onManage = { manageBook = it },
                         onUpdate = { updateTarget = it },
                         onExport = { rec, fmt ->
@@ -209,6 +240,7 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
                     LibraryBookCard(
                         book = book,
                         coversDir = container.appPaths.coversDir,
+                        isNga = book.nga_tid > 0,
                         onManage = { manageBook = it },
                         onUpdate = { updateTarget = it },
                         onExport = { rec, fmt ->
@@ -277,16 +309,22 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
     }
 
     updateTarget?.let { book ->
-        NgaUpdateDialog(
-            book = book,
-            container = container,
-            onDismiss = { updateTarget = null },
-            onConfirm = { params ->
-                updateTarget = null
-                launchNgaUpdate(context, book, params)
-                onChanged()
-            },
-        )
+        if (book.nga_tid > 0) {
+            NgaUpdateDialog(
+                book = book,
+                container = container,
+                onDismiss = { updateTarget = null },
+                onConfirm = { params ->
+                    updateTarget = null
+                    launchNgaUpdate(context, book, params)
+                    onChanged()
+                },
+            )
+        } else if (isGululuBook(container, book)) {
+            launchGululuUpdate(context, container, book)
+            updateTarget = null
+            onChanged()
+        }
     }
 }
 
@@ -295,6 +333,7 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
 internal fun LibraryBookRow(
     book: BookRecord,
     coversDir: File,
+    isNga: Boolean,
     onManage: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
     onExport: (BookRecord, String) -> Unit,
@@ -362,13 +401,15 @@ internal fun LibraryBookRow(
                         onExport(book, "epub")
                     },
                 )
-                DropdownMenuItem(
-                    text = { Text("导出 Markdown") },
-                    onClick = {
-                        exportMenu = false
-                        onExport(book, "md")
-                    },
-                )
+                if (isNga) {
+                    DropdownMenuItem(
+                        text = { Text("导出 Markdown") },
+                        onClick = {
+                            exportMenu = false
+                            onExport(book, "md")
+                        },
+                    )
+                }
             }
         }
         ActionIcon(Icons.Filled.Delete, "删除") { onDelete(book) }
@@ -380,6 +421,7 @@ internal fun LibraryBookRow(
 internal fun LibraryBookCard(
     book: BookRecord,
     coversDir: File,
+    isNga: Boolean,
     onManage: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
     onExport: (BookRecord, String) -> Unit,
@@ -432,13 +474,15 @@ internal fun LibraryBookCard(
                                 onExport(book, "epub")
                             },
                         )
-                        DropdownMenuItem(
-                            text = { Text("导出 Markdown") },
-                            onClick = {
-                                exportMenu = false
-                                onExport(book, "md")
-                            },
-                        )
+                        if (isNga) {
+                            DropdownMenuItem(
+                                text = { Text("导出 Markdown") },
+                                onClick = {
+                                    exportMenu = false
+                                    onExport(book, "md")
+                                },
+                            )
+                        }
                     }
                 }
                 ActionIcon(Icons.Filled.Delete, "删除") { onDelete(book) }
@@ -479,14 +523,21 @@ internal fun writeLibraryExport(
             "format" to fmt,
         )
         try {
-            val dir = File(book.path)
-            val meta = NgaExport.metaOf(dir) ?: return@launch
-            val bytes = if (fmt == "md") {
-                NgaExport.markdownText(dir, meta).toByteArray(Charsets.UTF_8)
+            if (book.nga_tid > 0) {
+                val dir = File(book.path)
+                val meta = NgaExport.metaOf(dir) ?: return@launch
+                val bytes = if (fmt == "md") {
+                    NgaExport.markdownText(dir, meta).toByteArray(Charsets.UTF_8)
+                } else {
+                    NgaExport.epubBytes(dir, meta, NgaExport.imagesDirFor(context, book.id))
+                }
+                context.contentResolver.openOutputStream(uri)?.use { os -> os.write(bytes) }
             } else {
-                NgaExport.epubBytes(dir, meta, NgaExport.imagesDirFor(context, book.id))
+                // 骨碌碌/普通 EPUB：直接复制原文件（书架已持有标准 EPUB）。
+                File(book.path).inputStream().use { input ->
+                    context.contentResolver.openOutputStream(uri)?.use { os -> input.copyTo(os) }
+                }
             }
-            context.contentResolver.openOutputStream(uri)?.use { os -> os.write(bytes) }
             LogEvents.event(
                 "export",
                 "done",

@@ -129,8 +129,12 @@ fun sanitizeReaderBody(body: String): String {
         val allowed = GLOBAL_ATTRS + (TAG_ATTRS[tag] ?: emptySet())
         for (attr in element.attributes().asList().toList()) {
             val key = attr.key.lowercase()
+            // data-* 是骨碌碌宿主层（骰点/迷雾/评论/音乐）与桌面一致的交互钩子；
+            // aria-* 仅无障碍语义，均不参与 URL/脚本执行，安全。
+            val inert = key.startsWith("data-") || key.startsWith("aria-")
             val isUrl = key == "href" || key == "src" || key == "poster" || key == "srcset"
-            val drop = key !in allowed || key.startsWith("on") || (isUrl && isUnsafeUrl(attr.value))
+            val drop = (key !in allowed && !inert) || key.startsWith("on") ||
+                (isUrl && isUnsafeUrl(attr.value))
             if (drop) element.removeAttr(attr.key)
         }
     }
