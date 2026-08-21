@@ -30,11 +30,11 @@
     `node contracts/tests/api-contract.test.js`（59 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（8 parts / 50881 字节）、
+    `node contracts/tests/reader-lite-parts.test.js`（9 parts / 61721 字节）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 197 项（196 过 / 1 跳）；
-    DisciplineTest 8 项在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 204 项（203 过 / 1 跳）；
+    DisciplineTest 9 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
   - 骨碌碌正式冒烟 `formal_ui_smoke.js`（桌面 + 430px，含骰点菜单/段落评论/总览/
@@ -65,6 +65,35 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 android：对齐批 8+9 —— 骨碌碌阅读交互（评论 / 骰点 / 秘密 / 沉浸）
+
+- 新增 `reader-lite.parts/60-gululu.js`（宿主层，桥能力追加 `gululu`）：
+  - 骰点遮罩与揭示：未解锁组加 `masked`、迷雾块加 `gululu-fog-hidden`；
+    单组点击、Alt 整楼、「接下来 10 组」；揭示后上报宿主持久化；
+    **分页模式下显隐变化触发重排**（否则页码与内容错位）；
+  - 秘密/线索/音乐/停止音乐点击 → 上报宿主（JS 侧**不含任何解密逻辑**）；
+  - 段落评论徽标注入：徽标带 `data-textpos-exclude`，不进折叠纯文本，
+    因此加载评论不会让 `text_offset` 漂移（纪律测试守护）；
+  - 阅读线上下文上报：当前楼、视效、氛围背景（阅读线前最后一个标记生效）、
+    自动音乐（每标记只触发一次）；滚动防抖与翻页都会刷新。
+- 新增 `data/GululuUnlockStore.kt`（端私有 `gululu_unlocks.json` / `gululu_clues.json`）：
+  骰点解锁按书保存、上限 3000 → 裁剪 2000 保留最近、线索按书存标题→口令、
+  单书重置只清解锁与线索（不动进度与书签）、用已收集线索逐个试解秘密。
+- 新增 `ui/reader/native/NativeReaderGululu.kt`：评论抽屉（当前楼 + 段落过滤 + 过期提示）、
+  只读弹幕、氛围背景（Coil）、视效覆盖层、秘密弹窗（明文只在此出现）、沉浸总览
+  （本章统计 + 揭示接下来 10 组 / 重置解锁 / 弹幕 / 停止音乐 / 打开评论）。
+- 阅读器接线：`session.gululuSourceId`（来自 EPUB `dc:identifier`）为正才启用整套交互；
+  评论按楼按需加载（5 分钟缓存 + 离线回退），段落评论计数回灌 WebView 生成徽标；
+  音乐用 `MediaPlayer` 循环播放、同曲再点即停、退出释放。
+- 降级说明（与桌面的有意差异）：骰点点击音效未实现；桌面的 Canvas 粒子视效在
+  Android 改为低成本 Compose 覆盖层（只动 transform/opacity，符合动效纪律）。
+- 验证：Android `gradlew testDebugUnitTest` = 204 项（203 过 / 1 跳，含
+  `GululuUnlockStoreTest` 6 例与 DisciplineTest 新增「骨碌碌宿主层不得改写正文与坐标」）；
+  `assembleDebug` 成功；解包 APK 校验 `reader-lite.js` = 61721 字节且含 `initGululu`
+  与徽标排除属性。
+- 待真机验证：骰点揭示跨会话保持、段落徽标 ↔ 抽屉联动、自动音乐/背景/视效随阅读线切换、
+  重置解锁后进度与书签不受影响。
+
 ### 2026-08-20 android：对齐批 7 —— 骨碌碌热更新与增量基线
 
 - `data/GululuUpdate.kt` ← `app/gululu_update.py` 纯逻辑：`snapshot.json` 基线读写
@@ -80,7 +109,7 @@
   合并缺正文、导入即建基线、无新增不重建（比对 EPUB mtime）、有新增增量重建并含新锚点、
   远端删楼时原书原样保留、旧书迁移成功与历史不一致拒绝、无本地 EPUB 拒绝更新、
   仅图片模式变化也重建。
-- 验证：Android `gradlew testDebugUnitTest` = 197 项（196 过 / 1 跳）、`assembleDebug` 成功。
+- 验证：Android `gradlew testDebugUnitTest` = 204 项（203 过 / 1 跳）、`assembleDebug` 成功。
 
 ### 2026-08-20 android：对齐批 6 —— 骨碌碌 EPUB 生成 + 导入前台服务
 
@@ -112,7 +141,7 @@
     能打开并读出标题/章节/正文）；
   - `GululuImporterTest` 5 例：成功落盘并入架、取消不留产物、失败保留已有书并清 `.part`、
     缺楼快照显式失败、内嵌模式图片入包且正文引用 `../images/`。
-- 验证：Android `gradlew testDebugUnitTest` = 197 项（196 过 / 1 跳）、`assembleDebug` 成功；
+- 验证：Android `gradlew testDebugUnitTest` = 204 项（203 过 / 1 跳）、`assembleDebug` 成功；
   Windows = 326 项 OK。
 - 待办：真机联网导入一本公开安科，确认产物能被 Windows 端直接打开（跨端互通验证）。
 - 下一步（批 7）：热更新与增量基线（`snapshot.json` + append-only 前缀校验 +

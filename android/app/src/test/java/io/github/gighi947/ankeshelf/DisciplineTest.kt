@@ -242,4 +242,40 @@ class DisciplineTest {
             ),
         )
     }
+
+    @Test
+    fun `骨碌碌宿主层不得改写正文与坐标`() {
+        val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
+
+        // 段落评论徽标是宿主注入：必须排除出 text_offset 坐标系，
+        // 否则加载评论后同一本书的进度与标注会整体漂移。
+        val badgeBlock = js.substringAfter("function applyParagraphComments(payload)")
+            .substringBefore("function reportGululuContext")
+        assertTrue(
+            "段落评论徽标必须带 data-textpos-exclude",
+            badgeBlock.contains("badge.setAttribute('data-textpos-exclude', '')"),
+        )
+        assertTrue(
+            "骰点/迷雾只切 class，不得改文本内容",
+            js.contains("classList.add('masked')") &&
+                js.contains("classList.remove('gululu-fog-hidden')"),
+        )
+        assertTrue(
+            "揭示后必须上报宿主持久化（跨会话保持）",
+            js.contains("callBridge('gululuUnlock', groupId)") &&
+                js.contains("callBridge('gululuUnlockAll'"),
+        )
+        assertTrue(
+            "分页模式下迷雾显隐必须触发重排（否则页码与内容错位）",
+            js.contains("if (state.paged) onResize();"),
+        )
+        assertTrue("桥能力必须声明 gululu", js.contains("'gululu',"))
+
+        // 秘密明文只走宿主弹窗：JS 侧只上报密文，绝不解密或写回 DOM。
+        assertFalse("JS 侧不得出现解密逻辑", js.contains("decrypt") || js.contains("CryptoJS"))
+        assertTrue(
+            "秘密只上报标题与密文",
+            js.contains("'gululuSecret',"),
+        )
+    }
 }

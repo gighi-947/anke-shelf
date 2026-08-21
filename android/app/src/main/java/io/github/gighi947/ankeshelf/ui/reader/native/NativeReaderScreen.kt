@@ -68,6 +68,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.ViewCompat
 import io.github.gighi947.ankeshelf.data.ChapterReadResult
 import io.github.gighi947.ankeshelf.data.AnnotationPatch
+import io.github.gighi947.ankeshelf.data.GululuSecretReveal
 import io.github.gighi947.ankeshelf.data.Highlight
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
@@ -151,6 +152,85 @@ fun NativeReaderScreen(
     var autoScrollOn by remember { mutableStateOf(false) }
     var rulerOn by remember { mutableStateOf(readerSettings.show_ruler) }
     var rsvpOn by remember { mutableStateOf(false) }
+    // 骨碌碌宿主层（批 8/9）：仅骨碌碌来源的书启用
+    val gululuSourceId = session.gululuSourceId
+    val isGululu = gululuSourceId > 0
+    var gululuFloor by remember(session.id) { mutableIntStateOf(0) }
+    var gululuVfx by remember { mutableStateOf("") }
+    var gululuBackground by remember { mutableStateOf("") }
+    var gululuComments by remember { mutableStateOf<List<GululuCommentUi>>(emptyList()) }
+    var gululuCommentStale by remember { mutableStateOf(false) }
+    var gululuCommentError by remember { mutableStateOf("") }
+    var showGululuComments by remember { mutableStateOf(false) }
+    var paragraphFilter by remember { mutableStateOf("") }
+    var showOverview by remember { mutableStateOf(false) }
+    var danmakuOn by remember { mutableStateOf(false) }
+    var secretDialog by remember { mutableStateOf<Pair<String, String?>?>(null) }
+    var musicTitle by remember { mutableStateOf("") }
+    var unlockTick by remember { mutableIntStateOf(0) }
+    var chapterStats by remember { mutableStateOf(listOf(0, 0, 0, 0, 0)) }
+    var gululuCommand by remember { mutableStateOf("") }
+    var gululuCommandToken by remember { mutableIntStateOf(0) }
+    val unlockedJson = remember(session.id, unlockTick) {
+        if (!isGululu) {
+            "[]"
+        } else {
+            container.gululuUnlocks.unlockedGroups(session.id)
+                .joinToString(",", "[", "]") { JSONObject.quote(it) }
+        }
+    }
+    val paragraphCommentsJson = remember(gululuComments) {
+        val counts = gululuComments.filter { it.paragraphId.isNotEmpty() }
+            .groupingBy { it.paragraphId }.eachCount()
+        counts.entries.joinToString(",", "{", "}") { (id, count) ->
+            "${JSONObject.quote(id)}:$count"
+        }
+    }
+
+    // 当前楼评论：楼层变化即按需加载（5 分钟缓存 + 离线回退在 service 层）
+    LaunchedEffect(gululuSourceId, gululuFloor) {
+        if (!isGululu || gululuFloor <= 0) return@LaunchedEffect
+        val result = withContext(Dispatchers.IO) {
+            container.gululuComments.getComments(gululuSourceId, listOf(gululuFloor))
+        }
+        val scope = result.floors.firstOrNull()
+        gululuComments = flattenGululuComments(scope?.comments ?: emptyList())
+        gululuCommentStale = scope?.stale == true
+        gululuCommentError = scope?.error.orEmpty().ifEmpty { result.error }
+    }
+
+    // 音乐播放器：同曲再点=停止，切歌=换源；退出阅读器释放。
+    val musicPlayer = remember { android.media.MediaPlayer() }
+    var musicUrl by remember { mutableStateOf("") }
+    fun stopMusic() {
+        runCatching { if (musicPlayer.isPlaying) musicPlayer.stop() }
+        runCatching { musicPlayer.reset() }
+        musicUrl = ""
+        musicTitle = ""
+    }
+    fun playMusic(url: String, title: String) {
+        if (url == musicUrl) {
+            stopMusic()
+            return
+        }
+        runCatching {
+            musicPlayer.reset()
+            musicPlayer.setDataSource(url)
+            musicPlayer.isLooping = true
+            musicPlayer.setOnPreparedListener { it.start() }
+            musicPlayer.prepareAsync()
+            musicUrl = url
+            musicTitle = title.ifEmpty { "BGM" }
+        }.onFailure {
+            LogEvents.event("gululu", "music_failed", "error" to (it.message ?: "unknown"))
+            stopMusic()
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            runCatching { musicPlayer.release() }
+        }
+    }
     var annotationsTick by remember { mutableIntStateOf(0) }
     var jump by remember { mutableStateOf<ReaderJump?>(null) }
     var jumpToken by remember { mutableIntStateOf(0) }
@@ -453,6 +533,11 @@ fun NativeReaderScreen(
                 clearSelectionToken = clearSelectionToken,
                 autoScroll = autoScrollOn,
                 autoScrollSpeed = readerSettings.autoscroll_speed,
+                gululu = isGululu,
+                gululuUnlockedJson = unlockedJson,
+                paragraphCommentsJson = paragraphCommentsJson,
+                gululuCommand = gululuCommand,
+                gululuCommandToken = gululuCommandToken,
                 session = session,
                 container = container,
                 callbacks = WebViewReaderCallbacks(
@@ -520,6 +605,39 @@ fun NativeReaderScreen(
                         // 之后再回到本章仍按"换章从章首开始"的语义。
                         if (crossJump?.first == chapterIndex) crossJump = null
                     },
+                    onGululuUnlock = { ids ->
+                        if (container.gululuUnlocks.unlockAll(session.id, ids) > 0) unlockTick++
+                    },
+                    onGululuFloor = { floorId -> gululuFloor = floorId },
+                    onGululuVfx = { kind -> gululuVfx = kind },
+                    onGululuBackground = { url -> gululuBackground = url },
+                    onGululuMusic = { url, title, auto ->
+                        // 自动音乐只在首次到达时触发（JS 侧已去重），手动点击同曲即停止
+                        if (auto) {
+                            if (url != musicUrl) playMusic(url, title)
+                        } else {
+                            playMusic(url, title)
+                        }
+                    },
+                    onGululuMusicStop = { stopMusic() },
+                    onGululuSecret = { title, cipher ->
+                        val reveal = container.gululuUnlocks.revealSecret(session.id, cipher)
+                        secretDialog = title to (reveal as? GululuSecretReveal.Ok)?.plaintext
+                    },
+                    onGululuClue = { title, password ->
+                        if (container.gululuUnlocks.collectClue(session.id, title, password)) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "已收集线索：$title",
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    },
+                    onGululuParagraphComments = { paragraphId ->
+                        paragraphFilter = paragraphId
+                        showGululuComments = true
+                    },
+                    onGululuStats = { stats -> chapterStats = stats },
                 ),
                 modifier = Modifier.fillMaxSize(),
             )
@@ -527,6 +645,12 @@ fun NativeReaderScreen(
 
         // 亮度遮罩（阅读器外层）
         ReaderBrightnessOverlay(brightness = readerSettings.brightness)
+
+        if (isGululu) {
+            GululuBackgroundOverlay(url = gululuBackground)
+            GululuVfxOverlay(kind = gululuVfx)
+            GululuDanmakuOverlay(enabled = danmakuOn, comments = gululuComments)
+        }
 
         ReaderTopBar(
             visible = barsVisible,
@@ -558,6 +682,8 @@ fun NativeReaderScreen(
             },
             onOpenAnnotations = { showAnnotations = true },
             onToggleToc = { showToc = !showToc },
+            gululu = isGululu,
+            onOpenGululu = { showOverview = true },
         )
 
         ReaderBottomBar(
@@ -760,6 +886,57 @@ fun NativeReaderScreen(
                 },
                 onDismiss = { editingNote = null },
             )
+        }
+
+        if (isGululu) {
+            GululuCommentDrawer(
+                visible = showGululuComments,
+                floorId = gululuFloor,
+                paragraphFilter = paragraphFilter,
+                comments = gululuComments,
+                stale = gululuCommentStale,
+                error = gululuCommentError,
+                onClearParagraphFilter = { paragraphFilter = "" },
+                onDismiss = { showGululuComments = false; paragraphFilter = "" },
+            )
+            GululuOverviewSheet(
+                visible = showOverview,
+                barBg = barBg,
+                fg = fg,
+                groups = chapterStats[0],
+                lockedGroups = chapterStats[1],
+                secrets = chapterStats[2],
+                clues = chapterStats[3],
+                floors = chapterStats[4],
+                danmaku = danmakuOn,
+                playingTitle = musicTitle,
+                onRevealNext = {
+                    gululuCommand = "AnkeReader.revealNextGululuGroups(10);"
+                    gululuCommandToken++
+                },
+                onResetUnlocks = {
+                    container.gululuUnlocks.reset(session.id)
+                    unlockTick++
+                    gululuCommand = "AnkeReader.gululuResetUnlocks();"
+                    gululuCommandToken++
+                    showOverview = false
+                },
+                onToggleDanmaku = { danmakuOn = !danmakuOn },
+                onStopMusic = { stopMusic() },
+                onOpenComments = {
+                    paragraphFilter = ""
+                    showGululuComments = true
+                    showOverview = false
+                },
+                onDismiss = { showOverview = false },
+            )
+            secretDialog?.let { (title, plaintext) ->
+                GululuSecretDialog(
+                    title = title,
+                    plaintext = plaintext,
+                    onDismiss = { secretDialog = null },
+                )
+            }
         }
 
         lightboxSrc?.let { src ->

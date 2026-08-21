@@ -135,6 +135,8 @@
     }
     gotoPage(skipToContent(m.current + (dir > 0 ? 1 : -1), dir));
     report(true);
+    // 分页模式没有滚动事件，翻页时刷新骨碌碌上下文（当前楼/视效/背景/自动音乐）
+    reportGululuContext();
     var o = currentOffsetSafe();
     try {
       var mm = measure();

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Close
@@ -142,6 +143,8 @@ internal fun BoxScope.ReaderTopBar(
     onToggleBookmark: () -> Unit,
     onOpenAnnotations: () -> Unit,
     onToggleToc: () -> Unit,
+    gululu: Boolean = false,
+    onOpenGululu: () -> Unit = {},
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -176,6 +179,11 @@ internal fun BoxScope.ReaderTopBar(
             }
             IconButton(onClick = onOpenAnnotations) {
                 Icon(Icons.Filled.Bookmarks, contentDescription = "标注与书签", tint = fg)
+            }
+            if (gululu) {
+                IconButton(onClick = onOpenGululu) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = "骨碌碌总览", tint = fg)
+                }
             }
             IconButton(onClick = onToggleToc) {
                 Icon(Icons.Filled.Menu, contentDescription = "目录", tint = fg)

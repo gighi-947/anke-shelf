@@ -286,6 +286,8 @@
     root.style.setProperty('--reader-bottom-inset', state.bottomInset + 'px');
     bindImages();
     bindSelection();
+    // 骨碌碌书籍：宿主传入已解锁的骰点分组，运行时只切遮罩不改正文。
+    if (opts.gululu) initGululu(opts.gululuUnlocked || '[]');
     // 滚动模式底部换章按钮（分页模式下由 CSS 隐藏）。
     var prevBtn = document.getElementById('android-prev-chapter');
     var nextBtn = document.getElementById('android-next-chapter');
@@ -333,6 +335,8 @@
           state.scrollAnchor = o;
           callBridge('saveProgress', state.chapterIndex, o, true, -1, -1, state.scrollRatio);
         }
+        // 骨碌碌上下文（当前楼/视效/背景/自动音乐）随阅读线推进上报
+        reportGululuContext();
       }, 500);
     });
     // 不再用 pagehide 兜底保存：销毁时页面 scrollLeft/滚动位置会被重置，
@@ -414,6 +418,15 @@
     startAutoScroll: startAutoScroll,
     stopAutoScroll: stopAutoScroll,
     isAutoScrolling: isAutoScrolling,
+    // 骨碌碌宿主层（批 8/9）
+    initGululu: initGululu,
+    applyParagraphComments: applyParagraphComments,
+    revealGululuGroup: revealGululuGroup,
+    revealGululuFloor: revealGululuFloor,
+    revealNextGululuGroups: revealNextGululuGroups,
+    gululuChapterInfo: gululuChapterInfo,
+    gululuResetUnlocks: gululuResetUnlocks,
+    reportGululuContext: reportGululuContext,
     bridgeVersion: function () { return BRIDGE_VERSION; },
     bridgeReadyPayload: bridgeReadyPayload,
     emitReady: emitReady,

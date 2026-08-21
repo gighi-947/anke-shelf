@@ -23,6 +23,9 @@ class AppPaths(val root: File) {
     val ngaLibraryDir: File get() = File(root, "nga_library")
     val gululuLibraryDir: File get() = File(root, "gululu_library")
     val ngaConfigFile: File get() = File(root, "nga_config.ini")
+    /** 骨碌碌阅读解锁状态（端私有，不入双端契约）。 */
+    val gululuUnlocksFile: File get() = File(root, "gululu_unlocks.json")
+    val gululuCluesFile: File get() = File(root, "gululu_clues.json")
 
     fun ensure() {
         root.mkdirs()

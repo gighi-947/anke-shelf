@@ -11,7 +11,7 @@
   // 桥协议版本：ready 握手时与 Kotlin 侧对照，不兼容时显式失败并记诊断。
   var BRIDGE_VERSION = 1;
   var BRIDGE_CAPABILITIES = [
-    'paged', 'scroll', 'scrollRatio', 'image', 'settled', 'annotation', 'assist',
+    'paged', 'scroll', 'scrollRatio', 'image', 'settled', 'annotation', 'assist', 'gululu',
   ];
 
   var state = {

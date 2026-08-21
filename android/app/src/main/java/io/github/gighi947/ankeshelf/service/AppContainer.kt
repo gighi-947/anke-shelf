@@ -7,6 +7,7 @@ import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.ChapterReadResult
 import io.github.gighi947.ankeshelf.data.EpubBook
 import io.github.gighi947.ankeshelf.data.EpubError
+import io.github.gighi947.ankeshelf.data.GululuSource
 import io.github.gighi947.ankeshelf.data.NativeBook
 import io.github.gighi947.ankeshelf.data.NativeBookWriter
 import io.github.gighi947.ankeshelf.data.ProgressEntry
@@ -42,6 +43,13 @@ class AppContainer(
     val searchHistory = io.github.gighi947.ankeshelf.data.SearchHistoryStore(appPaths.searchHistoryFile)
     val stats = StatsStore(appPaths.statisticsFile)
     val annotations = AnnotationStore(appPaths.annotationsFile)
+    /** 骨碌碌阅读解锁状态（骰点分组 + 秘密线索，端私有）。 */
+    val gululuUnlocks = io.github.gighi947.ankeshelf.data.GululuUnlockStore(
+        appPaths.gululuUnlocksFile,
+        appPaths.gululuCluesFile,
+    )
+    /** 骨碌碌在线评论（5 分钟缓存 + 离线回退）。 */
+    val gululuComments = GululuCommentService(appPaths)
     val repository = BookRepository(appPaths, shelf, progress)
     /** 图片代理用：给 NGA 图床补 Referer/Cookie 规避防盗链；带磁盘缓存，
      *  滚动回看/翻页往返时不重复下载同一图片。 */
@@ -57,6 +65,7 @@ class AppContainer(
         searchHistory.load()
         stats.load()
         annotations.load()
+        gululuUnlocks.load()
     }
 }
 
@@ -73,6 +82,8 @@ class BookSession(
     private val assetFn: ((Int, String) -> ByteArray?)? = null,
     /** 嵌套目录（EPUB nav/NCX 层级）；缺省为空表示按 spine 章节扁平展示。 */
     private val tocFn: () -> List<TocNode> = { emptyList() },
+    /** 骨碌碌公开书籍 ID（>0 表示这本书来自骨碌碌，宿主层交互据此启用）。 */
+    val gululuSourceId: Int = 0,
 ) : Closeable {
     fun chapterText(index: Int): ChapterReadResult = textFn(index)
     fun chapterTitle(index: Int): String = titleFn(index)
@@ -254,6 +265,7 @@ class BookRepository(
                         baseDirFn = { eb.chapterBaseDir(it) },
                         assetFn = { idx, rel -> eb.resolveAsset(idx, rel) },
                         tocFn = { TocTree.flatten(eb.toc.toList()) { href -> eb.tocSpineIndex(href) } },
+                        gululuSourceId = GululuSource.parseGululuIdentifier(eb.identifier) ?: 0,
                     ),
                 )
             }

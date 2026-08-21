@@ -93,6 +93,25 @@ data class WebViewReaderCallbacks(
     val onSelection: (ReaderSelection?) -> Unit = {},
     /** 点击已注入的高亮 mark（携带标注 id）。 */
     val onHighlightTap: (String) -> Unit = {},
+    // ---- 骨碌碌宿主层（批 8/9）----
+    /** 骰点分组被揭示（单组 / 批量），宿主负责持久化。 */
+    val onGululuUnlock: (List<String>) -> Unit = {},
+    /** 阅读线所在楼层变化（评论抽屉与弹幕据此换源）。 */
+    val onGululuFloor: (Int) -> Unit = {},
+    /** 当前楼层视效（空串=停止）。 */
+    val onGululuVfx: (String) -> Unit = {},
+    /** 氛围背景 URL（空串=清除）。 */
+    val onGululuBackground: (String) -> Unit = {},
+    /** 音乐：手动点击或自动标记到达阅读线。 */
+    val onGululuMusic: (url: String, title: String, auto: Boolean) -> Unit = { _, _, _ -> },
+    val onGululuMusicStop: () -> Unit = {},
+    /** 秘密密文与线索口令（明文只在宿主弹窗出现）。 */
+    val onGululuSecret: (title: String, cipher: String) -> Unit = { _, _ -> },
+    val onGululuClue: (title: String, password: String) -> Unit = { _, _ -> },
+    /** 点击段落评论徽标。 */
+    val onGululuParagraphComments: (String) -> Unit = {},
+    /** 本章骨碌碌元素统计：[组数, 未揭示组数, 秘密数, 线索数, 楼数]。 */
+    val onGululuStats: (List<Int>) -> Unit = {},
 )
 
 /**
@@ -134,6 +153,15 @@ fun WebViewChapterView(
     /** 自动滚动/自动翻页开关与速度倍率（对齐桌面 assist.js setAutoScroll）。 */
     autoScroll: Boolean = false,
     autoScrollSpeed: Double = 2.0,
+    /** 骨碌碌书籍才启用宿主层交互（骰点/秘密/音乐/背景/视效/段落评论）。 */
+    gululu: Boolean = false,
+    /** 已揭示的骰点分组（JSON 数组），首次 init 携带。 */
+    gululuUnlockedJson: String = "[]",
+    /** 段落评论计数（JSON：{paragraphId: count}），变化即重新注入徽标。 */
+    paragraphCommentsJson: String = "{}",
+    /** 一次性骨碌碌命令（如批量揭示/重置遮罩）；token 变化触发一次。 */
+    gululuCommand: String = "",
+    gululuCommandToken: Int = 0,
     session: BookSession,
     container: AppContainer,
     callbacks: WebViewReaderCallbacks,
@@ -319,6 +347,39 @@ fun WebViewChapterView(
         }
     }
 
+    // 段落评论徽标：评论加载完成/切换后重新注入（徽标带 data-textpos-exclude，不动坐标）。
+    LaunchedEffect(paragraphCommentsJson, pageReady.value, settled.value) {
+        if (!gululu || !pageReady.value || !settled.value) return@LaunchedEffect
+        webViewRef.value?.evaluateJavascript(
+            "AnkeReader.applyParagraphComments(${JSONObject.quote(paragraphCommentsJson)});",
+            null,
+        )
+    }
+
+    // 一次性骨碌碌命令（批量揭示 / 重置遮罩）。
+    LaunchedEffect(gululuCommandToken) {
+        if (gululuCommandToken == 0 || gululuCommand.isEmpty() || !pageReady.value) return@LaunchedEffect
+        webViewRef.value?.evaluateJavascript(gululuCommand, null)
+    }
+
+    // 本章骨碌碌元素统计（总览面板用）：排版稳定后查询一次。
+    LaunchedEffect(gululu, chapterIndex, settled.value, gululuCommandToken, gululuUnlockedJson) {
+        if (!gululu || !pageReady.value || !settled.value) return@LaunchedEffect
+        webViewRef.value?.evaluateJavascript("AnkeReader.gululuChapterInfo();") { raw ->
+            val text = raw?.trim()?.removeSurrounding("\"")?.replace("\\\"", "\"") ?: return@evaluateJavascript
+            val obj = runCatching { JSONObject(text) }.getOrNull() ?: return@evaluateJavascript
+            callbacksRef.value.onGululuStats(
+                listOf(
+                    obj.optInt("groups", 0),
+                    obj.optInt("locked", 0),
+                    obj.optInt("secrets", 0),
+                    obj.optInt("clues", 0),
+                    obj.optInt("floors", 0),
+                ),
+            )
+        }
+    }
+
     val bridge = remember {
         LiteBridge(
             callbacks = { callbacksRef.value },
@@ -461,6 +522,8 @@ fun WebViewChapterView(
                                 "offset:${initialOffsetRef.value},margin:${s.marginPx},gap:${s.gapPx}," +
                                 "scrollRatio:${initialRatioRef.value}," +
                                 "highlights:${JSONObject.quote(highlightsRef.value)}," +
+                                "gululu:$gululu," +
+                                "gululuUnlocked:${JSONObject.quote(gululuUnlockedJson)}," +
                                 "pageWidth:${s.pageWidth},fontSize:${s.fontSize}," +
                                 "lineHeight:${s.lineHeight},dualPage:${s.dualPage}," +
                                 "autoDual:${s.autoDual}," +
@@ -744,5 +807,77 @@ private class LiteBridge(
         val annId = id?.trim().orEmpty()
         if (annId.isEmpty()) return
         main.post { callbacks().onHighlightTap(annId) }
+    }
+
+    // ---- 骨碌碌宿主层 ----
+
+    @JavascriptInterface
+    fun gululuUnlock(groupId: String?) {
+        val id = groupId?.trim().orEmpty()
+        if (id.isEmpty()) return
+        main.post { callbacks().onGululuUnlock(listOf(id)) }
+    }
+
+    @JavascriptInterface
+    fun gululuUnlockAll(payload: String?) {
+        val ids = runCatching {
+            org.json.JSONArray(payload ?: "[]").let { array ->
+                (0 until array.length()).mapNotNull { array.optString(it).takeIf { s -> s.isNotBlank() } }
+            }
+        }.getOrDefault(emptyList())
+        if (ids.isEmpty()) return
+        main.post { callbacks().onGululuUnlock(ids) }
+    }
+
+    @JavascriptInterface
+    fun gululuFloor(floorId: Int) {
+        if (floorId <= 0) return
+        main.post { callbacks().onGululuFloor(floorId) }
+    }
+
+    @JavascriptInterface
+    fun gululuVfx(kind: String?) {
+        val value = kind?.trim().orEmpty()
+        main.post { callbacks().onGululuVfx(value) }
+    }
+
+    @JavascriptInterface
+    fun gululuBackground(url: String?) {
+        val value = url?.trim().orEmpty()
+        main.post { callbacks().onGululuBackground(value) }
+    }
+
+    @JavascriptInterface
+    fun gululuMusic(url: String?, title: String?, auto: Boolean) {
+        val value = url?.trim().orEmpty()
+        if (!value.startsWith("https://")) return
+        main.post { callbacks().onGululuMusic(value, title?.trim().orEmpty(), auto) }
+    }
+
+    @JavascriptInterface
+    fun gululuMusicStop() {
+        main.post { callbacks().onGululuMusicStop() }
+    }
+
+    @JavascriptInterface
+    fun gululuSecret(title: String?, cipher: String?) {
+        val c = cipher?.trim().orEmpty()
+        if (c.isEmpty()) return
+        main.post { callbacks().onGululuSecret(title?.trim().orEmpty(), c) }
+    }
+
+    @JavascriptInterface
+    fun gululuClue(title: String?, password: String?) {
+        val t = title?.trim().orEmpty()
+        val p = password?.trim().orEmpty()
+        if (t.isEmpty() || p.isEmpty()) return
+        main.post { callbacks().onGululuClue(t, p) }
+    }
+
+    @JavascriptInterface
+    fun gululuParagraphComments(paragraphId: String?) {
+        val id = paragraphId?.trim().orEmpty()
+        if (id.isEmpty()) return
+        main.post { callbacks().onGululuParagraphComments(id) }
     }
 }

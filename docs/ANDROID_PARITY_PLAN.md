@@ -47,9 +47,9 @@
 | G20.7 | EPUB3 生成：章节分组（作者章节标记 / 20 楼兜底）、`floor-<id>` 锚点、楼层卡片、封面、CSS | `gululu_epub.py` | ✅ 批 6（`data/GululuEpub.kt`；分组与单楼 HTML 双端 golden，产物结构与桌面同构且可被自家解析器 round-trip 打开） | 6 |
 | G20.8 | 导入任务：前台服务 + 进度/取消、`.part` 原子替换、注册书架 | `gululu_service.py` | ✅ 批 6（`service/GululuImporter.kt` + `GululuImportService` 前台服务 + 下载页「骨碌碌导入」面板；取消/失败不留半成品有专测） | 6 |
 | G20.9 | 热更新：`snapshot.json` 基线、append-only 前缀不变量、旧书一次性迁移、失败回滚保 `book_id` | `gululu_update.py` | ✅ 批 7（`data/GululuUpdate.kt` 纯逻辑 + `service/GululuUpdater.kt` 编排；11 例覆盖删除/重排/替换冲突、旧书迁移、无新增不重建） | 7 |
-| G20.10 | 宿主层交互 A：评论抽屉 + 段落评论徽标联动 + 只读弹幕 | `gululu-comments.js` | — | 8 |
-| G20.11 | 宿主层交互 B：骰点揭示（单组/整楼/接下来 10 组）+ 音效、迷雾渐显、秘密弹窗 + 线索收集、解锁重置 | `gululu-assistant-reader.js` / `gululu-secrets.js` | — | 9 |
-| G20.12 | 宿主层交互 C：音乐播放器、氛围背景、Canvas 视效、沉浸总览 | `gululu-immersive.js` / `gululu-overview.js` | — | 9 |
+| G20.10 | 宿主层交互 A：评论抽屉 + 段落评论徽标联动 + 只读弹幕 | `gululu-comments.js` | ✅ 批 8（`60-gululu.js` 徽标注入 + `NativeReaderGululu.kt` 抽屉/弹幕；徽标带 `data-textpos-exclude`，纪律测试守护） | 8 |
+| G20.11 | 宿主层交互 B：骰点揭示（单组/整楼/接下来 10 组）、迷雾显隐、秘密弹窗 + 线索收集、解锁重置 | `gululu-assistant-reader.js` / `gululu-secrets.js` | ✅ 批 9（`GululuUnlockStore` 端私有持久化 + 总览面板；点击音效未做，见备注） | 9 |
+| G20.12 | 宿主层交互 C：音乐播放器、氛围背景、视效、沉浸总览 | `gululu-immersive.js` / `gululu-overview.js` | ✅ 批 9（MediaPlayer 循环播放/同曲切停、Coil 背景、Compose 视效覆盖层、总览面板；Canvas 粒子改为低成本覆盖层） | 9 |
 
 ## 3. 批次计划
 
@@ -110,6 +110,6 @@
 | 5 骨碌碌协议层 | ✅ 代码完成（纯协议层，无 UI 入口） | G20.4/G20.5/G20.6；golden 扩到 21 AST + 15 楼层管线 + 5 评论用例，双端逐字符一致；Android JVM 176 项、Windows 324 项 |
 | 6 骨碌碌导入 | ✅ 代码完成，待真机联网验证 | G20.7/G20.8；下载页新增「骨碌碌导入」Tab；Android JVM 186 项、Windows 326 项；EPUB 结构 + round-trip + `.part` 不留半成品均有测试 |
 | 7 骨碌碌热更新 | ✅ 代码完成，待真机联网验证 | G20.9；导入即建基线；下载页「检查更新」；Android JVM 197 项 |
-| 8 骨碌碌阅读交互 A | ⏳ 未开始 | — |
-| 9 骨碌碌阅读交互 B/C | ⏳ 未开始 | — |
+| 8 骨碌碌阅读交互 A | ✅ 代码完成，待真机验证 | G20.10；按楼按需加载 + 段落徽标联动 + 只读弹幕 |
+| 9 骨碌碌阅读交互 B/C | ✅ 代码完成，待真机验证 | G20.11/G20.12；Android JVM 204 项；点击音效与 Canvas 粒子视效降级实现（见 DevLog） |
 | 10 收尾与发布 | ⏳ 未开始 | — |
