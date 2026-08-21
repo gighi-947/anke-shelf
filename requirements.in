@@ -6,4 +6,4 @@ ebooklib==0.20
 curl_cffi==0.16.0
 Pillow==12.3.0
 jsonschema==4.26.0
-cryptography==49.0.0
+cryptography==50.0.0
