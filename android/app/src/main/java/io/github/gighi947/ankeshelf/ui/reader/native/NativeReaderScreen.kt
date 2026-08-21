@@ -304,8 +304,18 @@ fun NativeReaderScreen(
         when (val r = session.chapterText(chapterIndex)) {
             is ChapterReadResult.Success -> runCatching {
                 val parts = extractReaderParts(r.text)
+                // 自建 HTML 壳不会自动加载章节 <link rel="stylesheet">；
+                // 这里按链接把 EPUB 自带 CSS 读出来，内联进页面（骨碌碌楼层卡片样式）。
+                val linkedCss = parts.styleHrefs.joinToString(" ") { href ->
+                    session.readAsset(chapterIndex, href)?.decodeToString().orEmpty()
+                }
+                val partsWithCss = parts.copy(
+                    headStyles = listOf(parts.headStyles, linkedCss)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" "),
+                )
                 val plain = TextExtractor.extractDomText(parts.body)
-                val html = buildReaderHtml(parts, theme, readerSettings, session.id)
+                val html = buildReaderHtml(partsWithCss, theme, readerSettings, session.id)
                 ChapterUiState.Html(html, plain)
             }.getOrElse { e -> ChapterUiState.Error(e.message ?: "章节渲染失败") }
             is ChapterReadResult.NotFound -> ChapterUiState.Error("章节不存在，请返回目录")

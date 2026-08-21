@@ -54,10 +54,11 @@ private fun isUnsafeUrl(value: String): Boolean {
         v.startsWith("data:text/html")
 }
 
-/** 章节 HTML 的可渲染部分：<body> 内容 + <head> 里的样式块。 */
+/** 章节 HTML 的可渲染部分：<body> 内容 + <head> 里的样式块 + 外部样式表链接。 */
 data class ReaderHtmlParts(
     val body: String,
     val headStyles: String,
+    val styleHrefs: List<String> = emptyList(),
 )
 
 /**
@@ -78,8 +79,19 @@ fun extractReaderParts(htmlText: String): ReaderHtmlParts {
     }
     val styles = Regex("(?is)<style[^>]*>.*?</style>")
         .findAll(htmlText)
-        .joinToString("\n") { it.value }
-    return ReaderHtmlParts(body = deferContentImages(sanitizeReaderBody(body)), headStyles = styles)
+        .joinToString(" ") { it.value }
+    // 章节 head 里的 <link rel="stylesheet"> 也要在自建壳里恢复加载；
+    // 安卓 WebView 不复用原 XHTML 外壳，不处理会把 EPUB 自带 CSS 弄丢
+    // （骨碌碌楼层卡片等样式就是这样丢的）。
+    val styleHrefs = Jsoup.parse(htmlText)
+        .select("link")
+        .filter { it.attr("rel").lowercase() == "stylesheet" }
+        .mapNotNull { it.attr("href").takeIf { h -> h.isNotBlank() } }
+    return ReaderHtmlParts(
+        body = deferContentImages(sanitizeReaderBody(body)),
+        headStyles = styles,
+        styleHrefs = styleHrefs,
+    )
 }
 
 /** 正文图片统一补 `loading="lazy" decoding="async"`（已有 loading 的保持原样）。

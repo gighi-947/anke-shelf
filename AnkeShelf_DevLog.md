@@ -65,6 +65,20 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：修复骨碌碌楼层卡片样式未加载
+
+- 背景：测试机反馈骨碌碌安科的楼层卡片样式丢失。
+- 根因：安卓阅读器自建 HTML 壳时只提取章节内 `<style>` 块，没有恢复
+  `<link rel="stylesheet">` 外部样式表；骨碌碌 EPUB 的楼层卡片 CSS 位于
+  `EPUB/style/main.css`，因此整个 CSS 未进入阅读页。
+- 修复：
+  - `extractReaderParts` 额外返回 `styleHrefs`（Jsoup 提取 rel=stylesheet 链接）；
+  - `NativeReaderScreen` 组装章节时按链接用 `session.readAsset` 读取 EPUB
+    自带 CSS，与 `<style>` 块一起内联进阅读页；
+  - 保持主题自适应：原 CSS 中的 `.gululu-floor` 边框/内边距等几何样式恢复，
+    颜色由 reader.css 的 CSS 变量继续接管。
+- 验证：`compileDebugKotlin testDebugUnitTest` BUILD SUCCESSFUL；
+  `assembleRelease` 成功并 `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：统一下载页入口（NGA / 骨碌碌）
 
 - 背景：用户测试机反馈下载页未完全整合，骨碌碌与 NGA 下载仍分散在两个一级菜单。
