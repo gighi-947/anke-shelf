@@ -65,6 +65,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：骰子点击与进书卡顿修复（第十八批）
+
+- 骰子仍点不开：原因是遮罩元素 `font-size:0` 时用 `min-width:0.9em` 会计算为 0，
+  元素实际尺寸为零，无法命中点击。改为 `min-width:14px; min-height:16px`。
+- 进书卡顿：章节 HTML 组装（Jsoup 清洗 + 纯文本提取 + 构建 HTML）移到
+  `Dispatchers.Default` 后台线程，主线程先显示 Loading 转圈，避免从书架
+  进入阅读器时大章节阻塞主线程。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：骰子遮罩可点击修复（第十七批）
 
 - 修复：上一版用 `visibility:hidden` 隐藏骰点数值，但 visibility:hidden 的

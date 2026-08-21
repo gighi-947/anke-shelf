@@ -1520,8 +1520,8 @@
         // 可点击的遮罩：不能用 visibility:hidden（会挡住点击），
         // 用透明文字 + 灰色胶囊背景，并保持元素可点。
         el.style.display = 'inline-block';
-        el.style.minWidth = '0.9em';
-        el.style.minHeight = '1em';
+        el.style.minWidth = '14px';
+        el.style.minHeight = '16px';
         el.style.color = 'transparent';
         el.style.background = 'rgba(127,127,127,0.35)';
         el.style.fontSize = '0';

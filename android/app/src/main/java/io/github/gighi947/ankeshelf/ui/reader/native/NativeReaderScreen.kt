@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -103,6 +104,8 @@ import kotlin.math.roundToInt
 
 /** 章节内容 UI 状态：读取失败走显式错误分支，不静默渲染空白页。 */
 private sealed interface ChapterUiState {
+    data object Loading : ChapterUiState
+
     /** [plain] 为折叠纯文本（text_offset 坐标系），供百分比与书签摘要使用。 */
     data class Html(val html: String, val plain: String) : ChapterUiState {
         val len: Int get() = plain.length
@@ -303,29 +306,37 @@ fun NativeReaderScreen(
         runCatching { Color(android.graphics.Color.parseColor(theme.background)) }.getOrDefault(Color.White)
     }
 
-    // 章节 HTML：换章/换书时后台组装一次；主题/字号后续用 JS 桥更新，不重载页面。
-    // 读取失败进入显式分支（NotFound/Corrupt/Io），不静默渲染空白。
-    val chapterState = remember(session.id, chapterIndex, readerSettings.book_fonts, readerSettings.custom_font) {
-        when (val r = session.chapterText(chapterIndex)) {
-            is ChapterReadResult.Success -> runCatching {
-                val parts = extractReaderParts(r.text)
-                // 自建 HTML 壳不会自动加载章节 <link rel="stylesheet">；
-                // 这里按链接把 EPUB 自带 CSS 读出来，内联进页面（骨碌碌楼层卡片样式）。
-                val linkedCss = parts.styleHrefs.joinToString(" ") { href ->
-                    session.readAsset(chapterIndex, href)?.decodeToString().orEmpty()
-                }
-                val partsWithCss = parts.copy(
-                    headStyles = listOf(parts.headStyles, linkedCss)
-                        .filter { it.isNotBlank() }
-                        .joinToString(" "),
-                )
-                val plain = TextExtractor.extractDomText(parts.body)
-                val html = buildReaderHtml(partsWithCss, theme, readerSettings, session.id)
-                ChapterUiState.Html(html, plain)
-            }.getOrElse { e -> ChapterUiState.Error(e.message ?: "章节渲染失败") }
-            is ChapterReadResult.NotFound -> ChapterUiState.Error("章节不存在，请返回目录")
-            is ChapterReadResult.Corrupt -> ChapterUiState.Error("章节文件损坏：${r.detail}")
-            is ChapterReadResult.Io -> ChapterUiState.Error("章节读取失败：${r.detail}")
+    // 章节 HTML：后台线程组装，避免大章节 Jsoup 清洗/纯文本提取阻塞主线程
+    // 造成“从书架进入阅读器卡一下”。读取失败走显式错误分支。
+    val chapterState by produceState<ChapterUiState>(
+        initialValue = ChapterUiState.Loading,
+        session.id,
+        chapterIndex,
+        readerSettings.book_fonts,
+        readerSettings.custom_font,
+    ) {
+        value = withContext(Dispatchers.Default) {
+            when (val r = session.chapterText(chapterIndex)) {
+                is ChapterReadResult.Success -> runCatching {
+                    val parts = extractReaderParts(r.text)
+                    // 自建 HTML 壳不会自动加载章节 <link rel="stylesheet">；
+                    // 这里按链接把 EPUB 自带 CSS 读出来，内联进页面（骨碌碌楼层卡片样式）。
+                    val linkedCss = parts.styleHrefs.joinToString(" ") { href ->
+                        session.readAsset(chapterIndex, href)?.decodeToString().orEmpty()
+                    }
+                    val partsWithCss = parts.copy(
+                        headStyles = listOf(parts.headStyles, linkedCss)
+                            .filter { it.isNotBlank() }
+                            .joinToString(" "),
+                    )
+                    val plain = TextExtractor.extractDomText(parts.body)
+                    val html = buildReaderHtml(partsWithCss, theme, readerSettings, session.id)
+                    ChapterUiState.Html(html, plain)
+                }.getOrElse { e -> ChapterUiState.Error(e.message ?: "章节渲染失败") }
+                is ChapterReadResult.NotFound -> ChapterUiState.Error("章节不存在，请返回目录")
+                is ChapterReadResult.Corrupt -> ChapterUiState.Error("章节文件损坏：${r.detail}")
+                is ChapterReadResult.Io -> ChapterUiState.Error("章节读取失败：${r.detail}")
+            }
         }
     }
 
@@ -530,6 +541,12 @@ fun NativeReaderScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(themeColor(theme.background, Color.White))) {
         when (val state = chapterState) {
+            is ChapterUiState.Loading -> Box(
+                Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = fg.copy(alpha = 0.8f))
+            }
             is ChapterUiState.Error -> Box(
                 Modifier.fillMaxSize().padding(24.dp),
                 contentAlignment = Alignment.Center,
