@@ -33,7 +33,7 @@
     `node contracts/tests/reader-lite-parts.test.js`（9 parts / 62338 字符）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 204 项（203 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 206 项（205 过 / 1 跳）；
     DisciplineTest 9 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
@@ -65,6 +65,19 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：修复骨碌碌楼层卡片容器被清洗丢失（补充根因）
+
+- 背景：上一修只恢复了 EPUB 外部 CSS，测试机反馈楼层卡片仍只有“第xx楼”
+  文字颜色恢复，边框/内边距/头部布局没有渲染。
+- 根因：`sanitizeReaderBody` 白名单没有 `section/header`，`<section
+  class="gululu-floor">` 和 `<header class="floor-head">` 被解包，类名丢失，
+  CSS 选择器自然命中不了；同时 `id` 不在全局属性里，`floor-<id>` 锚点也被剥掉。
+- 修复：
+  - `ALLOWED_TAGS` 增加 `section / article / header / footer / main`；
+  - `GLOBAL_ATTRS` 增加 `id`；
+  - 新增 2 个 JVM 回归测试（Gululu 楼层容器保留、link stylesheet 提取）。
+- 验证：`gradlew testDebugUnitTest` = 206 项（205 过 / 1 跳）；
+  `assembleRelease` 成功并 `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：修复骨碌碌楼层卡片样式未加载
 
 - 背景：测试机反馈骨碌碌安科的楼层卡片样式丢失。

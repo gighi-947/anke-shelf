@@ -43,7 +43,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 326 项（3.14：全过；bundled 3.12：全过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 59 methods + `bridge-contract`（桥版本 1 / 能力含 annotation·assist·gululu）+ `reader-lite-parts`（9 parts / 62338 字符）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
-| Android JVM 单测 | 204 项（203 过 / 1 跳；2026-08-20 实跑复核） |
+| Android JVM 单测 | 206 项（205 过 / 1 跳；2026-08-21 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |

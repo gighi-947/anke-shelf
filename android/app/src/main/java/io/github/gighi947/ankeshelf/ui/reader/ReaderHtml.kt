@@ -16,6 +16,7 @@ private val ALLOWED_TAGS = setOf(
     "a", "b", "strong", "i", "em", "u", "s", "strike", "del", "ins", "small", "big",
     "sub", "sup", "code", "pre", "kbd", "mark", "wbr",
     "span", "div", "p", "br", "hr",
+    "section", "article", "header", "footer", "main",
     "h1", "h2", "h3", "h4", "h5", "h6",
     "ul", "ol", "li", "dl", "dt", "dd",
     "blockquote", "details", "summary",
@@ -32,7 +33,7 @@ private val BLOCKED_TAGS = setOf(
     "applet", "frame", "frameset", "svg", "math",
 )
 
-private val GLOBAL_ATTRS = setOf("class", "style", "title", "lang", "dir")
+private val GLOBAL_ATTRS = setOf("id", "class", "style", "title", "lang", "dir")
 
 private val TAG_ATTRS: Map<String, Set<String>> = mapOf(
     "a" to setOf("href", "target", "rel", "name"),

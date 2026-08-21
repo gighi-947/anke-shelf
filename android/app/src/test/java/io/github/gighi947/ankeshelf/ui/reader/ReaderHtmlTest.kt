@@ -143,6 +143,25 @@ class ReaderHtmlTest {
     }
 
     @Test
+    fun sanitizePreservesGululuFloorSectionAndHeader() {
+        val html = "<section class=\"gululu-floor\" id=\"floor-123\"><header class=\"floor-head\">" +
+            "<span class=\"floor-number\">第 1 楼</span></header></section>"
+        val clean = sanitizeReaderBody(html)
+        assertTrue(clean.contains("gululu-floor"))
+        assertTrue(clean.contains("floor-head"))
+        assertTrue(clean.contains("floor-number"))
+        assertTrue(clean.contains("id=\"floor-123\""))
+    }
+
+    @Test
+    fun extractLinkedStyleHrefs() {
+        val html = "<html><head><link rel=\"stylesheet\" href=\"../style/main.css\"/></head>" +
+            "<body><p>正文</p></body></html>"
+        val parts = extractReaderParts(html)
+        assertEquals(listOf("../style/main.css"), parts.styleHrefs)
+    }
+
+    @Test
     fun extractReaderPartsAppliesImageDefer() {
         val parts = extractReaderParts("<body><img src='x.jpg'></body>")
         assertTrue(parts.body.contains("loading=\"lazy\" decoding=\"async\""))
