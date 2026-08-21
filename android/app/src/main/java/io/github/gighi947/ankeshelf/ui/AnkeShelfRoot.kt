@@ -275,6 +275,13 @@ fun AnkeShelfRoot(container: AppContainer) {
                                         container.settings.update(SettingsPatch(shelf_sort = value))
                                         settingsTick++
                                     },
+                                    onToggleHideBrackets = {
+                                        val cur = container.settings.getAll().hide_title_brackets
+                                        container.settings.update(
+                                            SettingsPatch(hide_title_brackets = !cur),
+                                        )
+                                        settingsTick++
+                                    },
                                     onImport = { uri ->
                                         when (val result = container.repository.importEpub(context, uri)) {
                                             is RepoResult.Ok -> Unit

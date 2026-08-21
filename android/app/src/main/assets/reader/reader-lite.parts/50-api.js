@@ -325,11 +325,11 @@
       // 分页模式的保存只走翻页 saveProgressNow；字体/图片重排引发的
       // window 滚动事件绝不能当成滚动进度保存（会把正确偏移覆盖成页顶采样）。
       if (state.paged) return;
-      // 滚动发生即通知 Compose 外壳（250ms 节流）：唤出浮动栏后的“新滚动”才允许
+      // 滚动发生即通知 Compose 外壳（80ms 节流）：唤出浮动栏后的“新滚动”才允许
       // 自动收起；不能等 500ms 防抖保存回调——那可能是唤出前滚动的迟到事件，
       // 会把刚唤出的控制条误收（9.59）。
       var now = Date.now();
-      if (now - lastScrollNotify > 250) {
+      if (now - lastScrollNotify > 80) {
         lastScrollNotify = now;
         callBridge('onScrollMoved');
       }

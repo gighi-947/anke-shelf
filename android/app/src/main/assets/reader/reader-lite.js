@@ -1358,11 +1358,11 @@
       // 分页模式的保存只走翻页 saveProgressNow；字体/图片重排引发的
       // window 滚动事件绝不能当成滚动进度保存（会把正确偏移覆盖成页顶采样）。
       if (state.paged) return;
-      // 滚动发生即通知 Compose 外壳（250ms 节流）：唤出浮动栏后的“新滚动”才允许
+      // 滚动发生即通知 Compose 外壳（80ms 节流）：唤出浮动栏后的“新滚动”才允许
       // 自动收起；不能等 500ms 防抖保存回调——那可能是唤出前滚动的迟到事件，
       // 会把刚唤出的控制条误收（9.59）。
       var now = Date.now();
-      if (now - lastScrollNotify > 250) {
+      if (now - lastScrollNotify > 80) {
         lastScrollNotify = now;
         callBridge('onScrollMoved');
       }
@@ -1508,12 +1508,14 @@
         el.classList.remove('masked');
         el.style.color = '';
         el.style.background = '';
+        el.style.visibility = '';
       } else {
         el.classList.add('masked');
         // 内联兜底：部分 WebView 对 EPUB 内联 CSS 的 currentColor+transparent
         // 组合不生效，直接写内联样式保证数值不可见。
         el.style.color = 'transparent';
         el.style.background = 'currentColor';
+        el.style.visibility = 'hidden';
       }
       // 直接绑定兜底：部分机型上 document 级委托会被阅读器点击处理挡住。
       el.onclick = function (ev) {
@@ -1549,6 +1551,7 @@
       nodes[i].classList.add('revealed');
       nodes[i].style.color = '';
       nodes[i].style.background = '';
+      nodes[i].style.visibility = '';
     }
     var fogs = document.querySelectorAll('[data-gululu-fog-lock="' + groupId + '"]');
     for (i = 0; i < fogs.length; i++) fogs[i].classList.remove('gululu-fog-hidden');

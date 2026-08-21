@@ -133,6 +133,7 @@ fun NativeReaderScreen(
     var chapterIndex by remember(session.id) { mutableIntStateOf(initialChapter.coerceIn(0, session.chapters.lastIndex.coerceAtLeast(0))) }
     var showToc by remember { mutableStateOf(false) }
     var barsVisible by remember { mutableStateOf(true) }
+    var barsShownAt by remember { mutableStateOf(0L) }
     // 手动唤出的控制条保持显示（不再 3 秒自动收），滚动/翻页后才收起。
     var barsHeld by remember { mutableStateOf(false) }
     var pageInfo by remember { mutableStateOf(Pair(0, 1)) }
@@ -580,12 +581,6 @@ fun NativeReaderScreen(
                                 0f
                             }
                         }
-                        // 滚动模式：滚动停止后的防抖保存回调也作为“滚动已发生”的兜底，
-                        // 用于部分机型 window scroll 事件没触发 onScrollMoved 的场景。
-                        if (!readerSettings.pagination && barsVisible) {
-                            barsHeld = false
-                            barsVisible = false
-                        }
                     },
                     onPagedAnchor = { ch, offset ->
                         progressTracker.onPagedAnchor(ch, offset)
@@ -599,9 +594,11 @@ fun NativeReaderScreen(
                     // 唤出浮动栏后发生新的滚动才自动收起（滚动事件发生时即时通知，
                     // 不等防抖保存回调，避免唤出前的迟到滚动把刚唤出的控制条误收）。
                     onScrollMoved = {
-                        // 滚动模式：只要悬浮栏可见，新滚动就收起；不要求 barsHeld，
-                        // 否则从自动显示进入滚动时不会被收起（骨碌碌反馈）。
-                        if (!readerSettings.pagination && barsVisible) {
+                        // 滚动模式：悬浮栏可见且距“唤出时刻”超过 350ms 才自动收起，
+                        // 避免“刚滚完 → 快速唤出 → 迟到的滚动事件又把栏收走”。
+                        if (!readerSettings.pagination && barsVisible &&
+                            android.os.SystemClock.uptimeMillis() - barsShownAt > 350
+                        ) {
                             barsHeld = false
                             barsVisible = false
                         }
@@ -624,6 +621,7 @@ fun NativeReaderScreen(
                             "middle" -> {
                                 barsVisible = !barsVisible
                                 barsHeld = barsVisible
+                                if (barsVisible) barsShownAt = android.os.SystemClock.uptimeMillis()
                             }
                             "hide" -> {
                                 barsVisible = false

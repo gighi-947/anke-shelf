@@ -124,6 +124,7 @@ fun BookshelfScreen(
     onShelfViewChange: (String) -> Unit,
     sort: String,
     onSortChange: (String) -> Unit,
+    onToggleHideBrackets: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val launcher = rememberLauncherForActivityResult(
@@ -170,6 +171,16 @@ fun BookshelfScreen(
             TopAppBar(
                 title = { PageHeaderTitle("安科书架") },
                 actions = {
+                    TextButton(
+                        onClick = onToggleHideBrackets,
+                    ) {
+                        Text(
+                            if (hideBrackets) "前缀已隐藏" else "隐藏前缀",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (hideBrackets) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     IconButton(onClick = { sortMenu = true }) {
                         Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "\u6392\u5e8f")
                     }

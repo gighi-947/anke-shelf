@@ -217,10 +217,12 @@ body.paged .gululu-floor .floor-head {
     font-size: 0.85em;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    transition: background-color 120ms ease-out, opacity 120ms ease-out;
 }
 
 .chapter-nav-btn:active {
     opacity: 0.7;
+    background: color-mix(in srgb, var(--reader-primary) 18%, transparent);
 }
 
 body.paged .chapter-nav-row {

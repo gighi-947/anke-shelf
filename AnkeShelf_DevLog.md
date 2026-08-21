@@ -65,6 +65,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈修复（第十批）
+
+- 修复：
+  - 悬浮栏自动收起加 350ms 唤出保护，并移除 onProgress 兜底（避免“刚滚完
+    快速唤出又被收走”）；JS 滚动通知节流 250ms → 80ms；
+  - 底部换章按钮增加按压态（背景色过渡 + 透明度）；
+  - 骰点未揭示值再增加 `visibility:hidden` 兜底，解决部分 WebView 数值仍可见；
+  - 书架首页新增“隐藏前缀/前缀已隐藏”按钮，一键切换书名括号过滤。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：测试机反馈修复（第九批）
 
 - 修复：滚动模式下，除 `onScrollMoved` 外，防抖保存回调 `onProgress` 也作为
