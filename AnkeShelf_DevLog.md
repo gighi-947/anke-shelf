@@ -8,10 +8,10 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-20）
+## 1. 当前状态（2026-08-21）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
-  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；五批接手风险修复已合入；
+  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；v1.6.0 / android-v1.3.0 已发布；五批接手风险修复已合入；
   P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统、
   P5-E1 Cookie 粘贴解析、P5-E2 双端应用内登录（Android WebView +
   Windows pywebview 二级窗）、NGA 主题自适应
@@ -21,8 +21,8 @@
   文档漂移治理已强化
   （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
   精确提交与远端状态以 `git log` / `git status` 为准。
-- 版本线：Windows `v1.5.1`（已发布，AnkeShelf-v1.5.1.zip）；
-  Android `android-v1.2.0`（已发布，AnkeShelf-v1.2.0-android.apk）。
+- 版本线：Windows `v1.6.0`（已发布，AnkeShelf-v1.6.0.zip）；
+  Android `android-v1.3.0`（已发布，AnkeShelf-v1.3.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 326 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
@@ -64,6 +64,24 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-21 release：v1.6.0 / android-v1.3.0 发布与 PR/CI 收尾（第二十一批）
+
+- 版本号全面更新：Windows `app/__init__.py` → 1.6.0；Android
+  `build.gradle.kts` → versionCode 4 / versionName 1.3.0；README/CHANGELOG/
+  VERSIONING 同步。
+- README 截图全部换新：18 张新截图经 Pillow 压缩为 12 张 WebP
+  （`docs/screenshots/` 4.9MB → 0.8MB），旧截图全部移除。
+- 构建并发布双端 Release：`v1.6.0`（AnkeShelf-v1.6.0.zip + sha256）、
+  `android-v1.3.0`（AnkeShelf-v1.3.0-android.apk）；标签最终指向修复后的 main。
+- 新增 `nga-post-template.bbcode` 宣传帖模板（bbs code，版本与截图占位符）。
+- 修复 Windows CI：`gululu_start_import` 新增 `clear_cache` 后测试 mock 未同步，
+  已在 `tests/test_gululu_service.py` 适配并通过。
+- 7 个 Dependabot PR 处理完毕：合并 5 个通过项（gradle-wrapper 9.7.0 /
+  espresso-core 3.7.0 / coil 3.5.0 / pyinstaller 6.22.2 / cryptography 50.0.0），
+  关闭 2 个失败项（core-ktx 1.19.0、okhttp 5.5.0，需更高 compileSdk）。
+- 验证：main 与两个 tag 的 Windows / Android / Contracts CI 全绿；
+  Python AST 契约与 Android JVM 全量单测通过。
 
 ### 2026-08-21 android：骰子遮罩位置与悬浮栏灵敏度（第十九批）
 
