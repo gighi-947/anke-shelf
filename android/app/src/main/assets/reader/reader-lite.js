@@ -10,6 +10,7 @@
   var MAX_PAGED_TEXT = 800000;
   // 桥协议版本：ready 握手时与 Kotlin 侧对照，不兼容时显式失败并记诊断。
   var BRIDGE_VERSION = 1;
+  // 桥能力声明（bridge-contract / DisciplineTest 锁定；宿主就绪日志消费）。
   var BRIDGE_CAPABILITIES = [
     'paged', 'scroll', 'scrollRatio', 'image', 'settled', 'annotation', 'assist', 'gululu',
   ];
@@ -20,7 +21,6 @@
     chapterIndex: 0,
     margin: 40,
     gap: 28,
-    pageWidth: 1,
     fontSize: 18,
     lineHeight: 1.8,
     dualPage: false,
@@ -64,11 +64,6 @@
   function scrollEl() { return document.getElementById('paged-scroll'); }
 
   /* ---------- paging geometry (mirrors desktop paged.js) ---------- */
-  function contentWidth(fw, pageWidth, fontSize) {
-    var maxW = Math.round(46 * (pageWidth || 1) * (fontSize || 18));
-    return Math.max(120, Math.min(fw, maxW));
-  }
-
   function shouldAutoDual(fw, fh) {
     if (fw < 800 || fw <= fh) return false;
     var aspect = fw / fh;
@@ -469,7 +464,7 @@
     var er = el.getBoundingClientRect();
     var x = Math.max(2, Math.min(er.left + state.margin + 2, window.innerWidth - 2));
     var y = Math.max(2, er.top + (state.topInset || 0) + 8);
-    var off = offsetAtPointPaged(ctx, x, y);
+    var off = offsetAtPoint(ctx, x, y);
     return off === null ? 0 : off;
   }
 
@@ -479,7 +474,7 @@
     if (!ctx) return 0;
     var x = Math.max(2, Math.min(window.innerWidth / 2, window.innerWidth - 2));
     var y = sampleOffsetY();
-    var off = offsetAtPointScroll(ctx, x, y);
+    var off = offsetAtPoint(ctx, x, y);
     if (off !== null) {
       state.scrollRatio = -1;
       return off;
@@ -539,13 +534,9 @@
     return null;
   }
 
-  function offsetAtPointPaged(ctx, x, y) {
-    return scanForText(ctx, x, y, Math.max(y + 24, Math.round(viewH() - 30)));
-  }
-
-  function offsetAtPointScroll(ctx, x, y) {
-    // 扫描整页而不是只扫采样点下方 120px：屏幕中部是图片时，
-    // 下方还有文本也能找到（图片只占一部分屏幕的常见场景）。
+  // 采样点向下扫描到页底（覆盖“采样点是图片、下方还有文本”的场景；
+  // 分页页顶与滚动中线共用同一扫描策略）。
+  function offsetAtPoint(ctx, x, y) {
     return scanForText(ctx, x, y, Math.max(y + 24, Math.round(viewH() - 30)));
   }
 
@@ -718,12 +709,12 @@
   /* ---------- annotations: highlight injection + selection reporting ---------- */
   var HL_CLASS = 'hl-mark';
 
-  function parseJsonSafe(payload) {
+  function parseJsonSafe(payload, tag) {
     if (!payload) return null;
     try {
       return JSON.parse(payload);
     } catch (e) {
-      log('[ann] payload parse failed');
+      log('[' + (tag || 'ann') + '] payload parse failed: ' + (e && e.message ? e.message : e));
       return null;
     }
   }
@@ -1031,10 +1022,6 @@
     }
     return true;
   }
-
-  function isAutoScrolling() {
-    return !!(autoState.raf || autoState.timer);
-  }
   /* ---------- Kotlin-facing API ---------- */
   function bridgeReadyPayload() {
     return { bridgeVersion: BRIDGE_VERSION, capabilities: BRIDGE_CAPABILITIES.slice() };
@@ -1267,7 +1254,6 @@
     state.chapterIndex = opts.chapterIndex || 0;
     state.margin = opts.margin || 40;
     state.gap = opts.gap || 28;
-    state.pageWidth = opts.pageWidth || 1;
     state.fontSize = opts.fontSize || 18;
     state.lineHeight = opts.lineHeight || 1.8;
     state.dualPage = !!opts.dualPage;
@@ -1445,37 +1431,26 @@
     applyTypography: applyTypography,
     setMode: setMode,
     flipPage: flipPage,
-    currentOffset: currentOffset,
     currentScrollState: currentScrollState,
     onResize: onResize,
     setInsets: setInsets,
-    gotoOffset: gotoOffset,
     openImageAt: openImageAt,
     geometry: geometry,
     shouldAutoDual: shouldAutoDual,
     buildText: TextPos.build,
-    // 标注（批 1）：注入高亮 / 读取选区 / 清选区 / 按 text_offset 跳转
+    // 标注（批 1）：注入高亮 / 清选区 / 按 text_offset 跳转
     applyHighlights: applyHighlights,
-    selectionInfo: function () {
-      var info = currentSelectionInfo();
-      return info ? JSON.stringify(info) : '';
-    },
     clearSelection: clearSelection,
     gotoTextOffset: gotoTextOffset,
     // 阅读辅助（批 2）：自动滚动/自动翻页
     startAutoScroll: startAutoScroll,
     stopAutoScroll: stopAutoScroll,
-    isAutoScrolling: isAutoScrolling,
     // 骨碌碌宿主层（批 8/9）
-    initGululu: initGululu,
     hitGululuInteractive: hitGululuInteractive,
     applyParagraphComments: applyParagraphComments,
-    revealGululuGroup: revealGululuGroup,
-    revealGululuFloor: revealGululuFloor,
     revealNextGululuGroups: revealNextGululuGroups,
     gululuChapterInfo: gululuChapterInfo,
     gululuResetUnlocks: gululuResetUnlocks,
-    reportGululuContext: reportGululuContext,
     bridgeVersion: function () { return BRIDGE_VERSION; },
     bridgeReadyPayload: bridgeReadyPayload,
     emitReady: emitReady,
@@ -1498,7 +1473,7 @@
   };
 
   function gululuUnlockedIds(payload) {
-    var list = parseJsonSafe(payload) || [];
+    var list = parseJsonSafe(payload, 'gululu') || [];
     var map = {};
     for (var i = 0; i < list.length; i++) map[String(list[i])] = true;
     return map;
@@ -1619,7 +1594,7 @@
    * 徽标带 data-textpos-exclude，不进入折叠纯文本，因此 text_offset 不变。
    */
   function applyParagraphComments(payload) {
-    var counts = parseJsonSafe(payload) || {};
+    var counts = parseJsonSafe(payload, 'gululu') || {};
     var existing = document.querySelectorAll('.gululu-paragraph-badge');
     for (var i = 0; i < existing.length; i++) {
       if (existing[i].parentNode) existing[i].parentNode.removeChild(existing[i]);
@@ -1673,7 +1648,7 @@
 
   /** 当前阅读线所在楼层 → 上报宿主（评论抽屉、弹幕、视效、自动音乐都用它）。 */
   function reportGululuContext() {
-    var line = state.paged ? Math.round(viewH() * 0.4) : Math.round(viewH() * 0.4);
+    var line = Math.round(viewH() * 0.4);
     var x = Math.max(2, Math.round(viewW() / 2));
     var el = document.elementFromPoint(x, line);
     var floor = el && el.closest ? el.closest('.gululu-floor') : null;

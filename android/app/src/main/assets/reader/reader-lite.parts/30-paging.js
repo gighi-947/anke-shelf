@@ -157,7 +157,7 @@
     var er = el.getBoundingClientRect();
     var x = Math.max(2, Math.min(er.left + state.margin + 2, window.innerWidth - 2));
     var y = Math.max(2, er.top + (state.topInset || 0) + 8);
-    var off = offsetAtPointPaged(ctx, x, y);
+    var off = offsetAtPoint(ctx, x, y);
     return off === null ? 0 : off;
   }
 
@@ -167,7 +167,7 @@
     if (!ctx) return 0;
     var x = Math.max(2, Math.min(window.innerWidth / 2, window.innerWidth - 2));
     var y = sampleOffsetY();
-    var off = offsetAtPointScroll(ctx, x, y);
+    var off = offsetAtPoint(ctx, x, y);
     if (off !== null) {
       state.scrollRatio = -1;
       return off;
@@ -227,13 +227,9 @@
     return null;
   }
 
-  function offsetAtPointPaged(ctx, x, y) {
-    return scanForText(ctx, x, y, Math.max(y + 24, Math.round(viewH() - 30)));
-  }
-
-  function offsetAtPointScroll(ctx, x, y) {
-    // 扫描整页而不是只扫采样点下方 120px：屏幕中部是图片时，
-    // 下方还有文本也能找到（图片只占一部分屏幕的常见场景）。
+  // 采样点向下扫描到页底（覆盖“采样点是图片、下方还有文本”的场景；
+  // 分页页顶与滚动中线共用同一扫描策略）。
+  function offsetAtPoint(ctx, x, y) {
     return scanForText(ctx, x, y, Math.max(y + 24, Math.round(viewH() - 30)));
   }
 

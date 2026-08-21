@@ -129,7 +129,3 @@
     }
     return true;
   }
-
-  function isAutoScrolling() {
-    return !!(autoState.raf || autoState.timer);
-  }

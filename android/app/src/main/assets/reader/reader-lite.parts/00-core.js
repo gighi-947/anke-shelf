@@ -10,6 +10,7 @@
   var MAX_PAGED_TEXT = 800000;
   // 桥协议版本：ready 握手时与 Kotlin 侧对照，不兼容时显式失败并记诊断。
   var BRIDGE_VERSION = 1;
+  // 桥能力声明（bridge-contract / DisciplineTest 锁定；宿主就绪日志消费）。
   var BRIDGE_CAPABILITIES = [
     'paged', 'scroll', 'scrollRatio', 'image', 'settled', 'annotation', 'assist', 'gululu',
   ];
@@ -20,7 +21,6 @@
     chapterIndex: 0,
     margin: 40,
     gap: 28,
-    pageWidth: 1,
     fontSize: 18,
     lineHeight: 1.8,
     dualPage: false,

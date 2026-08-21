@@ -20,7 +20,6 @@ import kotlin.math.roundToInt
  */
 object PagedLayout {
 
-    const val MAX_PAGED_TEXT = 800_000
     const val MIN_DUAL_COL = 300.0
 
     data class Geometry(
