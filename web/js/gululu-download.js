@@ -36,6 +36,7 @@
       ['none', '不含图片'],
     ])));
     options.appendChild(field('完成后打开', checkbox('gululu-open-after', true)));
+    options.appendChild(field('清除本地缓存后重下', checkbox('gululu-clear-cache', false, '重新下载该书并覆盖本地缓存')));
     wrap.appendChild(options);
 
     const actions = document.createElement('div');
@@ -94,6 +95,7 @@
       await Api.gululuStartImport(
         source,
         val('gululu-image-mode') || 'online',
+        check('gululu-clear-cache'),
       );
       setRunning(true);
       resume(true);

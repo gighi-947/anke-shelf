@@ -7,10 +7,11 @@ def gululu_start_import(
     ctx: ApiContext,
     source: str,
     image_mode: str = "online",
+    clear_cache: bool = False,
 ) -> dict:
     if ctx.gululu_service is None:
         raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "骨碌碌导入服务不可用")
-    return ctx.gululu_service.start(source, image_mode)
+    return ctx.gululu_service.start(source, image_mode, clear_cache=clear_cache)
 
 
 def gululu_start_export(

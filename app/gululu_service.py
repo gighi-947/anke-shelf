@@ -110,7 +110,7 @@ class GululuService:
                 baseline_initialized=False,
             )
 
-    def start(self, source: str | int, image_mode: str = "online") -> dict:
+    def start(self, source: str | int, image_mode: str = "online", clear_cache: bool = False) -> dict:
         try:
             source_id = extract_book_id(source)
             normalized_image_mode = normalize_image_mode(image_mode)
@@ -130,7 +130,7 @@ class GululuService:
         thread = threading.Thread(
             target=lambda: self._run_managed_task(
                 task_id,
-                lambda report: self._run(source_id, normalized_image_mode, task_id, report),
+                lambda report: self._run(source_id, normalized_image_mode, task_id, report, clear_cache),
             ),
             args=(),
             daemon=True,
@@ -241,7 +241,7 @@ class GululuService:
                 if self._current_task == task_id:
                     self._current_task = None
 
-    def _run(self, source_id: int, image_mode: str, task_id: str, report) -> None:
+    def _run(self, source_id: int, image_mode: str, task_id: str, report, clear_cache: bool = False) -> None:
         folder = gululu_library_dir() / str(source_id)
         target = folder / "post.epub"
         partial = folder / "post.epub.part"
@@ -253,6 +253,9 @@ class GululuService:
             report(TaskProgress(current=current, total=total, stage=stage, message=detail))
 
         try:
+            if clear_cache:
+                import shutil
+                shutil.rmtree(folder, ignore_errors=True)
             folder.mkdir(parents=True, exist_ok=True)
             partial.unlink(missing_ok=True)
             with GululuClient() as client:

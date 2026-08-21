@@ -83,17 +83,22 @@ class GululuImportService : Service() {
                     return START_NOT_STICKY
                 }
                 val action = intent.getStringExtra("action") ?: "import"
+                val clearCache = intent.getBooleanExtra("clearCache", false)
                 startAsForeground()
                 scope.launch {
-                    if (action == "update") runUpdate(sourceId, mode) else runImport(sourceId, mode)
+                    if (action == "update") runUpdate(sourceId, mode) else runImport(sourceId, mode, clearCache)
                 }
             }
         }
         return START_NOT_STICKY
     }
 
-    private fun runImport(sourceId: Int, mode: GululuImageMode) {
+    private fun runImport(sourceId: Int, mode: GululuImageMode, clearCache: Boolean) {
         val container = (application as AnkeShelfApp).container
+        if (clearCache) {
+            // 清除本地缓存后重下：删掉该书的整个目录（post.epub / snapshot.json / 图片缓存）。
+            java.io.File(container.appPaths.gululuLibraryDir, sourceId.toString()).deleteRecursively()
+        }
         val importer = GululuImporter(container.appPaths, container.repository)
         this.importer = importer
         val taskId = "gululu-import-$sourceId-${System.currentTimeMillis()}"

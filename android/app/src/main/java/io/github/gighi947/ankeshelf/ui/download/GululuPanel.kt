@@ -140,10 +140,12 @@ internal fun GululuPanel(container: AppContainer, onChanged: () -> Unit) {
                             action = GululuImportService.ACTION_START
                             putExtra("sourceId", sourceId)
                             putExtra("imageMode", imageMode)
+                            // 已有本地缓存时点“重新下载”= 清除缓存后全量重下。
+                            putExtra("clearCache", existing)
                         }
                         ContextCompat.startForegroundService(context, intent)
                     },
-                ) { Text("开始导入") }
+                ) { Text(if (existing) "清除本地缓存后重下" else "开始导入") }
                 if (existing) {
                     Button(
                         shape = MaterialTheme.shapes.small,
