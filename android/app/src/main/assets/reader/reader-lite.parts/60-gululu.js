@@ -298,4 +298,3 @@
     // 首屏也要上报一次上下文（背景/视效/自动音乐/当前楼）
     setTimeout(reportGululuContext, 0);
   }
-

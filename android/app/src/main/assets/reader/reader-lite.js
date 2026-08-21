@@ -896,7 +896,6 @@
     }
     return target;
   }
-
   /* ---------- code highlight (mirrors desktop web/js/highlight.js) ---------- */
   // 高亮 span 带 .syntax，按折叠规则内部无缝，因此不改变 text_offset。
   var CODE_KEYWORDS = {};
@@ -1032,7 +1031,6 @@
   function isAutoScrolling() {
     return !!(autoState.raf || autoState.timer);
   }
-
   /* ---------- Kotlin-facing API ---------- */
   function bridgeReadyPayload() {
     return { bridgeVersion: BRIDGE_VERSION, capabilities: BRIDGE_CAPABILITIES.slice() };
@@ -1775,4 +1773,3 @@
     // 首屏也要上报一次上下文（背景/视效/自动音乐/当前楼）
     setTimeout(reportGululuContext, 0);
   }
-
