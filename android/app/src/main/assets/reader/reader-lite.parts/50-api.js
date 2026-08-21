@@ -230,7 +230,6 @@
     state.chapterIndex = opts.chapterIndex || 0;
     state.margin = opts.margin || 40;
     state.gap = opts.gap || 28;
-    state.pageWidth = opts.pageWidth || 1;
     state.fontSize = opts.fontSize || 18;
     state.lineHeight = opts.lineHeight || 1.8;
     state.dualPage = !!opts.dualPage;
@@ -408,37 +407,26 @@
     applyTypography: applyTypography,
     setMode: setMode,
     flipPage: flipPage,
-    currentOffset: currentOffset,
     currentScrollState: currentScrollState,
     onResize: onResize,
     setInsets: setInsets,
-    gotoOffset: gotoOffset,
     openImageAt: openImageAt,
     geometry: geometry,
     shouldAutoDual: shouldAutoDual,
     buildText: TextPos.build,
-    // 标注（批 1）：注入高亮 / 读取选区 / 清选区 / 按 text_offset 跳转
+    // 标注（批 1）：注入高亮 / 清选区 / 按 text_offset 跳转
     applyHighlights: applyHighlights,
-    selectionInfo: function () {
-      var info = currentSelectionInfo();
-      return info ? JSON.stringify(info) : '';
-    },
     clearSelection: clearSelection,
     gotoTextOffset: gotoTextOffset,
     // 阅读辅助（批 2）：自动滚动/自动翻页
     startAutoScroll: startAutoScroll,
     stopAutoScroll: stopAutoScroll,
-    isAutoScrolling: isAutoScrolling,
     // 骨碌碌宿主层（批 8/9）
-    initGululu: initGululu,
     hitGululuInteractive: hitGululuInteractive,
     applyParagraphComments: applyParagraphComments,
-    revealGululuGroup: revealGululuGroup,
-    revealGululuFloor: revealGululuFloor,
     revealNextGululuGroups: revealNextGululuGroups,
     gululuChapterInfo: gululuChapterInfo,
     gululuResetUnlocks: gululuResetUnlocks,
-    reportGululuContext: reportGululuContext,
     bridgeVersion: function () { return BRIDGE_VERSION; },
     bridgeReadyPayload: bridgeReadyPayload,
     emitReady: emitReady,

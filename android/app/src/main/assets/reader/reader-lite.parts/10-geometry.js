@@ -1,9 +1,4 @@
   /* ---------- paging geometry (mirrors desktop paged.js) ---------- */
-  function contentWidth(fw, pageWidth, fontSize) {
-    var maxW = Math.round(46 * (pageWidth || 1) * (fontSize || 18));
-    return Math.max(120, Math.min(fw, maxW));
-  }
-
   function shouldAutoDual(fw, fh) {
     if (fw < 800 || fw <= fh) return false;
     var aspect = fw / fh;

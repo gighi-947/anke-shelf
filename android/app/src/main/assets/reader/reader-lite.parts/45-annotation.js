@@ -1,12 +1,12 @@
   /* ---------- annotations: highlight injection + selection reporting ---------- */
   var HL_CLASS = 'hl-mark';
 
-  function parseJsonSafe(payload) {
+  function parseJsonSafe(payload, tag) {
     if (!payload) return null;
     try {
       return JSON.parse(payload);
     } catch (e) {
-      log('[ann] payload parse failed');
+      log('[' + (tag || 'ann') + '] payload parse failed: ' + (e && e.message ? e.message : e));
       return null;
     }
   }

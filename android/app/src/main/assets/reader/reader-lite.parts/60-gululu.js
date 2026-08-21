@@ -9,7 +9,7 @@
   };
 
   function gululuUnlockedIds(payload) {
-    var list = parseJsonSafe(payload) || [];
+    var list = parseJsonSafe(payload, 'gululu') || [];
     var map = {};
     for (var i = 0; i < list.length; i++) map[String(list[i])] = true;
     return map;
@@ -130,7 +130,7 @@
    * 徽标带 data-textpos-exclude，不进入折叠纯文本，因此 text_offset 不变。
    */
   function applyParagraphComments(payload) {
-    var counts = parseJsonSafe(payload) || {};
+    var counts = parseJsonSafe(payload, 'gululu') || {};
     var existing = document.querySelectorAll('.gululu-paragraph-badge');
     for (var i = 0; i < existing.length; i++) {
       if (existing[i].parentNode) existing[i].parentNode.removeChild(existing[i]);
@@ -184,7 +184,7 @@
 
   /** 当前阅读线所在楼层 → 上报宿主（评论抽屉、弹幕、视效、自动音乐都用它）。 */
   function reportGululuContext() {
-    var line = state.paged ? Math.round(viewH() * 0.4) : Math.round(viewH() * 0.4);
+    var line = Math.round(viewH() * 0.4);
     var x = Math.max(2, Math.round(viewW() / 2));
     var el = document.elementFromPoint(x, line);
     var floor = el && el.closest ? el.closest('.gululu-floor') : null;
