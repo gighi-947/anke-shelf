@@ -65,6 +65,12 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈修复（第九批）
+
+- 修复：滚动模式下，除 `onScrollMoved` 外，防抖保存回调 `onProgress` 也作为
+  “滚动已发生”兜底自动收起悬浮栏，覆盖部分机型 window scroll 事件未触发的情况。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：测试机反馈修复（第八批）
 
 - 修复：

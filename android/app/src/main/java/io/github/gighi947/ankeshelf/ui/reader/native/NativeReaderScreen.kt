@@ -580,6 +580,12 @@ fun NativeReaderScreen(
                                 0f
                             }
                         }
+                        // 滚动模式：滚动停止后的防抖保存回调也作为“滚动已发生”的兜底，
+                        // 用于部分机型 window scroll 事件没触发 onScrollMoved 的场景。
+                        if (!readerSettings.pagination && barsVisible) {
+                            barsHeld = false
+                            barsVisible = false
+                        }
                     },
                     onPagedAnchor = { ch, offset ->
                         progressTracker.onPagedAnchor(ch, offset)
