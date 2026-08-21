@@ -263,37 +263,22 @@ fun NativeReaderScreen(
             },
         )
     }
-    val restoreOffset = remember(chapterIndex, session.id, crossJump) {
-        // desktop loadChapter(i, 0): only the initial open/search jump restores an
-        // offset; in-session chapter navigation always starts at the chapter head.
-        val cj = crossJump
-        when {
-            cj != null && cj.first == chapterIndex -> cj.second
-            chapterIndex == initialChapter -> progressTracker.restoreOffsetFor(chapterIndex)
-            else -> 0
-        }
-    }
-    val restorePage = remember(chapterIndex, session.id, crossJump) {
-        // 跨章跳转按文本锚点定位，页码必须让位（否则页码优先会跳回旧页）。
-        if (crossJump?.first == chapterIndex) {
-            -1
-        } else if (chapterIndex == initialChapter) {
-            progressTracker.restorePageFor(chapterIndex)
-        } else {
-            -1
-        }
-    }
-    val restoreTotal = remember(chapterIndex, session.id, crossJump) {
-        if (crossJump?.first == chapterIndex) {
-            -1
-        } else if (chapterIndex == initialChapter) {
-            progressTracker.restoreTotalFor(chapterIndex)
-        } else {
-            -1
-        }
-    }
-    val restoreRatio = remember(chapterIndex, session.id) {
-        if (chapterIndex == initialChapter) progressTracker.restoreRatioFor(chapterIndex) else -1.0
+    // 恢复锚点单点策略（见 RestoreAnchor.kt）：crossJump 跨章跳转按文本锚点
+    // 定位（page/total/ratio 全部让位）；initialChapter 按存储恢复；会话内
+    // 普通换章从章头开始。此前 4 个平行 remember 各自维护该策略，restoreRatio
+    // 漏接 crossJump 导致跳转被旧滚动比例覆盖（详见 RestoreAnchorTest）。
+    val restoreAnchor = remember(chapterIndex, session.id, crossJump) {
+        restoreAnchorFor(
+            chapterIndex = chapterIndex,
+            initialChapter = initialChapter,
+            crossJump = crossJump,
+            savedAnchor = RestoreAnchor(
+                offset = progressTracker.restoreOffsetFor(chapterIndex),
+                page = progressTracker.restorePageFor(chapterIndex),
+                total = progressTracker.restoreTotalFor(chapterIndex),
+                ratio = progressTracker.restoreRatioFor(chapterIndex),
+            ),
+        )
     }
     val activity = androidx.activity.compose.LocalActivity.current
     val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
@@ -496,8 +481,8 @@ fun NativeReaderScreen(
     }
 
     // 换章/换书：当前位置回到本章恢复锚点（书签命中判定与进度滑块用）。
-    LaunchedEffect(session.id, chapterIndex, restoreOffset) {
-        liveOffset = restoreOffset
+    LaunchedEffect(session.id, chapterIndex, restoreAnchor.offset) {
+        liveOffset = restoreAnchor.offset
     }
 
     // 5 秒心跳统计。
@@ -595,12 +580,12 @@ fun NativeReaderScreen(
                 dualPage = readerSettings.dual_page,
                 autoDual = readerSettings.auto_dual != false,
                 topInsetPx = topInsetPx,
-                initialOffset = restoreOffset,
-                initialPage = restorePage,
-                initialTotal = restoreTotal,
+                initialOffset = restoreAnchor.offset,
+                initialPage = restoreAnchor.page,
+                initialTotal = restoreAnchor.total,
                 // 滚动比例只属于滚动模式：分页模式打开时强制 -1（跨模式隔离，
                 // 全图页的滚动比例不能参与分页文本定位，避免“上次全图退出→本次分页打开”错位）。
-                initialRatio = if (!readerSettings.pagination) restoreRatio else -1.0,
+                initialRatio = if (!readerSettings.pagination) restoreAnchor.ratio else -1.0,
                 highlightsJson = highlightsJson,
                 jump = jump,
                 clearSelectionToken = clearSelectionToken,
