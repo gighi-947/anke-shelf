@@ -65,6 +65,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈批量修复（第二批）
+
+- 修复：
+  - NGA 回复引用评论正文改为 `NgaFormatHtml.renderContentHtml`（此前直接拼
+    `raw_content`，BBCode 不渲染）；
+  - 分页模式增加 `.nga-floor/.gululu-floor/.nga-quote/.nga-comment/table` 等
+    `break-inside:auto` 与紧凑边距覆盖，修复长卡片溢出列边界；
+  - 悬浮栏百分比统一为全书进度（与书架同口径：分页=页码/总页数，滚动=
+    scroll_ratio/text_offset 比例）；
+  - 悬浮栏隐藏后，阅读器底部显示 2dp 细条本章进度条。
+- 验证：`compileDebugKotlin testDebugUnitTest` BUILD SUCCESSFUL；
+  `assembleRelease` 成功并 `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：测试机反馈批量修复（第一批）
 
 - 背景：测试机逐项反馈骨碌碌/阅读器问题。

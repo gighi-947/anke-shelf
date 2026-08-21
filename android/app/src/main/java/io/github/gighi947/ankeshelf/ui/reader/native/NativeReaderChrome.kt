@@ -52,6 +52,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -131,6 +132,30 @@ internal fun ReaderBrightnessOverlay(brightness: Double) {
     }
 }
 
+/** 底部细条：悬浮操作栏隐藏后显示“本章进度”，不遮挡正文。 */
+@Composable
+internal fun BoxScope.ReaderChapterProgressBar(
+    visible: Boolean,
+    progress: Float,
+    fg: Color,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = fadeIn(),
+        exit = fadeOut(),
+    ) {
+        LinearProgressIndicator(
+            progress = { progress.coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp),
+            color = fg,
+            trackColor = fg.copy(alpha = 0.18f),
+        )
+    }
+}
+
 /** 顶部浮动栏：返回 / 章节标题 / 书签 / 标注 / 目录。 */
 @Composable
 internal fun BoxScope.ReaderTopBar(
@@ -200,8 +225,6 @@ internal fun BoxScope.ReaderBottomBar(
     fg: Color,
     theme: String,
     pagination: Boolean,
-    pageInfo: Pair<Int, Int>,
-    scrollRatio: Float,
     bookProgress: Float,
     onSeek: (Float) -> Unit,
     onPrevChapter: () -> Unit,
@@ -279,11 +302,9 @@ internal fun BoxScope.ReaderBottomBar(
                     ),
                 )
                 Text(
-                    if (pagination && pageInfo.second > 0) {
-                        "第 ${pageInfo.first + 1} / ${pageInfo.second} 页"
-                    } else {
-                        "${(scrollRatio * 100).roundToInt()}%"
-                    },
+                    // 悬浮栏百分比统一为“全书进度”，与书架百分比同口径
+                    // （分页=页码/总页数；滚动=scroll_ratio 或 text_offset 比例）。
+                    "${(bookProgress * 100).roundToInt()}%",
                     modifier = Modifier.padding(end = AnkeSpacing.sm),
                     color = fg,
                     textAlign = TextAlign.End,

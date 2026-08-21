@@ -374,15 +374,28 @@ fun NativeReaderScreen(
                 ?.forEach { add(it.name) }
         }
     }
-    val bookProgress = remember(chapterIndex, liveOffset, chapterState, session.id) {
-        val total = session.chapters.size
-        if (total <= 0) {
-            0f
+    // 与书架百分比同口径：分页用 page_index/page_total，滚动优先 scroll_ratio，
+    // 文本页回退 text_offset / 本章纯文本长度。
+    val chapterProgress = remember(pageInfo, scrollRatio, liveOffset, chapterState, readerSettings.pagination) {
+        if (readerSettings.pagination) {
+            if (pageInfo.second > 0) {
+                (pageInfo.first.toFloat() / pageInfo.second).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
         } else {
-            val len = (chapterState as? ChapterUiState.Html)?.len ?: 0
-            val inChapter = if (len > 0) (liveOffset.toFloat() / len).coerceIn(0f, 1f) else 0f
-            ((chapterIndex + inChapter) / total).coerceIn(0f, 1f)
+            if (scrollRatio in 0f..1f) {
+                scrollRatio
+            } else {
+                val len = (chapterState as? ChapterUiState.Html)?.len ?: 0
+                if (len > 0) (liveOffset.toFloat() / len).coerceIn(0f, 1f) else 0f
+            }
         }
+    }
+    val bookProgress = remember(chapterIndex, chapterProgress, session.id) {
+        val total = session.chapters.size
+        if (total <= 0) 0f
+        else ((chapterIndex + chapterProgress) / total).coerceIn(0f, 1f)
     }
 
     // 异形屏安全区：沉浸式时顶部保留挖孔约 3/8（手动 dp 可覆盖）。
@@ -666,6 +679,13 @@ fun NativeReaderScreen(
         // 亮度遮罩（阅读器外层）
         ReaderBrightnessOverlay(brightness = readerSettings.brightness)
 
+        // 悬浮操作栏隐藏后，底部细条展示本章进度（分页=页码比例，滚动=滚动比例）
+        ReaderChapterProgressBar(
+            visible = !barsVisible,
+            progress = chapterProgress,
+            fg = fg,
+        )
+
         if (isGululu) {
             GululuBackgroundOverlay(url = gululuBackground)
             GululuVfxOverlay(kind = gululuVfx)
@@ -712,8 +732,6 @@ fun NativeReaderScreen(
             fg = fg,
             theme = readerSettings.theme,
             pagination = readerSettings.pagination,
-            pageInfo = pageInfo,
-            scrollRatio = scrollRatio,
             bookProgress = bookProgress,
             onSeek = { fraction ->
                 val total = session.chapters.size

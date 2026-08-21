@@ -146,6 +146,28 @@ body.paged #paged-scroll code {
     word-break: break-all;
 }
 
+/* 分页模式：楼层/引用/评论/表格允许跨页拆分，避免长卡片溢出列边界 */
+body.paged .nga-floor,
+body.paged .gululu-floor,
+body.paged .nga-quote,
+body.paged .nga-comment,
+body.paged blockquote,
+body.paged table,
+body.paged details {
+    margin: 10px 0 !important;
+    break-inside: auto !important;
+}
+
+body.paged .nga-floor,
+body.paged .gululu-floor {
+    padding: 10px 12px !important;
+}
+
+body.paged .gululu-floor .floor-head {
+    display: flex !important;
+    flex-wrap: wrap !important;
+}
+
 /* 代码块高亮（与桌面 reader.css 的 .syntax 同色；span 内部无缝，不改 text_offset） */
 .syntax .tok-kw {
     color: #c586c0;

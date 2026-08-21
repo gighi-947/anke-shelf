@@ -554,10 +554,11 @@ object NativeBookWriter {
             if (c.lou <= 0) continue
             val cHead =
                 "${c.lou}楼 · ${escapeHtml(c.username)}(${c.user_id}) · ${ts2t(c.timestamp)}"
+            val cBody = NgaFormatHtml.renderContentHtml(c.raw_content, dark = dark, imgSrc = imgSrc)
             out.append(
                 "<div class=\"nga-comment\" style=\"$commentStyle\">" +
                     "<span class=\"comment-head\" style=\"color:${colors.muted}; font-size:.8em; " +
-                    "display:block; margin-bottom:4px;\">$cHead</span>${c.raw_content}</div>",
+                    "display:block; margin-bottom:4px;\">$cHead</span>$cBody</div>",
             )
         }
         return out.toString()
