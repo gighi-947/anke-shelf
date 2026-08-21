@@ -1,7 +1,7 @@
 # AnkeShelf 架构整合路线图（下阶段任务参考）
 
 > 文档日期：2026-08-20（状态核对）
-> 当前版本：Windows v1.5.1，Android android-v1.1.0（精确 HEAD 以 `git log` 为准）
+> 当前版本：Windows v1.5.1，Android android-v1.2.0（精确 HEAD 以 `git log` 为准）
 > 来源文档：`I:\AnkeShelf_Review_Archive` 下架构改进提案 / review1 / review2 / 架构债清理清单
 >
 > 本文档是四份外部文档与仓库现状的整合产物，只做方向指引，不含代码改动。

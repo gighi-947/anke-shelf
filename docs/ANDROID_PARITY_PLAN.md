@@ -8,7 +8,7 @@
 > 对齐事实源（Windows）：`app/api/__init__.py` 的 `_HANDLERS`（59 方法）、
 > `app/settings.py` 的 `DEFAULTS`、`web/js/` 模块清单、
 > [GULULU_REFERENCE_MATRIX.md](GULULU_REFERENCE_MATRIX.md)。
-> 核对日期：2026-08-20（Windows v1.5.1 / Android android-v1.1.0）。
+> 核对日期：2026-08-20（Windows v1.5.1 / Android android-v1.2.0）。
 
 ## 1. 已对齐（不再重复投入）
 
@@ -112,4 +112,4 @@
 | 7 骨碌碌热更新 | ✅ 代码完成，待真机联网验证 | G20.9；导入即建基线；下载页「检查更新」；Android JVM 197 项 |
 | 8 骨碌碌阅读交互 A | ✅ 代码完成，待真机验证 | G20.10；按楼按需加载 + 段落徽标联动 + 只读弹幕 |
 | 9 骨碌碌阅读交互 B/C | ✅ 代码完成，待真机验证 | G20.11/G20.12；Android JVM 204 项；点击音效与 Canvas 粒子视效降级实现（见 DevLog） |
-| 10 收尾与发布 | ⏳ 未开始 | — |
+| 10 收尾与发布 | ✅ 已完成（`8ac4be2`） | 契约/纪律测试/文档/版本线全过；发布 `android-v1.2.0`（versionCode 3，产物 `dist/AnkeShelf-v1.2.0-android.apk`） |
