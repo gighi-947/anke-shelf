@@ -573,7 +573,7 @@ fun WebViewChapterView(
                             val dx = ev.x - downX
                             val dy = ev.y - downY
                             val isSwipe = pagedRef.value && abs(dx) >= 60f && abs(dx) >= abs(dy) * 1.2f
-                            val isTap = dx * dx + dy * dy < 50f * 50f
+                            val isTap = dx * dx + dy * dy < 24f * 24f
                             when {
                                 isSwipe -> {
                                     evaluateJavascript("AnkeReader.flipPage(${if (dx < 0) 1 else -1});", null)

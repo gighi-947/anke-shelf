@@ -23,23 +23,16 @@
       var group = el.getAttribute('data-gululu-dice-group') || '';
       if (gululu.unlocked[group]) {
         el.classList.remove('masked');
-        el.style.display = '';
-        el.style.minWidth = '';
-        el.style.minHeight = '';
         el.style.color = '';
         el.style.background = '';
         el.style.fontSize = '';
         el.style.visibility = '';
       } else {
         el.classList.add('masked');
-        // 可点击的遮罩：不能用 visibility:hidden（会挡住点击），
-        // 用透明文字 + 灰色胶囊背景，并保持元素可点。
-        el.style.display = 'inline-block';
-        el.style.minWidth = '14px';
-        el.style.minHeight = '16px';
+        // 保持原始行内盒与位置：只把文字变透明，不引入胶囊/尺寸变化。
         el.style.color = 'transparent';
-        el.style.background = 'rgba(127,127,127,0.35)';
-        el.style.fontSize = '0';
+        el.style.background = 'currentColor';
+        el.style.fontSize = '';
         el.style.visibility = '';
       }
       // 直接绑定兜底：部分机型上 document 级委托会被阅读器点击处理挡住。
@@ -74,9 +67,6 @@
     for (var i = 0; i < nodes.length; i++) {
       nodes[i].classList.remove('masked');
       nodes[i].classList.add('revealed');
-      nodes[i].style.display = '';
-      nodes[i].style.minWidth = '';
-      nodes[i].style.minHeight = '';
       nodes[i].style.color = '';
       nodes[i].style.background = '';
       nodes[i].style.fontSize = '';

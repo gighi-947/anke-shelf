@@ -65,6 +65,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：骰子遮罩位置与悬浮栏灵敏度（第十九批）
+
+- 骰子遮罩去掉灰色胶囊，改为仅透明文字（保持原始行内盒位置，数值隐藏且
+  元素可点）；
+- 悬浮栏唤出灵敏度下调：点击位移阈值 50px → 24px；快速滚动结束 400ms 内
+  的轻点不再唤出悬浮栏。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：骰子点击与进书卡顿修复（第十八批）
 
 - 骰子仍点不开：原因是遮罩元素 `font-size:0` 时用 `min-width:0.9em` 会计算为 0，
