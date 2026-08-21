@@ -3,6 +3,7 @@ package io.github.gighi947.ankeshelf.service
 import io.github.gighi947.ankeshelf.data.GululuCancelledBuild
 import io.github.gighi947.ankeshelf.data.GululuEpub
 import io.github.gighi947.ankeshelf.data.GululuEpubImage
+import io.github.gighi947.ankeshelf.data.GululuUpdate
 import io.github.gighi947.ankeshelf.data.AppPaths
 import java.io.File
 
@@ -64,7 +65,6 @@ class GululuImporter(
     fun import(sourceId: Int, imageMode: GululuImageMode): GululuImportResult {
         cancelled = false
         val folder = File(appPaths.gululuLibraryDir, sourceId.toString())
-        val target = File(folder, "post.epub")
         val partial = File(folder, "post.epub.part")
         folder.mkdirs()
         partial.delete()
@@ -75,7 +75,75 @@ class GululuImporter(
                 { cancelled },
             )
             checkCancelled()
+            val result = buildAndReplace(sourceId, imageMode, snapshot)
+            if (result is GululuImportResult.Ok) {
+                // 导入即建立增量基线：下次更新走 append-only 增量而不是旧书迁移。
+                runCatching {
+                    GululuUpdate.writeBaseline(
+                        file = GululuUpdate.baselineFile(appPaths.gululuLibraryDir, sourceId),
+                        sourceId = sourceId,
+                        detail = snapshot.detail,
+                        floorIndex = snapshot.floorIndex,
+                        chapterIndex = snapshot.chapterIndex,
+                        floors = snapshot.floors,
+                        imageMode = imageMode.wire,
+                    )
+                }.onFailure {
+                    LogEvents.event(
+                        "gululu",
+                        "baseline_write_failed",
+                        "task_id" to taskId,
+                        "source_id" to sourceId,
+                        "error" to (it.message ?: it.javaClass.simpleName),
+                    )
+                }
+            }
+            result
+        } catch (e: GululuCancelledException) {
+            partial.delete()
+            GululuImportResult.Cancelled
+        } catch (e: Exception) {
+            partial.delete()
+            LogEvents.event(
+                "gululu",
+                "import_failed",
+                "task_id" to taskId,
+                "source_id" to sourceId,
+                "error" to (e.message ?: e.javaClass.simpleName),
+            )
+            GululuImportResult.Err(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
+        }
+    }
 
+    /** 用已有快照重建并替换（热更新复用；基线由调用方在成功后刷新）。 */
+    fun rebuildFromSnapshot(
+        sourceId: Int,
+        imageMode: GululuImageMode,
+        snapshot: GululuSnapshot,
+    ): GululuImportResult {
+        cancelled = false
+        return try {
+            buildAndReplace(sourceId, imageMode, snapshot)
+        } catch (e: GululuCancelledException) {
+            File(File(appPaths.gululuLibraryDir, sourceId.toString()), "post.epub.part").delete()
+            GululuImportResult.Cancelled
+        } catch (e: Exception) {
+            File(File(appPaths.gululuLibraryDir, sourceId.toString()), "post.epub.part").delete()
+            GululuImportResult.Err(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
+        }
+    }
+
+    private fun buildAndReplace(
+        sourceId: Int,
+        imageMode: GululuImageMode,
+        snapshot: GululuSnapshot,
+    ): GululuImportResult {
+        val folder = File(appPaths.gululuLibraryDir, sourceId.toString())
+        val target = File(folder, "post.epub")
+        val partial = File(folder, "post.epub.part")
+        folder.mkdirs()
+        partial.delete()
+        return try {
             val imageUrls = GululuImages.collectImageUrls(snapshot.floors)
             var batch = ImageBatch()
             if (imageMode == GululuImageMode.EMBEDDED && imageUrls.isNotEmpty()) {
@@ -119,7 +187,7 @@ class GululuImporter(
             val bookId = replaceAndRegister(target, partial)
             LogEvents.event(
                 "gululu",
-                "import_done",
+                "epub_written",
                 "task_id" to taskId,
                 "source_id" to sourceId,
                 "book_id_hash" to LogEvents.bookIdHash(bookId),
@@ -144,25 +212,12 @@ class GululuImporter(
                 imageEmbedded = batch.resources.size,
                 imageFailed = batch.failures.size,
             )
-        } catch (e: GululuCancelledException) {
-            partial.delete()
-            GululuImportResult.Cancelled
         } catch (e: GululuImageCancelled) {
             partial.delete()
             GululuImportResult.Cancelled
         } catch (e: GululuCancelledBuild) {
             partial.delete()
             GululuImportResult.Cancelled
-        } catch (e: Exception) {
-            partial.delete()
-            LogEvents.event(
-                "gululu",
-                "import_failed",
-                "task_id" to taskId,
-                "source_id" to sourceId,
-                "error" to (e.message ?: e.javaClass.simpleName),
-            )
-            GululuImportResult.Err(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
         }
     }
 

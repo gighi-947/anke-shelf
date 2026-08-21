@@ -59,6 +59,7 @@ class GululuImportService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var importer: GululuImporter? = null
+    private var updater: GululuUpdater? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -66,6 +67,7 @@ class GululuImportService : Service() {
         when (intent?.action) {
             ACTION_CANCEL -> {
                 importer?.cancel()
+                updater?.cancel()
                 return START_NOT_STICKY
             }
             ACTION_START -> {
@@ -80,8 +82,11 @@ class GululuImportService : Service() {
                     GululuServiceStatus.error = GululuImageMode.INVALID_MESSAGE
                     return START_NOT_STICKY
                 }
+                val action = intent.getStringExtra("action") ?: "import"
                 startAsForeground()
-                scope.launch { runImport(sourceId, mode) }
+                scope.launch {
+                    if (action == "update") runUpdate(sourceId, mode) else runImport(sourceId, mode)
+                }
             }
         }
         return START_NOT_STICKY
@@ -140,8 +145,70 @@ class GululuImportService : Service() {
         }
     }
 
-    private fun startAsForeground() {
-        createChannel()
+    /** 热更新：与导入共用状态与通知，决策全在 [GululuUpdater]。 */
+    private fun runUpdate(sourceId: Int, mode: GululuImageMode) {
+        val container = (application as AnkeShelfApp).container
+        val importer = GululuImporter(container.appPaths, container.repository)
+        val updater = GululuUpdater(container.appPaths, container.repository, importer)
+        this.importer = importer
+        this.updater = updater
+        val taskId = "gululu-update-$sourceId-${System.currentTimeMillis()}"
+        updater.taskId = taskId
+        GululuServiceStatus.running = true
+        GululuServiceStatus.error = ""
+        GululuServiceStatus.sourceId = sourceId
+        GululuServiceStatus.taskId = taskId
+        updater.setListener { stage, current, total, detail ->
+            GululuServiceStatus.stage = stage
+            GululuServiceStatus.current = current
+            GululuServiceStatus.total = total
+            GululuServiceStatus.detail = detail
+            updateNotification(detail.ifEmpty { "正在检查更新…" })
+        }
+        var finalText = "任务结束"
+        try {
+            when (val result = updater.update(sourceId, mode)) {
+                is GululuUpdateResult.UpToDate -> {
+                    GululuServiceStatus.stage = "done"
+                    GululuServiceStatus.detail = if (result.baselineInitialized) {
+                        "已是最新；已建立增量基线"
+                    } else {
+                        "已是最新"
+                    }
+                    finalText = GululuServiceStatus.detail
+                }
+                is GululuUpdateResult.Updated -> {
+                    GululuServiceStatus.stage = "done"
+                    GululuServiceStatus.bookId = result.bookId
+                    GululuServiceStatus.detail = if (result.newCount > 0) {
+                        "已更新 ${result.newCount} 楼"
+                    } else {
+                        "已更新图片模式"
+                    }
+                    finalText = GululuServiceStatus.detail
+                }
+                GululuUpdateResult.Cancelled -> {
+                    GululuServiceStatus.stage = "cancelled"
+                    GululuServiceStatus.detail = "已取消"
+                    finalText = "已取消"
+                }
+                is GululuUpdateResult.Err -> {
+                    GululuServiceStatus.stage = "error"
+                    GululuServiceStatus.error = result.message
+                    GululuServiceStatus.detail = ""
+                    finalText = "更新失败：${result.message}"
+                }
+            }
+        } finally {
+            GululuServiceStatus.running = false
+            GululuServiceStatus.taskId = ""
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            postFinalNotification(finalText)
+            stopSelf()
+        }
+    }
+
+    private fun startAsForeground() {        createChannel()
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,

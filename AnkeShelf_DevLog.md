@@ -33,7 +33,7 @@
     `node contracts/tests/reader-lite-parts.test.js`（8 parts / 50881 字节）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 186 项（185 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 197 项（196 过 / 1 跳）；
     DisciplineTest 8 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
@@ -65,6 +65,23 @@
 
 ## 4. 最近流水
 
+### 2026-08-20 android：对齐批 7 —— 骨碌碌热更新与增量基线
+
+- `data/GululuUpdate.kt` ← `app/gululu_update.py` 纯逻辑：`snapshot.json` 基线读写
+  （端私有 sidecar，不入双端契约）、**append-only 前缀不变量**、增量合并、
+  旧书从现有 EPUB 的 `floor-<id>` 锚点做一次性迁移校验。
+- `service/GululuUpdater.kt` 编排四条决策：基线损坏→要求完整重导；基线缺失→旧书迁移；
+  基线可用→只拉索引 + 新增正文；无新增且图片模式未变→**只刷新基线不重建 EPUB**
+  （不扰动进度与标注）。重建复用导入器的 `.part` 原子替换与入架。
+- 导入现在也会写基线（批 6 遗留）：下次更新直接走增量，不必每次读锚点迁移。
+- 服务与 UI：`GululuImportService` 支持 `action=update`（与导入共用状态/通知/取消）；
+  下载页「骨碌碌导入」在本机已有该书时显示「检查更新」。
+- 测试（`GululuUpdateTest` 11 例）：基线往返与四类损坏、删除/重排/替换/重复 ID 冲突、
+  合并缺正文、导入即建基线、无新增不重建（比对 EPUB mtime）、有新增增量重建并含新锚点、
+  远端删楼时原书原样保留、旧书迁移成功与历史不一致拒绝、无本地 EPUB 拒绝更新、
+  仅图片模式变化也重建。
+- 验证：Android `gradlew testDebugUnitTest` = 197 项（196 过 / 1 跳）、`assembleDebug` 成功。
+
 ### 2026-08-20 android：对齐批 6 —— 骨碌碌 EPUB 生成 + 导入前台服务
 
 - 骨碌碌链路第一次**产出可打开的书**：Android 导入的 EPUB 与桌面 ebooklib 产物同构。
@@ -95,7 +112,7 @@
     能打开并读出标题/章节/正文）；
   - `GululuImporterTest` 5 例：成功落盘并入架、取消不留产物、失败保留已有书并清 `.part`、
     缺楼快照显式失败、内嵌模式图片入包且正文引用 `../images/`。
-- 验证：Android `gradlew testDebugUnitTest` = 186 项（185 过 / 1 跳）、`assembleDebug` 成功；
+- 验证：Android `gradlew testDebugUnitTest` = 197 项（196 过 / 1 跳）、`assembleDebug` 成功；
   Windows = 326 项 OK。
 - 待办：真机联网导入一本公开安科，确认产物能被 Windows 端直接打开（跨端互通验证）。
 - 下一步（批 7）：热更新与增量基线（`snapshot.json` + append-only 前缀校验 +

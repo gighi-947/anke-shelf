@@ -68,6 +68,14 @@ internal fun GululuPanel(container: AppContainer, onChanged: () -> Unit) {
     }
     val sourceId = (parsed as? GululuIdResult.Ok)?.bookId ?: 0
     val inputError = (parsed as? GululuIdResult.Err)?.message.orEmpty()
+    // 本机已有该书才显示「检查更新」（对齐桌面：更新前必须先导入过）
+    val existing = remember(sourceId, stage) {
+        sourceId > 0 &&
+            java.io.File(
+                java.io.File(container.appPaths.gululuLibraryDir, sourceId.toString()),
+                "post.epub",
+            ).isFile
+    }
 
     DownloadList {
         DownloadSection("导入来源") {
@@ -136,6 +144,21 @@ internal fun GululuPanel(container: AppContainer, onChanged: () -> Unit) {
                         ContextCompat.startForegroundService(context, intent)
                     },
                 ) { Text("开始导入") }
+                if (existing) {
+                    Button(
+                        shape = MaterialTheme.shapes.small,
+                        enabled = sourceId > 0 && !running,
+                        onClick = {
+                            val intent = Intent(context, GululuImportService::class.java).apply {
+                                action = GululuImportService.ACTION_START
+                                putExtra("action", "update")
+                                putExtra("sourceId", sourceId)
+                                putExtra("imageMode", imageMode)
+                            }
+                            ContextCompat.startForegroundService(context, intent)
+                        },
+                    ) { Text("检查更新") }
+                }
                 if (running) {
                     Button(
                         shape = MaterialTheme.shapes.small,
