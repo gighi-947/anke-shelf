@@ -9,7 +9,7 @@
 import json
 import threading
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -36,6 +36,7 @@ class BookRecord:
     last_read_at: str = ""
     progress_pct: float = 0.0  # 运行时填充（读取时合成），不落盘
     nga_tid: int = 0           # >0 表示该书记录为 NGA 帖子下载
+    tags: list[dict] = field(default_factory=list)  # [{name, color}]
 
 
 def _record_to_dict(r: BookRecord) -> dict:
@@ -59,6 +60,11 @@ def _record_from_dict(d: dict) -> BookRecord:
         added_at=d.get("added_at", ""),
         last_read_at=d.get("last_read_at", ""),
         nga_tid=int(d.get("nga_tid", 0) or 0),
+        tags=[
+            {"name": str(t.get("name", "")), "color": str(t.get("color", "#8b5a2b"))}
+            for t in d.get("tags", [])
+            if isinstance(t, dict) and t.get("name")
+        ],
     )
 
 

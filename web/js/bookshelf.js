@@ -170,6 +170,7 @@
       card.className = 'book-card';
       card.dataset.title = (book.title || '').toLowerCase();
       card.dataset.author = ((book.author || '') + ' tid ' + (book.nga_tid || '')).toLowerCase();
+      card.dataset.tags = (book.tags || []).map((t) => (t.name || '').toLowerCase()).join(' ');
 
       const main = document.createElement('div');
       main.className = 'bookitem-main';
@@ -230,6 +231,14 @@
       }
       const gululuTag = gululuBadge(book);
       if (gululuTag) tagRow.appendChild(gululuTag);
+      (book.tags || []).forEach((tag) => {
+        const chip = document.createElement('span');
+        chip.className = 'book-tag';
+        chip.textContent = tag.name;
+        chip.style.backgroundColor = tag.color + '29';
+        chip.style.color = tag.color;
+        tagRow.appendChild(chip);
+      });
       const pct = book.progress_pct || 0;
       const pctLabel = document.createElement('div');
       pctLabel.className = 'book-progress-pct';
@@ -256,6 +265,7 @@
       row.className = 'book-row';
       row.dataset.title = (book.title || '').toLowerCase();
       row.dataset.author = ((book.author || '') + ' tid ' + (book.nga_tid || '')).toLowerCase();
+      row.dataset.tags = (book.tags || []).map((t) => (t.name || '').toLowerCase()).join(' ');
 
       const cover = document.createElement('div');
       cover.className = 'book-row-cover';
@@ -294,6 +304,16 @@
       author.textContent = book.nga_tid
         ? (book.author ? book.author + ' · tid ' + book.nga_tid : 'tid ' + book.nga_tid)
         : (book.author || 'Unknown');
+      const tagRow = document.createElement('div');
+      tagRow.className = 'book-tags';
+      (book.tags || []).forEach((tag) => {
+        const chip = document.createElement('span');
+        chip.className = 'book-tag';
+        chip.textContent = tag.name;
+        chip.style.backgroundColor = tag.color + '29';
+        chip.style.color = tag.color;
+        tagRow.appendChild(chip);
+      });
       const pct = book.progress_pct || 0;
       const pctLabel = document.createElement('span');
       pctLabel.className = 'book-progress-pct';
@@ -307,7 +327,7 @@
       const prog = document.createElement('div');
       prog.className = 'book-row-progress';
       prog.append(pctLabel, track);
-      meta.append(title, author, prog);
+      meta.append(title, author, tagRow, prog);
 
       row.append(cover, meta, this._actions(book));
       row.addEventListener('click', () => App.showReader(book.id));
@@ -606,7 +626,8 @@
       cards.forEach((c) => {
         const hit = !q ||
           (c.dataset.title || '').includes(q) ||
-          (c.dataset.author || '').includes(q);
+          (c.dataset.author || '').includes(q) ||
+          (c.dataset.tags || '').includes(q);
         c.classList.toggle('hidden', !hit);
         if (hit) visible++;
       });

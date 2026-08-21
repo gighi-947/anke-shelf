@@ -1509,6 +1509,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.sp-book-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.sp-book-tag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  white-space: nowrap;
+}
 #sp-books-search {
   width: 100%;
   padding: 8px 12px;

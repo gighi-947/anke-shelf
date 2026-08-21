@@ -49,6 +49,7 @@ fun BookManagementOverlay(
     onDelete: (BookRecord) -> Unit,
     onSetCover: (BookRecord, Uri) -> Unit = { _, _ -> },
     onResetCover: (BookRecord) -> Unit = {},
+    onEditTags: (BookRecord) -> Unit = {},
 ) {
     var renameTarget by remember { mutableStateOf<BookRecord?>(null) }
     var deleteTarget by remember { mutableStateOf<BookRecord?>(null) }
@@ -82,6 +83,10 @@ fun BookManagementOverlay(
                 }
                 ManageRow(Icons.Filled.Edit, "重命名") {
                     renameTarget = rec
+                    onDismiss()
+                }
+                ManageRow(Icons.Filled.Edit, "编辑标签") {
+                    onEditTags(rec)
                     onDismiss()
                 }
                 ManageRow(Icons.Filled.Delete, "删除", destructive = true) {

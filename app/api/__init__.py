@@ -36,6 +36,7 @@ _HANDLERS = (
     ("remove_book", library.remove_book),
     ("open_book", library.open_book),
     ("rename_book", library.rename_book),
+    ("update_book_tags", library.update_book_tags),
     ("set_cover", library.set_cover),
     ("reset_cover", library.reset_cover),
     # 阅读

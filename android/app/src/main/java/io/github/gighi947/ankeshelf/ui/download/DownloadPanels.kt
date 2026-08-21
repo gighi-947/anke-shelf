@@ -55,6 +55,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedTextField
@@ -127,6 +128,11 @@ internal fun ConfigPanel(container: AppContainer) {
 
     DownloadList {
         DownloadSection("登录配置（仅存本机）") {
+            Text(
+                "填写 Cookie 或使用浏览器登录自动填充；配置仅保存在本机。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             OutlinedTextField(
                 value = uid,
                 onValueChange = { uid = it },
@@ -188,7 +194,17 @@ internal fun ConfigPanel(container: AppContainer) {
                     )
                     configured = container.ngaConfig.load().configured
                 }) { Text("保存配置") }
-                TextButton(onClick = { showNgaLogin = true }) { Text("浏览器登录") }
+                OutlinedButton(shape = MaterialTheme.shapes.small, onClick = { showNgaLogin = true }) {
+                    Text("浏览器登录")
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = AnkeSpacing.xs),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+            ) {
                 TextButton(onClick = {
                     container.ngaConfig.clear()
                     uid = ""
@@ -204,7 +220,6 @@ internal fun ConfigPanel(container: AppContainer) {
                     } else {
                         MaterialTheme.colorScheme.error
                     },
-                    modifier = Modifier.align(Alignment.CenterVertically),
                 )
             }
             Text(
@@ -222,6 +237,14 @@ internal fun ConfigPanel(container: AppContainer) {
                 val parsed = parseNgaCookieText(cookie)
                 if (parsed.uid.isNotEmpty()) uid = parsed.uid
                 if (parsed.cid.isNotEmpty()) cid = parsed.cid
+                container.ngaConfig.save(
+                    NgaConfigPatch(
+                        uid = parsed.uid.ifEmpty { uid },
+                        cid = parsed.cid.ifEmpty { cid },
+                        ua = ua.ifBlank { NgaConfig.DEFAULT_UA },
+                    ),
+                )
+                configured = container.ngaConfig.load().configured
                 showNgaLogin = false
             },
         )

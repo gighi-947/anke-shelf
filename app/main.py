@@ -194,6 +194,7 @@ def main() -> int:
             file_size=Path(path).stat().st_size,
             cover_rel=shelf.extract_cover(book),
             nga_tid=nga_tid,
+            tags=[{"name": "NGA", "color": "#2e86ab"}],
         )
         shelf.upsert(rec)
         shelf.save()
@@ -225,6 +226,7 @@ def main() -> int:
             file_size=Path(path).stat().st_size,
             file_mtime=file_mtime(path),
             cover_rel=cover_rel,
+            tags=[{"name": "骨碌碌", "color": "#6f8d87"}],
         )
         shelf.upsert(rec)
         shelf.save()

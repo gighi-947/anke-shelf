@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.BookTag
 import io.github.gighi947.ankeshelf.data.GululuBaseline
 import io.github.gighi947.ankeshelf.data.GululuUpdate
 import io.github.gighi947.ankeshelf.service.AppContainer
@@ -74,6 +75,9 @@ import io.github.gighi947.ankeshelf.service.BookUi
 import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.ui.components.ActionIcon
+import io.github.gighi947.ankeshelf.ui.components.BookTagEditorDialog
+import io.github.gighi947.ankeshelf.ui.components.BookTagFilterRow
+import io.github.gighi947.ankeshelf.ui.components.BookTagRow
 import io.github.gighi947.ankeshelf.ui.components.BookManagementOverlay
 import io.github.gighi947.ankeshelf.ui.components.NgaUpdateDialog
 import io.github.gighi947.ankeshelf.ui.components.launchNgaUpdate
@@ -121,6 +125,7 @@ fun BookshelfScreen(
     onSetCover: (BookRecord, Uri) -> Unit,
     onResetCover: (BookRecord) -> Unit,
     onOpen: (BookRecord) -> Unit,
+    onEditTags: (BookRecord, List<BookTag>) -> Unit,
     shelfView: String,
     onShelfViewChange: (String) -> Unit,
     sort: String,
@@ -152,6 +157,8 @@ fun BookshelfScreen(
     var importMenu by remember { mutableStateOf(false) }
     var manageBook by remember { mutableStateOf<BookRecord?>(null) }
     var updateTarget by remember { mutableStateOf<BookRecord?>(null) }
+    var editTagsFor by remember { mutableStateOf<BookRecord?>(null) }
+    var selectedTag by remember { mutableStateOf<String?>(null) }
     val sortedBooks = remember(books, sort) {
         when (sort) {
             "added" -> books.sortedByDescending { it.record.added_at }
@@ -163,6 +170,13 @@ fun BookshelfScreen(
             )
             else -> books.sortedByDescending { it.record.last_read_at }
         }
+    }
+    val allTags = remember(books) {
+        books.flatMap { it.record.tags }.distinctBy { it.name }
+    }
+    val displayedBooks = remember(sortedBooks, selectedTag) {
+        if (selectedTag == null) sortedBooks
+        else sortedBooks.filter { ui -> ui.record.tags.any { it.name == selectedTag } }
     }
 
     Scaffold(
@@ -234,7 +248,7 @@ fun BookshelfScreen(
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("\u4ece NGA \u4e0b\u8f7d") },
+                                text = { Text("安科下载") },
                                 onClick = {
                                     importMenu = false
                                     onOpenDownload()
@@ -277,7 +291,7 @@ fun BookshelfScreen(
                             Text("导入 EPUB")
                         }
                         OutlinedButton(shape = MaterialTheme.shapes.small, onClick = onOpenDownload) {
-                            Text("从 NGA 下载")
+                            Text("安科下载")
                         }
                     }
                 }
@@ -323,64 +337,74 @@ fun BookshelfScreen(
                 }
             }
         } else {
-            if (shelfView == "list") {
-                LazyColumn(
-                    contentPadding = PaddingValues(AnkeSpacing.md),
-                    verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                ) {
-                    lazyItems(sortedBooks, key = { it.record.id }) { ui ->
-                        BookListRow(
-                            ui = ui,
-                            coversDir = coversDir,
-                            hideBrackets = hideBrackets,
-                            showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
-                            onClick = { onOpen(ui.record) },
-                            onLongPress = { manageBook = it },
-                            onUpdate = { updateTarget = it },
-                            onExportEpub = { rec ->
-                                pendingExport = rec to "epub"
-                                epubLauncher.launch(safeExportName(rec.title) + ".epub")
-                            },
-                            onExportMd = { rec ->
-                                pendingExport = rec to "md"
-                                mdLauncher.launch(safeExportName(rec.title) + ".md")
-                            },
-                        )
-                    }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+            ) {
+                if (allTags.isNotEmpty()) {
+                    BookTagFilterRow(
+                        allTags = allTags,
+                        selected = selectedTag,
+                        onSelect = { selectedTag = it },
+                        modifier = Modifier.padding(horizontal = AnkeSpacing.md),
+                    )
                 }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(110.dp),
-                    contentPadding = PaddingValues(AnkeSpacing.md),
-                    horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
-                    verticalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                ) {
-                    items(sortedBooks, key = { it.record.id }) { ui ->
-                        BookCard(
-                            ui = ui,
-                            coversDir = coversDir,
-                            context = context,
-                            container = container,
-                            hideBrackets = hideBrackets,
-                            showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
-                            onClick = { onOpen(ui.record) },
-                            onLongPress = { manageBook = it },
-                            onUpdate = { updateTarget = it },
-                            onExportEpub = { rec ->
-                                pendingExport = rec to "epub"
-                                epubLauncher.launch(safeExportName(rec.title) + ".epub")
-                            },
-                            onExportMd = { rec ->
-                                pendingExport = rec to "md"
-                                mdLauncher.launch(safeExportName(rec.title) + ".md")
-                            },
-                        )
+                if (shelfView == "list") {
+                    LazyColumn(
+                        contentPadding = PaddingValues(AnkeSpacing.md),
+                        verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        lazyItems(displayedBooks, key = { it.record.id }) { ui ->
+                            BookListRow(
+                                ui = ui,
+                                coversDir = coversDir,
+                                hideBrackets = hideBrackets,
+                                showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
+                                onClick = { onOpen(ui.record) },
+                                onLongPress = { manageBook = it },
+                                onUpdate = { updateTarget = it },
+                                onExportEpub = { rec ->
+                                    pendingExport = rec to "epub"
+                                    epubLauncher.launch(safeExportName(rec.title) + ".epub")
+                                },
+                                onExportMd = { rec ->
+                                    pendingExport = rec to "md"
+                                    mdLauncher.launch(safeExportName(rec.title) + ".md")
+                                },
+                            )
+                        }
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(110.dp),
+                        contentPadding = PaddingValues(AnkeSpacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
+                        verticalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(displayedBooks, key = { it.record.id }) { ui ->
+                            BookCard(
+                                ui = ui,
+                                coversDir = coversDir,
+                                context = context,
+                                container = container,
+                                hideBrackets = hideBrackets,
+                                showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
+                                onClick = { onOpen(ui.record) },
+                                onLongPress = { manageBook = it },
+                                onUpdate = { updateTarget = it },
+                                onExportEpub = { rec ->
+                                    pendingExport = rec to "epub"
+                                    epubLauncher.launch(safeExportName(rec.title) + ".epub")
+                                },
+                                onExportMd = { rec ->
+                                    pendingExport = rec to "md"
+                                    mdLauncher.launch(safeExportName(rec.title) + ".md")
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -392,7 +416,20 @@ fun BookshelfScreen(
             onDelete = onDelete,
             onSetCover = onSetCover,
             onResetCover = onResetCover,
+            onEditTags = { editTagsFor = it },
         )
+
+        editTagsFor?.let { rec ->
+            BookTagEditorDialog(
+                bookTitle = rec.title,
+                tags = rec.tags,
+                onDismiss = { editTagsFor = null },
+                onSave = { tags ->
+                    onEditTags(rec, tags)
+                    editTagsFor = null
+                },
+            )
+        }
 
         updateTarget?.let { book ->
             if (book.nga_tid > 0) {
@@ -479,6 +516,7 @@ private fun BookListRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = AnkeSpacing.xxs),
             )
+            BookTagRow(tags = ui.record.tags)
             Text(
                 "${ui.progressPct.roundToInt()}%",
                 style = MaterialTheme.typography.labelSmall,
@@ -616,6 +654,7 @@ private fun BookCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        BookTagRow(tags = ui.record.tags)
         Text(
             "${ui.progressPct.roundToInt()}%",
             style = MaterialTheme.typography.labelSmall,

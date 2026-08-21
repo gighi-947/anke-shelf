@@ -23,6 +23,7 @@
     ['remove_book', 'removeBook'],
     ['open_book', 'openBook'],
     ['rename_book', 'renameBook'],
+    ['update_book_tags', 'updateBookTags'],
     ['set_cover', 'setCover'],
     ['reset_cover', 'resetCover'],
     ['save_progress', 'saveProgress'],

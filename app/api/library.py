@@ -124,6 +124,26 @@ def reset_cover(ctx: ApiContext, book_id: str) -> dict:
     return record_to_dict(ctx.shelf.get(book_id) or rec)
 
 
+def update_book_tags(ctx: ApiContext, book_id: str, tags: list) -> dict:
+    """更新书籍标签（名称 ≤10 字，颜色 #RRGGBB）。"""
+    rec = ctx.shelf.get(book_id)
+    if rec is None:
+        raise ApiError(ErrorCode.BOOK_NOT_FOUND, "书籍不存在")
+    cleaned = []
+    seen = set()
+    for t in tags or []:
+        if not isinstance(t, dict):
+            continue
+        name = str(t.get("name", "")).strip()
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        cleaned.append({"name": name[:10], "color": str(t.get("color", "#8b5a2b"))})
+    rec.tags = cleaned
+    ctx.shelf.save()
+    return record_to_dict(rec)
+
+
 def rename_book(ctx: ApiContext, book_id: str, new_title: str) -> dict:
     """重命名书籍显示标题：书架记录 + 原生书 meta.json（EPUB 仅书架记录）。
 

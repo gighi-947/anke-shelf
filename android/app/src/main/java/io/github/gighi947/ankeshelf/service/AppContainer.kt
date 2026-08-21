@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.BookTag
 import io.github.gighi947.ankeshelf.data.ChapterReadResult
 import io.github.gighi947.ankeshelf.data.EpubBook
 import io.github.gighi947.ankeshelf.data.EpubError
@@ -160,7 +161,7 @@ class BookRepository(
     }
 
     /** 登记本地 EPUB 文件（也用于测试）。 */
-    fun registerEpubFile(file: File): RepoResult<BookRecord> {
+    fun registerEpubFile(file: File, tags: List<BookTag> = emptyList()): RepoResult<BookRecord> {
         if (!file.isFile) return RepoResult.Err(BookRepoError.NotFound)
         val book = try {
             EpubBook(file).open()
@@ -182,6 +183,7 @@ class BookRepository(
                 file_size = file.length(),
                 file_mtime = file.lastModified().toString(),
                 added_at = nowIso(),
+                tags = tags,
             )
             shelf.upsert(rec)
             shelf.save()
@@ -217,6 +219,7 @@ class BookRepository(
                 file_mtime = "",
                 added_at = nowIso(),
                 nga_tid = tid.toInt(),
+                tags = listOf(BookTag("NGA", "#2e86ab")),
             )
             shelf.upsert(rec)
             shelf.save()
@@ -232,6 +235,19 @@ class BookRepository(
     /** 按 NGA tid 查书架记录。 */
     fun findByNgaTid(tid: Long): BookRecord? =
         shelf.listBooks().firstOrNull { it.nga_tid.toLong() == tid }
+
+    /** 更新书籍标签（内容上限 10 字、颜色为 #RRGGBB）。 */
+    fun updateBookTags(bookId: String, tags: List<BookTag>): BookRecord? {
+        val rec = shelf.get(bookId) ?: return null
+        val cleaned = tags
+            .filter { it.name.isNotBlank() }
+            .map { BookTag(it.name.trim().take(10), it.color) }
+            .distinctBy { it.name }
+        val updated = rec.copy(tags = cleaned)
+        shelf.upsert(updated)
+        shelf.save()
+        return updated
+    }
 
     /** 打开书籍（原生书目录或 EPUB 文件）。 */
     fun openSession(rec: BookRecord): RepoResult<BookSession> {

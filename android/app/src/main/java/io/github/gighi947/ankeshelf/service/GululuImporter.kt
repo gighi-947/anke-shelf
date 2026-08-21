@@ -5,6 +5,7 @@ import io.github.gighi947.ankeshelf.data.GululuEpub
 import io.github.gighi947.ankeshelf.data.GululuEpubImage
 import io.github.gighi947.ankeshelf.data.GululuUpdate
 import io.github.gighi947.ankeshelf.data.AppPaths
+import io.github.gighi947.ankeshelf.data.BookTag
 import java.io.File
 
 /** 导入结果：显式区分成功 / 取消 / 失败（调用方据此设定状态，不靠异常穿透 UI）。 */
@@ -256,7 +257,10 @@ class GululuImporter(
                 partial.copyTo(target, overwrite = true)
                 partial.delete()
             }
-            when (val registered = repository.registerEpubFile(target)) {
+            when (val registered = repository.registerEpubFile(
+                target,
+                tags = listOf(BookTag("骨碌碌", "#6f8d87")),
+            )) {
                 is RepoResult.Ok -> registered.value.id
                 is RepoResult.Err -> throw IllegalStateException("书籍登记失败：${registered.error.message}")
             }

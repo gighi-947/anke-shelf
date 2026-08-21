@@ -581,7 +581,8 @@
     const books = booksCache.filter((b) =>
       !q ||
       (b.title || '').toLowerCase().includes(q) ||
-      (b.author || '').toLowerCase().includes(q)
+      (b.author || '').toLowerCase().includes(q) ||
+      (b.tags || []).some((t) => (t.name || '').toLowerCase().includes(q))
     );
     list.innerHTML = '';
     if (!books.length) {
@@ -605,6 +606,17 @@
       author.className = 'sp-book-author';
       author.textContent = book.author || (Number(book.nga_tid) > 0 ? 'NGA 安科' : 'Unknown');
       meta.append(title, author);
+      const tagRow = document.createElement('div');
+      tagRow.className = 'sp-book-tags';
+      (book.tags || []).forEach((tag) => {
+        const chip = document.createElement('span');
+        chip.className = 'sp-book-tag';
+        chip.textContent = tag.name;
+        chip.style.backgroundColor = tag.color + '29';
+        chip.style.color = tag.color;
+        tagRow.appendChild(chip);
+      });
+      meta.append(tagRow);
       const actions = document.createElement('span');
       actions.className = 'settings-control-inline';
       const mk = (text, fn) => {
@@ -629,6 +641,17 @@
           if (window.NgaDownload) NgaDownload.open({ tab: 'dl-gululu' });
         });
       }
+      mk('标签', async () => {
+        const tags = (book.tags || []).map((t) => t.name + ':' + t.color).join(',');
+        const raw = prompt('编辑标签（多个用逗号分隔，格式：名称:颜色，例如 NGA:#2e86ab）：', tags);
+        if (raw === null) return;
+        const parsed = raw.split(/[,，]/).map((p) => p.trim()).filter(Boolean).map((p) => {
+          const [name, color] = p.split(':');
+          return { name: (name || '').trim().slice(0, 10), color: (color || '#8b5a2b').trim() };
+        }).filter((t) => t.name);
+        await Api.updateBookTags(book.id, parsed);
+        Toast.show('标签已保存');
+      });
       mk('重命名', async () => {
         const name = prompt('重命名书籍：', book.title || '');
         if (name === null) return;

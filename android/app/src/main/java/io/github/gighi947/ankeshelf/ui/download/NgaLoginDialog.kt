@@ -37,11 +37,21 @@ internal fun NgaLoginDialog(
     onExtracted: (cookieText: String) -> Unit,
 ) {
     val context = LocalContext.current
+    val tryExtractAndClose: () -> Unit = {
+        val cookie = CookieManager.getInstance().getCookie("https://bbs.nga.cn").orEmpty()
+        val parsed = parseNgaCookieText(cookie)
+        clearNgaWebCookies()
+        if (parsed.uid.isEmpty() || parsed.cid.isEmpty()) {
+            onDismiss()
+        } else {
+            onExtracted(cookie)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = {
-            clearNgaWebCookies()
-            onDismiss()
+            // 直接退出（返回键/点外部）也尝试提取：有效就自动保存，无效就关闭。
+            tryExtractAndClose()
         },
         title = { Text("NGA 登录") },
         text = {
@@ -99,8 +109,8 @@ internal fun NgaLoginDialog(
             TextButton(
                 shape = MaterialTheme.shapes.small,
                 onClick = {
-                    clearNgaWebCookies()
-                    onDismiss()
+                    // 点“取消”同样先尝试提取，避免已登录但误点取消导致凭据没保存。
+                    tryExtractAndClose()
                 },
             ) { Text("取消") }
         },

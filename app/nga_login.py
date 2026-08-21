@@ -46,6 +46,14 @@ def _cookies_to_text(cookies) -> str:
     return "; ".join(parts)
 
 
+def _cookies_to_uid_cid(cookies) -> dict:
+    try:
+        return parse_nga_cookie_text(_cookies_to_text(cookies))
+    except Exception:
+        log.exception("读取 NGA 登录 Cookie 失败")
+        return {}
+
+
 class NgaLoginController:
     """惰性创建/销毁 NGA 登录二级窗，并提供状态机供 API 层查询。"""
 
@@ -55,6 +63,7 @@ class NgaLoginController:
         self._state = "idle"  # idle | waiting | done | cancelled | error
         self._error = ""
         self._shutting_down = False
+        self._extracting = False
 
     # ---------- 生命周期 ----------
 
@@ -72,9 +81,25 @@ class NgaLoginController:
 
     def _on_closed(self) -> None:
         with self._lock:
-            if self._shutting_down:
+            if self._shutting_down or self._extracting:
                 return
-            if self._state == "waiting":
+            window = self._window
+            if self._state != "waiting":
+                self._window = None
+                return
+        # 用户直接关闭登录窗口：在窗口对象仍可访问时尝试提取 Cookie。
+        parsed = _cookies_to_uid_cid(window.get_cookies())
+        with self._lock:
+            if parsed.get("uid") and parsed.get("cid"):
+                try:
+                    save_nga_config({"uid": parsed["uid"], "cid": parsed["cid"]})
+                    self._state = "done"
+                    self._error = ""
+                except Exception as exc:
+                    log.exception("保存 NGA 登录配置失败")
+                    self._state = "cancelled"
+                    self._error = f"登录窗口已关闭，保存配置失败：{exc}"
+            else:
                 self._state = "cancelled"
                 self._error = "登录窗口已关闭"
             self._window = None
@@ -174,8 +199,7 @@ class NgaLoginController:
                     state, error = self._state, self._error
                 return self._make_status(state, error, True)
 
-            cookie_text = _cookies_to_text(window.get_cookies())
-            parsed = parse_nga_cookie_text(cookie_text)
+            parsed = _cookies_to_uid_cid(window.get_cookies())
         except Exception as exc:
             log.exception("读取 NGA 登录 Cookie 失败")
             with self._lock:
@@ -201,15 +225,7 @@ class NgaLoginController:
                 state, error = self._state, self._error
             return self._make_status(state, error, True)
 
-        try:
-            window.clear_cookies()
-        except Exception:
-            log.exception("清理登录窗口 Cookie 失败（不影响已保存配置）")
-
-        try:
-            window.destroy()
-        except Exception:
-            log.exception("关闭登录窗口失败（不影响已保存配置）")
+        self._close_window(window)
 
         with self._lock:
             self._state = "done"
@@ -224,6 +240,23 @@ class NgaLoginController:
             self._state = "cancelled"
             self._error = ""
         if window is not None and not window.events.closed.is_set():
+            # 用户点“取消”关闭窗口前，同样尝试提取一次：已登录就自动保存。
+            parsed = _cookies_to_uid_cid(window.get_cookies())
+            if parsed.get("uid") and parsed.get("cid"):
+                try:
+                    save_nga_config({"uid": parsed["uid"], "cid": parsed["cid"]})
+                    with self._lock:
+                        self._state = "done"
+                        self._error = ""
+                except Exception as exc:
+                    log.exception("保存 NGA 登录配置失败")
+            self._close_window(window)
+        return self.status()
+
+    def _close_window(self, window) -> None:
+        with self._lock:
+            self._extracting = True
+        try:
             try:
                 window.clear_cookies()
             except Exception:
@@ -232,4 +265,6 @@ class NgaLoginController:
                 window.destroy()
             except Exception:
                 log.exception("关闭登录窗口失败")
-        return self.status()
+        finally:
+            with self._lock:
+                self._extracting = False

@@ -88,6 +88,7 @@ import androidx.core.content.ContextCompat
 import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.NgaConfigPatch
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.BookTag
 import io.github.gighi947.ankeshelf.data.GululuBaseline
 import io.github.gighi947.ankeshelf.data.GululuUpdate
 import io.github.gighi947.ankeshelf.service.RepoResult
@@ -101,6 +102,9 @@ import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.ui.components.ActionIcon
 import io.github.gighi947.ankeshelf.ui.components.BookManagementOverlay
+import io.github.gighi947.ankeshelf.ui.components.BookTagEditorDialog
+import io.github.gighi947.ankeshelf.ui.components.BookTagFilterRow
+import io.github.gighi947.ankeshelf.ui.components.BookTagRow
 import io.github.gighi947.ankeshelf.ui.components.NgaUpdateDialog
 import io.github.gighi947.ankeshelf.ui.components.launchNgaUpdate
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
@@ -150,17 +154,28 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var tick by remember { mutableIntStateOf(0) }
-    val books = remember(tick) {
+    val allBooks = remember(tick) {
         val gululuDir = container.appPaths.gululuLibraryDir.absolutePath
         container.shelf.listBooks().filter {
             it.nga_tid > 0 || (it.nga_tid <= 0 && it.path.startsWith(gululuDir))
         }
     }
     var manageBook by remember { mutableStateOf<BookRecord?>(null) }
+    var editTagsFor by remember { mutableStateOf<BookRecord?>(null) }
+    var selectedTag by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
     var deleteTarget by remember { mutableStateOf<BookRecord?>(null) }
     var updateTarget by remember { mutableStateOf<BookRecord?>(null) }
     var exportTarget by remember { mutableStateOf<Pair<BookRecord, String>?>(null) }
     var view by remember { mutableStateOf(container.settings.getAll().shelf_view.ifBlank { "grid" }) }
+    val allTags = remember(allBooks) { allBooks.flatMap { it.tags }.distinctBy { it.name } }
+    val books = remember(allBooks, query, selectedTag) {
+        val q = query.trim()
+        allBooks.filter { book ->
+            (selectedTag == null || book.tags.any { it.name == selectedTag }) &&
+                (q.isEmpty() || book.title.contains(q, ignoreCase = true) || book.author.contains(q, ignoreCase = true))
+        }
+    }
     val epubLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/epub+zip"),
     ) { uri ->
@@ -200,10 +215,28 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
                 )
             }
         }
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            label = { Text("搜索书名 / 作者") },
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AnkeSpacing.lg, vertical = AnkeSpacing.xs),
+        )
+        if (allTags.isNotEmpty()) {
+            BookTagFilterRow(
+                allTags = allTags,
+                selected = selectedTag,
+                onSelect = { selectedTag = it },
+                modifier = Modifier.padding(horizontal = AnkeSpacing.lg),
+            )
+        }
         when {
             books.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    "暂无已下载书籍",
+                    if (allBooks.isEmpty()) "暂无已下载书籍" else "没有匹配的书籍",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -284,7 +317,22 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
             onChanged()
             tick++
         },
+        onEditTags = { editTagsFor = it },
     )
+
+    editTagsFor?.let { rec ->
+        BookTagEditorDialog(
+            bookTitle = rec.title,
+            tags = rec.tags,
+            onDismiss = { editTagsFor = null },
+            onSave = { tags ->
+                container.repository.updateBookTags(rec.id, tags)
+                editTagsFor = null
+                onChanged()
+                tick++
+            },
+        )
+    }
 
     deleteTarget?.let { rec ->
         AlertDialog(
@@ -389,6 +437,7 @@ internal fun LibraryBookRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = AnkeSpacing.xxs),
             )
+            BookTagRow(tags = book.tags)
         }
         ActionIcon(Icons.Filled.Refresh, "更新") { onUpdate(book) }
         Box {
@@ -502,6 +551,7 @@ internal fun LibraryBookCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        BookTagRow(tags = book.tags)
     }
 }
 

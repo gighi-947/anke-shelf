@@ -10,6 +10,12 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 @Serializable
+data class BookTag(
+    val name: String,
+    val color: String = "#8b5a2b",
+)
+
+@Serializable
 data class BookRecord(
     val id: String,
     val path: String,
@@ -23,6 +29,7 @@ data class BookRecord(
     val added_at: String = "",
     val last_read_at: String = "",
     val nga_tid: Int = 0,
+    val tags: List<BookTag> = emptyList(),
 ) {
     @Transient
     var progressPct: Double = 0.0

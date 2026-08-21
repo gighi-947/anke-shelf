@@ -95,6 +95,7 @@ fun SearchScreen(
     onBack: () -> Unit,
 ) {
     var bookId by rememberSaveable { mutableStateOf(books.firstOrNull()?.record?.id) }
+    var bookFilter by rememberSaveable { mutableStateOf("") }
     var query by rememberSaveable { mutableStateOf("") }
     var caseSensitive by rememberSaveable { mutableStateOf(false) }
     var wholeWord by rememberSaveable { mutableStateOf(false) }
@@ -209,36 +210,50 @@ fun SearchScreen(
                 return@Scaffold
             }
 
-            // 书籍选择（桌面为书内检索，安卓补一个书选择器）。
+            // 书籍选择：支持键入书名筛选（书籍多时不用在长菜单里翻找）。
+            val selectedTitle = books.firstOrNull { it.record.id == bookId }?.record?.title ?: ""
+            val filteredBooks = remember(books, bookFilter) {
+                if (bookFilter.isBlank()) books
+                else books.filter { it.record.title.contains(bookFilter.trim(), ignoreCase = true) }
+            }
             ExposedDropdownMenuBox(
                 expanded = menuExpanded,
                 onExpandedChange = { menuExpanded = it },
             ) {
                 OutlinedTextField(
-                    value = books.firstOrNull { it.record.id == bookId }?.record?.title ?: "",
-                    onValueChange = {},
-                    readOnly = true,
+                    value = if (menuExpanded) bookFilter else selectedTitle,
+                    onValueChange = { if (menuExpanded) bookFilter = it },
                     singleLine = true,
                     label = { Text("搜索书籍") },
+                    placeholder = { if (menuExpanded) Text("输入书名筛选…") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
                     shape = MaterialTheme.shapes.medium,
                 )
                 ExposedDropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
                 ) {
-                    books.forEach { ui ->
+                    if (filteredBooks.isEmpty()) {
                         DropdownMenuItem(
-                            text = { Text(ui.record.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                            onClick = {
-                                bookId = ui.record.id
-                                menuExpanded = false
-                            },
-                            modifier = Modifier.fillMaxWidth(),
+                            text = { Text("没有匹配的书籍") },
+                            onClick = {},
+                            enabled = false,
                         )
+                    } else {
+                        filteredBooks.forEach { ui ->
+                            DropdownMenuItem(
+                                text = { Text(ui.record.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                onClick = {
+                                    bookId = ui.record.id
+                                    bookFilter = ""
+                                    menuExpanded = false
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
                 }
             }

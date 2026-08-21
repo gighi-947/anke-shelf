@@ -595,6 +595,18 @@ html, body {
   font-weight: 700;
   letter-spacing: 0.5px;
 }
+.book-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.book-tag {
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-size: 9px;
+  white-space: nowrap;
+}
 .nga-badge,
 .gululu-badge {
   position: absolute;

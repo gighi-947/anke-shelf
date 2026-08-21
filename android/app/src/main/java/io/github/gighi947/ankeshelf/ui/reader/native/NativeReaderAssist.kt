@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -234,35 +235,56 @@ internal fun BoxScope.ReaderSettingsSheet(
                     .padding(AnkeSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
             ) {
-                Text("阅读设置", color = fg, style = MaterialTheme.typography.titleMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("阅读设置", color = fg, style = MaterialTheme.typography.titleMedium)
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Close, contentDescription = "关闭", tint = fg)
+                    }
+                }
 
                 Text("排版", color = fg, style = MaterialTheme.typography.labelLarge)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("字号", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
-                    IconButton(onClick = onFontSizeDec) { Text("－", color = fg) }
-                    Text("$fontSize", color = fg, style = MaterialTheme.typography.labelLarge)
-                    IconButton(onClick = onFontSizeInc) { Text("＋", color = fg) }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("行高", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
-                    IconButton(onClick = onLineHeightDec) { Text("－", color = fg) }
-                    Text("%.1f".format(lineHeight), color = fg, style = MaterialTheme.typography.labelLarge)
-                    IconButton(onClick = onLineHeightInc) { Text("＋", color = fg) }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                ReaderSettingStepperRow(
+                    label = "字号",
+                    value = "$fontSize",
+                    fg = fg,
+                    onDec = onFontSizeDec,
+                    onInc = onFontSizeInc,
+                )
+                ReaderSettingStepperRow(
+                    label = "行高",
+                    value = "%.1f".format(lineHeight),
+                    fg = fg,
+                    onDec = onLineHeightDec,
+                    onInc = onLineHeightInc,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
                     Text("翻页方式", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
-                    FilterChip(
-                        selected = !pagination,
-                        onClick = onTogglePagination,
-                        label = { Text("滚动") },
-                    )
-                    FilterChip(
-                        selected = pagination,
-                        onClick = onTogglePagination,
-                        label = { Text("分页") },
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
+                        FilterChip(
+                            selected = !pagination,
+                            onClick = onTogglePagination,
+                            label = { Text("滚动") },
+                        )
+                        FilterChip(
+                            selected = pagination,
+                            onClick = onTogglePagination,
+                            label = { Text("分页") },
+                        )
+                    }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
                     Text("主题", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
                     FilterChip(
                         selected = true,
@@ -284,19 +306,17 @@ internal fun BoxScope.ReaderSettingsSheet(
                     fg = fg,
                     onCheckedChange = onToggleAutoScroll,
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "速度 ${"%.1f".format(autoScrollSpeed)}×",
-                        color = fg.copy(alpha = 0.75f),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    Slider(
-                        value = autoScrollSpeed.toFloat(),
-                        onValueChange = { onSpeedChange(it.toDouble()) },
-                        valueRange = 0.5f..6f,
-                        modifier = Modifier.padding(start = AnkeSpacing.sm),
-                    )
-                }
+                Text(
+                    "速度 ${"%.1f".format(autoScrollSpeed)}×",
+                    color = fg.copy(alpha = 0.75f),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                Slider(
+                    value = autoScrollSpeed.toFloat(),
+                    onValueChange = { onSpeedChange(it.toDouble()) },
+                    valueRange = 0.5f..6f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
 
                 AssistSwitchRow(
                     label = "速读（RSVP）",
@@ -351,6 +371,34 @@ private fun fontLabel(name: String): String = when {
     name == "system" -> "系统默认"
     name.startsWith("sys:") -> "内置霞鹜文楷"
     else -> name.substringBeforeLast('.')
+}
+
+@Composable
+private fun ReaderSettingStepperRow(
+    label: String,
+    value: String,
+    fg: Color,
+    onDec: () -> Unit,
+    onInc: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onDec) { Text("－", color = fg) }
+            Text(
+                value,
+                color = fg,
+                style = MaterialTheme.typography.labelLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(min = AnkeSpacing.xl),
+            )
+            IconButton(onClick = onInc) { Text("＋", color = fg) }
+        }
+    }
 }
 
 @Composable

@@ -266,6 +266,10 @@ fun AnkeShelfRoot(container: AppContainer) {
                                         container.repository.resetCover(rec)
                                         refresh++
                                     },
+                                    onEditTags = { rec, tags ->
+                                        container.repository.updateBookTags(rec.id, tags)
+                                        refresh++
+                                    },
                                     onShelfViewChange = { view ->
                                         container.settings.update(SettingsPatch(shelf_view = view))
                                         settingsTick++

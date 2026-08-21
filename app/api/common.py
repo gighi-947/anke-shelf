@@ -80,6 +80,7 @@ def record_to_dict(rec: BookRecord) -> dict:
         "added_at": rec.added_at,
         "last_read_at": rec.last_read_at,
         "nga_tid": rec.nga_tid,
+        "tags": rec.tags,
         "cover_rel": rec.cover_rel,
         "cover_url": f"/cover/{rec.id}",
     }
