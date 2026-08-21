@@ -101,7 +101,6 @@
               const session = Reader.ensureSession();
               session.setPosition(offset);
               ProgressSaver.persistProgress(App.state.bookId, App.state.chapterIndex, offset);
-              session.markSaved();
               Reader.updateProgressUI();
             });
           }
@@ -485,7 +484,6 @@
       const off = typeof preciseOffset === 'number' ? preciseOffset : this.currentOffset();
       session.setPosition(off);
       ProgressSaver.persistProgress(App.state.bookId, session.chapterIndex, off);
-      session.markSaved();
     },
 
     onPageTurned() {
@@ -631,7 +629,6 @@
     applyLayout() {
       const rv = document.getElementById('reader-view');
       rv.classList.toggle('paged', Paged.isActive());
-      if (this.session) this.session.mode = Paged.isActive() ? 'paged' : 'scroll';
       const root = document.getElementById('reader-root');
       if (root) root.classList.toggle('dual', !!(Paged.isDual && Paged.isDual()));
       const wrap = document.querySelector('.chapter-wrap');

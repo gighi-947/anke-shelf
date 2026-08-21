@@ -11,7 +11,6 @@
     response: null,
     panelOpen: false,
     selectedFloorId: null,
-    displayMode: 'panel',
     returnFocus: null,
     anchorOffset: null,
     danmaku: false,
@@ -78,8 +77,7 @@
   function removeChapterUi() {
     const doc = state.chapterDocument;
     if (!doc) return;
-    doc.querySelectorAll('.gululu-floor-comment-button, .gululu-inline-comments')
-      .forEach((node) => node.remove());
+    doc.querySelectorAll('.gululu-floor-comment-button').forEach((node) => node.remove());
     const style = doc.getElementById('__gululu_online_comments__');
     if (style) style.remove();
   }
@@ -99,24 +97,7 @@
       .gululu-floor-comment-button:hover {
         background:color-mix(in srgb, currentColor 8%, transparent);
       }
-      .gululu-floor-comment-button:focus-visible,
-      .gululu-inline-comments > summary:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
-      .gululu-inline-comments {
-        border-top:1px solid color-mix(in srgb, currentColor 18%, transparent);
-        margin:1em 0 0; padding:.65em 0 0;
-      }
-      .gululu-inline-comments > summary { cursor:pointer; font-weight:600; }
-      .gululu-inline-comment-list { margin:.65em 0 0; }
-      .gululu-inline-comment {
-        border-left:2px solid color-mix(in srgb, currentColor 20%, transparent);
-        margin:.7em 0; padding:.15em 0 .15em .75em;
-      }
-      .gululu-inline-comment header { display:flex; align-items:baseline; flex-wrap:wrap; gap:.4em .7em; }
-      .gululu-inline-comment header strong { font-size:.88em; }
-      .gululu-inline-comment header span { opacity:.66; font-size:.75em; overflow-wrap:anywhere; }
-      .gululu-inline-comment-body { margin:.3em 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
-      .gululu-inline-comment.child { margin-left:.8em; }
-      .gululu-inline-comment-empty { margin:.65em 0; opacity:.66; }
+      .gululu-floor-comment-button:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
       /* 段落级评论徽标与正文高亮（均带 data-textpos-exclude，不进坐标） */
       .gululu-paragraph-comment-badge {
         display:inline-flex; align-items:center; justify-content:center;
@@ -133,13 +114,6 @@
       }
       .gululu-paragraph-highlight {
         outline:2px solid var(--primary, currentColor); outline-offset:2px; border-radius:4px;
-      }
-      .gululu-inline-paragraph-group {
-        border-left:2px solid color-mix(in srgb, currentColor 22%, transparent);
-        margin:.55em 0 .2em; padding-left:.6em;
-      }
-      .gululu-inline-paragraph-group h5 {
-        margin:0 0 .25em; font-size:.82em; font-weight:600; opacity:.75;
       }
     `;
     doc.head.appendChild(style);
@@ -158,11 +132,7 @@
       button.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (state.displayMode === 'inline') {
-          toggleInlineFloor(floorId);
-        } else {
-          openFloor(floorId, button);
-        }
+        openFloor(floorId, button);
       });
       head.appendChild(button);
     });
@@ -188,9 +158,7 @@
       const count = floor ? countComments(Array.isArray(floor.comments) ? floor.comments : []) : 0;
       button.textContent = floor ? `评论 ${count}` : '评论';
       button.setAttribute('aria-expanded', String(
-        state.displayMode === 'inline'
-          ? !!doc.querySelector(`.gululu-inline-comments[data-floor-id="${button.dataset.floorId}"][open]`)
-          : state.panelOpen && state.selectedFloorId === Number(button.dataset.floorId)
+        state.panelOpen && state.selectedFloorId === Number(button.dataset.floorId)
       ));
     });
   }
@@ -199,19 +167,6 @@
     state.selectedFloorId = floorId;
     state.returnFocus = returnFocus || null;
     togglePanel(true, true);
-  }
-
-  function toggleInlineFloor(floorId) {
-    const doc = state.chapterDocument;
-    if (!doc) return;
-    const details = doc.querySelector(`.gululu-inline-comments[data-floor-id="${floorId}"]`);
-    if (!details) {
-      if (!state.response) load(false);
-      return;
-    }
-    details.open = !details.open;
-    updateFloorButtons();
-    scheduleReaderLayout();
   }
 
   async function load(refresh) {
@@ -239,7 +194,6 @@
       if (token !== state.chapterToken) return;
       state.response = response;
       renderResponse(response);
-      renderInlineComments();
       updateFloorButtons();
       updateParagraphBadges();
       if (state.danmaku) startDanmaku();
@@ -331,7 +285,7 @@
       groupHead.textContent = `段落 ${paragraphId} · ${countComments(items)}`;
       group.appendChild(groupHead);
       items.forEach((comment) => {
-        const article = renderComment(comment, false, document, false);
+        const article = renderComment(comment, false, document);
         article.classList.add('gululu-paragraph-comment');
         article.addEventListener('click', () => jumpToParagraph(floorId, paragraphId));
         group.appendChild(article);
@@ -345,7 +299,7 @@
       groupHead.textContent = `楼层评论 ${countComments(floorComments)}`;
       group.appendChild(groupHead);
       floorComments.forEach((comment) => group.appendChild(
-        renderComment(comment, false, document, false)
+        renderComment(comment, false, document)
       ));
       section.appendChild(group);
     }
@@ -517,10 +471,9 @@
     setTimeout(() => target.classList.remove('gululu-paragraph-highlight'), 2000);
   }
 
-  function renderComment(comment, child, ownerDocument, inline) {
+  function renderComment(comment, child, ownerDocument) {
     const article = ownerDocument.createElement('article');
-    const baseClass = inline ? 'gululu-inline-comment' : 'gululu-online-comment';
-    article.className = child ? `${baseClass} child` : baseClass;
+    article.className = child ? 'gululu-online-comment child' : 'gululu-online-comment';
     const head = ownerDocument.createElement('header');
     const author = ownerDocument.createElement('strong');
     author.textContent = String(comment.author || '匿名用户');
@@ -529,83 +482,13 @@
     meta.textContent = `${reply}  ${comment.created_at || ''} · 赞 ${Number(comment.likes) || 0}`.trim();
     head.append(author, meta);
     const body = ownerDocument.createElement('p');
-    if (inline) body.className = 'gululu-inline-comment-body';
     body.textContent = String(comment.content || '');
     article.append(head, body);
     const children = Array.isArray(comment.children) ? comment.children : [];
     children.forEach((item) => article.appendChild(
-      renderComment(item, true, ownerDocument, inline)
+      renderComment(item, true, ownerDocument)
     ));
     return article;
-  }
-
-  function renderInlineComments() {
-    const doc = state.chapterDocument;
-    if (!doc) return;
-    doc.querySelectorAll('.gululu-inline-comments').forEach((node) => node.remove());
-    if (state.displayMode !== 'inline' || !state.response) {
-      scheduleReaderLayout();
-      return;
-    }
-    const floors = Array.isArray(state.response.floors) ? state.response.floors : [];
-    floors.forEach((floor) => {
-      const floorId = Number(floor.floor_id);
-      let anchor = floorId === 0
-        ? (doc.querySelector('.book-meta') || doc.querySelector('.chapter-title'))
-        : doc.getElementById(`floor-${floorId}`);
-      if (!anchor) return;
-      const comments = Array.isArray(floor.comments) ? floor.comments : [];
-      const details = doc.createElement('details');
-      details.className = 'gululu-inline-comments';
-      details.dataset.floorId = String(floorId);
-      details.setAttribute('data-textpos-exclude', 'true');
-      const summary = doc.createElement('summary');
-      summary.textContent = `评论 ${countComments(comments)}`;
-      const list = doc.createElement('div');
-      list.className = 'gululu-inline-comment-list';
-      if (comments.length) {
-        // 与面板一致：按段落分组渲染
-        const paragraphGroups = new Map();
-        const floorComments = [];
-        comments.forEach((comment) => {
-          if (comment.paragraph_id) {
-            let items = paragraphGroups.get(comment.paragraph_id);
-            if (!items) { items = []; paragraphGroups.set(comment.paragraph_id, items); }
-            items.push(comment);
-          } else {
-            floorComments.push(comment);
-          }
-        });
-        floorComments.forEach((comment) => list.appendChild(
-          renderComment(comment, false, doc, true)
-        ));
-        paragraphGroups.forEach((items, paragraphId) => {
-          const group = doc.createElement('div');
-          group.className = 'gululu-inline-paragraph-group';
-          const groupHead = doc.createElement('h5');
-          groupHead.textContent = `段落 ${paragraphId} · ${countComments(items)}`;
-          group.appendChild(groupHead);
-          items.forEach((comment) => group.appendChild(
-            renderComment(comment, false, doc, true)
-          ));
-          list.appendChild(group);
-        });
-      } else {
-        const empty = doc.createElement('p');
-        empty.className = 'gululu-inline-comment-empty';
-        empty.textContent = floor.error || '暂无评论';
-        list.appendChild(empty);
-      }
-      details.append(summary, list);
-      details.addEventListener('toggle', () => {
-        updateFloorButtons();
-        scheduleReaderLayout();
-      });
-      if (floorId === 0) anchor.insertAdjacentElement('afterend', details);
-      else anchor.appendChild(details);
-    });
-    updateFloorButtons();
-    scheduleReaderLayout();
   }
 
   function countComments(comments) {
@@ -714,15 +597,6 @@
     updateFloorButtons();
   }
 
-  function setDisplayMode(mode) {
-    // 楼末折叠（inline）模式已移除：评论统一为侧边面板显示。
-    if (mode !== 'panel') return;
-    state.displayMode = 'panel';
-    renderInlineComments();
-    updateFloorButtons();
-    if (window.ViewMenu && ViewMenu.sync) ViewMenu.sync();
-  }
-
   function setDanmaku(enabled) {
     state.danmaku = !!enabled;
     el('gululu-danmaku-toggle').checked = state.danmaku;
@@ -766,7 +640,6 @@
   window.GululuComments = {
     setBook,
     onChapterLoaded,
-    setDisplayMode,
     setDanmaku,
     togglePanel: (trigger) => {
       state.returnFocus = trigger || el('gululu-quick-comments');
@@ -777,7 +650,6 @@
     snapshot: () => ({
       sourceId: state.sourceId,
       panelOpen: state.panelOpen,
-      displayMode: state.displayMode,
       danmaku: state.danmaku,
     }),
   };
