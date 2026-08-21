@@ -166,20 +166,31 @@ internal fun BoxScope.ReaderRsvpOverlay(
 }
 
 /**
- * 阅读辅助面板（对齐桌面 ViewMenu 的辅助区）：自动滚动 + 速读 + 标尺 + 按书字体。
- * 从底栏进入，点击遮罩关闭。
+ * 阅读设置面板：排版 / 阅读辅助 / 字体三组，底栏单一设置入口。
+ * 对齐桌面 ViewMenu 的设置区：字号、行高、翻页方式、主题循环、
+ * 自动滚动、速读、标尺、按书字体。
  */
 @Composable
-internal fun BoxScope.ReaderAssistSheet(
+internal fun BoxScope.ReaderSettingsSheet(
     visible: Boolean,
     barBg: Color,
     fg: Color,
+    fontSize: Int,
+    lineHeight: Double,
+    pagination: Boolean,
+    theme: String,
     autoScroll: Boolean,
     autoScrollSpeed: Double,
     rulerOn: Boolean,
     rsvpOn: Boolean,
     fonts: List<String>,
     bookFont: String,
+    onFontSizeDec: () -> Unit,
+    onFontSizeInc: () -> Unit,
+    onLineHeightDec: () -> Unit,
+    onLineHeightInc: () -> Unit,
+    onTogglePagination: () -> Unit,
+    onThemeCycle: () -> Unit,
     onToggleAutoScroll: (Boolean) -> Unit,
     onSpeedChange: (Double) -> Unit,
     onToggleRuler: (Boolean) -> Unit,
@@ -203,8 +214,49 @@ internal fun BoxScope.ReaderAssistSheet(
             .padding(AnkeSpacing.lg),
         verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
     ) {
-        Text("阅读辅助", color = fg, style = MaterialTheme.typography.titleMedium)
+        Text("阅读设置", color = fg, style = MaterialTheme.typography.titleMedium)
 
+        Text("排版", color = fg, style = MaterialTheme.typography.labelLarge)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("字号", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
+            IconButton(onClick = onFontSizeDec) { Text("－", color = fg) }
+            Text("$fontSize", color = fg, style = MaterialTheme.typography.labelLarge)
+            IconButton(onClick = onFontSizeInc) { Text("＋", color = fg) }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("行高", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
+            IconButton(onClick = onLineHeightDec) { Text("－", color = fg) }
+            Text("%.1f".format(lineHeight), color = fg, style = MaterialTheme.typography.labelLarge)
+            IconButton(onClick = onLineHeightInc) { Text("＋", color = fg) }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("翻页方式", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
+            FilterChip(
+                selected = !pagination,
+                onClick = onTogglePagination,
+                label = { Text("滚动") },
+            )
+            FilterChip(
+                selected = pagination,
+                onClick = onTogglePagination,
+                label = { Text("分页") },
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("主题", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
+            FilterChip(
+                selected = true,
+                onClick = onThemeCycle,
+                label = { Text(themeLabel(theme)) },
+            )
+        }
+
+        Text(
+            "阅读辅助",
+            color = fg,
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.padding(top = AnkeSpacing.sm),
+        )
         AssistSwitchRow(
             label = "自动滚动",
             detail = "滚动模式匀速推进，分页模式自动翻页；到章尾自动进入下一章",
@@ -264,6 +316,13 @@ internal fun BoxScope.ReaderAssistSheet(
             }
         }
     }
+}
+
+private fun themeLabel(theme: String): String = when (theme) {
+    "light" -> "浅色"
+    "sepia" -> "羊皮纸"
+    "dark" -> "深色"
+    else -> "跟随系统"
 }
 
 private fun fontLabel(name: String): String = when {

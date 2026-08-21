@@ -148,8 +148,8 @@ fun NativeReaderScreen(
     var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
     var editingNote by remember { mutableStateOf<Highlight?>(null) }
     var showAnnotations by remember { mutableStateOf(false) }
-    // 阅读辅助（批 2）：面板 / 自动滚动 / 标尺 / 速读
-    var showAssist by remember { mutableStateOf(false) }
+    // 阅读设置（批 2）：统一设置面板 / 自动滚动 / 标尺 / 速读
+    var showSettings by remember { mutableStateOf(false) }
     var autoScrollOn by remember { mutableStateOf(false) }
     var rulerOn by remember { mutableStateOf(readerSettings.show_ruler) }
     var rsvpOn by remember { mutableStateOf(false) }
@@ -735,8 +735,6 @@ fun NativeReaderScreen(
             visible = barsVisible,
             barBg = barBg,
             fg = fg,
-            theme = readerSettings.theme,
-            pagination = readerSettings.pagination,
             bookProgress = bookProgress,
             onSeek = { fraction ->
                 val total = session.chapters.size
@@ -755,23 +753,37 @@ fun NativeReaderScreen(
             },
             onPrevChapter = { chapterIndex = (chapterIndex - 1).coerceAtLeast(0) },
             onNextChapter = { chapterIndex = (chapterIndex + 1).coerceAtMost(session.chapters.lastIndex) },
-            onFontDec = { onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size - 1).coerceAtLeast(14))) },
-            onFontInc = { onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size + 1).coerceAtMost(28))) },
-            onThemeChange = { onSettingsPatch(SettingsPatch(theme = it)) },
-            onTogglePagination = { onSettingsPatch(SettingsPatch(pagination = !readerSettings.pagination)) },
-            onOpenAssist = { showAssist = true },
+            onOpenSettings = { showSettings = true },
         )
 
-        ReaderAssistSheet(
-            visible = showAssist,
+        ReaderSettingsSheet(
+            visible = showSettings,
             barBg = barBg,
             fg = fg,
+            fontSize = readerSettings.font_size,
+            lineHeight = readerSettings.line_height,
+            pagination = readerSettings.pagination,
+            theme = readerSettings.theme,
             autoScroll = autoScrollOn,
             autoScrollSpeed = readerSettings.autoscroll_speed,
             rulerOn = rulerOn,
             rsvpOn = rsvpOn,
             fonts = availableFonts,
             bookFont = readerSettings.book_fonts[session.id].orEmpty(),
+            onFontSizeDec = { onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size - 1).coerceAtLeast(14))) },
+            onFontSizeInc = { onSettingsPatch(SettingsPatch(font_size = (readerSettings.font_size + 1).coerceAtMost(28))) },
+            onLineHeightDec = { onSettingsPatch(SettingsPatch(line_height = ((readerSettings.line_height - 0.1) * 10).roundToInt() / 10.0)) },
+            onLineHeightInc = { onSettingsPatch(SettingsPatch(line_height = ((readerSettings.line_height + 0.1) * 10).roundToInt() / 10.0)) },
+            onTogglePagination = { onSettingsPatch(SettingsPatch(pagination = !readerSettings.pagination)) },
+            onThemeCycle = {
+                val next = when (readerSettings.theme) {
+                    "dark" -> "light"
+                    "light" -> "sepia"
+                    "sepia" -> "dark"
+                    else -> "dark"
+                }
+                onSettingsPatch(SettingsPatch(theme = next))
+            },
             onToggleAutoScroll = { autoScrollOn = it },
             onSpeedChange = {
                 onSettingsPatch(SettingsPatch(autoscroll_speed = (it * 10).roundToInt() / 10.0))
@@ -786,7 +798,7 @@ fun NativeReaderScreen(
                 if (font.isBlank()) next.remove(session.id) else next[session.id] = font
                 onSettingsPatch(SettingsPatch(book_fonts = next))
             },
-            onDismiss = { showAssist = false },
+            onDismiss = { showSettings = false },
         )
 
         ReaderRulerOverlay(visible = rulerOn, fg = fg)

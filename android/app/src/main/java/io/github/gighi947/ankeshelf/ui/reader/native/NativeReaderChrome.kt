@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.ViewModule
@@ -225,17 +226,11 @@ internal fun BoxScope.ReaderBottomBar(
     visible: Boolean,
     barBg: Color,
     fg: Color,
-    theme: String,
-    pagination: Boolean,
     bookProgress: Float,
     onSeek: (Float) -> Unit,
     onPrevChapter: () -> Unit,
     onNextChapter: () -> Unit,
-    onFontDec: () -> Unit,
-    onFontInc: () -> Unit,
-    onThemeChange: (String) -> Unit,
-    onTogglePagination: () -> Unit,
-    onOpenAssist: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     var dragging by remember { mutableStateOf<Float?>(null) }
     val sliderValue = (dragging ?: bookProgress).coerceIn(0f, 1f)
@@ -260,33 +255,14 @@ internal fun BoxScope.ReaderBottomBar(
                 IconButton(onClick = onPrevChapter) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "上一章", tint = fg)
                 }
-                IconButton(onClick = onFontDec) {
-                    Icon(Icons.Filled.Remove, contentDescription = "减小字号", tint = fg)
-                }
-                IconButton(onClick = {
-                    val next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.size]
-                    onThemeChange(next)
-                }) {
-                    Icon(Icons.Filled.Palette, contentDescription = "切换主题", tint = fg)
-                }
-                IconButton(onClick = onFontInc) {
-                    Icon(Icons.Filled.Add, contentDescription = "增大字号", tint = fg)
+                IconButton(onClick = onOpenSettings) {
+                    Icon(Icons.Filled.Settings, contentDescription = "阅读设置", tint = fg)
                 }
                 IconButton(onClick = onNextChapter) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "下一章", tint = fg)
                 }
-                IconButton(onClick = onOpenAssist) {
-                    Icon(Icons.Filled.Speed, contentDescription = "阅读辅助", tint = fg)
-                }
             }
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onTogglePagination) {
-                    Icon(
-                        if (pagination) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.ViewModule,
-                        contentDescription = if (pagination) "切换滚动模式" else "切换分页模式",
-                        tint = fg,
-                    )
-                }
                 // 全书进度滑块（对齐桌面 #progress-slider）：拖动松手才跳转，
                 // 拖动过程只更新滑块位置，避免每一帧都触发定位与落盘。
                 Slider(
