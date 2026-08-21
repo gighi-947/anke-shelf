@@ -109,15 +109,15 @@ class Api(ApiRegistry):
         progress,
         settings,
         search,
-        annotations=None,
-        stats=None,
-        nga_service=None,
-        export_service=None,
-        gululu_service=None,
-        frontend_ready=None,
+        annotations,
+        stats,
+        nga_service,
+        export_service,
+        gululu_service,
+        frontend_ready,
+        window_toggle,
+        nga_login,
         file_dialog=None,
-        window_toggle=None,
-        nga_login=None,
     ):
         super().__init__()
         ctx = ApiContext(

@@ -9,8 +9,6 @@ def gululu_start_import(
     image_mode: str = "online",
     clear_cache: bool = False,
 ) -> dict:
-    if ctx.gululu_service is None:
-        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "骨碌碌导入服务不可用")
     return ctx.gululu_service.start(source, image_mode, clear_cache=clear_cache)
 
 
@@ -19,8 +17,6 @@ def gululu_start_export(
     source: str,
     image_mode: str = "online",
 ) -> dict:
-    if ctx.gululu_service is None:
-        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "骨碌碌导出服务不可用")
     return ctx.gululu_service.start_export(source, image_mode)
 
 
@@ -29,8 +25,6 @@ def gululu_start_update(
     source: str,
     image_mode: str = "online",
 ) -> dict:
-    if ctx.gululu_service is None:
-        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "骨碌碌更新服务不可用")
     return ctx.gululu_service.start_update(source, image_mode)
 
 
@@ -40,8 +34,6 @@ def gululu_get_comments(
     floor_ids: list[int],
     refresh: bool = False,
 ) -> dict:
-    if ctx.gululu_service is None:
-        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "骨碌碌评论服务不可用")
     return ctx.gululu_service.get_comments(source_id, floor_ids, refresh=bool(refresh))
 
 
@@ -75,12 +67,8 @@ def gululu_decrypt_secret(
 
 
 def gululu_import_status(ctx: ApiContext) -> dict:
-    if ctx.gululu_service is None:
-        return {"running": False, "stage": "idle", "detail": ""}
     return ctx.gululu_service.status()
 
 
 def gululu_cancel(ctx: ApiContext) -> dict:
-    if ctx.gululu_service is None:
-        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "骨碌碌导入服务不可用")
     return ctx.gululu_service.cancel()

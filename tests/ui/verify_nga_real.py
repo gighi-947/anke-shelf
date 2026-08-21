@@ -22,6 +22,9 @@ sys.path.insert(0, str(PROJECT))
 from app.annotations import AnnotationStore  # noqa: E402
 from app.api import Api  # noqa: E402
 from app.book_manager import BookManager  # noqa: E402
+from app.export_service import ExportService  # noqa: E402
+from app.gululu_service import GululuService  # noqa: E402
+from app.nga_login import NgaLoginController  # noqa: E402
 from app.nga_service import NgaService  # noqa: E402
 from app.search import SearchService  # noqa: E402
 from app.server import start_server  # noqa: E402
@@ -108,6 +111,9 @@ def main() -> int:
     nga_svc = NgaService(lambda p: "")
     api = Api(books=books, shelf=shelf, progress=progress, settings=settings,
               search=search, annotations=ann, stats=stats, nga_service=nga_svc,
+              export_service=ExportService(shelf),
+              gululu_service=GululuService(lambda _path: ""),
+              frontend_ready=threading.Event(), nga_login=NgaLoginController(),
               window_toggle=lambda _entering: None)
     port = start_server(PROJECT / "web", books, covers, api=api, token="real-nga")
 

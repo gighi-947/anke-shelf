@@ -23,6 +23,9 @@ sys.path.insert(0, str(PROJECT))
 from app.annotations import AnnotationStore
 from app.api import Api
 from app.book_manager import BookManager
+from app.export_service import ExportService
+from app.gululu_service import GululuService
+from app.nga_login import NgaLoginController
 from app.nga_service import NgaService
 from app.search import SearchService
 from app.server import start_server
@@ -72,6 +75,9 @@ def main() -> int:
     nga_svc = NgaService(_register_nga_book)
     api = Api(books=books, shelf=shelf, progress=progress, settings=settings,
               search=search, annotations=ann, stats=stats, nga_service=nga_svc,
+              export_service=ExportService(shelf),
+              gululu_service=GululuService(_register_nga_book, shelf=shelf, books=books),
+              frontend_ready=threading.Event(), nga_login=NgaLoginController(),
               window_toggle=lambda _entering: None)
     token = "ui-test-token"
     port = start_server(PROJECT / "web", books, covers, api=api, token=token)

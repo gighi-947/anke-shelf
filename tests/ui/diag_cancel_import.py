@@ -5,6 +5,7 @@
 import os
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +14,9 @@ PROJECT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT))
 
 from app.annotations import AnnotationStore
+from app.export_service import ExportService
+from app.gululu_service import GululuService
+from app.nga_login import NgaLoginController
 from app.api import Api
 from app.book_manager import BookManager
 from app.nga_service import NgaService
@@ -54,6 +58,10 @@ def main() -> int:
     api = Api(books=books, shelf=shelf, progress=progress, settings=type(
         "S", (), {"get": lambda self, k: None, "get_all": lambda self: {}, "update": lambda self, p: None})(),
         search=search, annotations=ann, stats=stats, nga_service=nga_svc,
+        export_service=ExportService(shelf),
+        gululu_service=GululuService(register),
+        frontend_ready=threading.Event(), nga_login=NgaLoginController(),
+        window_toggle=lambda _entering: None,
         file_dialog=lambda kind: [str(SAMPLE)] if kind == "epub" else [])
 
     # ---- 测试 A：导入书籍（无下载） ----
