@@ -25,13 +25,16 @@
         el.classList.remove('masked');
         el.style.color = '';
         el.style.background = '';
+        el.style.webkitTextFillColor = '';
         el.style.fontSize = '';
         el.style.visibility = '';
       } else {
         el.classList.add('masked');
-        // 保持原始行内盒与位置：只把文字变透明，不引入胶囊/尺寸变化。
+        // 灰色遮罩：背景用半透明灰，文字透明（含带颜色子元素），
+        // 不改 display/minWidth/minHeight/fontSize，避免骰点位置偏移。
         el.style.color = 'transparent';
-        el.style.background = 'currentColor';
+        el.style.webkitTextFillColor = 'transparent';
+        el.style.background = 'rgba(127,127,127,0.35)';
         el.style.fontSize = '';
         el.style.visibility = '';
       }
@@ -69,6 +72,7 @@
       nodes[i].classList.add('revealed');
       nodes[i].style.color = '';
       nodes[i].style.background = '';
+      nodes[i].style.webkitTextFillColor = '';
       nodes[i].style.fontSize = '';
       nodes[i].style.visibility = '';
     }
@@ -245,9 +249,10 @@
   /** 命中测试：坐标是否落在骨碌碌交互元素上（宿主据此决定是否把点击当作唤出/收起菜单）。 */
   function hitGululuInteractive(x, y) {
     var el = document.elementFromPoint(x, y);
+    // details 也视为交互区：点 summary 展开/收起折叠内容时不应唤出悬浮栏。
     return !!(el && el.closest && el.closest(
       '.gululu-dice-value, .gululu-dice-suffix, .gululu-secret-cue, ' +
-      '.gululu-clue-cue, .gululu-music-cue, .gululu-music-stop, .gululu-paragraph-badge'
+      '.gululu-clue-cue, .gululu-music-cue, .gululu-music-stop, .gululu-paragraph-badge, details'
     ));
   }
 

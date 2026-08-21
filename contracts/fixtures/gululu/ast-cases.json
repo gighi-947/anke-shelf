@@ -341,6 +341,9 @@
       "nodes": [
         {
           "type": "collapsibleBlock",
+          "attrs": {
+            "collapsed": "true"
+          },
           "content": [
             {
               "type": "paragraph",
@@ -350,11 +353,52 @@
                   "text": "秘"
                 }
               ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "正文"
+                }
+              ]
             }
           ]
         }
       ],
-      "expected": "<details class=\"gululu-fold\"><summary>折叠内容</summary><p>秘</p></details>"
+      "expected": "<details class=\"gululu-fold\"><summary>秘</summary><p>正文</p></details>"
+    },
+    {
+      "id": "collapsible-block-open-when-collapsed-false",
+      "nodes": [
+        {
+          "type": "collapsibleBlock",
+          "attrs": {
+            "collapsed": "false"
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "标题"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "内容"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "expected": "<details class=\"gululu-fold\" open=\"open\"><summary>标题</summary><p>内容</p></details>"
     },
     {
       "id": "unsupported-node-visible",

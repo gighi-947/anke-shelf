@@ -124,11 +124,27 @@ def render_ast(
             background_attr = background_attribute(attrs)
             return f'<figure class="gululu-image"{background_attr}>{image}</figure>'
         if node_type == "collapsibleBlock":
-            # 默认折叠（浏览器 <details> 未带 open 即收起），对齐站点行为
+            # 官方 collapsibleBlock：首个子块是折叠标题（summary），其余子块才是正文；
+            # collapsed="false" 时默认展开。旧书/异常数据缺首子块时回退“折叠内容”。
+            content = node.get("content")
+            if not isinstance(content, list):
+                content = []
+            first = content[0] if content and isinstance(content[0], dict) else None
+            summary = render_children(first) if first else ""
+            if not summary:
+                summary = "折叠内容"
+            body = "".join(
+                render_node(child)
+                for child in content[1:]
+                if isinstance(child, dict)
+            )
+            open_attr = ""
+            if str(attrs.get("collapsed") or "").lower() == "false":
+                open_attr = ' open="open"'
             return (
-                '<details class="gululu-fold">'
-                "<summary>折叠内容</summary>"
-                f'{render_children(node)}</details>'
+                f'<details class="gululu-fold"{open_attr}>'
+                f"<summary>{summary}</summary>"
+                f"{body}</details>"
             )
         if strict:
             from .gululu_client import GululuFormatError

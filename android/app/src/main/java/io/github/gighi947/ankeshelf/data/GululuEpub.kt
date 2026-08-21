@@ -445,7 +445,8 @@ object GululuEpub {
 .gululu-dice-value { padding:0 .12em; }
 .gululu-dice-value:focus-visible { outline:2px solid currentColor; outline-offset:2px; }
 .gululu-dice-value.masked, .gululu-dice-suffix.masked {
-  background:currentColor; color:transparent; text-shadow:none; user-select:none;
+  background:rgba(127,127,127,.35); color:transparent;
+  -webkit-text-fill-color:transparent; text-shadow:none; user-select:none;
 }
 .gululu-dice-value.revealed, .gululu-dice-suffix.revealed { animation:g-dice-reveal .28s ease-out; }
 .gululu-fog-block.gululu-fog-hidden { display:none; }

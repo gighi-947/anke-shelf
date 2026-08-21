@@ -136,9 +136,39 @@ object GululuAst {
                     "<h$level>${renderChildren()}</h$level>"
                 }
                 "image" -> renderImage(attrs, imageResolver, imageBackgroundAttr)
-                "collapsibleBlock" ->
-                    // 默认折叠（浏览器 <details> 未带 open 即收起），对齐站点行为
-                    "<details class=\"gululu-fold\"><summary>折叠内容</summary>${renderChildren()}</details>"
+                "collapsibleBlock" -> {
+                    // 官方 collapsibleBlock：首个子块是折叠标题（summary），其余子块才是正文；
+                    // collapsed="false" 时默认展开。旧书/异常数据缺首子块时回退“折叠内容”。
+                    val children = node["content"] as? JsonArray ?: JsonArray(emptyList())
+                    val first = children.firstOrNull() as? JsonObject
+                    val summary = first?.let { firstChild ->
+                        val firstContent = firstChild["content"] as? JsonArray ?: JsonArray(emptyList())
+                        GululuAst.render(
+                            firstContent.toList(),
+                            imageResolver,
+                            jumpFloorResolver,
+                            sourceBookId,
+                            extensions,
+                            strict,
+                            imageBackgroundAttr,
+                        )
+                    }.orEmpty().ifEmpty { "折叠内容" }
+                    val body = if (children.size > 1) {
+                        GululuAst.render(
+                            children.drop(1),
+                            imageResolver,
+                            jumpFloorResolver,
+                            sourceBookId,
+                            extensions,
+                            strict,
+                            imageBackgroundAttr,
+                        )
+                    } else {
+                        ""
+                    }
+                    val open = if (attrs.str("collapsed") == "false") " open=\"open\"" else ""
+                    "<details class=\"gululu-fold\"$open><summary>$summary</summary>$body</details>"
+                }
                 else -> {
                     if (strict) {
                         throw GululuFormatException(
