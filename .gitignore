@@ -44,3 +44,7 @@ node_modules/
 
 screen-tmp.png
 ui.xml
+
+# debug captures
+screen*.png
+ui*.xml
