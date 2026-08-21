@@ -65,6 +65,13 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈修复（第七批）
+
+- 修复：骰点遮罩增加内联样式兜底（`color:transparent; background:currentColor`），
+  部分 WebView 对 EPUB 内联 CSS 的 currentColor+transparent 组合不生效导致数值
+  仍可见；揭示时同步清内联样式。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：测试机反馈修复（第六批）
 
 - 修复：`reader.css` 强制 `html/body { margin:0 !important; padding:0 !important; }`，

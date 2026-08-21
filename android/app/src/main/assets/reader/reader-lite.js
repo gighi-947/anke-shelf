@@ -1499,8 +1499,14 @@
       var group = el.getAttribute('data-gululu-dice-group') || '';
       if (gululu.unlocked[group]) {
         el.classList.remove('masked');
+        el.style.color = '';
+        el.style.background = '';
       } else {
         el.classList.add('masked');
+        // 内联兜底：部分 WebView 对 EPUB 内联 CSS 的 currentColor+transparent
+        // 组合不生效，直接写内联样式保证数值不可见。
+        el.style.color = 'transparent';
+        el.style.background = 'currentColor';
       }
       // 直接绑定兜底：部分机型上 document 级委托会被阅读器点击处理挡住。
       el.onclick = function (ev) {
@@ -1534,6 +1540,8 @@
     for (var i = 0; i < nodes.length; i++) {
       nodes[i].classList.remove('masked');
       nodes[i].classList.add('revealed');
+      nodes[i].style.color = '';
+      nodes[i].style.background = '';
     }
     var fogs = document.querySelectorAll('[data-gululu-fog-lock="' + groupId + '"]');
     for (i = 0; i < fogs.length; i++) fogs[i].classList.remove('gululu-fog-hidden');
