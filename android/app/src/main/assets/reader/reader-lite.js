@@ -588,7 +588,11 @@
         } catch (e) { /* ignore */ }
         state.restorePending = false;
         return;
-      } catch (e) { /* fall through to ratio */ }
+      } catch (e) {
+        // 文本锚点定位失败（Range 几何异常等）降级为线性比例滚动；
+        // 图片密集章可差数页，必须留诊断痕迹（进度一致性红线）。
+        try { log('[restore:fallback-ratio] anchor failed off=' + offset + ' err=' + (e && e.message)); } catch (ignored) { /* ignore */ }
+      }
     }
     var ratio = len > 0 ? clamp(offset / len, 0, 1) : 0;
     window.scrollTo(0, ratio * Math.max(1, document.body.scrollHeight - window.innerHeight));
