@@ -65,6 +65,11 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：CI 修复（第十五批）
+
+- 修复：骨碌碌悬浮按钮底部偏移 96dp 魔法值改为 `AnkeSpacing.xxl * 3`，
+  通过 DisciplineTest 间距令牌守卫。
+- 验证：`compileDebugKotlin testDebugUnitTest` BUILD SUCCESSFUL。
 ### 2026-08-21 android：测试机反馈修复（第十四批）
 
 - 修复：
