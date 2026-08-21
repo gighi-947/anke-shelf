@@ -24,7 +24,7 @@
 - 版本线：Windows `v1.5.1`（已发布，AnkeShelf-v1.5.1.zip）；
   Android `android-v1.1.0`（已发布，AnkeShelf-v1.1.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 324 项
+  - Windows Python：`python -m unittest discover tests` = 326 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（59 方法一致）、
@@ -33,7 +33,7 @@
     `node contracts/tests/reader-lite-parts.test.js`（8 parts / 50881 字节）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 176 项（175 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 186 项（185 过 / 1 跳）；
     DisciplineTest 8 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
@@ -64,6 +64,42 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-20 android：对齐批 6 —— 骨碌碌 EPUB 生成 + 导入前台服务
+
+- 骨碌碌链路第一次**产出可打开的书**：Android 导入的 EPUB 与桌面 ebooklib 产物同构。
+- `data/GululuEpub.kt` ← `app/gululu_epub.py` + `gululu_epub_styles.py`：
+  - 章节分组：作者标记优先（空标题标记不算），否则每 20 楼一章；缺楼层正文显式失败；
+  - 单楼 `<section id="floor-<floorId>">` + 楼层头 + 评论块 + `data-gululu-vfx`；
+  - 首章附来源行与作品评论；跨章背景继承写 `data-gululu-background-initial`；
+  - 自写 ZIP（mimetype 首条且 STORED）→ `EPUB/content.opf`（`dc:identifier=gululu-<id>`、
+    `dc:source` 指向公开页）、`EPUB/chapters/chapter_%04d.xhtml`、`EPUB/style/main.css`、
+    `EPUB/nav.xhtml`、`EPUB/toc.ncx`、`EPUB/images/*`、`EPUB/cover.<ext>`；
+  - CSS 与桌面 `GULULU_EPUB_CSS` 同一份（两端观感一致）。
+- `data/Epub.kt` 补 `identifier` 字段（桌面早有）：骨碌碌来源识别与批 8 的阅读器
+  交互开关都依赖它。
+- `service/GululuImporter.kt` ← `app/gululu_service.py` 的 import 路径：
+  拉快照 → （内嵌模式）准备图片 → 生成 EPUB 到 `post.epub.part` → **原子替换** →
+  注册书架；取消/失败必删 `.part`，替换失败时用备份恢复旧 EPUB 并重新登记。
+  快照与图片抓取都是注入点（测试无需网络，也不必打开 client 类）。
+- `service/GululuImportService.kt` + `GululuServiceStatus`：前台服务（dataSync）、
+  进度通知带取消动作、结束留一条非持续通知；`AndroidManifest` 已登记。
+- UI：下载页新增「骨碌碌导入」Tab（`ui/download/GululuPanel.kt`），
+  输入即校验链接/ID（复用 `GululuSource.extractBookId` 的桌面同款文案）、
+  图片三态选择、进度条与取消。
+- 测试：
+  - 双端 golden 扩到 `epub_group_cases`（3 例：20 楼兜底 / 作者标记 / 空标题标记回退）
+    与 `epub_floor_cases`（2 例：带评论与视效 / 普通楼）；
+  - `GululuEpubTest`：结构断言（mimetype STORED 首条、必需条目齐全、
+    `gululu-48856` identifier、`floor-<id>` 锚点）+ **round-trip**（自家 `EpubBook`
+    能打开并读出标题/章节/正文）；
+  - `GululuImporterTest` 5 例：成功落盘并入架、取消不留产物、失败保留已有书并清 `.part`、
+    缺楼快照显式失败、内嵌模式图片入包且正文引用 `../images/`。
+- 验证：Android `gradlew testDebugUnitTest` = 186 项（185 过 / 1 跳）、`assembleDebug` 成功；
+  Windows = 326 项 OK。
+- 待办：真机联网导入一本公开安科，确认产物能被 Windows 端直接打开（跨端互通验证）。
+- 下一步（批 7）：热更新与增量基线（`snapshot.json` + append-only 前缀校验 +
+  旧书一次性迁移 + 失败回滚保住 book_id）。
 
 ### 2026-08-20 android：对齐批 5 —— 骨碌碌协议层（助手 / 沉浸 / 评论）
 

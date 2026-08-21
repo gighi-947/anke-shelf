@@ -58,7 +58,10 @@ contracts/
    同一份夹具还包含：
    - `floor_cases`：完整楼层管线（沉浸指令 → 助手协议 → 骰点/迷雾 → 渲染），
      并对照该层的 `expected_vfx` / `expected_background` 副产物；
-   - `comment_cases`：评论公开字段裁剪与 EPUB 评论块渲染。
+   - `comment_cases`：评论公开字段裁剪与 EPUB 评论块渲染；
+   - `epub_group_cases` / `epub_floor_cases`：EPUB 章节分组（作者标记优先，
+     否则每 20 楼一章）与单楼 `section` HTML（`floor-<id>` 锚点、楼层头、评论块、
+     `data-gululu-vfx`）。
    期望值由 Windows 现行实现生成并人工审核锁定（见规则 4）。
 
 ## 版本

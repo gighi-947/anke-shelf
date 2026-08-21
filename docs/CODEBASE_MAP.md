@@ -42,6 +42,7 @@ UI 入口 → 下载器 → HTTP 客户端 → 格式化 → 落盘/追加
 | Android | `data/NgaTocParser.kt` | NGA 目录楼解析（`toc_mode=split` 按目录分章的输入） |
 | Android | `data/GululuSource.kt` / `service/GululuClient.kt` / `data/GululuAst.kt` / `service/GululuImages.kt` | 骨碌碌数据层（批 4）：来源识别、公开 API 客户端、富文本 AST → XHTML、图片三态 |
 | Android | `data/GululuAssistant.kt` / `data/GululuImmersive.kt` / `data/GululuComments.kt` / `service/GululuCommentService.kt` | 骨碌碌协议层（批 5）：助手协议（折叠/引用/骰点/迷雾/秘密/线索）、沉浸指令（音乐/背景/视效）、评论渲染与缓存离线回退 |
+| Android | `data/GululuEpub.kt` / `service/GululuImporter.kt` / `service/GululuImportService.kt` / `ui/download/GululuPanel.kt` | 骨碌碌导入（批 6）：EPUB3 生成（与桌面同构）、`.part` 原子替换与入架、前台服务与下载页入口 |
 
 更新参数对话框：`ui/components/NgaUpdateDialog.kt`（书架与已下载页共用）。
 

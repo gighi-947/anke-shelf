@@ -44,8 +44,8 @@
 | G20.4 | 全能助手协议：折叠 / 引用（同书锚点 + 跨书 URL）/ 骰点稳定分组 / 迷雾锁 / 秘密密文 / 线索 / jumpFloor / sensitive | `gululu_assistant.py` | ✅ 批 5（`data/GululuAssistant.kt` + CryptoJS/OpenSSL salted AES 解密；15 例楼层管线 golden 双端一致） | 5 |
 | G20.5 | 沉浸指令：音乐·自动音乐·停止、氛围背景（跨章继承）、六类视效，仅无凭据 HTTPS | `gululu_immersive.py` | ✅ 批 5（`data/GululuImmersive.kt`；vfx/背景副产物一并纳入 golden） | 5 |
 | G20.6 | 评论：分页 + 子回复 + 公开字段、5 分钟缓存 + 离线回退、EPUB 评论块 | `gululu_comments.py` / `gululu_comment_service.py` | ✅ 批 5（`data/GululuComments.kt` + `service/GululuCommentService.kt` + 客户端分页；离线回退不变量有专测） | 5 |
-| G20.7 | EPUB3 生成：章节分组（作者章节标记 / 20 楼兜底）、`floor-<id>` 锚点、楼层卡片、封面、CSS | `gululu_epub.py` | — | 6 |
-| G20.8 | 导入任务：前台服务 + 进度/取消、`.part` 原子替换、注册书架 | `gululu_service.py` | — | 6 |
+| G20.7 | EPUB3 生成：章节分组（作者章节标记 / 20 楼兜底）、`floor-<id>` 锚点、楼层卡片、封面、CSS | `gululu_epub.py` | ✅ 批 6（`data/GululuEpub.kt`；分组与单楼 HTML 双端 golden，产物结构与桌面同构且可被自家解析器 round-trip 打开） | 6 |
+| G20.8 | 导入任务：前台服务 + 进度/取消、`.part` 原子替换、注册书架 | `gululu_service.py` | ✅ 批 6（`service/GululuImporter.kt` + `GululuImportService` 前台服务 + 下载页「骨碌碌导入」面板；取消/失败不留半成品有专测） | 6 |
 | G20.9 | 热更新：`snapshot.json` 基线、append-only 前缀不变量、旧书一次性迁移、失败回滚保 `book_id` | `gululu_update.py` | — | 7 |
 | G20.10 | 宿主层交互 A：评论抽屉 + 段落评论徽标联动 + 只读弹幕 | `gululu-comments.js` | — | 8 |
 | G20.11 | 宿主层交互 B：骰点揭示（单组/整楼/接下来 10 组）+ 音效、迷雾渐显、秘密弹窗 + 线索收集、解锁重置 | `gululu-assistant-reader.js` / `gululu-secrets.js` | — | 9 |
@@ -108,7 +108,7 @@
 | 3 下载参数与数据完整性 | ✅ 代码完成，待真机复核 | G8/G9/G10/G11 全部落地；Android JVM 148 项、Windows 321 项；新增 `contracts/fixtures/nga-toc/` 双端 golden；真机待验目录楼分章下载 |
 | 4 骨碌碌数据层 | ✅ 代码完成（纯数据层，无 UI 入口） | G20.1/G20.2/G20.3；`contracts/fixtures/gululu/ast-cases.json` 21 例双端逐字符一致；Android JVM 166 项、Windows 322 项 |
 | 5 骨碌碌协议层 | ✅ 代码完成（纯协议层，无 UI 入口） | G20.4/G20.5/G20.6；golden 扩到 21 AST + 15 楼层管线 + 5 评论用例，双端逐字符一致；Android JVM 176 项、Windows 324 项 |
-| 6 骨碌碌导入 | ⏳ 未开始 | — |
+| 6 骨碌碌导入 | ✅ 代码完成，待真机联网验证 | G20.7/G20.8；下载页新增「骨碌碌导入」Tab；Android JVM 186 项、Windows 326 项；EPUB 结构 + round-trip + `.part` 不留半成品均有测试 |
 | 7 骨碌碌热更新 | ⏳ 未开始 | — |
 | 8 骨碌碌阅读交互 A | ⏳ 未开始 | — |
 | 9 骨碌碌阅读交互 B/C | ⏳ 未开始 | — |

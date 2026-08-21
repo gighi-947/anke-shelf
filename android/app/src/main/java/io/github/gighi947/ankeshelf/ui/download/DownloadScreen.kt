@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FolderOpen
@@ -123,6 +124,7 @@ private data class DownloadTab(
 private val DOWNLOAD_TABS = listOf(
     DownloadTab("config", "登录配置", Icons.Filled.Key, "NGA Cookie 凭据，仅存本机"),
     DownloadTab("download", "下载 / 更新", Icons.Filled.FileDownload, "下载新帖或增量更新已有书目"),
+    DownloadTab("gululu", "骨碌碌导入", Icons.Filled.CloudDownload, "公开安科链接或 ID，转标准 EPUB"),
     DownloadTab("library", "已下载", Icons.Filled.FolderOpen, "导出 EPUB/Markdown 与更新"),
 )
 
@@ -297,6 +299,7 @@ private fun DownloadGroupContent(
     when (groupId) {
         "config" -> ConfigPanel(container)
         "download" -> DownloadPanel(container, onChanged)
+        "gululu" -> GululuPanel(container, onChanged)
         "library" -> LibraryPanel(container, onChanged)
     }
 }

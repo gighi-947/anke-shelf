@@ -248,5 +248,52 @@ class GululuAstFixtureTest(unittest.TestCase):
                 self.assertEqual(public, case["expected_public"])
 
 
+class GululuEpubFixtureTest(unittest.TestCase):
+    """骨碌碌 EPUB 章节分组与单楼 HTML 的双端 golden（Android 侧见 GululuEpubTest）。"""
+
+    FIXTURE = CONTRACTS / "fixtures" / "gululu" / "ast-cases.json"
+
+    def _fixture(self):
+        return json.loads(self.FIXTURE.read_text(encoding="utf-8"))
+
+    def test_chapter_groups_match_fixture(self):
+        from app.gululu_epub import _chapter_groups
+
+        cases = self._fixture()["epub_group_cases"]
+        self.assertGreaterEqual(len(cases), 3)
+        for case in cases:
+            with self.subTest(case=case["id"]):
+                groups = _chapter_groups(
+                    case["floor_index"],
+                    case["chapter_index"],
+                    case["floors"],
+                )
+                got = [
+                    {"title": title, "floor_nums": [item["floorNum"] for item, _ in items]}
+                    for title, items in groups
+                ]
+                self.assertEqual(got, case["expected_groups"])
+
+    def test_floor_html_matches_fixture(self):
+        from app.gululu_epub import _floor_html
+        from app.gululu_immersive import prepare_immersive_floor
+
+        cases = self._fixture()["epub_floor_cases"]
+        self.assertGreaterEqual(len(cases), 2)
+        for case in cases:
+            with self.subTest(case=case["id"]):
+                immersive = prepare_immersive_floor(case["floor"]["paragraphContents"])
+                html = _floor_html(
+                    case["index_item"],
+                    case["floor"],
+                    case["comments"],
+                    immersive,
+                    lambda url: url,
+                    lambda floor: "",
+                    case["source_book_id"],
+                )
+                self.assertEqual(html, case["expected_html"])
+
+
 if __name__ == "__main__":
     unittest.main()

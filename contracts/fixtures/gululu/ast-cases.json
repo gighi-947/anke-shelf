@@ -946,5 +946,535 @@
         }
       ]
     }
+  ],
+  "_epub_comment": "epub_group_cases：章节分组（作者标记优先，否则每 20 楼一章）；epub_floor_cases：单楼 section HTML（floor-<id> 锚点 + 楼层头 + 评论块 + data-gululu-vfx）。",
+  "epub_group_cases": [
+    {
+      "id": "fallback-20-per-chapter",
+      "floor_index": [
+        {
+          "floorId": 100,
+          "floorNum": 1,
+          "name": ""
+        },
+        {
+          "floorId": 101,
+          "floorNum": 2,
+          "name": ""
+        },
+        {
+          "floorId": 102,
+          "floorNum": 3,
+          "name": ""
+        },
+        {
+          "floorId": 103,
+          "floorNum": 4,
+          "name": ""
+        },
+        {
+          "floorId": 104,
+          "floorNum": 5,
+          "name": ""
+        },
+        {
+          "floorId": 105,
+          "floorNum": 6,
+          "name": ""
+        },
+        {
+          "floorId": 106,
+          "floorNum": 7,
+          "name": ""
+        },
+        {
+          "floorId": 107,
+          "floorNum": 8,
+          "name": ""
+        },
+        {
+          "floorId": 108,
+          "floorNum": 9,
+          "name": ""
+        },
+        {
+          "floorId": 109,
+          "floorNum": 10,
+          "name": ""
+        },
+        {
+          "floorId": 110,
+          "floorNum": 11,
+          "name": ""
+        },
+        {
+          "floorId": 111,
+          "floorNum": 12,
+          "name": ""
+        },
+        {
+          "floorId": 112,
+          "floorNum": 13,
+          "name": ""
+        },
+        {
+          "floorId": 113,
+          "floorNum": 14,
+          "name": ""
+        },
+        {
+          "floorId": 114,
+          "floorNum": 15,
+          "name": ""
+        },
+        {
+          "floorId": 115,
+          "floorNum": 16,
+          "name": ""
+        },
+        {
+          "floorId": 116,
+          "floorNum": 17,
+          "name": ""
+        },
+        {
+          "floorId": 117,
+          "floorNum": 18,
+          "name": ""
+        },
+        {
+          "floorId": 118,
+          "floorNum": 19,
+          "name": ""
+        },
+        {
+          "floorId": 119,
+          "floorNum": 20,
+          "name": ""
+        },
+        {
+          "floorId": 120,
+          "floorNum": 21,
+          "name": ""
+        },
+        {
+          "floorId": 121,
+          "floorNum": 22,
+          "name": ""
+        },
+        {
+          "floorId": 122,
+          "floorNum": 23,
+          "name": ""
+        },
+        {
+          "floorId": 123,
+          "floorNum": 24,
+          "name": ""
+        },
+        {
+          "floorId": 124,
+          "floorNum": 25,
+          "name": ""
+        }
+      ],
+      "chapter_index": [],
+      "floors": [
+        {
+          "id": 100,
+          "floorNum": 1,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 101,
+          "floorNum": 2,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 102,
+          "floorNum": 3,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 103,
+          "floorNum": 4,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 104,
+          "floorNum": 5,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 105,
+          "floorNum": 6,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 106,
+          "floorNum": 7,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 107,
+          "floorNum": 8,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 108,
+          "floorNum": 9,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 109,
+          "floorNum": 10,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 110,
+          "floorNum": 11,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 111,
+          "floorNum": 12,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 112,
+          "floorNum": 13,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 113,
+          "floorNum": 14,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 114,
+          "floorNum": 15,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 115,
+          "floorNum": 16,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 116,
+          "floorNum": 17,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 117,
+          "floorNum": 18,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 118,
+          "floorNum": 19,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 119,
+          "floorNum": 20,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 120,
+          "floorNum": 21,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 121,
+          "floorNum": 22,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 122,
+          "floorNum": 23,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 123,
+          "floorNum": 24,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 124,
+          "floorNum": 25,
+          "name": "",
+          "paragraphContents": []
+        }
+      ],
+      "expected_groups": [
+        {
+          "title": "第 1~20 楼",
+          "floor_nums": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ]
+        },
+        {
+          "title": "第 21~25 楼",
+          "floor_nums": [
+            21,
+            22,
+            23,
+            24,
+            25
+          ]
+        }
+      ]
+    },
+    {
+      "id": "author-chapter-markers",
+      "floor_index": [
+        {
+          "floorId": 200,
+          "floorNum": 1,
+          "name": "楼1"
+        },
+        {
+          "floorId": 201,
+          "floorNum": 2,
+          "name": "楼2"
+        },
+        {
+          "floorId": 202,
+          "floorNum": 3,
+          "name": "楼3"
+        },
+        {
+          "floorId": 203,
+          "floorNum": 4,
+          "name": "楼4"
+        },
+        {
+          "floorId": 204,
+          "floorNum": 5,
+          "name": "楼5"
+        }
+      ],
+      "chapter_index": [
+        {
+          "floor": 1,
+          "title": "第一章"
+        },
+        {
+          "floor": 3,
+          "title": "第二章"
+        }
+      ],
+      "floors": [
+        {
+          "id": 200,
+          "floorNum": 1,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 201,
+          "floorNum": 2,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 202,
+          "floorNum": 3,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 203,
+          "floorNum": 4,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 204,
+          "floorNum": 5,
+          "name": "",
+          "paragraphContents": []
+        }
+      ],
+      "expected_groups": [
+        {
+          "title": "第一章",
+          "floor_nums": [
+            1,
+            2
+          ]
+        },
+        {
+          "title": "第二章",
+          "floor_nums": [
+            3,
+            4,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "marker-without-title-uses-floor-name",
+      "floor_index": [
+        {
+          "floorId": 300,
+          "floorNum": 1,
+          "name": "首楼名"
+        },
+        {
+          "floorId": 301,
+          "floorNum": 2,
+          "name": "次楼名"
+        }
+      ],
+      "chapter_index": [
+        {
+          "floor": 2,
+          "title": "  "
+        }
+      ],
+      "floors": [
+        {
+          "id": 300,
+          "floorNum": 1,
+          "name": "",
+          "paragraphContents": []
+        },
+        {
+          "id": 301,
+          "floorNum": 2,
+          "name": "",
+          "paragraphContents": []
+        }
+      ],
+      "expected_groups": [
+        {
+          "title": "第 1~2 楼",
+          "floor_nums": [
+            1,
+            2
+          ]
+        }
+      ]
+    }
+  ],
+  "epub_floor_cases": [
+    {
+      "id": "floor-with-comments-and-vfx",
+      "source_book_id": 10,
+      "index_item": {
+        "floorId": 555,
+        "floorNum": 7,
+        "name": "转折点"
+      },
+      "floor": {
+        "id": 555,
+        "floorNum": 7,
+        "name": "转折点",
+        "paragraphContents": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "<特效：下雨>"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "正文内容"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": [
+        {
+          "id": 9001,
+          "content": "好评",
+          "fromUser": {
+            "nickName": "读者"
+          },
+          "createTime": "2026-08-03"
+        }
+      ],
+      "expected_html": "<section class=\"gululu-floor\" id=\"floor-555\" data-gululu-vfx=\"rain\"><header class=\"floor-head\"><span class=\"floor-number\">第 7 楼</span><span class=\"floor-title\">转折点</span></header><div class=\"floor-content\"><p>正文内容</p></div><details class=\"gululu-comments\" data-comment-count=\"1\"><summary>评论 1</summary><div class=\"gululu-comment-list\"><article class=\"gululu-comment\" data-comment-id=\"9001\"><header class=\"gululu-comment-head\"><strong>读者</strong><span>2026-08-03 · 赞 0</span></header><div class=\"gululu-comment-text\">好评</div></article></div></details></section>"
+    },
+    {
+      "id": "floor-plain",
+      "source_book_id": 10,
+      "index_item": {
+        "floorId": 556,
+        "floorNum": 8,
+        "name": ""
+      },
+      "floor": {
+        "id": 556,
+        "floorNum": 8,
+        "name": "",
+        "paragraphContents": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "普通一楼"
+              }
+            ]
+          }
+        ]
+      },
+      "comments": [],
+      "expected_html": "<section class=\"gululu-floor\" id=\"floor-556\"><header class=\"floor-head\"><span class=\"floor-number\">第 8 楼</span><span class=\"floor-title\"></span></header><div class=\"floor-content\"><p>普通一楼</p></div></section>"
+    }
   ]
 }

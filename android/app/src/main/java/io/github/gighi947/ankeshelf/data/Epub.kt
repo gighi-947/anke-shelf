@@ -150,6 +150,8 @@ class EpubBook(val path: File) : Closeable {
     var publisher: String = ""
     var description: String = ""
     var isbn: String = ""
+    /** dc:identifier 原文（骨碌碌来源识别用：`gululu-<bookId>`，对齐桌面 EpubBook.identifier）。 */
+    var identifier: String = ""
     val chapters: MutableList<SpineItem> = mutableListOf()
     val toc: MutableList<TocEntry> = mutableListOf()
     val tocMap: MutableMap<String, String> = mutableMapOf()
@@ -300,6 +302,7 @@ class EpubBook(val path: File) : Closeable {
         publisher = md.child("publisher", EpubNamespaces.DC)?.textContent?.trim() ?: ""
         description = md.child("description", EpubNamespaces.DC)?.textContent?.trim() ?: ""
         md.child("identifier", EpubNamespaces.DC)?.textContent?.let {
+            identifier = it.trim()
             val scheme = md.child("identifier", EpubNamespaces.DC)?.getAttributeNS(EpubNamespaces.OPF, "scheme")
                 ?.uppercase() ?: ""
             if (scheme in setOf("ISBN", "URI", "")) isbn = it.trim()
