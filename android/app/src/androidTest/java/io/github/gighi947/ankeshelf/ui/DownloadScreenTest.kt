@@ -11,7 +11,7 @@ import io.github.gighi947.ankeshelf.ui.theme.AnkeShelfTheme
 import org.junit.Rule
 import org.junit.Test
 
-/** NGA 下载页（screen + drawer/二级详情）。 */
+/** 安科下载页（screen + drawer/二级详情）。 */
 class DownloadScreenTest {
 
     @get:Rule
@@ -32,9 +32,9 @@ class DownloadScreenTest {
     @Test
     fun groupListShowsThreeEntries() {
         setScreen()
-        compose.onNodeWithText("NGA 下载").assertIsDisplayed()
+        compose.onNodeWithText("安科下载").assertIsDisplayed()
         compose.onNodeWithText("登录配置").assertIsDisplayed()
-        compose.onNodeWithText("下载 / 更新").assertIsDisplayed()
+        compose.onNodeWithText("下载").assertIsDisplayed()
         compose.onNodeWithText("已下载").assertIsDisplayed()
     }
 

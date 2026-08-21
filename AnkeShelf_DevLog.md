@@ -65,6 +65,17 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：统一下载页入口（NGA / 骨碌碌）
+
+- 背景：用户测试机反馈下载页未完全整合，骨碌碌与 NGA 下载仍分散在两个一级菜单。
+- 修复：
+  - `DownloadScreen` 页头标题从「NGA 下载」改为「安科下载」；
+  - 一级菜单移除独立「骨碌碌导入」，「下载」入口内改为 NGA / 骨碌碌
+    FilterChip 切换，复用原 `DownloadPanel` / `GululuPanel` 表单；
+  - 同步更新 DownloadScreen/RootNavigation 仪器测试文案（本机编译通过，未跑
+    connected 以免卸载测试机应用清数据）。
+- 验证：`compileDebugKotlin testDebugUnitTest` BUILD SUCCESSFUL；
+  `assembleRelease` 成功并 `adb install -r` 到测试机（保留数据），启动正常。
 ### 2026-08-20 release：Android android-v1.2.0（对齐 Windows 大版本）
 
 - 版本：Android `android-v1.2.0`（versionCode 3）。

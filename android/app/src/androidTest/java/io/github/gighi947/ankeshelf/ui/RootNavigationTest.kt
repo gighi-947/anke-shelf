@@ -39,7 +39,7 @@ class RootNavigationTest {
         setRoot()
 
         compose.onNodeWithText("下载").performClick()
-        compose.onNodeWithText("NGA 下载").assertIsDisplayed()
+        compose.onNodeWithText("安科下载").assertIsDisplayed()
 
         compose.onNodeWithText("搜索").performClick()
         compose.onNodeWithText("全文检索").assertIsDisplayed()

@@ -123,8 +123,7 @@ private data class DownloadTab(
 
 private val DOWNLOAD_TABS = listOf(
     DownloadTab("config", "登录配置", Icons.Filled.Key, "NGA Cookie 凭据，仅存本机"),
-    DownloadTab("download", "下载 / 更新", Icons.Filled.FileDownload, "下载新帖或增量更新已有书目"),
-    DownloadTab("gululu", "骨碌碌导入", Icons.Filled.CloudDownload, "公开安科链接或 ID，转标准 EPUB"),
+    DownloadTab("download", "下载", Icons.Filled.FileDownload, "NGA 帖子 / 骨碌碌公开书籍，统一入口"),
     DownloadTab("library", "已下载", Icons.Filled.FolderOpen, "导出 EPUB/Markdown 与更新"),
 )
 
@@ -153,7 +152,7 @@ fun DownloadScreen(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 TopAppBar(
-                    title = { PageHeaderTitle("NGA 下载") },
+                    title = { PageHeaderTitle("安科下载") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -227,7 +226,7 @@ private fun DownloadGroupList(onBack: () -> Unit, onSelect: (String) -> Unit) {
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { PageHeaderTitle("NGA 下载") },
+                title = { PageHeaderTitle("安科下载") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -298,9 +297,42 @@ private fun DownloadGroupContent(
 ) {
     when (groupId) {
         "config" -> ConfigPanel(container)
-        "download" -> DownloadPanel(container, onChanged)
-        "gululu" -> GululuPanel(container, onChanged)
+        "download" -> UnifiedDownloadPanel(container, onChanged)
         "library" -> LibraryPanel(container, onChanged)
+    }
+}
+
+/** 统一下载面板：同一入口内切换 NGA / 骨碌碌来源，不再拆成两个一级菜单。 */
+@Composable
+private fun UnifiedDownloadPanel(
+    container: AppContainer,
+    onChanged: () -> Unit,
+) {
+    var source by remember { mutableStateOf("nga") }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AnkeSpacing.lg, vertical = AnkeSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+        ) {
+            FilterChip(
+                selected = source == "nga",
+                onClick = { source = "nga" },
+                label = { Text("NGA 帖子") },
+            )
+            FilterChip(
+                selected = source == "gululu",
+                onClick = { source = "gululu" },
+                label = { Text("骨碌碌") },
+            )
+        }
+        Box(modifier = Modifier.weight(1f)) {
+            when (source) {
+                "nga" -> DownloadPanel(container, onChanged)
+                else -> GululuPanel(container, onChanged)
+            }
+        }
     }
 }
 
