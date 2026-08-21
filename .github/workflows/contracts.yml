@@ -11,6 +11,13 @@ on:
       - 'android/app/src/main/assets/reader/**'
       - 'android/app/src/main/java/io/github/gighi947/ankeshelf/data/NgaTocParser.kt'
       - 'ngapost2md-python/ngapost2md/toc.py'
+      - 'app/gululu_assistant.py'
+      - 'app/gululu_epub.py'
+      - 'app/gululu_immersive.py'
+      - 'app/gululu_comments.py'
+      - 'app/gululu_client.py'
+      - 'app/gululu_images.py'
+      - 'app/gululu_source.py'
       - 'app/gululu_ast.py'
       - 'android/app/src/main/java/io/github/gighi947/ankeshelf/data/GululuAst.kt'
       - 'tests/test_contracts.py'
@@ -26,6 +33,13 @@ on:
       - 'android/app/src/main/assets/reader/**'
       - 'android/app/src/main/java/io/github/gighi947/ankeshelf/data/NgaTocParser.kt'
       - 'ngapost2md-python/ngapost2md/toc.py'
+      - 'app/gululu_assistant.py'
+      - 'app/gululu_epub.py'
+      - 'app/gululu_immersive.py'
+      - 'app/gululu_comments.py'
+      - 'app/gululu_client.py'
+      - 'app/gululu_images.py'
+      - 'app/gululu_source.py'
       - 'app/gululu_ast.py'
       - 'android/app/src/main/java/io/github/gighi947/ankeshelf/data/GululuAst.kt'
       - 'tests/test_contracts.py'
@@ -44,8 +58,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: Install schema validator
-        run: pip install jsonschema
+      - name: Install contract test dependencies
+        run: pip install jsonschema==4.26.0 httpx==0.28.1 cryptography==49.0.0
       - name: Node API manifest comparison and launch diagnostics
         run: |
           node contracts/tests/api-contract.test.js
