@@ -51,6 +51,64 @@ sealed interface StoreLoadResult<out T> {
     data class IoError(val detail: String) : StoreLoadResult<Nothing>
 }
 
+/** 权威存储加载异常：由 AppContainer 汇总后经书架横幅展示给用户。 */
+data class StoreLoadIssue(val fileName: String, val kind: Kind, val detail: String) {
+    enum class Kind { Corrupt, IoError }
+
+    /** 横幅文案：损坏已隔离（原字节保留在 .corrupt-*）；读取失败则暂停写入保护原文件。 */
+    fun userMessage(): String = when (kind) {
+        Kind.Corrupt -> "$fileName 损坏，原文件已备份为 .corrupt 文件，对应数据从空开始"
+        Kind.IoError -> "$fileName 读取失败，已暂停该项写入以防覆盖原文件"
+    }
+}
+
+/** 存储写保护：上次 load 遇 IoError（原文件仍在原位）时暂停写盘，恢复成功后解除。 */
+class StoreWriteGuard {
+    @Volatile
+    private var blocked = false
+
+    fun writeBlocked(): Boolean = blocked
+    fun block() { blocked = true }
+    fun unblock() { blocked = false }
+}
+
+/** 写被暂停时 save/flush 的显式失败原因（调用方可提示用户）。 */
+class StoreWriteProtectedException(fileName: String) :
+    Exception("$fileName 上次读取失败，写入已暂停以保护原文件")
+
+/**
+ * 权威存储统一加载入口：失败不再静默——
+ * - Ok/Missing：正常返回并解除写保护；
+ * - Corrupt：readJsonStore 已把原文件隔离为 .corrupt-*，空状态即新状态，
+ *   允许继续写，但报告 issue（用户可见）；
+ * - IoError：原文件未被移动，返回默认值的同时挂起写保护，防止下次 save
+ *   用空数据覆盖可能完好的文件；同样报告 issue。
+ */
+inline fun <reified T> loadGuarded(
+    file: File,
+    guard: StoreWriteGuard,
+    default: () -> T,
+): Pair<T, StoreLoadIssue?> = when (val r: StoreLoadResult<T> = readJsonStore(file)) {
+    is StoreLoadResult.Ok -> {
+        guard.unblock()
+        r.value to null
+    }
+    StoreLoadResult.Missing -> {
+        guard.unblock()
+        default() to null
+    }
+    is StoreLoadResult.Corrupt -> {
+        logWarn("AnkeShelf", "${file.name} 损坏，回退默认：${r.detail}")
+        guard.unblock()
+        default() to StoreLoadIssue(file.name, StoreLoadIssue.Kind.Corrupt, r.detail)
+    }
+    is StoreLoadResult.IoError -> {
+        logWarn("AnkeShelf", "${file.name} 读取失败，暂停写入保护原文件：${r.detail}")
+        guard.block()
+        default() to StoreLoadIssue(file.name, StoreLoadIssue.Kind.IoError, r.detail)
+    }
+}
+
 /** 读取并反序列化 JSON 文件；失败原因可区分（调用方决定回退与日志）。 */
 inline fun <reified T> readJsonStore(file: File, json: Json = Shelf.json): StoreLoadResult<T> {
     if (!file.exists()) return StoreLoadResult.Missing
@@ -83,6 +141,7 @@ internal fun isolateCorrupt(file: File): File? {
 }
 
 /** 数据层警告日志：JVM 单测环境无 android.util.Log，失败静默（不影响回退行为）。 */
+@PublishedApi
 internal fun logWarn(tag: String, message: String) {
     runCatching { android.util.Log.w(tag, message) }
 }

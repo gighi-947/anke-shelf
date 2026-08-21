@@ -63,27 +63,22 @@ class Shelf(private val shelfFile: File, private val coversDir: File) {
 
     private val lock = ReentrantLock()
     private val writeLock = ReentrantLock()
+    private val writeGuard = StoreWriteGuard()
     private var books: MutableMap<String, BookRecord> = mutableMapOf()
 
-    fun load() {
-        val data = when (val r = readJsonStore<ShelfFile>(shelfFile)) {
-            is StoreLoadResult.Ok -> r.value
-            StoreLoadResult.Missing -> ShelfFile()
-            is StoreLoadResult.Corrupt -> {
-                logWarn("AnkeShelf", "shelf.json 损坏，回退默认：${r.detail}")
-                ShelfFile()
-            }
-            is StoreLoadResult.IoError -> {
-                logWarn("AnkeShelf", "shelf.json 读取失败：${r.detail}")
-                ShelfFile()
-            }
-        }
+    fun load(): List<StoreLoadIssue> {
+        val (data, issue) = loadGuarded(shelfFile, writeGuard) { ShelfFile() }
         lock.withLock {
             books = data.books.associateBy { it.id }.toMutableMap()
         }
+        return listOfNotNull(issue)
     }
 
     fun save() {
+        if (writeGuard.writeBlocked()) {
+            logWarn("AnkeShelf", "shelf.json 读取失败过，跳过写入以保护原文件")
+            return
+        }
         val snapshot = lock.withLock { books.values.toList() }
         writeLock.withLock {
             atomicWriteJson(shelfFile, json.encodeToString(ShelfFile.serializer(), ShelfFile(books = snapshot)))
@@ -183,6 +178,7 @@ class ProgressStore(private val progressFile: File) {
     private val lock = ReentrantLock()
     // 文件写锁：主线程 flush 与后台 set 写盘串行，避免并发写同一个 .tmp 崩溃/损坏。
     private val writeLock = ReentrantLock()
+    private val writeGuard = StoreWriteGuard()
     private var data: MutableMap<String, ProgressEntry> = mutableMapOf()
     // 对齐桌面 ProgressStore.set：每次保存立即落盘；安卓把写盘放到串行后台线程，
     // 不阻塞 UI（桌面是 Python 后台线程写盘，语义一致）。
@@ -190,20 +186,10 @@ class ProgressStore(private val progressFile: File) {
         Thread(r, "progress-io").apply { isDaemon = true }
     }
 
-    fun load() {
-        val loaded = when (val r = readJsonStore<ProgressFile>(progressFile)) {
-            is StoreLoadResult.Ok -> r.value
-            StoreLoadResult.Missing -> ProgressFile()
-            is StoreLoadResult.Corrupt -> {
-                logWarn("AnkeShelf", "progress.json 损坏，回退默认：${r.detail}")
-                ProgressFile()
-            }
-            is StoreLoadResult.IoError -> {
-                logWarn("AnkeShelf", "progress.json 读取失败：${r.detail}")
-                ProgressFile()
-            }
-        }
+    fun load(): List<StoreLoadIssue> {
+        val (loaded, issue) = loadGuarded(progressFile, writeGuard) { ProgressFile() }
         lock.withLock { data = loaded.progress.toMutableMap() }
+        return listOfNotNull(issue)
     }
 
     private fun save() {
@@ -251,11 +237,16 @@ class ProgressStore(private val progressFile: File) {
     /** 立即同步落盘；调用方必须处理失败，不能把退出时写盘错误静默丢弃。 */
     fun flush(): Result<Unit> = writeNow()
 
-    private fun writeNow(): Result<Unit> = try {
-        save()
-        Result.success(Unit)
-    } catch (e: Exception) {
-        Result.failure(e)
+    private fun writeNow(): Result<Unit> {
+        if (writeGuard.writeBlocked()) {
+            return Result.failure(StoreWriteProtectedException(progressFile.name))
+        }
+        return try {
+            save()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun remove(bookId: String) {

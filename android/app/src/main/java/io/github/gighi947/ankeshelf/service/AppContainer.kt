@@ -58,15 +58,22 @@ class AppContainer(
         .cache(Cache(File(context.cacheDir, "okhttp-images"), 64L * 1024 * 1024))
         .build()
 
+    /** 启动时权威存储的损坏/读取失败清单（损坏已隔离、读取失败已停写）。 */
+    val storeLoadIssues: List<io.github.gighi947.ankeshelf.data.StoreLoadIssue>
+
     init {
-        shelf.load()
-        progress.load()
+        // 权威存储加载异常汇总：书架页横幅展示；IoError 的存储已暂停写入
+        // （见 loadGuarded / StoreWriteGuard），防止空数据覆盖原文件。
+        storeLoadIssues = buildList {
+            addAll(shelf.load())
+            addAll(progress.load())
+            addAll(searchHistory.load())
+            addAll(stats.load())
+            addAll(annotations.load())
+            addAll(gululuUnlocks.load())
+        }
         settings.load()
         ngaConfig.ensure()
-        searchHistory.load()
-        stats.load()
-        annotations.load()
-        gululuUnlocks.load()
     }
 }
 

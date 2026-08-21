@@ -30,38 +30,21 @@ data class GululuCluesFile(
 class GululuUnlockStore(private val unlocksFile: File, private val cluesFile: File) {
 
     private val lock = ReentrantLock()
+    private val unlocksGuard = StoreWriteGuard()
+    private val cluesGuard = StoreWriteGuard()
     private var unlocked: MutableMap<String, MutableList<String>> = mutableMapOf()
     private var clues: MutableMap<String, MutableMap<String, String>> = mutableMapOf()
 
-    fun load() {
-        val loadedUnlocks = when (val r = readJsonStore<GululuUnlocksFile>(unlocksFile)) {
-            is StoreLoadResult.Ok -> r.value
-            StoreLoadResult.Missing -> GululuUnlocksFile()
-            is StoreLoadResult.Corrupt -> {
-                logWarn("AnkeShelf", "gululu_unlocks.json 损坏，回退默认：${r.detail}")
-                GululuUnlocksFile()
-            }
-            is StoreLoadResult.IoError -> {
-                logWarn("AnkeShelf", "gululu_unlocks.json 读取失败：${r.detail}")
-                GululuUnlocksFile()
-            }
-        }
-        val loadedClues = when (val r = readJsonStore<GululuCluesFile>(cluesFile)) {
-            is StoreLoadResult.Ok -> r.value
-            StoreLoadResult.Missing -> GululuCluesFile()
-            is StoreLoadResult.Corrupt -> {
-                logWarn("AnkeShelf", "gululu_clues.json 损坏，回退默认：${r.detail}")
-                GululuCluesFile()
-            }
-            is StoreLoadResult.IoError -> {
-                logWarn("AnkeShelf", "gululu_clues.json 读取失败：${r.detail}")
-                GululuCluesFile()
-            }
-        }
+    fun load(): List<StoreLoadIssue> {
+        val (loadedUnlocks, unlocksIssue) =
+            loadGuarded(unlocksFile, unlocksGuard) { GululuUnlocksFile() }
+        val (loadedClues, cluesIssue) =
+            loadGuarded(cluesFile, cluesGuard) { GululuCluesFile() }
         lock.withLock {
             unlocked = loadedUnlocks.unlocked.mapValues { it.value.toMutableList() }.toMutableMap()
             clues = loadedClues.clues.mapValues { it.value.toMutableMap() }.toMutableMap()
         }
+        return listOfNotNull(unlocksIssue, cluesIssue)
     }
 
     // ---------- 骰点解锁 ----------
@@ -159,6 +142,10 @@ class GululuUnlockStore(private val unlocksFile: File, private val cluesFile: Fi
     }
 
     private fun saveUnlocks() {
+        if (unlocksGuard.writeBlocked()) {
+            logWarn("AnkeShelf", "gululu_unlocks.json 读取失败过，跳过写入以保护原文件")
+            return
+        }
         val snapshot = lock.withLock { unlocked.mapValues { it.value.toList() } }
         atomicWriteJson(
             unlocksFile,
@@ -167,6 +154,10 @@ class GululuUnlockStore(private val unlocksFile: File, private val cluesFile: Fi
     }
 
     private fun saveClues() {
+        if (cluesGuard.writeBlocked()) {
+            logWarn("AnkeShelf", "gululu_clues.json 读取失败过，跳过写入以保护原文件")
+            return
+        }
         val snapshot = lock.withLock { clues.mapValues { it.value.toMap() } }
         atomicWriteJson(
             cluesFile,

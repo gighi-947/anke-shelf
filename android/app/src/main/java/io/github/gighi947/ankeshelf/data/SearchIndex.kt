@@ -284,22 +284,13 @@ data class SearchHistoryFile(
 class SearchHistoryStore(private val file: File) {
 
     private val lock = ReentrantLock()
+    private val writeGuard = StoreWriteGuard()
     private var data: MutableMap<String, List<String>> = mutableMapOf()
 
-    fun load() {
-        val loaded = when (val r = readJsonStore<SearchHistoryFile>(file)) {
-            is StoreLoadResult.Ok -> r.value
-            StoreLoadResult.Missing -> SearchHistoryFile()
-            is StoreLoadResult.Corrupt -> {
-                logWarn("AnkeShelf", "search_history.json 损坏，回退默认：${r.detail}")
-                SearchHistoryFile()
-            }
-            is StoreLoadResult.IoError -> {
-                logWarn("AnkeShelf", "search_history.json 读取失败：${r.detail}")
-                SearchHistoryFile()
-            }
-        }
+    fun load(): List<StoreLoadIssue> {
+        val (loaded, issue) = loadGuarded(file, writeGuard) { SearchHistoryFile() }
         lock.withLock { data = loaded.history.toMutableMap() }
+        return listOfNotNull(issue)
     }
 
     fun list(bookId: String): List<String> = lock.withLock { data[bookId] ?: emptyList() }
@@ -311,6 +302,10 @@ class SearchHistoryStore(private val file: File) {
             val list = (data[bookId] ?: emptyList()).filter { it != q }.toMutableList()
             list.add(0, q)
             data[bookId] = list.take(10)
+            if (writeGuard.writeBlocked()) {
+                logWarn("AnkeShelf", "search_history.json 读取失败过，跳过写入以保护原文件")
+                return
+            }
             atomicWriteJson(
                 file,
                 Shelf.json.encodeToString(SearchHistoryFile.serializer(), SearchHistoryFile(history = data.toMap())),
