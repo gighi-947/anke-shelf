@@ -64,7 +64,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.GululuBaseline
+import io.github.gighi947.ankeshelf.data.GululuUpdate
 import io.github.gighi947.ankeshelf.service.AppContainer
+import io.github.gighi947.ankeshelf.service.GululuImportService
 import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.BookUi
 import io.github.gighi947.ankeshelf.service.LogEvents
@@ -80,6 +83,27 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.math.roundToInt
+
+private fun shelfIsGululu(container: AppContainer, book: BookRecord): Boolean =
+    book.nga_tid <= 0 && book.path.startsWith(container.appPaths.gululuLibraryDir.absolutePath)
+
+private fun shelfLaunchGululuUpdate(
+    context: Context,
+    container: AppContainer,
+    book: BookRecord,
+) {
+    val sourceId = File(book.path).parentFile?.name?.toIntOrNull() ?: return
+    val baselineFile = GululuUpdate.baselineFile(container.appPaths.gululuLibraryDir, sourceId)
+    val baseline = GululuUpdate.loadBaseline(baselineFile, sourceId)
+    val imageMode = (baseline as? GululuBaseline.Ok)?.imageMode ?: "online"
+    val intent = Intent(context, GululuImportService::class.java).apply {
+        action = GululuImportService.ACTION_START
+        putExtra("action", "update")
+        putExtra("sourceId", sourceId)
+        putExtra("imageMode", imageMode)
+    }
+    ContextCompat.startForegroundService(context, intent)
+}
 
 /** 书架页：空态 + 网格（M2：SAF 导入 EPUB、显示进度、进入阅读器）。 */
 @Composable
@@ -302,6 +326,7 @@ fun BookshelfScreen(
                             ui = ui,
                             coversDir = coversDir,
                             hideBrackets = hideBrackets,
+                            showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
                             onClick = { onOpen(ui.record) },
                             onLongPress = { manageBook = it },
                             onUpdate = { updateTarget = it },
@@ -333,6 +358,7 @@ fun BookshelfScreen(
                             context = context,
                             container = container,
                             hideBrackets = hideBrackets,
+                            showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
                             onClick = { onOpen(ui.record) },
                             onLongPress = { manageBook = it },
                             onUpdate = { updateTarget = it },
@@ -359,15 +385,20 @@ fun BookshelfScreen(
         )
 
         updateTarget?.let { book ->
-            NgaUpdateDialog(
-                book = book,
-                container = container,
-                onDismiss = { updateTarget = null },
-                onConfirm = { params ->
-                    updateTarget = null
-                    launchNgaUpdate(context, book, params)
-                },
-            )
+            if (book.nga_tid > 0) {
+                NgaUpdateDialog(
+                    book = book,
+                    container = container,
+                    onDismiss = { updateTarget = null },
+                    onConfirm = { params ->
+                        updateTarget = null
+                        launchNgaUpdate(context, book, params)
+                    },
+                )
+            } else if (shelfIsGululu(container, book)) {
+                shelfLaunchGululuUpdate(context, container, book)
+                updateTarget = null
+            }
         }
     }
 }
@@ -378,6 +409,7 @@ private fun BookListRow(
     ui: BookUi,
     coversDir: File,
     hideBrackets: Boolean,
+    showUpdate: Boolean = false,
     onClick: () -> Unit,
     onLongPress: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
@@ -385,7 +417,7 @@ private fun BookListRow(
     onExportMd: (BookRecord) -> Unit,
 ) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
-    val displayTitle = if (hideBrackets) ui.record.title.replace(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*(?:(?:【[^】]*】|\[[^\]]*\])[\s　]*)*"""), "").ifBlank { ui.record.title } else ui.record.title
+    val displayTitle = if (hideBrackets) ui.record.title.replace(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*(?:(?:【[^】]*】|\[[^\]]*\])[\s　]*)*"""), "").trim().ifBlank { ui.record.title } else ui.record.title
     var exportMenu by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
@@ -444,7 +476,7 @@ private fun BookListRow(
                 modifier = Modifier.padding(top = AnkeSpacing.xxs),
             )
         }
-        if (ui.record.nga_tid > 0) {
+        if (showUpdate) {
             ActionIcon(Icons.Filled.Refresh, "更新") { onUpdate(ui.record) }
         }
         Box {
@@ -482,6 +514,7 @@ private fun BookCard(
     context: Context,
     container: AppContainer,
     hideBrackets: Boolean,
+    showUpdate: Boolean = false,
     onClick: () -> Unit,
     onLongPress: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
@@ -489,7 +522,7 @@ private fun BookCard(
     onExportMd: (BookRecord) -> Unit,
 ) {
     val coverFile = ui.record.cover_rel?.let { File(coversDir, it.substringAfterLast('/')) }
-    val displayTitle = if (hideBrackets) ui.record.title.replace(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*(?:(?:【[^】]*】|\[[^\]]*\])[\s　]*)*"""), "").ifBlank { ui.record.title } else ui.record.title
+    val displayTitle = if (hideBrackets) ui.record.title.replace(Regex("""^(?:【[^】]*】|\[[^\]]*\])[\s　]*(?:(?:【[^】]*】|\[[^\]]*\])[\s　]*)*"""), "").trim().ifBlank { ui.record.title } else ui.record.title
     var exportMenu by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
@@ -530,7 +563,7 @@ private fun BookCard(
                     .padding(AnkeSpacing.xs),
                 horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs),
             ) {
-                if (ui.record.nga_tid > 0) {
+                if (showUpdate) {
                     ActionIcon(Icons.Filled.Refresh, "更新") { onUpdate(ui.record) }
                 }
                 Box {

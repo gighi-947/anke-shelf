@@ -994,9 +994,23 @@ fun NativeReaderScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) {
-                // 按 Home 退后台/切走：立即落盘，避免进程被杀丢进度（对齐 Legado onPause save）。
-                flushProgress("reader_stop")
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    // 切到其他应用再回来，系统状态栏可能被系统恢复；
+                    // 阅读器要求沉浸式，需再次隐藏。
+                    val act = activity
+                    if (act != null) {
+                        runCatching {
+                            WindowCompat.getInsetsController(act.window, act.window.decorView)
+                                .hide(WindowInsetsCompat.Type.systemBars())
+                        }
+                    }
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    // 按 Home 退后台/切走：立即落盘，避免进程被杀丢进度（对齐 Legado onPause save）。
+                    flushProgress("reader_stop")
+                }
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

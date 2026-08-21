@@ -287,7 +287,14 @@
     bindImages();
     bindSelection();
     // 骨碌碌书籍：宿主传入已解锁的骰点分组，运行时只切遮罩不改正文。
-    if (opts.gululu) initGululu(opts.gululuUnlocked || '[]');
+    // 必须失败隔离：Gululu 初始化异常不能影响下方换章按钮绑定等基础链路。
+    if (opts.gululu) {
+      try {
+        initGululu(opts.gululuUnlocked || '[]');
+      } catch (e) {
+        log('[gululu] init failed: ' + e);
+      }
+    }
     // 滚动模式底部换章按钮（分页模式下由 CSS 隐藏）。
     var prevBtn = document.getElementById('android-prev-chapter');
     var nextBtn = document.getElementById('android-next-chapter');

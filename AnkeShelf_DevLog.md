@@ -65,6 +65,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈修复（第八批）
+
+- 修复：
+  - 切出应用再返回后系统状态栏重新隐藏（ON_RESUME 沉浸式恢复）；
+  - `initGululu` 失败隔离：Gululu 初始化异常不再影响底部换章按钮绑定；
+  - 书架页骨碌碌书籍恢复「更新」按钮（直接走 GululuImportService 更新）；
+  - 标题括号过滤正则结果补 `.trim()`，与桌面 `displayTitle` 对齐。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：测试机反馈修复（第七批）
 
 - 修复：骰点遮罩增加内联样式兜底（`color:transparent; background:currentColor`），
