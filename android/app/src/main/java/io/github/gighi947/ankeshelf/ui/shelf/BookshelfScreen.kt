@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Title
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -171,13 +172,11 @@ fun BookshelfScreen(
             TopAppBar(
                 title = { PageHeaderTitle("安科书架") },
                 actions = {
-                    TextButton(
-                        onClick = onToggleHideBrackets,
-                    ) {
-                        Text(
-                            if (hideBrackets) "前缀已隐藏" else "隐藏前缀",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (hideBrackets) MaterialTheme.colorScheme.primary
+                    IconButton(onClick = onToggleHideBrackets) {
+                        Icon(
+                            Icons.Filled.Title,
+                            contentDescription = if (hideBrackets) "前缀已隐藏" else "隐藏前缀",
+                            tint = if (hideBrackets) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
