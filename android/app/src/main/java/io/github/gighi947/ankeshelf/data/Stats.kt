@@ -45,29 +45,24 @@ data class EnrichedStats(
 class StatsStore(private val file: File) {
 
     private val lock = ReentrantLock()
+    private val writeGuard = StoreWriteGuard()
     private var books: MutableMap<String, StatsEntry> = mutableMapOf()
     private var global: StatsEntry = StatsEntry()
 
-    fun load() {
-        val data = when (val r = readJsonStore<StatsFile>(file)) {
-            is StoreLoadResult.Ok -> r.value
-            StoreLoadResult.Missing -> StatsFile()
-            is StoreLoadResult.Corrupt -> {
-                logWarn("AnkeShelf", "statistics.json 损坏，回退默认：${r.detail}")
-                StatsFile()
-            }
-            is StoreLoadResult.IoError -> {
-                logWarn("AnkeShelf", "statistics.json 读取失败：${r.detail}")
-                StatsFile()
-            }
-        }
+    fun load(): List<StoreLoadIssue> {
+        val (data, issue) = loadGuarded(file, writeGuard) { StatsFile() }
         lock.withLock {
             books = data.books.toMutableMap()
             global = data.global
         }
+        return listOfNotNull(issue)
     }
 
     fun save() {
+        if (writeGuard.writeBlocked()) {
+            logWarn("AnkeShelf", "statistics.json 读取失败过，跳过写入以保护原文件")
+            return
+        }
         val snapshot = lock.withLock { books.toMap() to global }
         atomicWriteJson(
             file,

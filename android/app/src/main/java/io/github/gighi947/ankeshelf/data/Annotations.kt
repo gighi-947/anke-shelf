@@ -46,25 +46,20 @@ data class AnnotationsFile(
 class AnnotationStore(private val file: File) {
 
     private val lock = ReentrantLock()
+    private val writeGuard = StoreWriteGuard()
     private var books: MutableMap<String, AnnotationBook> = mutableMapOf()
 
-    fun load() {
-        val loaded = when (val r = readJsonStore<AnnotationsFile>(file)) {
-            is StoreLoadResult.Ok -> r.value
-            StoreLoadResult.Missing -> AnnotationsFile()
-            is StoreLoadResult.Corrupt -> {
-                logWarn("AnkeShelf", "annotations.json 损坏，回退默认：${r.detail}")
-                AnnotationsFile()
-            }
-            is StoreLoadResult.IoError -> {
-                logWarn("AnkeShelf", "annotations.json 读取失败：${r.detail}")
-                AnnotationsFile()
-            }
-        }
+    fun load(): List<StoreLoadIssue> {
+        val (loaded, issue) = loadGuarded(file, writeGuard) { AnnotationsFile() }
         books = loaded.books.toMutableMap()
+        return listOfNotNull(issue)
     }
 
     fun save() {
+        if (writeGuard.writeBlocked()) {
+            logWarn("AnkeShelf", "annotations.json 读取失败过，跳过写入以保护原文件")
+            return
+        }
         val snapshot = lock.withLock { books.toMap() }
         atomicWriteJson(
             file,

@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,6 +69,7 @@ import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.BookTag
 import io.github.gighi947.ankeshelf.data.GululuBaseline
 import io.github.gighi947.ankeshelf.data.GululuUpdate
+import io.github.gighi947.ankeshelf.data.StoreLoadIssue
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.GululuImportService
 import io.github.gighi947.ankeshelf.service.NgaExport
@@ -260,150 +262,157 @@ fun BookshelfScreen(
             )
         },
     ) { padding ->
-        if (books.isEmpty()) {
-            val guidePrefs = context.getSharedPreferences("guide", android.content.Context.MODE_PRIVATE)
-            var guideSeen by remember { mutableStateOf(guidePrefs.getBoolean("seen", false)) }
-            fun markGuideSeen() {
-                guidePrefs.edit().putBoolean("seen", true).apply()
-                guideSeen = true
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-            ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            StoreLoadIssueBanner(container.storeLoadIssues)
+            if (books.isEmpty()) {
+                val guidePrefs = context.getSharedPreferences("guide", android.content.Context.MODE_PRIVATE)
+                var guideSeen by remember { mutableStateOf(guidePrefs.getBoolean("seen", false)) }
+                fun markGuideSeen() {
+                    guidePrefs.edit().putBoolean("seen", true).apply()
+                    guideSeen = true
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(AnkeSpacing.xl),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text("书架为空", style = MaterialTheme.typography.headlineMedium)
+                        Text(
+                            "导入 EPUB 开始阅读",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = AnkeSpacing.sm, bottom = AnkeSpacing.lg),
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
+                            Button(shape = MaterialTheme.shapes.small, onClick = launchPicker) {
+                                Text("导入 EPUB")
+                            }
+                            OutlinedButton(shape = MaterialTheme.shapes.small, onClick = onOpenDownload) {
+                                Text("安科下载")
+                            }
+                        }
+                    }
+                    // 首次打开且书架为空：顶部提醒查看内置使用说明（查看/关闭后不再出现）。
+                    if (!guideSeen) {
+                        Card(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .fillMaxWidth()
+                                .padding(AnkeSpacing.md),
+                            shape = MaterialTheme.shapes.medium,
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            ),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(
+                                    start = AnkeSpacing.lg,
+                                    top = AnkeSpacing.sm,
+                                    bottom = AnkeSpacing.sm,
+                                    end = AnkeSpacing.xs,
+                                ),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("新用户？", style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        "应用内置使用说明：导入 EPUB、NGA 下载、阅读操作等。",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = AnkeSpacing.xxs),
+                                    )
+                                }
+                                TextButton(onClick = {
+                                    markGuideSeen()
+                                    onOpenGuide()
+                                }) { Text("查看") }
+                                IconButton(onClick = { markGuideSeen() }) {
+                                    Icon(Icons.Filled.Close, contentDescription = "关闭提醒")
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
                 Column(
                     modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(AnkeSpacing.xl),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                        .weight(1f)
+                        .fillMaxWidth(),
                 ) {
-                    Text("书架为空", style = MaterialTheme.typography.headlineMedium)
-                    Text(
-                        "导入 EPUB 开始阅读",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = AnkeSpacing.sm, bottom = AnkeSpacing.lg),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
-                        Button(shape = MaterialTheme.shapes.small, onClick = launchPicker) {
-                            Text("导入 EPUB")
-                        }
-                        OutlinedButton(shape = MaterialTheme.shapes.small, onClick = onOpenDownload) {
-                            Text("安科下载")
-                        }
+                    if (allTags.isNotEmpty()) {
+                        BookTagFilterRow(
+                            allTags = allTags,
+                            selected = selectedTag,
+                            onSelect = { selectedTag = it },
+                            modifier = Modifier.padding(horizontal = AnkeSpacing.md),
+                        )
                     }
-                }
-                // 首次打开且书架为空：顶部提醒查看内置使用说明（查看/关闭后不再出现）。
-                if (!guideSeen) {
-                    Card(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .fillMaxWidth()
-                            .padding(AnkeSpacing.md),
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                        ),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(
-                                start = AnkeSpacing.lg,
-                                top = AnkeSpacing.sm,
-                                bottom = AnkeSpacing.sm,
-                                end = AnkeSpacing.xs,
-                            ),
-                            verticalAlignment = Alignment.CenterVertically,
+                    if (shelfView == "list") {
+                        LazyColumn(
+                            contentPadding = PaddingValues(AnkeSpacing.md),
+                            verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+                            modifier = Modifier.fillMaxSize(),
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("新用户？", style = MaterialTheme.typography.titleSmall)
-                                Text(
-                                    "应用内置使用说明：导入 EPUB、NGA 下载、阅读操作等。",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = AnkeSpacing.xxs),
+                            lazyItems(displayedBooks, key = { it.record.id }) { ui ->
+                                BookListRow(
+                                    ui = ui,
+                                    coversDir = coversDir,
+                                    hideBrackets = hideBrackets,
+                                    showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
+                                    onClick = { onOpen(ui.record) },
+                                    onLongPress = { manageBook = it },
+                                    onUpdate = { updateTarget = it },
+                                    onExportEpub = { rec ->
+                                        pendingExport = rec to "epub"
+                                        epubLauncher.launch(safeExportName(rec.title) + ".epub")
+                                    },
+                                    onExportMd = { rec ->
+                                        pendingExport = rec to "md"
+                                        mdLauncher.launch(safeExportName(rec.title) + ".md")
+                                    },
                                 )
                             }
-                            TextButton(onClick = {
-                                markGuideSeen()
-                                onOpenGuide()
-                            }) { Text("查看") }
-                            IconButton(onClick = { markGuideSeen() }) {
-                                Icon(Icons.Filled.Close, contentDescription = "关闭提醒")
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(110.dp),
+                            contentPadding = PaddingValues(AnkeSpacing.md),
+                            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
+                            verticalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            items(displayedBooks, key = { it.record.id }) { ui ->
+                                BookCard(
+                                    ui = ui,
+                                    coversDir = coversDir,
+                                    context = context,
+                                    container = container,
+                                    hideBrackets = hideBrackets,
+                                    showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
+                                    onClick = { onOpen(ui.record) },
+                                    onLongPress = { manageBook = it },
+                                    onUpdate = { updateTarget = it },
+                                    onExportEpub = { rec ->
+                                        pendingExport = rec to "epub"
+                                        epubLauncher.launch(safeExportName(rec.title) + ".epub")
+                                    },
+                                    onExportMd = { rec ->
+                                        pendingExport = rec to "md"
+                                        mdLauncher.launch(safeExportName(rec.title) + ".md")
+                                    },
+                                )
                             }
-                        }
-                    }
-                }
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-            ) {
-                if (allTags.isNotEmpty()) {
-                    BookTagFilterRow(
-                        allTags = allTags,
-                        selected = selectedTag,
-                        onSelect = { selectedTag = it },
-                        modifier = Modifier.padding(horizontal = AnkeSpacing.md),
-                    )
-                }
-                if (shelfView == "list") {
-                    LazyColumn(
-                        contentPadding = PaddingValues(AnkeSpacing.md),
-                        verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        lazyItems(displayedBooks, key = { it.record.id }) { ui ->
-                            BookListRow(
-                                ui = ui,
-                                coversDir = coversDir,
-                                hideBrackets = hideBrackets,
-                                showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
-                                onClick = { onOpen(ui.record) },
-                                onLongPress = { manageBook = it },
-                                onUpdate = { updateTarget = it },
-                                onExportEpub = { rec ->
-                                    pendingExport = rec to "epub"
-                                    epubLauncher.launch(safeExportName(rec.title) + ".epub")
-                                },
-                                onExportMd = { rec ->
-                                    pendingExport = rec to "md"
-                                    mdLauncher.launch(safeExportName(rec.title) + ".md")
-                                },
-                            )
-                        }
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(110.dp),
-                        contentPadding = PaddingValues(AnkeSpacing.md),
-                        horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
-                        verticalArrangement = Arrangement.spacedBy(AnkeSpacing.md),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        items(displayedBooks, key = { it.record.id }) { ui ->
-                            BookCard(
-                                ui = ui,
-                                coversDir = coversDir,
-                                context = context,
-                                container = container,
-                                hideBrackets = hideBrackets,
-                                showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
-                                onClick = { onOpen(ui.record) },
-                                onLongPress = { manageBook = it },
-                                onUpdate = { updateTarget = it },
-                                onExportEpub = { rec ->
-                                    pendingExport = rec to "epub"
-                                    epubLauncher.launch(safeExportName(rec.title) + ".epub")
-                                },
-                                onExportMd = { rec ->
-                                    pendingExport = rec to "md"
-                                    mdLauncher.launch(safeExportName(rec.title) + ".md")
-                                },
-                            )
                         }
                     }
                 }
@@ -445,6 +454,70 @@ fun BookshelfScreen(
             } else if (shelfIsGululu(container, book)) {
                 shelfLaunchGululuUpdate(context, container, book)
                 updateTarget = null
+            }
+        }
+    }
+}
+
+/** 数据文件损坏/读取失败横幅：AppContainer.storeLoadIssues 非空时显示，可关闭。
+ *  损坏文件已隔离为 .corrupt 备份；读取失败的存储已暂停写入保护原文件。 */
+@Composable
+private fun StoreLoadIssueBanner(issues: List<StoreLoadIssue>) {
+    if (issues.isEmpty()) return
+    var dismissed by rememberSaveable { mutableStateOf(false) }
+    if (dismissed) return
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = AnkeSpacing.md,
+                top = AnkeSpacing.sm,
+                end = AnkeSpacing.md,
+                bottom = AnkeSpacing.xs,
+            ),
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                start = AnkeSpacing.lg,
+                top = AnkeSpacing.sm,
+                bottom = AnkeSpacing.sm,
+                end = AnkeSpacing.xs,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "本地数据文件异常",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+                for (issue in issues.take(3)) {
+                    Text(
+                        issue.userMessage(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(top = AnkeSpacing.xxs),
+                    )
+                }
+                if (issues.size > 3) {
+                    Text(
+                        "其余 ${issues.size - 3} 项：设置 → 数据 → 校验数据完整性",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(top = AnkeSpacing.xxs),
+                    )
+                }
+            }
+            IconButton(onClick = { dismissed = true }) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "关闭数据异常提醒",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                )
             }
         }
     }
