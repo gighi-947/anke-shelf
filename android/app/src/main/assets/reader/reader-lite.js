@@ -1483,9 +1483,7 @@
   // Node 契约测试入口：只导出与 DOM 无关的纯函数（跨端折叠规则对照）。
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { foldItems: foldItems, AnkeReader: AnkeReaderApi };
-  }
-})();
-  /* ---------- gululu host layer (批 8/9) ---------- */
+  }  /* ---------- gululu host layer (批 8/9) ---------- */
   // 运行时只切换遮罩/可见状态与上报事件，绝不重写正文（text_offset 红线）。
   var gululu = {
     unlocked: {},
@@ -1833,8 +1831,11 @@
     gululu.lastVfx = '';
     gululu.lastBackground = '';
     gululu.lastFloor = 0;
+    console.log('[gululu] init payload=' + payload + ' unlocked=' + Object.keys(gululu.unlocked).length + ' dice=' + document.querySelectorAll('.gululu-dice-value, .gululu-dice-suffix').length);
     applyGululuMasks();
+    console.log('[gululu] masked=' + document.querySelectorAll('.gululu-dice-value.masked, .gululu-dice-suffix.masked').length + ' visible=' + document.querySelectorAll('.gululu-dice-value:not(.masked), .gululu-dice-suffix:not(.masked)').length);
     bindGululu();
     // 首屏也要上报一次上下文（背景/视效/自动音乐/当前楼）
     setTimeout(reportGululuContext, 0);
   }
+})();

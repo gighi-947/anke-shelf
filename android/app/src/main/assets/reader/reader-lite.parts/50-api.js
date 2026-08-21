@@ -451,4 +451,3 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = { foldItems: foldItems, AnkeReader: AnkeReaderApi };
   }
-})();

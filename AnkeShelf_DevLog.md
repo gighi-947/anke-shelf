@@ -65,6 +65,14 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：骰子默认全解锁根因修复（第十六批）
+
+- 根因：reader-lite 主 IIFE 在 50-api.js 末尾就关闭了，60-gululu.js 被拼在
+  IIFE 之外，`parseJsonSafe` / `state` 均不可见，`initGululu` 一执行就抛
+  ReferenceError，骰点遮罩从未生效（宿主持久化 count=0 正常）。
+- 修复：把主 IIFE 关闭移到 60-gululu.js 末尾，使 Gululu 部分回到同一闭包内。
+- 验证：`compileDebugKotlin testDebugUnitTest` BUILD SUCCESSFUL；
+  `assembleRelease` 成功并 `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：CI 修复（第十五批）
 
 - 修复：骨碌碌悬浮按钮底部偏移 96dp 魔法值改为 `AnkeSpacing.xxl * 3`，

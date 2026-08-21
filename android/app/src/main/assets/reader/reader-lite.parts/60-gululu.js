@@ -346,8 +346,11 @@
     gululu.lastVfx = '';
     gululu.lastBackground = '';
     gululu.lastFloor = 0;
+    console.log('[gululu] init payload=' + payload + ' unlocked=' + Object.keys(gululu.unlocked).length + ' dice=' + document.querySelectorAll('.gululu-dice-value, .gululu-dice-suffix').length);
     applyGululuMasks();
+    console.log('[gululu] masked=' + document.querySelectorAll('.gululu-dice-value.masked, .gululu-dice-suffix.masked').length + ' visible=' + document.querySelectorAll('.gululu-dice-value:not(.masked), .gululu-dice-suffix:not(.masked)').length);
     bindGululu();
     // 首屏也要上报一次上下文（背景/视效/自动音乐/当前楼）
     setTimeout(reportGululuContext, 0);
   }
+})();

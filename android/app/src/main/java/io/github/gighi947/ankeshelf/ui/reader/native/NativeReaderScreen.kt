@@ -176,8 +176,12 @@ fun NativeReaderScreen(
         if (!isGululu) {
             "[]"
         } else {
-            container.gululuUnlocks.unlockedGroups(session.id)
-                .joinToString(",", "[", "]") { JSONObject.quote(it) }
+            val groups = container.gululuUnlocks.unlockedGroups(session.id)
+            android.util.Log.d(
+                "AnkeShelf",
+                "gululu unlockedJson book=${session.id} count=${groups.size} json=${groups.joinToString(",", "[", "]") { JSONObject.quote(it) }}",
+            )
+            groups.joinToString(",", "[", "]") { JSONObject.quote(it) }
         }
     }
     val paragraphCommentsJson = remember(gululuComments) {
