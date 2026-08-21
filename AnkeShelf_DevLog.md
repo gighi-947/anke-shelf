@@ -65,6 +65,13 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈修复（第四批）
+
+- 修复：骨碌碌楼层上报增加几何兜底（`elementFromPoint` 未命中时扫描
+  `.gululu-floor` 矩形，分页/滚动分别选当前列/阅读线以上最后楼层），
+  评论抽屉与段落徽标不再依赖单一命中路径。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：测试机反馈修复（第三批）
 
 - 修复：

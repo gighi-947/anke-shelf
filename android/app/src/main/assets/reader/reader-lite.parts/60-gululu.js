@@ -139,12 +139,34 @@
     return applied;
   }
 
+  /** 从 DOM 几何中找一个当前阅读线附近的楼层（elementFromPoint 不可用/未命中时兜底）。 */
+  function findGululuFloorNearLine() {
+    var floors = document.querySelectorAll('.gululu-floor');
+    if (!floors.length) return null;
+    var line = Math.round(viewH() * 0.4);
+    var best = null;
+    for (var i = 0; i < floors.length; i++) {
+      var r = floors[i].getBoundingClientRect();
+      if (state.paged) {
+        // 分页模式：优先选水平方向覆盖当前列中心的楼层。
+        var center = viewW() / 2;
+        if (r.left <= center && r.right > center) return floors[i];
+        if (r.right > 0 && r.left < viewW()) best = floors[i];
+      } else {
+        // 滚动模式：阅读线以上最后一个楼层。
+        if (r.top <= line && r.bottom > 0) best = floors[i];
+      }
+    }
+    return best;
+  }
+
   /** 当前阅读线所在楼层 → 上报宿主（评论抽屉、弹幕、视效、自动音乐都用它）。 */
   function reportGululuContext() {
     var line = state.paged ? Math.round(viewH() * 0.4) : Math.round(viewH() * 0.4);
     var x = Math.max(2, Math.round(viewW() / 2));
     var el = document.elementFromPoint(x, line);
     var floor = el && el.closest ? el.closest('.gululu-floor') : null;
+    if (!floor) floor = findGululuFloorNearLine();
     var floorId = 0;
     var vfx = '';
     if (floor) {
