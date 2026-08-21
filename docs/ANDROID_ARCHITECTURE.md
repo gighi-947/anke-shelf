@@ -30,7 +30,7 @@ android/
   gotoOffset / gotoTextOffset / applyHighlights / clearSelection /
   startAutoScroll / stopAutoScroll / openImageAt / onResize`。ready 握手版本见
   `ui/reader/BridgeProtocol.kt`（当前 1，能力为追加式扩展：
-  `paged / scroll / scrollRatio / image / settled / annotation / assist`），
+  `paged / scroll / scrollRatio / image / settled / annotation / assist / gululu`），
   不兼容时显式失败并记诊断。
 - 标注与代码高亮注入红线：高亮以 `<mark class="hl-mark">`、代码高亮以
   `<span class="tok-*">`（父级 `.syntax`）注入正文，折叠规则把注入节点内部视为无缝
@@ -56,3 +56,5 @@ android/
 | v0.2.0 | NGA 下载/热更新/导出、前台服务 |
 | v0.3.0 | 全文搜索、标注、统计、设置全 Tab |
 | v1.0.0 | 对齐 Windows v1.2.0 功能清单 |
+| v1.1.0 | NGA 凭据傻瓜化（Cookie 粘贴 + 应用内登录）、NGA 主题自适应、深浅色下载选项移除、自定义封面与书籍管理 |
+| v1.2.0 | 全量对齐 Windows v1.5.1：阅读器标注/嵌套目录/进度滑块/阅读辅助、骨碌碌全链路（导入/热更新/评论/骰点/秘密/沉浸）、NGA 页数上限与目录楼分章、数据完整性校验入口 |

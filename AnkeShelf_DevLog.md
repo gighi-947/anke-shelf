@@ -29,8 +29,8 @@
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（59 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
-    `node contracts/tests/bridge-contract.test.js`（桥版本 1）、
-    `node contracts/tests/reader-lite-parts.test.js`（9 parts / 61721 字节）、
+    `node contracts/tests/bridge-contract.test.js`（桥版本 1，能力含 annotation·assist·gululu）、
+    `node contracts/tests/reader-lite-parts.test.js`（9 parts / 62338 字符）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
   - Android JVM：`gradlew testDebugUnitTest` = 204 项（203 过 / 1 跳）；
@@ -68,8 +68,8 @@
 ### 2026-08-20 release：Android android-v1.2.0（对齐 Windows 大版本）
 
 - 版本：Android `android-v1.2.0`（versionCode 3）。
-- 产物：`dist/AnkeShelf-v1.2.0-android.apk`（16,842,917 字节，
-  SHA256 `16258E8FED5C571408015378CD056D251080CC8F70E44D9D3A7C0DD117E27801`）。
+- 产物：`dist/AnkeShelf-v1.2.0-android.apk`（16,843,301 字节，
+  SHA256 `8029429244681441BE92F3C7E6C9AC2F9EB127D6CA9E5D627C82980E7ADA3247`）。
 - 内容：Android 全量对齐 Windows 专项（批 1–9，详见
   `docs/ANDROID_PARITY_PLAN.md`）：阅读器标注/书签/嵌套目录/进度滑块/阅读辅助
   （自动滚动、速读、标尺、按书字体、代码高亮）；骨碌碌全链路（导入/热更新/评论/
@@ -516,8 +516,8 @@
   - C 滚动到底自动翻章（暂不实施，按用户要求；进度类必跑回归）
   - F NGA 楼中楼评论（暂不实施，按用户要求；最大件）
   子项明细见 ROADMAP §3 P5。
-- P3：Android 数据完整性校验入口——Android 已有 `isolateCorrupt` 但缺
-  `verify_data_integrity` 等价 API 与设置页入口（Windows 已有完整实现可参照）。
+- P3：Android 数据完整性校验入口——已随 Android 对齐批 3 落地（`verify_data_integrity`
+  等价实现 + 设置页入口），从待办移除。
 - P3（保持延后，等真实痛点）：`BookshelfScreen.kt`/`SearchScreen.kt`/
   `reader.js` 等剩余大文件拆分——路线图原则"只在出现第二个真实调用边界时拆"。
 - P3（保持延后）：Android NGA 下载迁入统一 `TaskManager`——路线图明确推迟。

@@ -26,8 +26,9 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 当前优先级：
 
-1. 完成 P5 用户反馈批次的收尾：E2 真机手工验证；C/F 等待用户放行后再实施；
-2. 补齐 P3 遗留的 Android 数据完整性校验入口；
+1. 完成 Android 全量对齐专项的真机手工验证（批 1–9 已代码完成，见
+   `ANDROID_PARITY_PLAN.md`）；P5-C/F 等待用户放行后再实施；
+2. 补齐 P4 参考仓库剩余研究；
 3. 其余事项按“触发式引入”原则延后，不提前动工。
 
 ---
@@ -38,10 +39,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（P5-A/B/D/E 已完成；P5-C/F 暂缓）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）；2026-08-20 起进入 Android 全量对齐专项（见 `ANDROID_PARITY_PLAN.md`，批 1 已落地）（HEAD 以 `git log` 为准） |
+| 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（P5-A/B/D/E 已完成；P5-C/F 暂缓）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）；2026-08-20 起进入 Android 全量对齐专项（见 `ANDROID_PARITY_PLAN.md`，批 1–9 已全部落地并发布 `android-v1.2.0`）（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 326 项（3.14：全过；bundled 3.12：全过） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 59 methods + `bridge-contract`（桥版本 1 / 能力含 annotation·assist）+ `reader-lite-parts`（9 parts / 61721 字节）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
+| JS 契约测试 | `textpos` 15 cases + `api-contract` 59 methods + `bridge-contract`（桥版本 1 / 能力含 annotation·assist·gululu）+ `reader-lite-parts`（9 parts / 62338 字符）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-session` + `nga-cookie` OK |
 | Android JVM 单测 | 204 项（203 过 / 1 跳；2026-08-20 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
@@ -138,11 +139,10 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ### 3.3 真实待办（按优先级）
 
-1. **Android 全量对齐专项**：以 [ANDROID_PARITY_PLAN.md](ANDROID_PARITY_PLAN.md) 为
-   基线——批 1（标注/目录/滑块）、批 2（阅读辅助/代码高亮/按书字体/进度精度）已完成；
-   批 3 前半（数据完整性入口 / `gululu_immersive` 契约字段 / 作者排序）已完成，
-   剩 G8（NGA `page_limit` / `toc_pid` / `toc_mode=split`）；批 4–9 为骨碌碌全链路，
-   批 10 收尾发布。
+1. **Android 全量对齐真机验证**：批 1–9 代码已全部落地并发布
+   `android-v1.2.0`；剩余真机手工验证清单见
+   [ANDROID_PARITY_PLAN.md](ANDROID_PARITY_PLAN.md) 批 1–9 备注
+   （标注交互、阅读辅助、目录楼分章、联网导入/更新、骰点/评论/沉浸联动等）。
 2. **P5-E2 真机手工验证**：Windows 端「安科下载 → 配置 → 在应用内登录」
    实机走一遍；Android 端登录弹窗真机验证。
 3. **P4 参考仓库剩余 3 个**：`readest` / `Kavita` / `LibreraReader` 待克隆

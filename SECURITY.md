@@ -4,8 +4,8 @@
 
 | 版本 | 平台 | 状态 |
 | --- | --- | --- |
-| v1.4.0 | Windows | 受支持 |
-| android-v1.0.0 | Android | 受支持 |
+| v1.5.1 | Windows | 受支持 |
+| android-v1.2.0 | Android | 受支持 |
 
 ## 报告漏洞
 

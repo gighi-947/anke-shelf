@@ -136,7 +136,7 @@ NgaConfig / StatsStore / AnnotationStore / BookRepository / OkHttp）+ 四 Tab �
 | 范围 | 基线（2026-08-20 实测） | 命令 / 位置 |
 | --- | --- | --- |
 | Windows Python | 326 项（3.14：全过；bundled 3.12 全过） | `python -m unittest discover tests` |
-| JS 契约 | textpos 15 例、api-contract 59 方法、launch 诊断、bridge v1（能力含 annotation·assist）、parts 9/61721B、reader-lite-textpos 跨端折叠 12 例、reader-session、nga-cookie OK | `node contracts/tests/*.test.js` + `node tests/js/*.test.js` |
+| JS 契约 | textpos 15 例、api-contract 59 方法、launch 诊断、bridge v1（能力含 annotation·assist·gululu）、parts 9/62338B、reader-lite-textpos 跨端折叠 12 例、reader-session、nga-cookie OK | `node contracts/tests/*.test.js` + `node tests/js/*.test.js` |
 | Android JVM | 204 项（203 过 / 1 跳）+ DisciplineTest 9 项 | `cd android && gradlew.bat testDebugUnitTest` |
 | 真机 | instrumentation 11/11（ELE-AL00） | adb instrument |
 | UI harness | 97 项 PASS（需桌面 WebView2，CI 无头跳过） | `python -m tests.ui.runner` |
@@ -184,9 +184,9 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
   文档漂移治理已强化（AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
 - 版本线：Windows v1.5.1、Android android-v1.2.0，均已发布。
 - 待办与延后项见 DevLog §5 与 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
-  （真实待办：P5-E2 已完成双端；P5-C 自动翻章与 P5-F 楼中楼暂不实施，
-  以及 Android 数据完整性校验入口；其余大文件拆分 /
-  P4 参考仓库 3/8 待补：readest / Kavita / LibreraReader，均保持延后）。
+  （真实待办：Android 全量对齐批 1–9 已发布 `android-v1.2.0`，剩余真机手工验证；
+  P5-C 自动翻章与 P5-F 楼中楼暂不实施；P4 参考仓库 3/8 待补：
+  readest / Kavita / LibreraReader；其余大文件拆分等保持延后）。
 
 ## 11. 已知问题与风险
 
