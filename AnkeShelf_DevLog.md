@@ -22,7 +22,7 @@
   （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.5.1`（已发布，AnkeShelf-v1.5.1.zip）；
-  Android `android-v1.1.0`（已发布，AnkeShelf-v1.1.0-android.apk）。
+  Android `android-v1.2.0`（已发布，AnkeShelf-v1.2.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-20 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 326 项
     （本机 Python 3.14：4 跳；bundled Python 3.12：全量通过）；
@@ -64,6 +64,24 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-20 release：Android android-v1.2.0（对齐 Windows 大版本）
+
+- 版本：Android `android-v1.2.0`（versionCode 3）。
+- 产物：`dist/AnkeShelf-v1.2.0-android.apk`（16,842,917 字节，
+  SHA256 `16258E8FED5C571408015378CD056D251080CC8F70E44D9D3A7C0DD117E27801`）。
+- 内容：Android 全量对齐 Windows 专项（批 1–9，详见
+  `docs/ANDROID_PARITY_PLAN.md`）：阅读器标注/书签/嵌套目录/进度滑块/阅读辅助
+  （自动滚动、速读、标尺、按书字体、代码高亮）；骨碌碌全链路（导入/热更新/评论/
+  骰点/迷雾/秘密/线索/音乐/背景/视效/总览）；NGA 下载补页数上限与按目录楼分章；
+  数据完整性校验入口与 `gululu_immersive` 契约字段修补。
+- 验证：Android `gradlew testDebugUnitTest` = 204 项（203 过 / 1 跳）；
+  `assembleRelease` 成功；`check-release.ps1` 凭据扫描 PASS（APK 内
+  reader-lite.js 与字体 SHA256 均与源一致）；Windows 326 项、JS 契约全绿。
+- 遗留：真机手工验证清单见 `docs/ANDROID_PARITY_PLAN.md` 批 1–9 的备注
+  （标注交互、阅读辅助、目录楼分章、联网导入与跨端打开、热更新、骰点跨会话保持、
+  段落评论联动、沉浸元素随阅读线切换）。
+- 发布动作：本地打标签 `android-v1.2.0`；仓库未配置远程推送，标签与产物保留在本机。
 
 ### 2026-08-20 android：对齐批 8+9 —— 骨碌碌阅读交互（评论 / 骰点 / 秘密 / 沉浸）
 

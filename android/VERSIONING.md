@@ -5,9 +5,9 @@
 
 ## 1. 版本线
 
-- 安卓独立版本线：`0.1.0 → 0.2.0 → 0.3.0 → 1.0.0 → 1.1.0`。
+- 安卓独立版本线：`0.1.0 → 0.2.0 → 0.3.0 → 1.0.0 → 1.1.0 → 1.2.0`。
 - 唯一版本定义位置：`android/app/build.gradle.kts`（`versionName` / `versionCode`）。
-  `versionCode` 每次发布递增 1（当前：versionCode=2，versionName=1.1.0）。
+  `versionCode` 每次发布递增 1（当前：versionCode=3，versionName=1.2.0）。
 - 里程碑与当前进度（2026-08-08）：
 
 | 版本 | 内容 | 状态 |
@@ -138,3 +138,4 @@
 | --- | --- | --- | --- | --- |
 | v1.0.0 | `android-v1.0.0` | 2026-08-09 | `AnkeShelf-v1.0.0-android.apk`（16,538,184 字节） | `5CD70CA083A0C11F6465302AFEC0B62EC453EA582AB355FB7B62779D7D52F4D0`（2026-08-10 正式 Logo 最终包） |
 | v1.1.0 | `android-v1.1.0` | 2026-08-20 | `AnkeShelf-v1.1.0-android.apk`（16,719,933 字节） | `BF58AD7215AAFA8416736D371FA20FDED76D8CF76879B548785227243C285B7E` |
+| v1.2.0 | ndroid-v1.2.0 | 2026-08-20 | AnkeShelf-v1.2.0-android.apk（16,842,917 字节） | 16258E8FED5C571408015378CD056D251080CC8F70E44D9D3A7C0DD117E27801 |

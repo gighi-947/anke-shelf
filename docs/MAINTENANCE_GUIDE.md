@@ -15,7 +15,7 @@ EPUB / 原生书 → 还原安科排版 → 舒适阅读与追更。GNU AGPL-3.0
 | 端 | 当前版本 | 技术栈 | 版本源位置 |
 | --- | --- | --- | --- |
 | Windows | **v1.5.1** | Python + Web SPA + pywebview 壳 | 多文件散落（`app/__init__.py`、bridge MOCK、版本测试、README 等，升级按清单全量替换） |
-| Android | **android-v1.1.0** | Kotlin + Compose + WebView 渲染内核 | **唯一定义**：`android/app/build.gradle.kts` |
+| Android | **android-v1.2.0** | Kotlin + Compose + WebView 渲染内核 | **唯一定义**：`android/app/build.gradle.kts` |
 
 - 版本线分离：Windows `vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；Android `android-vX.Y.Z` +
   `AnkeShelf-vX.Y.Z-android.apk`；两端 SOP 独立，不混用。
@@ -182,7 +182,7 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
   最近主线为骨碌碌适配（v1.3.0 / v1.5.1）、五批接手风险修复、P5 批次（P5-A/B/D/E1/E2 双端）、NGA 主题自适应与深浅色下载选项移除与
   多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）；
   文档漂移治理已强化（AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
-- 版本线：Windows v1.5.1、Android android-v1.1.0，均已发布。
+- 版本线：Windows v1.5.1、Android android-v1.2.0，均已发布。
 - 待办与延后项见 DevLog §5 与 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
   （真实待办：P5-E2 已完成双端；P5-C 自动翻章与 P5-F 楼中楼暂不实施，
   以及 Android 数据完整性校验入口；其余大文件拆分 /
