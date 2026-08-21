@@ -230,7 +230,8 @@ body.paged .gululu-floor .floor-head {
         transform 100ms ease-out;
 }
 
-.chapter-nav-btn:active {
+.chapter-nav-btn:active,
+.chapter-nav-btn.chapter-nav-btn-pressed {
     opacity: 0.85;
     background: color-mix(in srgb, var(--reader-primary) 34%, transparent);
     border-color: var(--reader-primary);

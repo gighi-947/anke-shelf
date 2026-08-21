@@ -320,7 +320,8 @@ internal fun BoxScope.GululuFloatingQuickButton(
         onClick = onOpenOverview,
         modifier = Modifier
             .align(Alignment.BottomEnd)
-            .padding(AnkeSpacing.md),
+            .navigationBarsPadding()
+            .padding(end = AnkeSpacing.md, bottom = 96.dp),
         containerColor = barBg.copy(alpha = 0.96f),
         contentColor = fg,
     ) {

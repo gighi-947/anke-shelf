@@ -1331,16 +1331,20 @@
     // 滚动模式底部换章按钮（分页模式下由 CSS 隐藏）。
     var prevBtn = document.getElementById('android-prev-chapter');
     var nextBtn = document.getElementById('android-next-chapter');
-    if (prevBtn) {
-      prevBtn.addEventListener('click', function () {
-        callBridge('requestChapter', -1);
+    function bindChapterNav(btn, delta) {
+      if (!btn) return;
+      btn.addEventListener('click', function (e) {
+        if (e && e.preventDefault) e.preventDefault();
+        var el = this;
+        el.classList.add('chapter-nav-btn-pressed');
+        setTimeout(function () {
+          el.classList.remove('chapter-nav-btn-pressed');
+          callBridge('requestChapter', delta);
+        }, 120);
       });
     }
-    if (nextBtn) {
-      nextBtn.addEventListener('click', function () {
-        callBridge('requestChapter', 1);
-      });
-    }
+    bindChapterNav(prevBtn, -1);
+    bindChapterNav(nextBtn, 1);
     // 只拦截章节内链接；图片打开由 Kotlin 长按（openImageAt）触发，单击不放行。
     document.addEventListener('click', function (e) {
       var t = e.target;

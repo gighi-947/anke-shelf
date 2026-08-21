@@ -587,9 +587,10 @@ fun WebViewChapterView(
                                     evaluateJavascript("AnkeReader.flipPage(1);", null)
                                     callbacksRef.value.onTapZone("hide")
                                 }
-                                isTap && ev.x >= width / 3f && ev.x <= 2 * width / 3f -> {
-                                    // 骨碌碌交互元素（骰点/秘密/音乐/评论徽标）的点击
-                                    // 交给 WebView 处理，不当作唤出/收起悬浮菜单。
+                                isTap &&
+                                    abs(ev.x - width / 2f) <= width * 0.18f &&
+                                    abs(ev.y - height / 2f) <= height * 0.20f -> {
+                                    // 悬浮菜单触发区：屏幕正中心一块自适应区域，避免误触。
                                     val cssX = ev.x / density.density
                                     val cssY = ev.y / density.density
                                     evaluateJavascript(
