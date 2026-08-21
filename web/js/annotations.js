@@ -29,6 +29,7 @@
       state.highlights = data.highlights || [];
       state.bookmarks = data.bookmarks || [];
     } catch (e) {
+      console.error('[annotations] 拉取失败:', e && e.message ? e.message : e);
       state.highlights = [];
       state.bookmarks = [];
     }
@@ -155,10 +156,16 @@
 
   async function createHighlight(color) {
     if (!pending) return;
-    const r = await Api.saveAnnotation( App.state.bookId, App.state.chapterIndex,
-      pending.start, pending.end, pending.text, color,
-    );
-    if (r && r.error) { Toast.show(r.error, true); hideToolbar(); return; }
+    let r;
+    try {
+      r = await Api.saveAnnotation( App.state.bookId, App.state.chapterIndex,
+        pending.start, pending.end, pending.text, color,
+      );
+    } catch (e) {
+      // 保存失败：提示并保留工具栏，用户可重试或手动关闭。
+      Toast.show('高亮保存失败：' + (e && e.message ? e.message : e), true);
+      return;
+    }
     state.highlights.push(r);
     hideToolbar();
     renderSidebar();
@@ -197,7 +204,12 @@
       del.className = 'btn btn-danger';
       del.textContent = '删除高亮';
       del.addEventListener('click', async () => {
-        await Api.deleteAnnotation( App.state.bookId, ann.id);
+        try {
+          await Api.deleteAnnotation( App.state.bookId, ann.id);
+        } catch (e) {
+          Toast.show('删除失败：' + (e && e.message ? e.message : e), true);
+          return;
+        }
         state.highlights = state.highlights.filter((x) => x.id !== ann.id);
         root.innerHTML = '';
         renderSidebar();
@@ -214,16 +226,21 @@
     save.className = 'btn btn-primary';
     save.textContent = '保存';
     save.addEventListener('click', async () => {
-      if (ann) {
-        await Api.updateAnnotation( App.state.bookId, ann.id, { note: ta.value });
-        const h = state.highlights.find((x) => x.id === ann.id);
-        if (h) h.note = ta.value;
-      } else {
-        await Api.saveAnnotation( App.state.bookId, App.state.chapterIndex,
-          start, end, '', 'yellow', ta.value,
-        );
-        // 重新拉取以获取新记录
-        await init();
+      try {
+        if (ann) {
+          await Api.updateAnnotation( App.state.bookId, ann.id, { note: ta.value });
+          const h = state.highlights.find((x) => x.id === ann.id);
+          if (h) h.note = ta.value;
+        } else {
+          await Api.saveAnnotation( App.state.bookId, App.state.chapterIndex,
+            start, end, '', 'yellow', ta.value,
+          );
+          // 重新拉取以获取新记录
+          await init();
+        }
+      } catch (e) {
+        Toast.show('笔记保存失败：' + (e && e.message ? e.message : e), true);
+        return; // 保留弹窗，用户可重试
       }
       root.innerHTML = '';
       renderSidebar();
@@ -245,14 +262,24 @@
       (b) => b.chapter_index === chapterIndex && Math.abs(b.offset - offset) < 80,
     );
     if (existing) {
-      await Api.deleteBookmark( App.state.bookId, existing.id);
+      try {
+        await Api.deleteBookmark( App.state.bookId, existing.id);
+      } catch (e) {
+        Toast.show('书签删除失败：' + (e && e.message ? e.message : e), true);
+        return false;
+      }
       state.bookmarks = state.bookmarks.filter((b) => b.id !== existing.id);
       Toast.show('已删除书签');
       renderSidebar();
       return false;
     } else {
-      const r = await Api.addBookmark( App.state.bookId, chapterIndex, offset, text);
-      if (r && r.error) { Toast.show(r.error, true); return null; }
+      let r;
+      try {
+        r = await Api.addBookmark( App.state.bookId, chapterIndex, offset, text);
+      } catch (e) {
+        Toast.show('书签添加失败：' + (e && e.message ? e.message : e), true);
+        return null;
+      }
       state.bookmarks.push(r);
       Toast.show('已添加书签');
       renderSidebar();
@@ -295,8 +322,13 @@
       del.textContent = '删除';
       del.addEventListener('click', async (e) => {
         e.stopPropagation();
-        await Api.deleteBookmark( App.state.bookId, bm.id);
-        state.bookmarks = state.bookmarks.filter((x) => x.id !== bm.id);
+        try {
+          await Api.deleteBookmark( App.state.bookId, bm.id);
+        } catch (err) {
+          Toast.show('书签删除失败：' + (err && err.message ? err.message : err), true);
+          return;
+        }
+        state.bookmarks = state.bookmarks.filter((b) => b.id !== bm.id);
         renderBookmarks();
       });
       item.append(txt, meta, del);
@@ -357,7 +389,12 @@
         del.textContent = '删除';
         del.addEventListener('click', async (e) => {
           e.stopPropagation();
-          await Api.deleteAnnotation( App.state.bookId, h.id);
+          try {
+            await Api.deleteAnnotation( App.state.bookId, h.id);
+          } catch (err) {
+            Toast.show('删除失败：' + (err && err.message ? err.message : err), true);
+            return;
+          }
           state.highlights = state.highlights.filter((x) => x.id !== h.id);
           renderAnnotations();
           Reader.applyMode();
@@ -374,7 +411,13 @@
   }
 
   async function exportDownload() {
-    const md = await Api.exportAnnotations( App.state.bookId, 'markdown');
+    let md;
+    try {
+      md = await Api.exportAnnotations( App.state.bookId, 'markdown');
+    } catch (e) {
+      Toast.show('导出失败：' + (e && e.message ? e.message : e), true);
+      return;
+    }
     const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

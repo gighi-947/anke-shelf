@@ -100,7 +100,7 @@
               else restoreOffset(offset, targetDoc);
               const session = Reader.ensureSession();
               session.setPosition(offset);
-              Api.saveProgress(App.state.bookId, App.state.chapterIndex, offset);
+              ProgressSaver.persistProgress(App.state.bookId, App.state.chapterIndex, offset);
               session.markSaved();
               Reader.updateProgressUI();
             });
@@ -280,7 +280,7 @@
       const prevBook = App.state.bookId;
       const prevIndex = App.state.chapterIndex;
       if (prevBook && prevIndex >= 0 && prevIndex !== index) {
-        Api.saveProgress( prevBook, prevIndex, this.currentOffset());
+        ProgressSaver.persistProgress(prevBook, prevIndex, this.currentOffset());
       }
       App.state.chapterIndex = index;
       this.session.enterChapter(index, textOffset || 0);
@@ -484,7 +484,7 @@
       // 避免滚动/重排未稳定时重新采样视口中线造成进度乱跳。
       const off = typeof preciseOffset === 'number' ? preciseOffset : this.currentOffset();
       session.setPosition(off);
-      Api.saveProgress( App.state.bookId, session.chapterIndex, off);
+      ProgressSaver.persistProgress(App.state.bookId, session.chapterIndex, off);
       session.markSaved();
     },
 
