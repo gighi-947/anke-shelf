@@ -14,30 +14,38 @@ from ..settings import Settings
 from ..shelf import BookRecord, ProgressStore, Shelf
 
 if TYPE_CHECKING:
+    from ..annotations import AnnotationStore
     from ..gululu_service import GululuService
     from ..nga_login import NgaLoginController
+    from ..stats import StatsStore
 
 log = logging.getLogger("app.api")
 
 
 @dataclass
 class ApiContext:
-    """Api 构造时的服务依赖集合（只读装配，handler 通过它访问服务）。"""
+    """Api 构造时的服务依赖集合（只读装配，handler 通过它访问服务）。
+
+    服务依赖一律必填：生产装配与测试/调试入口都完整接线，缺接线属于
+    装配 bug，应在构造处暴露，而不是在 handler 里折叠成“服务不可用”
+    的假数据（读接口返回 idle/空、写接口 503 的旧分裂行为已删除）。
+    仅环境相关的可选项允许缺省：file_dialog（None → 系统 tkinter 对话框）。
+    """
 
     books: BookManager
     shelf: Shelf
     progress: ProgressStore
     settings: Settings
     search: SearchService
-    annotations: Optional["AnnotationStore"] = None
-    stats: Optional["StatsStore"] = None
-    nga_service: Optional[NgaService] = None
-    export_service: Optional[ExportService] = None
-    gululu_service: Optional["GululuService"] = None
-    frontend_ready: Optional[threading.Event] = None
+    annotations: "AnnotationStore"
+    stats: "StatsStore"
+    nga_service: NgaService
+    export_service: ExportService
+    gululu_service: "GululuService"
+    frontend_ready: threading.Event
+    window_toggle: Callable[[bool], None]
+    nga_login: "NgaLoginController"
     file_dialog: Optional[Callable[[str], list[str]]] = None
-    window_toggle: Optional[Callable[[bool], None]] = None
-    nga_login: Optional["NgaLoginController"] = None
     fullscreen: bool = False
 
 

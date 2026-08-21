@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from app.annotations import AnnotationStore
 from app.api import Api
 from app.book_manager import BookManager
 from app.errors import ApiError
@@ -25,9 +26,13 @@ from app.gululu_update import (
     replace_and_register,
     write_baseline,
 )
+from app.export_service import ExportService
+from app.nga_login import NgaLoginController
+from app.nga_service import NgaService
 from app.search import SearchService
 from app.settings import Settings
 from app.shelf import ProgressStore, Shelf
+from app.stats import StatsStore
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "gululu"
@@ -436,7 +441,14 @@ class GululuServiceTest(unittest.TestCase):
             progress=progress,
             settings=settings,
             search=SearchService(),
+            annotations=AnnotationStore(self.root / "annotations.json"),
+            stats=StatsStore(self.root / "statistics.json"),
+            nga_service=NgaService(lambda _path: ""),
+            export_service=ExportService(shelf),
             gululu_service=fake,
+            frontend_ready=threading.Event(),
+            window_toggle=lambda _entering: None,
+            nga_login=NgaLoginController(),
         )
 
         imported = api.gululu_start_import("66905", "embedded")

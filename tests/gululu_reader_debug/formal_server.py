@@ -7,6 +7,9 @@ import threading
 from pathlib import Path
 
 from app.annotations import AnnotationStore
+from app.export_service import ExportService
+from app.nga_login import NgaLoginController
+from app.nga_service import NgaService
 from app.api import Api
 from app.book_manager import BookManager
 from app.gululu_comments import comment_to_public
@@ -253,8 +256,12 @@ def create_app(extra_epub: str | None = None) -> tuple[Api, BookManager, Path]:
         search=SearchService(),
         annotations=annotations,
         stats=stats,
+        nga_service=NgaService(lambda _path: ""),
+        export_service=ExportService(shelf),
         gululu_service=_FakeGululuService(),
         frontend_ready=threading.Event(),
+        window_toggle=lambda _entering: None,
+        nga_login=NgaLoginController(),
     )
     return api, books, covers
 

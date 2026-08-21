@@ -39,14 +39,11 @@ def _pick_and_call(picker, runner, cancel_msg: str = "已取消") -> dict:
 
 def on_frontend_ready(ctx: ApiContext) -> None:
     """前端初始化完成后由 JS 调用；主程序据此显示隐藏中的窗口。"""
-    if ctx.frontend_ready is not None:
-        ctx.frontend_ready.set()
+    ctx.frontend_ready.set()
 
 
 def toggle_fullscreen(ctx: ApiContext) -> dict:
-    """沉浸式阅读：切换宿主窗口全屏。"""
-    if ctx.window_toggle is None:
-        raise ApiError(ErrorCode.SERVICE_UNAVAILABLE, "全屏控制不可用")
+    """沉浸式阅读：切换宿主窗口全屏（窗口未就绪时由回调抛 RuntimeError → 503）。"""
     try:
         ctx.window_toggle(not ctx.fullscreen)
         ctx.fullscreen = not ctx.fullscreen

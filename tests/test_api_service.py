@@ -1,5 +1,6 @@
 """API 服务层单元测试：重启后按书架路径重载书籍、清除 NGA 配置。"""
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -9,6 +10,10 @@ from app.annotations import AnnotationStore
 from app.api import Api
 from app.book_manager import BookManager
 from app.errors import ApiError
+from app.export_service import ExportService
+from app.nga_login import NgaLoginController
+from app.gululu_service import GululuService
+from app.nga_service import NgaService
 from app.nga_config import load_nga_config
 from app.search import SearchService
 from app.settings import Settings
@@ -42,7 +47,7 @@ class ApiServiceTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def _make_api(self, books: BookManager, window_toggle=None) -> Api:
+    def _make_api(self, books: BookManager, window_toggle=lambda _entering: None) -> Api:
         return Api(
             books=books,
             shelf=self.shelf,
@@ -51,7 +56,12 @@ class ApiServiceTest(unittest.TestCase):
             search=self.search,
             annotations=self.ann,
             stats=self.stats,
+            nga_service=NgaService(lambda _path: ""),
+            export_service=ExportService(self.shelf),
+            gululu_service=GululuService(lambda _path: ""),
+            frontend_ready=threading.Event(),
             window_toggle=window_toggle,
+            nga_login=NgaLoginController(),
         )
 
     def _add_shelf_record(self, books: BookManager, book_id: str, path: str):
@@ -148,6 +158,18 @@ class ApiServiceTest(unittest.TestCase):
             api.rename_book("0" * 32, "新标题")
         self.assertEqual(cm.exception.code, "BOOK_NOT_FOUND")
 
+    def test_api_requires_full_service_wiring(self):
+        """服务必填：缺接线属装配 bug，应在构造处 TypeError 暴露，
+        而不是 handler 运行时折叠成“服务不可用”的假数据。"""
+        with self.assertRaises(TypeError):
+            Api(
+                books=BookManager(),
+                shelf=self.shelf,
+                progress=self.progress,
+                settings=self.settings,
+                search=self.search,
+            )
+
     def test_toggle_fullscreen(self):
         calls = []
         api = self._make_api(BookManager(), window_toggle=lambda entering: calls.append(entering))
@@ -158,10 +180,14 @@ class ApiServiceTest(unittest.TestCase):
         self.assertEqual(calls, [True, False])
         self.assertFalse(api.fullscreen)
 
-        api2 = self._make_api(BookManager())
+        def _not_ready(_entering: bool) -> None:
+            raise RuntimeError("窗口尚未就绪")
+
+        api2 = self._make_api(BookManager(), window_toggle=_not_ready)
         with self.assertRaises(ApiError) as cm:
             api2.toggle_fullscreen()
         self.assertEqual(cm.exception.code, "SERVICE_UNAVAILABLE")
+        self.assertIn("窗口尚未就绪", cm.exception.message)
 
     def test_gululu_secret_decrypt_is_explicit(self):
         api = self._make_api(BookManager())
@@ -180,15 +206,7 @@ class ApiServiceTest(unittest.TestCase):
         with patch("app.nga_config.data_dir", return_value=self.root), \
                 patch("app.nga_config.nga_config_path",
                       return_value=self.root / "nga_config.ini"):
-            from app.api import Api as ApiCls
-
-            api = ApiCls(
-                books=BookManager(),
-                shelf=self.shelf,
-                progress=self.progress,
-                settings=self.settings,
-                search=self.search,
-            )
+            api = self._make_api(BookManager())
             api.nga_save_config({"uid": "123456", "cid": "secret", "ua": "UA"})
             self.assertTrue(load_nga_config()["configured"])
             cfg = api.nga_clear_config()
