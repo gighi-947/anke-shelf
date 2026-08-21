@@ -272,7 +272,6 @@ object NativeBookWriter {
         val nativeDir = nativeDirFor(ngaLibraryRoot, folderName)
         val chaptersDir = File(nativeDir, NATIVE_CHAPTERS_DIR)
         chaptersDir.mkdirs()
-        val colors = themeColors(theme)
         val imgSrc = localImageSrc(imagesDir, bookId)
 
         val grouped: List<Pair<String, List<NativeFloor>>> = if (tocMode == "split" && !tocChapters.isNullOrEmpty()) {
@@ -285,7 +284,7 @@ object NativeBookWriter {
         grouped.forEachIndexed { gi, (title, group) ->
             val body = buildString {
                 if (group[0].pid == 0L) append("<h1>${escapeHtml(tieziTitle)}</h1>")
-                group.forEach { append(renderFloorHtml(it, colors, theme == "dark", imgSrc)) }
+                group.forEach { append(renderFloorHtml(it, theme == "dark", imgSrc)) }
             }
             val fileName = "%04d.xhtml".format(gi)
             File(chaptersDir, fileName).writeText(chapterHtml(title, body, theme), Charsets.UTF_8)
@@ -342,7 +341,6 @@ object NativeBookWriter {
         if (fresh.isEmpty()) return 0
 
         val chaptersDir = File(nativeDir, NATIVE_CHAPTERS_DIR)
-        val colors = themeColors(theme)
         val imgSrc = localImageSrc(imagesDir, meta.book_id)
         val chapters = meta.chapters.toMutableList()
         val pending = fresh.toMutableList()
@@ -357,7 +355,7 @@ object NativeBookWriter {
                 pending.removeAll(take)
                 if (take.isNotEmpty()) {
                     val html = take.joinToString("") {
-                        renderFloorHtml(it, colors, theme == "dark", imgSrc)
+                        renderFloorHtml(it, theme == "dark", imgSrc)
                     }
                     val chapterFile = File(nativeDir, last.file)
                     val text = chapterFile.readText(Charsets.UTF_8)
@@ -383,7 +381,7 @@ object NativeBookWriter {
             val group = pending.subList(i, minOf(i + chunkSize, pending.size))
             val title = groupTitle(group)
             val body = group.joinToString("") {
-                renderFloorHtml(it, colors, theme == "dark", imgSrc)
+                renderFloorHtml(it, theme == "dark", imgSrc)
             }
             val fileName = "%04d.xhtml".format(nextIndex)
             File(chaptersDir, fileName).writeText(chapterHtml(title, body, theme), Charsets.UTF_8)
@@ -512,35 +510,30 @@ object NativeBookWriter {
 
     // ---------- HTML 渲染（安卓版精简渲染，结构语义与桌面一致） ----------
 
-    private data class ThemeColors(val border: String, val accent: String, val muted: String, val commentBg: String)
-
-    private fun themeColors(theme: String): ThemeColors =
-        if (theme == "dark") {
-            ThemeColors("#3a3a3a", "#5ba3d9", "#8a8a8a", "#262626")
-        } else {
-            ThemeColors("#e0e0e0", "#2e86ab", "#888888", "#fafafa")
-        }
-
     private fun ts2t(ts: Long): String =
         TS_FORMAT.format(Instant.ofEpochSecond(ts).atZone(ZoneId.systemDefault()))
 
     private fun renderFloorHtml(
         f: NativeFloor,
-        colors: ThemeColors,
         dark: Boolean,
         imgSrc: (String) -> String = { it },
     ): String {
+        // 楼卡/评论卡只给布局内联样式，配色全部走 reader.css 的 CSS 变量，
+        // 保证浅色/深色/羊皮纸三套主题与桌面渲染一致。
         val floorStyle =
-            "border:1px solid ${colors.border}; border-left:4px solid ${colors.accent}; " +
+            "border:1px solid color-mix(in srgb, var(--reader-fg) 18%, transparent); " +
+                "border-left:4px solid var(--reader-primary); " +
                 "padding:12px 14px; margin:14px 0; border-radius:2px;"
         val headStyle =
-            "color:${colors.muted}; font-size:.82em; border-bottom:1px dotted ${colors.border}; " +
+            "color:color-mix(in srgb, var(--reader-fg) 55%, transparent); " +
+                "font-size:.82em; border-bottom:1px dotted color-mix(in srgb, var(--reader-fg) 18%, transparent); " +
                 "padding-bottom:6px; margin-bottom:8px;"
         val commentStyle =
-            "background:${colors.commentBg}; border:1px solid ${colors.border}; " +
+            "background:color-mix(in srgb, var(--reader-fg) 6%, transparent); " +
+                "border:1px solid color-mix(in srgb, var(--reader-fg) 18%, transparent); " +
                 "padding:8px 10px; margin:6px 0 6px 14px; font-size:.92em;"
         val head =
-            "<span class=\"lou\" style=\"color:${colors.accent}; font-weight:bold;\">${f.lou}楼</span> " +
+            "<span class=\"lou\" style=\"color:var(--reader-primary); font-weight:bold;\">${f.lou}楼</span> " +
                 "· ${f.like_num}赞 · ${escapeHtml(f.username)}(${f.user_id}) · ${ts2t(f.timestamp)}" +
                 "<span class=\"pid\"> · pid:${f.pid}</span>"
         val out = StringBuilder(
@@ -557,7 +550,7 @@ object NativeBookWriter {
             val cBody = NgaFormatHtml.renderContentHtml(c.raw_content, dark = dark, imgSrc = imgSrc)
             out.append(
                 "<div class=\"nga-comment\" style=\"$commentStyle\">" +
-                    "<span class=\"comment-head\" style=\"color:${colors.muted}; font-size:.8em; " +
+                    "<span class=\"comment-head\" style=\"color:color-mix(in srgb, var(--reader-fg) 55%, transparent); font-size:.8em; " +
                     "display:block; margin-bottom:4px;\">$cHead</span>$cBody</div>",
             )
         }

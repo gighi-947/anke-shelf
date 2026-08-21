@@ -530,9 +530,26 @@ fun NativeReaderScreen(
     }
 
     BackHandler {
+        // 与覆盖层叠加顺序保持一致：优先关闭最上层，都不存在时才退出阅读器。
         when {
             lightboxSrc != null -> lightboxSrc = null
+            secretDialog != null -> secretDialog = null
+            showOverview -> showOverview = false
+            showGululuComments -> {
+                showGululuComments = false
+                paragraphFilter = ""
+            }
+            editingNote != null -> editingNote = null
+            editingHighlight != null -> editingHighlight = null
+            pendingNote != null -> pendingNote = null
+            selection != null -> {
+                selection = null
+                clearSelectionToken++
+            }
+            showAnnotations -> showAnnotations = false
             showToc -> showToc = false
+            rsvpOn -> rsvpOn = false
+            showSettings -> showSettings = false
             else -> {
                 saveProgress()
                 onBack()
