@@ -42,3 +42,5 @@ android/*.epub
 
 node_modules/
 
+screen-tmp.png
+ui.xml
