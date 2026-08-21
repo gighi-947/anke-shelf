@@ -694,6 +694,12 @@ fun NativeReaderScreen(
             GululuBackgroundOverlay(url = gululuBackground)
             GululuVfxOverlay(kind = gululuVfx)
             GululuDanmakuOverlay(enabled = danmakuOn, comments = gululuComments)
+            GululuFloatingQuickButton(
+                visible = barsVisible,
+                barBg = barBg,
+                fg = fg,
+                onOpenOverview = { showOverview = true },
+            )
         }
 
         ReaderTopBar(

@@ -28,7 +28,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -301,6 +305,27 @@ internal fun GululuSecretDialog(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("关闭") } },
     )
+}
+
+/** 右下角悬浮入口（对齐桌面悬浮按钮样式）：点击打开骨碌碌总览。 */
+@Composable
+internal fun BoxScope.GululuFloatingQuickButton(
+    visible: Boolean,
+    barBg: Color,
+    fg: Color,
+    onOpenOverview: () -> Unit,
+) {
+    if (!visible) return
+    FloatingActionButton(
+        onClick = onOpenOverview,
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .padding(AnkeSpacing.md),
+        containerColor = barBg.copy(alpha = 0.96f),
+        contentColor = fg,
+    ) {
+        Icon(Icons.Filled.AutoAwesome, contentDescription = "骨碌碌总览")
+    }
 }
 
 /** 沉浸总览：本章骨碌碌元素统计 + 批量解锁 / 重置 / 弹幕 / 音乐控制。 */
