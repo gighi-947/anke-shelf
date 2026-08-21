@@ -403,8 +403,9 @@ class GululuServiceTest(unittest.TestCase):
 
     def test_api_delegates_start_status_and_cancel(self):
         fake = types.SimpleNamespace(
-            start=lambda source, image_mode="online": {
+            start=lambda source, image_mode="online", clear_cache=False: {
                 "ok": True, "source": source, "image_mode": image_mode,
+                "clear_cache": clear_cache,
             },
             start_export=lambda source, image_mode="online": {
                 "ok": True, "export": source, "image_mode": image_mode,
@@ -441,6 +442,9 @@ class GululuServiceTest(unittest.TestCase):
         imported = api.gululu_start_import("66905", "embedded")
         self.assertEqual(imported["source"], "66905")
         self.assertEqual(imported["image_mode"], "embedded")
+        self.assertFalse(imported["clear_cache"])
+        imported_clear = api.gululu_start_import("66905", "embedded", clear_cache=True)
+        self.assertTrue(imported_clear["clear_cache"])
         exported = api.gululu_start_export("66905", "none")
         self.assertEqual(exported["export"], "66905")
         self.assertEqual(exported["image_mode"], "none")
