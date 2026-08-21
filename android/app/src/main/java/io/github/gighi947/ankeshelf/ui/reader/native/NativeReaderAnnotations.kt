@@ -70,7 +70,7 @@ internal val HL_SWATCHES: Map<String, Color> = mapOf(
     "cyan" to Color(0xFF22D3EE),
 )
 
-private val SELECTION_BAR_HEIGHT = 48.dp
+private val SELECTION_BAR_HEIGHT = AnkeSpacing.xl * 2
 
 /**
  * 选中文本后的标注工具条：6 色高亮 + 加笔记 + 关闭。

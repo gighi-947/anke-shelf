@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -30,13 +31,18 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -311,29 +317,107 @@ internal fun GululuSecretDialog(
     )
 }
 
-/** 右下角悬浮入口（对齐桌面悬浮按钮样式）：点击打开骨碌碌总览。 */
+/** 右下角悬浮菜单：评论 / 弹幕 / 音乐 / 总览的快捷入口。 */
 @Composable
-internal fun BoxScope.GululuFloatingQuickButton(
+private fun BoxScope.GululuQuickMenu(
     visible: Boolean,
     barBg: Color,
     fg: Color,
+    danmakuOn: Boolean,
+    musicPlaying: Boolean,
     onOpenOverview: () -> Unit,
+    onOpenComments: () -> Unit,
+    onToggleDanmaku: () -> Unit,
+    onStopMusic: () -> Unit,
 ) {
     AnimatedVisibility(
         visible = visible,
         modifier = Modifier
             .align(Alignment.BottomEnd)
             .navigationBarsPadding()
-            .padding(end = AnkeSpacing.md, bottom = AnkeSpacing.xxl * 3),
+            .padding(end = AnkeSpacing.md, bottom = AnkeSpacing.xxl * 6),
+        enter = scaleIn() + fadeIn(),
+        exit = scaleOut() + fadeOut(),
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(min = AnkeSpacing.xxl * 5)
+                .background(barBg.copy(alpha = 0.98f), AnkeRadius.large)
+                .border(1.dp, fg.copy(alpha = 0.16f), AnkeRadius.large)
+                .padding(AnkeSpacing.xs),
+            verticalArrangement = Arrangement.spacedBy(AnkeSpacing.xxs),
+        ) {
+            GululuQuickMenuItem("骨碌碌总览", fg, onClick = onOpenOverview)
+            GululuQuickMenuItem("评论", fg, onClick = onOpenComments)
+            GululuQuickMenuItem(
+                if (danmakuOn) "关闭弹幕" else "开启弹幕",
+                fg,
+                onClick = onToggleDanmaku,
+            )
+            GululuQuickMenuItem("停止音乐", fg, enabled = musicPlaying, onClick = onStopMusic)
+        }
+    }
+}
+
+@Composable
+private fun GululuQuickMenuItem(
+    label: String,
+    fg: Color,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = label,
+        color = if (enabled) fg else fg.copy(alpha = 0.35f),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = AnkeSpacing.md, vertical = AnkeSpacing.sm),
+    )
+}
+
+/** 右下角悬浮入口（对齐桌面悬浮按钮样式）：点击展开/收起快捷菜单。 */
+@Composable
+internal fun BoxScope.GululuFloatingQuickButton(
+    visible: Boolean,
+    quickMenuOpen: Boolean,
+    barBg: Color,
+    fg: Color,
+    danmakuOn: Boolean,
+    musicPlaying: Boolean,
+    onToggleQuickMenu: () -> Unit,
+    onOpenOverview: () -> Unit,
+    onOpenComments: () -> Unit,
+    onToggleDanmaku: () -> Unit,
+    onStopMusic: () -> Unit,
+) {
+    GululuQuickMenu(
+        visible = visible && quickMenuOpen,
+        barBg = barBg,
+        fg = fg,
+        danmakuOn = danmakuOn,
+        musicPlaying = musicPlaying,
+        onOpenOverview = onOpenOverview,
+        onOpenComments = onOpenComments,
+        onToggleDanmaku = onToggleDanmaku,
+        onStopMusic = onStopMusic,
+    )
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .navigationBarsPadding()
+            .padding(end = AnkeSpacing.md, bottom = AnkeSpacing.xxl * 4),
         enter = scaleIn() + fadeIn(),
         exit = scaleOut() + fadeOut(),
     ) {
         FloatingActionButton(
-            onClick = onOpenOverview,
+            onClick = onToggleQuickMenu,
             containerColor = barBg.copy(alpha = 0.96f),
             contentColor = fg,
         ) {
-            Icon(Icons.Filled.AutoAwesome, contentDescription = "骨碌碌总览")
+            Icon(Icons.Filled.AutoAwesome, contentDescription = "骨碌碌悬浮菜单")
         }
     }
 }
@@ -382,30 +466,62 @@ internal fun BoxScope.GululuOverviewSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(barBg.copy(alpha = 0.98f), AnkeRadius.large)
+                    .verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
                     .padding(AnkeSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
             ) {
-                Text("骨碌碌总览", color = fg, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "骨碌碌总览",
+                        color = fg,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Close, contentDescription = "关闭", tint = fg)
+                    }
+                }
                 Text(
                     "本章 $floors 楼 · 骰点 $groups 组（未揭示 $lockedGroups）· 秘密 $secrets · 线索 $clues",
                     color = fg.copy(alpha = 0.75f),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 if (playingTitle.isNotEmpty()) {
-                    Text("正在播放：$playingTitle", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "正在播放：$playingTitle",
+                        color = fg.copy(alpha = 0.75f),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
-                    TextButton(onClick = onRevealNext, enabled = lockedGroups > 0) { Text("揭示接下来 10 组") }
-                    TextButton(onClick = onOpenComments) { Text("评论") }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
-                    TextButton(onClick = onToggleDanmaku) { Text(if (danmaku) "关闭弹幕" else "开启弹幕") }
-                    TextButton(onClick = onStopMusic, enabled = playingTitle.isNotEmpty()) { Text("停止音乐") }
-                    TextButton(onClick = onResetUnlocks) {
-                        Text("重置解锁", color = MaterialTheme.colorScheme.error)
-                    }
-                }
+                TextButton(
+                    onClick = onRevealNext,
+                    enabled = lockedGroups > 0,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(contentColor = fg),
+                ) { Text("揭示接下来 10 组") }
+                TextButton(
+                    onClick = onOpenComments,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(contentColor = fg),
+                ) { Text("评论") }
+                TextButton(
+                    onClick = onToggleDanmaku,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(contentColor = fg),
+                ) { Text(if (danmaku) "关闭弹幕" else "开启弹幕") }
+                TextButton(
+                    onClick = onStopMusic,
+                    enabled = playingTitle.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(contentColor = fg),
+                ) { Text("停止音乐") }
+                TextButton(
+                    onClick = onResetUnlocks,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) { Text("重置解锁") }
                 Text(
                     "重置只清空本书的骰点揭示与线索，不影响阅读进度与书签。",
                     color = fg.copy(alpha = 0.6f),

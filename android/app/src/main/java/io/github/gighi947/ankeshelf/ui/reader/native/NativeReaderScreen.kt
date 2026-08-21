@@ -169,6 +169,7 @@ fun NativeReaderScreen(
     var showGululuComments by remember { mutableStateOf(false) }
     var paragraphFilter by remember { mutableStateOf("") }
     var showOverview by remember { mutableStateOf(false) }
+    var showGululuQuickMenu by remember { mutableStateOf(false) }
     var danmakuOn by remember { mutableStateOf(false) }
     var secretDialog by remember { mutableStateOf<Pair<String, String?>?>(null) }
     var musicTitle by remember { mutableStateOf("") }
@@ -520,6 +521,11 @@ fun NativeReaderScreen(
         }
     }
 
+    // 悬浮栏收起来后，骨碌碌快捷菜单也跟着关掉，避免下次唤出时还残留。
+    LaunchedEffect(barsVisible) {
+        if (!barsVisible) showGululuQuickMenu = false
+    }
+
     // 沉浸式：进入阅读器隐藏系统栏，退出恢复。
     LaunchedEffect(activity) {
         val act = activity ?: return@LaunchedEffect
@@ -539,6 +545,7 @@ fun NativeReaderScreen(
                 showGululuComments = false
                 paragraphFilter = ""
             }
+            showGululuQuickMenu -> showGululuQuickMenu = false
             editingNote != null -> editingNote = null
             editingHighlight != null -> editingHighlight = null
             pendingNote != null -> pendingNote = null
@@ -743,9 +750,29 @@ fun NativeReaderScreen(
             GululuDanmakuOverlay(enabled = danmakuOn, comments = gululuComments)
             GululuFloatingQuickButton(
                 visible = barsVisible,
+                quickMenuOpen = showGululuQuickMenu,
                 barBg = barBg,
                 fg = fg,
-                onOpenOverview = { showOverview = true },
+                danmakuOn = danmakuOn,
+                musicPlaying = musicTitle.isNotEmpty(),
+                onToggleQuickMenu = { showGululuQuickMenu = !showGululuQuickMenu },
+                onOpenOverview = {
+                    showOverview = true
+                    showGululuQuickMenu = false
+                },
+                onOpenComments = {
+                    paragraphFilter = ""
+                    showGululuComments = true
+                    showGululuQuickMenu = false
+                },
+                onToggleDanmaku = {
+                    danmakuOn = !danmakuOn
+                    showGululuQuickMenu = false
+                },
+                onStopMusic = {
+                    stopMusic()
+                    showGululuQuickMenu = false
+                },
             )
         }
 
