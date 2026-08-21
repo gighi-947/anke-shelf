@@ -25,8 +25,8 @@
 
 html,
 body {
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     background: var(--reader-bg);
     /* 对齐桌面 BASE/NGA_OVERRIDE：排版以阅读器设置为准（!important 压过章节自带
        body 样式）；默认文字色只作用于继承色，楼层内显式彩色字体保留。 */
@@ -123,6 +123,8 @@ body.paged {
 
 body.paged #paged-scroll {
     height: 100%;
+    max-width: none !important;
+    margin: 0 !important;
     /* JS geometry: equal left/right padding P centers the text block;
        P <= gap - 8 keeps the left edge empty after flipping and the
        next column about 8px past the right viewport edge. */

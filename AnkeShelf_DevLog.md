@@ -65,6 +65,13 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈修复（第六批）
+
+- 修复：`reader.css` 强制 `html/body { margin:0 !important; padding:0 !important; }`，
+  分页模式 `#paged-scroll { max-width:none; margin:0 !important; }`，
+  防止骨碌碌 EPUB 自带 `body { margin:0 1em }` 在分页列布局中造成顶部/两侧偏移。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：测试机反馈修复（第五批）
 
 - 修复：
