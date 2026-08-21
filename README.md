@@ -12,8 +12,8 @@
 
 | 平台 | 当前版本 | 技术栈 | 发布标签 | 安装包 |
 | --- | --- | --- | --- | --- |
-| Windows 桌面端 | **v1.5.1** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
-| Android 手机端 | **v1.2.0** | Kotlin + Jetpack Compose（正文用安卓专用 WebView 渲染内核） | `android-vX.Y.Z` | `AnkeShelf-vX.Y.Z-android.apk` |
+| Windows 桌面端 | **v1.6.0** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
+| Android 手机端 | **v1.3.0** | Kotlin + Jetpack Compose（正文用安卓专用 WebView 渲染内核） | `android-vX.Y.Z` | `AnkeShelf-vX.Y.Z-android.apk` |
 
 > **版本线文档权威**：本表是版本线的唯一文档事实源；代码事实源为 Windows `app/__init__.py`、Android `android/app/build.gradle.kts`。其他文档（DevLog / MAINTENANCE_GUIDE / ROADMAP 等）中的版本线以本表为准。
 
@@ -37,7 +37,7 @@
 
 ## ✨ 功能特性
 
-### Windows 桌面端（v1.5.1）
+### Windows 桌面端（v1.6.0）
 
 - **骨碌碌 EPUB 导入**：顶栏「下载安科」→「骨碌碌」粘贴书籍 ID / 链接，
   后台分批获取楼层、按站点目录分章并自动加入书架；支持取消、进度反馈和完成后打开，
@@ -73,7 +73,7 @@
 - **安全**：本地 HTTP 仅回环监听、随机启动令牌校验、zip 路径穿越防护、
   章节 CSP + base 注入
 
-### Android 手机端（v1.2.0）
+### Android 手机端（v1.3.0）
 
 - **书架**：网格 / 列表双视图、按最近阅读 / 导入时间 / 名称 / 作者排序、导入
   EPUB、封面更新与导出、长按重命名 / 删除；空书架直达「导入 EPUB」或「从 NGA
@@ -110,54 +110,48 @@
 
 ## 📷 界面预览
 
-### Android（v1.2.0 实机截图）
+> 截图已压缩为 WebP（总大小约 0.8 MB），避免仓库携带大量大体积二进制文件。
+> 原图不进入仓库。
 
-![书架](docs/screenshots/android/android-bookshelf.png)
-书架：网格视图、封面更新 / 导出、阅读进度
+### Android（v1.3.0 实机截图）
 
-![NGA 下载](docs/screenshots/android/android-nga-home.png)
-NGA 下载：登录配置、下载 / 更新、已下载管理
+![书架](docs/screenshots/android/bookshelf.webp)
+书架：封面网格、标签、进度百分比
 
-![下载参数](docs/screenshots/android/android-download-form.png)
-下载 / 更新：tid、只看楼主、楼层上限、页数上限、目录楼分章、图片模式
+![下载](docs/screenshots/android/download-gululu.webp)
+下载：骨碌碌书籍 ID / 链接导入，图片模式与任务状态
 
-![更新弹窗](docs/screenshots/android/android-update-dialog.png)
-已下载页更新弹窗：增量更新参数，仅对新增楼层生效
+![全文检索](docs/screenshots/android/search.webp)
+全文检索：键入书名筛选 + 按章分组高亮结果
 
-![全文检索](docs/screenshots/android/android-search.png)
-全文检索：按章分组、关键词高亮、每章限量续取
+![阅读统计](docs/screenshots/android/stats.webp)
+阅读统计：累计时长、今日阅读、最近 7 天、连续阅读
 
-![设置](docs/screenshots/android/android-settings.png)
+![阅读页](docs/screenshots/android/reader-floor.webp)
+阅读页：楼层卡片、插图与评论徽标
+
+![评论抽屉](docs/screenshots/android/comments.webp)
+评论抽屉：当前楼评论 / 段落评论过滤
+
+![设置](docs/screenshots/android/settings.webp)
 设置：外观 / 阅读 / 操作 / 统计 / 数据 / 帮助
 
-![阅读页·深色](docs/screenshots/android/android-reader-dark.jpg)
-阅读页（深色）：NGA 楼层卡片、元信息、图片与骰子排版
+### Windows（v1.6.0）
 
-![阅读页·浅色](docs/screenshots/android/android-reader-light.jpg)
-阅读页（浅色）：掷骰结果与插图原样还原
+![书架](docs/screenshots/windows/bookshelf.webp)
+书架：搜索、标签显示、NGA / 骨碌碌来源标记
 
-### Windows（v1.5.1）
+![阅读页](docs/screenshots/windows/reader.webp)
+阅读页：正文排版、右侧工具栏、折叠块摘要
 
-![书架主页](docs/screenshots/bookshelf.png)
-书架：网格视图、最近阅读与安科下载入口
+![骨碌碌导入](docs/screenshots/windows/gululu-import.webp)
+骨碌碌 EPUB 导入：书籍 ID / 链接、图片模式、进度与任务控制
 
-![阅读页：楼层卡片与骰子](docs/screenshots/reader-floor.png)
-阅读页：楼层卡片、引用块与骰子结果
+![外观设置](docs/screenshots/windows/appearance.webp)
+外观设置：主题模式、预设色板与自定义颜色
 
-![全文检索](docs/screenshots/fulltext-search.png)
-全文检索：按章分组折叠、每章限量续取
-
-![阅读页：人物设定楼](docs/screenshots/reader-character.png)
-阅读页：人物设定楼与掷骰结果
-
-![NGA 下载面板](docs/screenshots/nga-download.png)
-NGA 下载：下载配置与任务控制
-
-![阅读统计](docs/screenshots/statistics.png)
-阅读统计：全部书目汇总与最近阅读时长
-
-![阅读页：楼层正文](docs/screenshots/reader-floor-2.png)
-阅读页：楼层正文展示
+![NGA 登录](docs/screenshots/windows/nga-login.webp)
+NGA 应用内登录：固定 bbs.nga.cn，提取并自动保存配置
 
 ---
 
@@ -190,7 +184,7 @@ build.bat
 ### Android
 
 从 [GitHub Releases](https://github.com/gighi-947/anke-shelf/releases) 下载
-`AnkeShelf-v1.2.0-android.apk`（Android 8.0+ / API 26+）安装。
+`AnkeShelf-v1.3.0-android.apk`（Android 8.0+ / API 26+）安装。
 
 源码构建：
 
@@ -264,8 +258,8 @@ gradlew.bat compileDebugAndroidTestKotlin :: 仪器测试编译
 
 ## 📦 版本与发布
 
-- **版本线分离**：Windows 用 `vX.Y.Z`（当前 v1.5.1）；Android 用
-  `android-vX.Y.Z`（当前 v1.2.0），唯一版本定义在
+- **版本线分离**：Windows 用 `vX.Y.Z`（当前 v1.6.0）；Android 用
+  `android-vX.Y.Z`（当前 v1.3.0），唯一版本定义在
   `android/app/build.gradle.kts`。
 - **标签与资产**：`vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；`android-vX.Y.Z` +
   `AnkeShelf-vX.Y.Z-android.apk`（资产名纯 ASCII）。

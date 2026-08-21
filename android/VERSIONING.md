@@ -5,9 +5,9 @@
 
 ## 1. 版本线
 
-- 安卓独立版本线：`0.1.0 → 0.2.0 → 0.3.0 → 1.0.0 → 1.1.0 → 1.2.0`。
+- 安卓独立版本线：`0.1.0 → 0.2.0 → 0.3.0 → 1.0.0 → 1.1.0 → 1.2.0 → 1.3.0`。
 - 唯一版本定义位置：`android/app/build.gradle.kts`（`versionName` / `versionCode`）。
-  `versionCode` 每次发布递增 1（当前：versionCode=3，versionName=1.2.0）。
+  `versionCode` 每次发布递增 1（当前：versionCode=4，versionName=1.3.0）。
 - 里程碑与当前进度（2026-08-20）：
 
 | 版本 | 内容 | 状态 |
@@ -18,9 +18,10 @@
 | v1.0.0 | 功能对齐 Windows v1.2.0（M4 验收通过） | **已发布（android-v1.0.0，2026-08-09）** |
 | v1.1.0 | NGA 凭据傻瓜化、NGA 主题自适应、自定义封面与书籍管理 | **已发布（android-v1.1.0，2026-08-20）** |
 | v1.2.0 | 全量对齐 Windows v1.5.1：阅读器标注/目录/进度滑块/阅读辅助、骨碌碌全链路、NGA 页数上限与目录楼分章、数据完整性校验 | **已发布（android-v1.2.0，2026-08-20）** |
+| v1.3.0 | 对齐 Windows v1.6.0：标签系统、NGA 登录自动保存、阅读设置与登录配置排版优化、全文检索键入筛选、骨碌碌清除缓存后重下、折叠块摘要与骰子遮罩修复 | **已发布（android-v1.3.0，2026-08-21）** |
 
 > 因 v0.1.0–v0.3.0 均未发布，首个 Release 为 `android-v1.0.0`；后续依次发布
-> `android-v1.1.0`（versionCode=2）、`android-v1.2.0`（versionCode=3），
+> `android-v1.1.0`（versionCode=2）、`android-v1.2.0`（versionCode=3）、`android-v1.3.0`（versionCode=4），
 > 避免无意义的占位版本。
 
 ## 2. 标签与 Release 命名
