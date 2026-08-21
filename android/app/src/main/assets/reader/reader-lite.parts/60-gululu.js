@@ -23,16 +23,24 @@
       var group = el.getAttribute('data-gululu-dice-group') || '';
       if (gululu.unlocked[group]) {
         el.classList.remove('masked');
+        el.style.display = '';
+        el.style.minWidth = '';
+        el.style.minHeight = '';
         el.style.color = '';
         el.style.background = '';
+        el.style.fontSize = '';
         el.style.visibility = '';
       } else {
         el.classList.add('masked');
-        // 内联兜底：部分 WebView 对 EPUB 内联 CSS 的 currentColor+transparent
-        // 组合不生效，直接写内联样式保证数值不可见。
+        // 可点击的遮罩：不能用 visibility:hidden（会挡住点击），
+        // 用透明文字 + 灰色胶囊背景，并保持元素可点。
+        el.style.display = 'inline-block';
+        el.style.minWidth = '0.9em';
+        el.style.minHeight = '1em';
         el.style.color = 'transparent';
-        el.style.background = 'currentColor';
-        el.style.visibility = 'hidden';
+        el.style.background = 'rgba(127,127,127,0.35)';
+        el.style.fontSize = '0';
+        el.style.visibility = '';
       }
       // 直接绑定兜底：部分机型上 document 级委托会被阅读器点击处理挡住。
       el.onclick = function (ev) {
@@ -66,8 +74,12 @@
     for (var i = 0; i < nodes.length; i++) {
       nodes[i].classList.remove('masked');
       nodes[i].classList.add('revealed');
+      nodes[i].style.display = '';
+      nodes[i].style.minWidth = '';
+      nodes[i].style.minHeight = '';
       nodes[i].style.color = '';
       nodes[i].style.background = '';
+      nodes[i].style.fontSize = '';
       nodes[i].style.visibility = '';
     }
     var fogs = document.querySelectorAll('[data-gululu-fog-lock="' + groupId + '"]');
@@ -143,7 +155,12 @@
       badge.setAttribute('role', 'button');
       badge.setAttribute('tabindex', '0');
       badge.setAttribute('aria-label', '查看本段评论');
-      badge.textContent = '💬' + count;
+      // 简洁线性气泡图标 + 数字（不使用 emoji，视觉与阅读器线性图标一致）。
+      badge.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+        'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5c-1.6 0-3.1-.45-4.4-1.2L3 20l1.2-4.9A8.5 8.5 0 1 1 21 11.5z"/>' +
+        '</svg><span>' + count + '</span>';
       target.appendChild(badge);
       applied++;
     }

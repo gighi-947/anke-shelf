@@ -65,6 +65,13 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：骰子遮罩可点击修复（第十七批）
+
+- 修复：上一版用 `visibility:hidden` 隐藏骰点数值，但 visibility:hidden 的
+  元素不接收点击，导致“隐藏后点不开”。改为可点击的灰色胶囊遮罩：
+  透明文字 + 灰色胶囊背景 + 保持元素可点，揭示时清除全部内联样式。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：骰子默认全解锁根因修复（第十六批）
 
 - 根因：reader-lite 主 IIFE 在 50-api.js 末尾就关闭了，60-gululu.js 被拼在

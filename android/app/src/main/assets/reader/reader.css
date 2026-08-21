@@ -105,6 +105,26 @@ blockquote.nga-quote {
     color: var(--reader-primary) !important;
 }
 
+.gululu-paragraph-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 6px;
+    color: var(--reader-primary);
+    cursor: pointer;
+    vertical-align: baseline;
+}
+
+.gululu-paragraph-badge svg {
+    width: 14px;
+    height: 14px;
+}
+
+.gululu-paragraph-badge span {
+    font-size: 0.78em;
+    line-height: 1;
+}
+
 blockquote {
     margin: 8px 0;
     padding: 4px 12px;
