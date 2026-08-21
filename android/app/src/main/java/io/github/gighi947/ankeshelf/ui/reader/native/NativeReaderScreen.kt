@@ -647,7 +647,7 @@ fun NativeReaderScreen(
                             "middle" -> {
                                 // 快速滚动后轻点停下的那一下不应唤出悬浮栏。
                                 val now = android.os.SystemClock.uptimeMillis()
-                                if (now - lastScrollAt > 400) {
+                                if (now - lastScrollAt > 200) {
                                     barsVisible = !barsVisible
                                     barsHeld = barsVisible
                                     if (barsVisible) barsShownAt = now

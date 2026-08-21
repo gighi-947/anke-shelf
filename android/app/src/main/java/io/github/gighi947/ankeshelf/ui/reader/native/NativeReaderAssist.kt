@@ -1,5 +1,10 @@
 package io.github.gighi947.ankeshelf.ui.reader.native
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -198,121 +203,135 @@ internal fun BoxScope.ReaderSettingsSheet(
     onBookFontChange: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    if (!visible) return
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.32f))
-            .clickable(onClick = onDismiss),
-    )
-    Column(
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .fillMaxWidth()
-            .background(barBg.copy(alpha = 0.98f), AnkeRadius.large)
-            .navigationBarsPadding()
-            .padding(AnkeSpacing.lg),
-        verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
-    ) {
-        Text("阅读设置", color = fg, style = MaterialTheme.typography.titleMedium)
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier.matchParentSize(),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.32f))
+                    .clickable(onClick = onDismiss),
+            )
+        }
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(barBg.copy(alpha = 0.98f), AnkeRadius.large)
+                    .navigationBarsPadding()
+                    .padding(AnkeSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+            ) {
+                Text("阅读设置", color = fg, style = MaterialTheme.typography.titleMedium)
 
-        Text("排版", color = fg, style = MaterialTheme.typography.labelLarge)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("字号", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
-            IconButton(onClick = onFontSizeDec) { Text("－", color = fg) }
-            Text("$fontSize", color = fg, style = MaterialTheme.typography.labelLarge)
-            IconButton(onClick = onFontSizeInc) { Text("＋", color = fg) }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("行高", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
-            IconButton(onClick = onLineHeightDec) { Text("－", color = fg) }
-            Text("%.1f".format(lineHeight), color = fg, style = MaterialTheme.typography.labelLarge)
-            IconButton(onClick = onLineHeightInc) { Text("＋", color = fg) }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("翻页方式", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
-            FilterChip(
-                selected = !pagination,
-                onClick = onTogglePagination,
-                label = { Text("滚动") },
-            )
-            FilterChip(
-                selected = pagination,
-                onClick = onTogglePagination,
-                label = { Text("分页") },
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("主题", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
-            FilterChip(
-                selected = true,
-                onClick = onThemeCycle,
-                label = { Text(themeLabel(theme)) },
-            )
-        }
+                Text("排版", color = fg, style = MaterialTheme.typography.labelLarge)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("字号", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
+                    IconButton(onClick = onFontSizeDec) { Text("－", color = fg) }
+                    Text("$fontSize", color = fg, style = MaterialTheme.typography.labelLarge)
+                    IconButton(onClick = onFontSizeInc) { Text("＋", color = fg) }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("行高", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
+                    IconButton(onClick = onLineHeightDec) { Text("－", color = fg) }
+                    Text("%.1f".format(lineHeight), color = fg, style = MaterialTheme.typography.labelLarge)
+                    IconButton(onClick = onLineHeightInc) { Text("＋", color = fg) }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("翻页方式", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
+                    FilterChip(
+                        selected = !pagination,
+                        onClick = onTogglePagination,
+                        label = { Text("滚动") },
+                    )
+                    FilterChip(
+                        selected = pagination,
+                        onClick = onTogglePagination,
+                        label = { Text("分页") },
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("主题", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.labelMedium)
+                    FilterChip(
+                        selected = true,
+                        onClick = onThemeCycle,
+                        label = { Text(themeLabel(theme)) },
+                    )
+                }
 
-        Text(
-            "阅读辅助",
-            color = fg,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(top = AnkeSpacing.sm),
-        )
-        AssistSwitchRow(
-            label = "自动滚动",
-            detail = "滚动模式匀速推进，分页模式自动翻页；到章尾自动进入下一章",
-            checked = autoScroll,
-            fg = fg,
-            onCheckedChange = onToggleAutoScroll,
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "速度 ${"%.1f".format(autoScrollSpeed)}×",
-                color = fg.copy(alpha = 0.75f),
-                style = MaterialTheme.typography.labelMedium,
-            )
-            Slider(
-                value = autoScrollSpeed.toFloat(),
-                onValueChange = { onSpeedChange(it.toDouble()) },
-                valueRange = 0.5f..6f,
-                modifier = Modifier.padding(start = AnkeSpacing.sm),
-            )
-        }
-
-        AssistSwitchRow(
-            label = "速读（RSVP）",
-            detail = "从当前位置逐词闪现，可暂停与调速",
-            checked = rsvpOn,
-            fg = fg,
-            onCheckedChange = onToggleRsvp,
-        )
-        AssistSwitchRow(
-            label = "阅读标尺",
-            detail = "一条可拖动的横线，帮助定位当前行",
-            checked = rulerOn,
-            fg = fg,
-            onCheckedChange = onToggleRuler,
-        )
-
-        Text(
-            "本书字体",
-            color = fg,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(top = AnkeSpacing.sm),
-        )
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
-            item {
-                FilterChip(
-                    selected = bookFont.isBlank(),
-                    onClick = { onBookFontChange("") },
-                    label = { Text("跟随全局") },
+                Text(
+                    "阅读辅助",
+                    color = fg,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(top = AnkeSpacing.sm),
                 )
-            }
-            items(fonts) { name ->
-                FilterChip(
-                    selected = bookFont == name,
-                    onClick = { onBookFontChange(name) },
-                    label = { Text(fontLabel(name)) },
+                AssistSwitchRow(
+                    label = "自动滚动",
+                    detail = "滚动模式匀速推进，分页模式自动翻页；到章尾自动进入下一章",
+                    checked = autoScroll,
+                    fg = fg,
+                    onCheckedChange = onToggleAutoScroll,
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "速度 ${"%.1f".format(autoScrollSpeed)}×",
+                        color = fg.copy(alpha = 0.75f),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    Slider(
+                        value = autoScrollSpeed.toFloat(),
+                        onValueChange = { onSpeedChange(it.toDouble()) },
+                        valueRange = 0.5f..6f,
+                        modifier = Modifier.padding(start = AnkeSpacing.sm),
+                    )
+                }
+
+                AssistSwitchRow(
+                    label = "速读（RSVP）",
+                    detail = "从当前位置逐词闪现，可暂停与调速",
+                    checked = rsvpOn,
+                    fg = fg,
+                    onCheckedChange = onToggleRsvp,
+                )
+                AssistSwitchRow(
+                    label = "阅读标尺",
+                    detail = "一条可拖动的横线，帮助定位当前行",
+                    checked = rulerOn,
+                    fg = fg,
+                    onCheckedChange = onToggleRuler,
+                )
+
+                Text(
+                    "本书字体",
+                    color = fg,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(top = AnkeSpacing.sm),
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
+                    item {
+                        FilterChip(
+                            selected = bookFont.isBlank(),
+                            onClick = { onBookFontChange("") },
+                            label = { Text("跟随全局") },
+                        )
+                    }
+                    items(fonts) { name ->
+                        FilterChip(
+                            selected = bookFont == name,
+                            onClick = { onBookFontChange(name) },
+                            label = { Text(fontLabel(name)) },
+                        )
+                    }
+                }
             }
         }
     }

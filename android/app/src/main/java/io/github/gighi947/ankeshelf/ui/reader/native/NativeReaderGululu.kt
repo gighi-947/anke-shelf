@@ -8,8 +8,12 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -315,17 +319,22 @@ internal fun BoxScope.GululuFloatingQuickButton(
     fg: Color,
     onOpenOverview: () -> Unit,
 ) {
-    if (!visible) return
-    FloatingActionButton(
-        onClick = onOpenOverview,
+    AnimatedVisibility(
+        visible = visible,
         modifier = Modifier
             .align(Alignment.BottomEnd)
             .navigationBarsPadding()
             .padding(end = AnkeSpacing.md, bottom = AnkeSpacing.xxl * 3),
-        containerColor = barBg.copy(alpha = 0.96f),
-        contentColor = fg,
+        enter = scaleIn() + fadeIn(),
+        exit = scaleOut() + fadeOut(),
     ) {
-        Icon(Icons.Filled.AutoAwesome, contentDescription = "骨碌碌总览")
+        FloatingActionButton(
+            onClick = onOpenOverview,
+            containerColor = barBg.copy(alpha = 0.96f),
+            contentColor = fg,
+        ) {
+            Icon(Icons.Filled.AutoAwesome, contentDescription = "骨碌碌总览")
+        }
     }
 }
 
@@ -349,46 +358,60 @@ internal fun BoxScope.GululuOverviewSheet(
     onOpenComments: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    if (!visible) return
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.32f))
-            .clickable(onClick = onDismiss),
-    )
-    Column(
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .fillMaxWidth()
-            .background(barBg.copy(alpha = 0.98f), AnkeRadius.large)
-            .navigationBarsPadding()
-            .padding(AnkeSpacing.lg),
-        verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
-    ) {
-        Text("骨碌碌总览", color = fg, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
-        Text(
-            "本章 $floors 楼 · 骰点 $groups 组（未揭示 $lockedGroups）· 秘密 $secrets · 线索 $clues",
-            color = fg.copy(alpha = 0.75f),
-            style = MaterialTheme.typography.bodySmall,
-        )
-        if (playingTitle.isNotEmpty()) {
-            Text("正在播放：$playingTitle", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier.matchParentSize(),
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.32f))
+                    .clickable(onClick = onDismiss),
+            )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
-            TextButton(onClick = onRevealNext, enabled = lockedGroups > 0) { Text("揭示接下来 10 组") }
-            TextButton(onClick = onOpenComments) { Text("评论") }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
-            TextButton(onClick = onToggleDanmaku) { Text(if (danmaku) "关闭弹幕" else "开启弹幕") }
-            TextButton(onClick = onStopMusic, enabled = playingTitle.isNotEmpty()) { Text("停止音乐") }
-            TextButton(onClick = onResetUnlocks) {
-                Text("重置解锁", color = MaterialTheme.colorScheme.error)
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(barBg.copy(alpha = 0.98f), AnkeRadius.large)
+                    .navigationBarsPadding()
+                    .padding(AnkeSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+            ) {
+                Text("骨碌碌总览", color = fg, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Medium)
+                Text(
+                    "本章 $floors 楼 · 骰点 $groups 组（未揭示 $lockedGroups）· 秘密 $secrets · 线索 $clues",
+                    color = fg.copy(alpha = 0.75f),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (playingTitle.isNotEmpty()) {
+                    Text("正在播放：$playingTitle", color = fg.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
+                    TextButton(onClick = onRevealNext, enabled = lockedGroups > 0) { Text("揭示接下来 10 组") }
+                    TextButton(onClick = onOpenComments) { Text("评论") }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm)) {
+                    TextButton(onClick = onToggleDanmaku) { Text(if (danmaku) "关闭弹幕" else "开启弹幕") }
+                    TextButton(onClick = onStopMusic, enabled = playingTitle.isNotEmpty()) { Text("停止音乐") }
+                    TextButton(onClick = onResetUnlocks) {
+                        Text("重置解锁", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                Text(
+                    "重置只清空本书的骰点揭示与线索，不影响阅读进度与书签。",
+                    color = fg.copy(alpha = 0.6f),
+                    style = MaterialTheme.typography.labelSmall,
+                )
             }
         }
-        Text(
-            "重置只清空本书的骰点揭示与线索，不影响阅读进度与书签。",
-            color = fg.copy(alpha = 0.6f),
-            style = MaterialTheme.typography.labelSmall,
-        )
     }
 }
