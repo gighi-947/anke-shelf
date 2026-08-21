@@ -181,8 +181,8 @@ internal fun BoxScope.ReaderTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = extraTopDp.dp)
                 .background(barBg.copy(alpha = 0.96f))
+                .padding(top = extraTopDp.dp)
                 .statusBarsPadding()
                 .padding(horizontal = AnkeSpacing.xs, vertical = AnkeSpacing.xxs),
             verticalAlignment = Alignment.CenterVertically,

@@ -588,7 +588,18 @@ fun WebViewChapterView(
                                     callbacksRef.value.onTapZone("hide")
                                 }
                                 isTap && ev.x >= width / 3f && ev.x <= 2 * width / 3f -> {
-                                    callbacksRef.value.onTapZone("middle")
+                                    // 骨碌碌交互元素（骰点/秘密/音乐/评论徽标）的点击
+                                    // 交给 WebView 处理，不当作唤出/收起悬浮菜单。
+                                    val cssX = ev.x / density.density
+                                    val cssY = ev.y / density.density
+                                    evaluateJavascript(
+                                        "AnkeReader.hitGululuInteractive($cssX,$cssY);",
+                                        ValueCallback { value ->
+                                            if (value != "true") {
+                                                callbacksRef.value.onTapZone("middle")
+                                            }
+                                        },
+                                    )
                                 }
                                 else -> Unit
                             }

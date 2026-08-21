@@ -65,6 +65,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈修复（第五批）
+
+- 修复：
+  - 顶部悬浮栏下移量 50dp → 30dp，且背景色移到 padding 之前，
+    下移区域也有同色模糊背景（不再透明漏字）；
+  - 骨碌碌交互元素命中测试 `hitGululuInteractive`：点击骰点/秘密/线索/音乐/
+    评论徽标时，宿主不再把该次点击当作“唤出/收起悬浮菜单”。
+- 验证：`compileDebugKotlin testDebugUnitTest assembleRelease` BUILD SUCCESSFUL；
+  `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：测试机反馈修复（第四批）
 
 - 修复：骨碌碌楼层上报增加几何兜底（`elementFromPoint` 未命中时扫描

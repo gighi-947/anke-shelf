@@ -1453,6 +1453,7 @@
     isAutoScrolling: isAutoScrolling,
     // 骨碌碌宿主层（批 8/9）
     initGululu: initGululu,
+    hitGululuInteractive: hitGululuInteractive,
     applyParagraphComments: applyParagraphComments,
     revealGululuGroup: revealGululuGroup,
     revealGululuFloor: revealGululuFloor,
@@ -1697,6 +1698,15 @@
       var title = cues[i].querySelector('.gululu-music-title');
       callBridge('gululuMusic', url, title ? title.textContent : '', true);
     }
+  }
+
+  /** 命中测试：坐标是否落在骨碌碌交互元素上（宿主据此决定是否把点击当作唤出/收起菜单）。 */
+  function hitGululuInteractive(x, y) {
+    var el = document.elementFromPoint(x, y);
+    return !!(el && el.closest && el.closest(
+      '.gululu-dice-value, .gululu-dice-suffix, .gululu-secret-cue, ' +
+      '.gululu-clue-cue, .gululu-music-cue, .gululu-music-stop, .gululu-paragraph-badge'
+    ));
   }
 
   /** 绑定骨碌碌交互（骰点、秘密、线索、音乐、段落评论徽标）。 */

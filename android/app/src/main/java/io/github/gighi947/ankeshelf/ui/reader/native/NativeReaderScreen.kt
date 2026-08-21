@@ -418,7 +418,7 @@ fun NativeReaderScreen(
         cutoutBottom * 3 / 8
     }
     // 悬浮操作栏下移量：自动模式固定 50dp（避开异形屏），手动模式由用户自定。
-    val topBarExtraDp = if (manualTopInsetDp >= 0) 0 else 50
+    val topBarExtraDp = if (manualTopInsetDp >= 0) 0 else 30
 
     // 图片字节：EPUB 走压缩包相对路径；NGA 在线图走 OkHttp（防盗链头）。
     suspend fun imageBytes(src: String): ByteArray? = withContext(Dispatchers.IO) {

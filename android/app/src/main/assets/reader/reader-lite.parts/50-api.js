@@ -420,6 +420,7 @@
     isAutoScrolling: isAutoScrolling,
     // 骨碌碌宿主层（批 8/9）
     initGululu: initGululu,
+    hitGululuInteractive: hitGululuInteractive,
     applyParagraphComments: applyParagraphComments,
     revealGululuGroup: revealGululuGroup,
     revealGululuFloor: revealGululuFloor,
