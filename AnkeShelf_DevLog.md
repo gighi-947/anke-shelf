@@ -65,6 +65,16 @@
 
 ## 4. 最近流水
 
+### 2026-08-21 android：测试机反馈修复（第三批）
+
+- 修复：
+  - 撤销“正文内容区下移 50px”的做法，恢复原 `topInsetPx`；改为仅顶部悬浮
+    操作栏下移 50dp（自动安全区模式），避免分页模式顶部空白；
+  - 底部本章进度细条由 2dp 加粗到 4dp；
+  - 骰点值/后缀增加元素级 `onclick` 兜底，解决部分机型 document 委托点击
+    被阅读器点击处理挡住导致无法揭示；
+- 验证：`compileDebugKotlin testDebugUnitTest` BUILD SUCCESSFUL；
+  `assembleRelease` 成功并 `adb install -r` 到测试机（保留数据）。
 ### 2026-08-21 android：测试机反馈批量修复（第二批）
 
 - 修复：

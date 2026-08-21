@@ -411,14 +411,14 @@ fun NativeReaderScreen(
             ?.boundingRects
             ?.maxOfOrNull { it.bottom } ?: 0
     }
-    // 安全区自动模式：按挖孔底部 3/8 估算，再下移 50dp（用户测试机反馈
-    // 默认位置仍遮挡顶部内容）。
-    val autoInsetExtraPx = with(density) { 50.dp.toPx().roundToInt() }
+    // 安全区自动模式只负责内容区 top inset（原口径，不再下移正文）。
     val topInsetPx = if (manualTopInsetDp >= 0) {
         with(density) { manualTopInsetDp.dp.toPx().roundToInt() }
     } else {
-        cutoutBottom * 3 / 8 + autoInsetExtraPx
+        cutoutBottom * 3 / 8
     }
+    // 悬浮操作栏下移量：自动模式固定 50dp（避开异形屏），手动模式由用户自定。
+    val topBarExtraDp = if (manualTopInsetDp >= 0) 0 else 50
 
     // 图片字节：EPUB 走压缩包相对路径；NGA 在线图走 OkHttp（防盗链头）。
     suspend fun imageBytes(src: String): ByteArray? = withContext(Dispatchers.IO) {
@@ -698,6 +698,7 @@ fun NativeReaderScreen(
             barBg = barBg,
             fg = fg,
             bookmarked = bookmarkAtCurrent != null,
+            extraTopDp = topBarExtraDp,
             onBack = { saveProgress(); onBack() },
             onToggleBookmark = {
                 val existing = bookmarkAtCurrent

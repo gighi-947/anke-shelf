@@ -1501,6 +1501,17 @@
       } else {
         el.classList.add('masked');
       }
+      // 直接绑定兜底：部分机型上 document 级委托会被阅读器点击处理挡住。
+      el.onclick = function (ev) {
+        if (ev) {
+          if (ev.preventDefault) ev.preventDefault();
+          if (ev.stopPropagation) ev.stopPropagation();
+        }
+        var g = this.getAttribute('data-gululu-dice-group') || '';
+        if (!g) return false;
+        if (ev && ev.altKey) revealGululuFloor(g); else revealGululuGroup(g, true);
+        return false;
+      };
     }
     var fogs = document.querySelectorAll('.gululu-fog-block');
     for (i = 0; i < fogs.length; i++) {

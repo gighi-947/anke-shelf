@@ -149,7 +149,7 @@ internal fun BoxScope.ReaderChapterProgressBar(
             progress = { progress.coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(2.dp),
+                .height(4.dp),
             color = fg,
             trackColor = fg.copy(alpha = 0.18f),
         )
@@ -164,6 +164,7 @@ internal fun BoxScope.ReaderTopBar(
     barBg: Color,
     fg: Color,
     bookmarked: Boolean,
+    extraTopDp: Int = 0,
     onBack: () -> Unit,
     onToggleBookmark: () -> Unit,
     onOpenAnnotations: () -> Unit,
@@ -180,6 +181,7 @@ internal fun BoxScope.ReaderTopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(top = extraTopDp.dp)
                 .background(barBg.copy(alpha = 0.96f))
                 .statusBarsPadding()
                 .padding(horizontal = AnkeSpacing.xs, vertical = AnkeSpacing.xxs),
