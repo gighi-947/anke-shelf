@@ -528,7 +528,11 @@ def main() -> int:
         L('custom_colors_ui:' + (
           !!document.getElementById('sp-custom-bg') && !!document.getElementById('sp-custom-text') ? 1 : 0
         ));
-        L('settings_tabs:' + (document.querySelectorAll('#settings-view .settings-tab').length === 6 ? 1 : 0));
+        // Tab 数与 SettingsUI.TABS 定义联动（此前硬编码 6，“书籍管理”加入后漂移为 FAIL）
+        L('settings_tabs:' + (
+          document.querySelectorAll('#settings-view .settings-tab').length ===
+          (window.SettingsUI && SettingsUI.TABS ? SettingsUI.TABS.length : 7) ? 1 : 0
+        ));
         L('palette_btns:' + (document.querySelectorAll('#settings-view .sp-palette-btn').length > 0 ? 1 : 0));
         document.querySelector('#settings-view .settings-tab[data-tab="reading"]').click();
         await new Promise(r => setTimeout(r, 80));
