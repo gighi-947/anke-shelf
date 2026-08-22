@@ -50,6 +50,7 @@
 
   /** 分页布局准备：iframe 尺寸 + body 分页 CSS（变量注入 iframe html）。 */
   function prepare(doc) {
+    layoutGen += 1; // 布局代际 +1：列几何变化后空白页缓存全部作废
     if (!doc || !doc.documentElement) return { advance: 0 };
     const { w, h } = stageSize();
     const frame = frameEl();
@@ -167,8 +168,21 @@
     return page;
   }
 
-  /** 判断某页是否为空白/大面积空白页（多数采样行无可视内容）。 */
-  function isPageBlank(page) {
+  /** 命中数达到 ceil(25% × 总采样) 后，无论剩余采样如何占比都不可能 <25%，
+   *  可提前判定非空白（与整扫后的 hits/samples < 25% 判据数学等价）。 */
+  function nonBlankThreshold(totalSamples) {
+    return Math.ceil(0.25 * totalSamples);
+  }
+
+  /** 空白页判定的纯数学（tests/js/paged-blank.test.js 锁边界）：
+   *  顶行无内容且命中占比 <25% 才算空白。 */
+  function isBlankVerdict(hits, totalSamples, topHits) {
+    return topHits === 0 && hits < nonBlankThreshold(totalSamples);
+  }
+
+  /** 扫描单页空白性：顶行命中或命中达阈值即提前退出，
+   *  文本页通常前 1~2 行采样即可判定（原实现固定扫满 15/20 个采样点）。 */
+  function scanPageBlank(page) {
     const doc = frameEl().contentDocument;
     if (!doc || !doc.body) return false;
     const m = measure();
@@ -200,23 +214,37 @@
     };
     // 双页模式左右两页各采样两列，避免采样点落在中央书缝；
     // 纵向上覆盖到顶部标题区，避免“只有楼层标题、正文被抽楼”的页面被误判为空白。
-    let hits = 0;
-    let samples = 0;
-    let topHits = 0;
     const xs = m.step === 2 ? [0.15, 0.35, 0.65, 0.85] : [0.25, 0.5, 0.75];
-    for (const fy of [0.06, 0.2, 0.4, 0.6, 0.8]) {
+    const rows = [0.06, 0.2, 0.4, 0.6, 0.8];
+    const threshold = nonBlankThreshold(xs.length * rows.length);
+    let hits = 0;
+    for (let ri = 0; ri < rows.length; ri++) {
       for (const fx of xs) {
-        samples++;
-        if (hitAt(Math.max(2, Math.min(w - 2, w * fx)), Math.round(h * fy))) {
-          hits++;
-          if (fy === 0.06) topHits++;
+        if (hitAt(Math.max(2, Math.min(w - 2, w * fx)), Math.round(h * rows[ri]))) {
+          if (ri === 0) return false; // 顶行有内容：直接非空白
+          if (++hits >= threshold) return false; // 占比已达标：提前非空白
         }
       }
     }
-    // 顶部标题区有内容（如 NGA 抽楼页只剩楼层头）不算空白
-    if (topHits > 0) return false;
-    // 少于 25% 的采样点有内容 → 判定为大面积空白页
-    return hits / samples < 0.25;
+    return true; // 整扫后命中仍低于阈值且顶行无内容 → 空白
+  }
+
+  // 空白页判定缓存：同一布局代际内页面空白性不变，翻页/跳页不再重复支付
+  // 采样成本；prepare()（字号/窗口/双页/图片重排）推进 layoutGen 作废缓存。
+  let layoutGen = 0;
+  let blankCache = new Map();
+  let blankCacheGen = -1;
+
+  /** 判断某页是否为空白/大面积空白页（多数采样行无可视内容）。 */
+  function isPageBlank(page) {
+    if (blankCacheGen !== layoutGen) {
+      blankCache.clear();
+      blankCacheGen = layoutGen;
+    }
+    if (blankCache.has(page)) return blankCache.get(page);
+    const verdict = scanPageBlank(page);
+    blankCache.set(page, verdict);
+    return verdict;
   }
 
   /** 从 page 起沿 dir（1/-1）跳过连续空白页，最多跳 5 页。 */
@@ -419,23 +447,29 @@
     }, { passive: true });
   }
 
-  window.Paged = {
-    isActive,
-    isDual,
-    prepare,
-    measure,
-    gotoPage,
-    nextPage,
-    prevPage,
-    firstContentPage,
-    isPageBlank,
-    gotoOffset,
-    currentOffset,
-    currentAnchorOffset,
-    beginViewportResize,
-    cancelViewportResize,
-    onResize,
-    setupInteraction,
-    normalizeTallTables,
-  };
+  if (typeof window !== 'undefined') {
+    window.Paged = {
+      isActive,
+      isDual,
+      prepare,
+      measure,
+      gotoPage,
+      nextPage,
+      prevPage,
+      firstContentPage,
+      isPageBlank,
+      gotoOffset,
+      currentOffset,
+      currentAnchorOffset,
+      beginViewportResize,
+      cancelViewportResize,
+      onResize,
+      setupInteraction,
+      normalizeTallTables,
+    };
+  }
+  // Node 单测入口：只导出空白判定的纯数学（tests/js/paged-blank.test.js）。
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { isBlankVerdict, nonBlankThreshold };
+  }
 })();
