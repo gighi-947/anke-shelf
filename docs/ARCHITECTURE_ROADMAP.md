@@ -41,7 +41,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | --- | --- |
 | 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（P5-A/B/D/E 已完成；P5-C/F 暂缓）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）；2026-08-20 起进入 Android 全量对齐专项（见 `ANDROID_PARITY_PLAN.md`，批 1–9 已全部落地并发布 `android-v1.2.0`）（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
-| Windows Python 单测 | 327 项（3.14：仅环境性 main_guard 失败（沙箱 tasklist 不可用）；bundled 3.12：全过） |
+| Windows Python 单测 | 328 项（3.14：仅环境性 main_guard 失败（沙箱 tasklist 不可用）；bundled 3.12：全过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 60 methods + `bridge-contract`（桥版本 1 / 能力含 annotation·assist·gululu）+ `reader-lite-parts`（9 parts / 动态字节校验）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-save`（进度写入唯一出口）+ `reader-session` + `nga-cookie` OK |
 | Android JVM 单测 | 215 项（214 过 / 1 跳；2026-08-22 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
@@ -63,7 +63,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | `android/.../data/Epub.kt` | 574 | EPUB 数据层 |
 | `android/.../ui/reader/native/NativeReaderScreen.kt` | 1116 | 外壳已拆 Chrome / Gululu；恢复锚点单点 RestoreAnchor |
 | `android/.../ui/download/DownloadScreen.kt` | 352 | 已拆分面板 |
-| `android/.../assets/reader/reader-lite.js` | 1833 | 现役渲染内核（parts 9 模块；状态机 Step 0–4 + 跨端折叠/骨碌碌能力；2026-08-22 清理死表面） |
+| `android/.../assets/reader/reader-lite.js` | 1862 | 现役渲染内核（parts 9 模块；状态机 Step 0–4 + 跨端折叠/骨碌碌能力；2026-08-22 清理死表面） |
 | `web/js/reader.js` | 759 | 核心编排；进度写入经 reader-save.js 唯一出口 |
 | `web/js/nga_download.js` | 719 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
 | `app/gululu_service.py` | 488 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |

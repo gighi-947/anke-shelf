@@ -24,12 +24,13 @@
   Web 进度/标注写入错误出口、Android store 损坏显式化、
   ApiContext 服务必填、恢复锚点单点化、双端死表面删除；
   性能优化 A1 翻页单次采样（第二十三批）、A2 空白页判定
-  提前退出+代际缓存（第二十四批，见 §4）。
+  提前退出+代际缓存（第二十四批）、内置字体 WOFF2 无损压缩
+  -61%（第二十五批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.6.0`（已发布，AnkeShelf-v1.6.0.zip）；
   Android `android-v1.3.0`（已发布，AnkeShelf-v1.3.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-22 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 327 项
+  - Windows Python：`python -m unittest discover tests` = 328 项
     （本机 Python 3.14：1 项环境性错误 `test_main_guard`
     ——tasklist 在本沙箱返回 None，clean main 同样失败、与代码无关；
     bundled Python 3.12：全量通过）；
@@ -74,6 +75,27 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-22 win/android：性能优化第三项——内置字体 TTF→WOFF2 无损压缩（第二十五批）
+
+背景：性能可行性研究定位的进书成本项。内置 LXGW WenKai 全量 TTF 26.0MB，
+Android 每次开书 @font-face 加载且 settle 链等 fonts.load，Windows 经
+/font/system/ 提供；按决策走 WOFF2 无损（不做子集化，生僻字无视觉权衡）。
+
+- `assets/fonts/LXGWWenKai-Regular.ttf` → `.woff2`（fonttools 转换，
+  **26,037,854 → 10,186,308 字节，-61%**，APK 32.3MB 对应缩小）；
+- 无损验证（逐字形语义比对，非仅字节）：47,813 个字形轮廓坐标/组件
+  全部一致；cmap/hmtx/name 等其余表字节级相同；head 仅差 WOFF2 规范
+  要求置位的 lossless 标记位（bit 11）与重算的校验和/时间戳；
+- Android：reader-lite @font-face 改 `format("woff2")`；铁律实检 APK
+  （assets/fonts 仅 woff2、reader-lite.js 引用已更新、Gradle 无 UP-TO-DATE 误判）；
+- Windows：逻辑名与设置默认值 ttf→woff2；**旧设置 sys:weidqczfkyxk.ttf
+  经别名继续解析**（老用户升级不丢字体，含回归测试）；pyinstaller spec
+  与 server MIME（font/woff2 已有）确认；
+- 验证：Python 328 项（327→328，+1 别名测试）；Android JVM 217 项 +
+  assembleDebug；UI 实机 harness 97/97；parts 字节校验、契约全绿。
+- 剩余（可行性研究顺序）：A3 Windows 分页二分去滚动位移（中风险，
+  需完整进度回归）。
 
 ### 2026-08-22 win/android：性能优化 A2——空白页判定提前退出 + 布局代际缓存（第二十四批）
 
