@@ -22,7 +22,8 @@
   （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）；
   2026-08-22 防御性编程审查清理批（第二十二批，见 §4）：
   Web 进度/标注写入错误出口、Android store 损坏显式化、
-  ApiContext 服务必填、恢复锚点单点化、双端死表面删除。
+  ApiContext 服务必填、恢复锚点单点化、双端死表面删除；
+  性能优化 A1 翻页单次采样（第二十三批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.6.0`（已发布，AnkeShelf-v1.6.0.zip）；
   Android `android-v1.3.0`（已发布，AnkeShelf-v1.3.0-android.apk）。
@@ -39,10 +40,11 @@
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 215 项（214 过 / 1 跳）；
-    DisciplineTest 9 项在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 216 项（215 过 / 1 跳）；
+    DisciplineTest 10 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
-  - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS（需桌面 WebView2）；
+  - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
+    （2026-08-22 A1 后复跑全绿；需桌面 WebView2）；
   - 骨碌碌正式冒烟 `formal_ui_smoke.js`（桌面 + 430px，含骰点菜单/段落评论/总览/
     抽屉保位断言）全过。
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
@@ -70,6 +72,36 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-22 win/android：性能优化 A1——翻页/定位/滚动 offset 单次采样（第二十三批）
+
+背景：性能可行性研究（数据层基线毫秒级、瓶颈在渲染交互层）确定的第一
+优化项。双端翻页路径此前都把页顶 offset 采样跑两遍：Windows 是
+`Paged.currentOffset()` 整套「scrollLeft 归零 + log₂(章长) 次 Range
+getBoundingClientRect 二分 + 恢复」执行两次（saveProgress 与
+updateProgressUI 各一次）；Android 是 `report()` 内部与 `flipPage` 各采样
+一次，且 doSave=false 的纯 UI 上报（setMode/requestSettle/scheduleResize/
+init finish）每次也白付一次页顶扫描（off 在这些路径从未被使用）。
+
+- Windows（`win/page-turn-single-sampling`）：saveProgress 返回本次采样
+  offset，updateProgressUI(sampledOffset) 接受复用值；onPageTurned /
+  seekToOffset / 锚点跳转 / 滚动 500ms 防抖四个调用点接通；换章/重排等
+  无现成采样的路径保持按需采样，行为不变。
+- Android（`android/page-turn-single-sampling`）：report(doSave, offset)
+  接受复用；flipPage 单次采样同时供落盘与翻页锚点；doSave=false 路径
+  不再采样。
+- 守卫：reader-save.test.js 增加单次采样结构断言；DisciplineTest 新增
+  采样纪律测试（Android JVM 215→216 项）。
+- 顺手修复（与 A1 无关的既有漂移）：UI harness `settings_tabs` 断言硬编码
+  ===6，自 6d8d3df 加入「书籍管理」Tab（第 7 个）起即 FAIL；改为与
+  `SettingsUI.TABS` 定义联动（`win/ui-harness-tabs-follow-definition`）。
+- 验证：Windows UI 实机 harness 97/97 PASS（含分页翻转/进度/双页/
+  快速连翻/全屏保位全套）；Android JVM 216 项（215 过/1 跳）；JS 契约
+  （textpos/api/bridge/parts/跨端折叠/reader-save）全绿；Python 327 项
+  （仅既有环境性 main_guard）。
+- 后续（按可行性研究顺序）：A2 空白页缓存（per-layout 缓存
+  isPageBlank 结果，砍掉每次翻页 15 次命中测试）→ 字体决策（26MB 子集
+  vs WOFF2，需拍板）→ A3 二分去滚动位移。
 
 ### 2026-08-22 docs：README 顶部增加徽章行
 
