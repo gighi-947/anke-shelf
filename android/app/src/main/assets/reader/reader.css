@@ -70,6 +70,14 @@ img {
 
 .nga-floor {
     max-width: 100%;
+    /* 现代 WebView：覆盖下载时的内联浅/深主题色，随阅读器主题自适应；
+       旧 WebView 不支持 color-mix 时会保留内联实色兜底。 */
+    border: 1px solid color-mix(in srgb, var(--reader-fg) 18%, transparent) !important;
+    border-left: 4px solid var(--reader-primary) !important;
+    background: color-mix(in srgb, var(--reader-fg) 6%, transparent) !important;
+    padding: 12px 14px !important;
+    margin: 14px 0 !important;
+    border-radius: 2px !important;
 }
 
 blockquote.nga-quote {

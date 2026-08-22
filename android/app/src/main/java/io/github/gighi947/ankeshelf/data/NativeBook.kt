@@ -518,22 +518,24 @@ object NativeBookWriter {
         dark: Boolean,
         imgSrc: (String) -> String = { it },
     ): String {
-        // 楼卡/评论卡只给布局内联样式，配色全部走 reader.css 的 CSS 变量，
-        // 保证浅色/深色/羊皮纸三套主题与桌面渲染一致。
+        // 内联样式使用下载时的浅/深主题色作为旧 WebView 兜底；
+        // 新版 WebView 会被 reader.css 的 !important + color-mix 覆盖为随阅读器主题自适应。
+        val border = if (dark) "#3a3a3a" else "#e0e0e0"
+        val accent = if (dark) "#5ba3d9" else "#2e86ab"
+        val muted = if (dark) "#8a8a8a" else "#888888"
+        val floorBg = if (dark) "#2a2a2a" else "#fafafa"
+        val commentBg = if (dark) "#262626" else "#fafafa"
         val floorStyle =
-            "border:1px solid color-mix(in srgb, var(--reader-fg) 18%, transparent); " +
-                "border-left:4px solid var(--reader-primary); " +
-                "padding:12px 14px; margin:14px 0; border-radius:2px;"
+            "border:1px solid $border; border-left:4px solid $accent; " +
+                "background:$floorBg; padding:12px 14px; margin:14px 0; border-radius:2px;"
         val headStyle =
-            "color:color-mix(in srgb, var(--reader-fg) 55%, transparent); " +
-                "font-size:.82em; border-bottom:1px dotted color-mix(in srgb, var(--reader-fg) 18%, transparent); " +
+            "color:$muted; font-size:.82em; border-bottom:1px dotted $border; " +
                 "padding-bottom:6px; margin-bottom:8px;"
         val commentStyle =
-            "background:color-mix(in srgb, var(--reader-fg) 6%, transparent); " +
-                "border:1px solid color-mix(in srgb, var(--reader-fg) 18%, transparent); " +
+            "background:$commentBg; border:1px solid $border; " +
                 "padding:8px 10px; margin:6px 0 6px 14px; font-size:.92em;"
         val head =
-            "<span class=\"lou\" style=\"color:var(--reader-primary); font-weight:bold;\">${f.lou}楼</span> " +
+            "<span class=\"lou\" style=\"color:$accent; font-weight:bold;\">${f.lou}楼</span> " +
                 "· ${f.like_num}赞 · ${escapeHtml(f.username)}(${f.user_id}) · ${ts2t(f.timestamp)}" +
                 "<span class=\"pid\"> · pid:${f.pid}</span>"
         val out = StringBuilder(
@@ -550,7 +552,7 @@ object NativeBookWriter {
             val cBody = NgaFormatHtml.renderContentHtml(c.raw_content, dark = dark, imgSrc = imgSrc)
             out.append(
                 "<div class=\"nga-comment\" style=\"$commentStyle\">" +
-                    "<span class=\"comment-head\" style=\"color:color-mix(in srgb, var(--reader-fg) 55%, transparent); font-size:.8em; " +
+                    "<span class=\"comment-head\" style=\"color:$muted; font-size:.8em; " +
                     "display:block; margin-bottom:4px;\">$cHead</span>$cBody</div>",
             )
         }

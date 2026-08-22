@@ -77,6 +77,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-22 android：修复旧 WebView 上 NGA 楼层卡片边框/背景丢失（第二十七批）
+
+- 真机对比 v1.0.0 与 v1.3.1 截图：v1.3.1 楼层卡片只剩左侧主题色竖线，
+  1px 边框与卡片背景丢失；v1.0.0 有完整灰边（#3a3a3a）与浅灰卡底（#2a2a2a）。
+- 根因：前几批把 `NativeBook` / `NgaFormatHtml` 的内联样式改为
+  `color-mix(...)`；Android 10 WebView 不支持 `color-mix`，整条声明被丢弃，
+  而 `var(--reader-primary)` 仍生效，所以只剩蓝色左线。
+- 修复：内联样式恢复为下载时浅/深主题实色（旧 WebView 兜底），
+  `reader.css` 新增 `.nga-floor` 的 `!important + color-mix` 自适应规则
+  （现代 WebView 覆盖为跟随阅读器主题）。
+- 验证：Android 全量单测 BUILD SUCCESSFUL；待装机复核楼层卡片边框/背景。
+
 ### 2026-08-22 docs：仓库扫描与宣传帖模板版本修正（第二十六批补记）
 
 - 应要求检查扫描仓库改动：工作区干净、本地与 origin/main 同步、无

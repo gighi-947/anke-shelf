@@ -64,13 +64,17 @@ object NgaFormatHtml {
     )
 
     private val THEME_LIGHT = QuoteTheme(
-        accent = "#2e86ab", dice = "#b8860b", muted = "#888888",
+        border = "#e0e0e0", quoteBg = "#f7f7f7", accent = "#2e86ab",
+        dice = "#b8860b", muted = "#888888",
     )
     private val THEME_DARK = QuoteTheme(
-        accent = "#5ba3d9", dice = "#d9b45b", muted = "#8a8a8a",
+        border = "#3a3a3a", quoteBg = "#2a2a2a", accent = "#5ba3d9",
+        dice = "#d9b45b", muted = "#8a8a8a",
     )
 
     private data class QuoteTheme(
+        val border: String,
+        val quoteBg: String,
         val accent: String,
         val dice: String,
         val muted: String,
@@ -129,7 +133,7 @@ object NgaFormatHtml {
             "<details><summary>${m.groupValues[1]}</summary><div>${m.groupValues[2]}</div></details>"
         }
         c = RE_DICE.replace(c) { m ->
-            "<div class=\"nga-dice\" style=\"color:var(--reader-primary); font-weight:bold; margin:6px 0;\">" +
+            "<div class=\"nga-dice\" style=\"color:${theme.dice}; font-weight:bold; margin:6px 0;\">" +
                 "ROLL : ${m.groupValues[1]}= <b>${m.groupValues[3]}</b></div>"
         }
         c = RE_ANONY.replace(c) { m -> safeAnony(m.value) }
@@ -144,9 +148,9 @@ object NgaFormatHtml {
         }
         c = RE_UID.replace(c) { m -> "<span class=\"uid\">${m.groupValues[2]}</span>" }
 
-        // 引用卡只给布局内联样式，配色交给 reader.css 的 CSS 变量（浅色/深色/羊皮纸统一生效）。
-        val qstyle = "border-left:3px solid var(--reader-primary); " +
-            "background:color-mix(in srgb, var(--reader-fg) 6%, transparent); " +
+        // 内联用下载时的浅/深主题色作为旧 WebView 兜底；新版 WebView 会被
+        // reader.css 的 !important + color-mix 覆盖为随阅读器主题自适应。
+        val qstyle = "border-left:3px solid ${theme.border}; background:${theme.quoteBg}; " +
             "padding:8px 12px; margin:10px 0; font-size:.95em;"
         c = c.replace("[quote]", "<blockquote class=\"nga-quote\" style=\"$qstyle\">")
         c = c.replace("[/quote]", "</blockquote>")
