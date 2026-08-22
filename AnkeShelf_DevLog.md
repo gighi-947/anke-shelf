@@ -23,7 +23,8 @@
   2026-08-22 防御性编程审查清理批（第二十二批，见 §4）：
   Web 进度/标注写入错误出口、Android store 损坏显式化、
   ApiContext 服务必填、恢复锚点单点化、双端死表面删除；
-  性能优化 A1 翻页单次采样（第二十三批，见 §4）。
+  性能优化 A1 翻页单次采样（第二十三批）、A2 空白页判定
+  提前退出+代际缓存（第二十四批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.6.0`（已发布，AnkeShelf-v1.6.0.zip）；
   Android `android-v1.3.0`（已发布，AnkeShelf-v1.3.0-android.apk）。
@@ -39,9 +40,10 @@
     `node contracts/tests/reader-lite-parts.test.js`（9 parts / 动态字节校验）、
     `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
+    `node tests/js/paged-blank.test.js`（空白页判定边界）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 216 项（215 过 / 1 跳）；
-    DisciplineTest 10 项在岗；
+  - Android JVM：`gradlew testDebugUnitTest` = 217 项（216 过 / 1 跳）；
+    DisciplineTest 11 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
     （2026-08-22 A1 后复跑全绿；需桌面 WebView2）；
@@ -72,6 +74,28 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-22 win/android：性能优化 A2——空白页判定提前退出 + 布局代际缓存（第二十四批）
+
+背景：A1 之后的第二优化项。skipToContent 每次翻页先对目标页跑
+isPageBlank——固定扫满 15（单页）/20（双页）个 caretRangeFromPoint 命中
+测试，文本页也要付全价；空白段连续时最多 ×5 页 = 75 次命中测试。
+
+- 判定数学提取为纯函数（nonBlankThreshold / isBlankVerdict）：命中数达到
+  ceil(25% × 总采样) 后无论剩余采样如何占比都不可能 <25%，可提前判定
+  非空白；顶行命中直接非空白。与整扫判据数学等价，文本页通常前 1~2 行
+  采样（3~8 次命中测试）即可判定。
+- isPageBlank 增加布局代际缓存：同一布局内页面空白性不变，重访页与空白段
+  跳过零成本；prepare()（双端字号/窗口/双页/图片重排的统一入口）推进
+  layoutGen 作废缓存。
+- 双端同构：桌面 paged.js 与 reader-lite 30-paging 同判据同实现；边界由
+  tests/js/paged-blank.test.js 统一锁定（3/15 空白、4/15 非空白、5/20
+  恰好达标、顶行规则），Android 侧 DisciplineTest 新增 A2 结构守卫
+  （Android JVM 216→217 项）。
+- 验证：Windows UI 实机 harness 97/97 PASS（含分页/末页/双页全套）；
+  Android JVM 217 项（216 过/1 跳）；JS 契约全绿；parts 字节校验通过。
+- 后续（按可行性研究顺序）：字体决策（26MB 全量字库子集 vs WOFF2，
+  需拍板生僻字回退系统字体的视觉权衡）→ A3 二分去滚动位移。
 
 ### 2026-08-22 win/android：性能优化 A1——翻页/定位/滚动 offset 单次采样（第二十三批）
 
