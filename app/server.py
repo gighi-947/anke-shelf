@@ -314,8 +314,10 @@ class EpubHandler(http.server.BaseHTTPRequestHandler):
         except Exception:
             self._send_error(400, "bad request")
             return
-        fn = getattr(self.api or object(), name, None)
-        if fn is None or name.startswith("_"):
+        # 分发只认注册清单（api_manifest 即暴露面）；未经注册的对象成员
+        # （property/方法）不成为端点。
+        fn = self.api.handler(name) if self.api is not None else None
+        if fn is None:
             self._send_error(404, "unknown api")
             return
         try:

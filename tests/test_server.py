@@ -16,7 +16,23 @@ SAMPLE_DIR = Path(__file__).parent / "sample"
 
 
 class _FakeApi:
-    """最小 API 桩：验证 JSON 路由、令牌校验与异常包装。"""
+    """最小 API 桩：验证 JSON 路由、令牌校验与异常包装。
+
+    `exposed_property` / `exposed_callable` 模拟真实 Api 上存在、但不在
+    handler 清单里的公共属性（如 `fullscreen` property、`register` 方法）——
+    分发必须只认注册清单，不得经 getattr 透出对象任意公共成员。
+    handler() 与 ApiRegistry 同语义：仅返回显式注册的桩方法。
+    """
+
+    exposed_property = "not-a-handler"
+
+    _registered = ("get_settings", "echo", "boom", "bad_request", "structured_result")
+
+    def handler(self, name):
+        return getattr(self, name) if name in self._registered else None
+
+    def exposed_callable(self, *args, **kwargs):
+        return {"should": "not be reachable"}
 
     def get_settings(self):
         return {"mode": "test"}
@@ -140,6 +156,18 @@ class ServerTestCase(unittest.TestCase):
     def test_api_private_method_rejected(self):
         status, _ = self.post("/api/_pick_paths", token=self.token)
         self.assertEqual(status, 404)
+
+    def test_api_non_handler_property_not_reachable(self):
+        """非 handler 的公共属性（如 fullscreen property）不得经 /api 透出。"""
+        status, data = self.post("/api/exposed_property", token=self.token)
+        self.assertEqual(status, 404)
+        self.assertFalse(data["ok"])
+
+    def test_api_non_handler_method_not_reachable(self):
+        """非清单内的公共方法（如 ApiRegistry.register）不得经 /api 调用。"""
+        status, data = self.post("/api/exposed_callable", token=self.token)
+        self.assertEqual(status, 404)
+        self.assertFalse(data["ok"])
 
     def test_api_exception_wrapped(self):
         status, data = self.post("/api/boom", token=self.token)
