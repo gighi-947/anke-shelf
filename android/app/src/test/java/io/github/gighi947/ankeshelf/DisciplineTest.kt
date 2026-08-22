@@ -107,6 +107,28 @@ class DisciplineTest {
     }
 
     @Test
+    fun `空白页判定提前退出并按布局代际缓存（A2）`() {
+        val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
+
+        assertTrue(
+            "命中达阈值应提前判定非空白（判据数学与桌面 paged.js 同构，边界由 tests/js/paged-blank.test.js 锁定）",
+            js.contains("hits >= threshold"),
+        )
+        assertTrue(
+            "顶行命中应直接判非空白",
+            js.contains("if (ry === 0) return false"),
+        )
+        assertTrue(
+            "prepare 必须推进布局代际作废空白缓存",
+            js.contains("layoutGen += 1"),
+        )
+        assertTrue(
+            "isPageBlank 必须走布局代际缓存",
+            js.contains("blankCache"),
+        )
+    }
+
+    @Test
     fun `翻页与重排的 offset 采样纪律（A1 单次采样）`() {
         val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
 

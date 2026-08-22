@@ -309,6 +309,7 @@
   function currentGeometry() { return geometry(viewW(), viewH()); }
 
   function prepare() {
+    layoutGen += 1; // 布局代际 +1：列几何变化后空白页缓存全部作废
     var el = scrollEl();
     if (!el) return;
     var g = currentGeometry();
@@ -389,7 +390,14 @@
     return false;
   }
 
-  function isPageBlank(page) {
+  // 与桌面 paged.js 同判据：命中数达到 ceil(25% × 总采样) 后，无论剩余采样
+  // 如何占比都不可能 <25%，可提前判定非空白；判定数学的边界由
+  // tests/js/paged-blank.test.js 锁定（双端同构）。
+  function nonBlankThreshold(totalSamples) {
+    return Math.ceil(0.25 * totalSamples);
+  }
+
+  function scanPageBlank(page) {
     var el = scrollEl();
     if (!el) return false;
     var m = measure();
@@ -399,21 +407,39 @@
     var h = el.clientHeight;
     if (w <= 0 || h <= 0) return false;
     var er = el.getBoundingClientRect();
-    var hits = 0, samples = 0, topHits = 0;
     var xs = m.step === 2 ? [0.15, 0.35, 0.65, 0.85] : [0.25, 0.5, 0.75];
-    for (var fy = 0; fy < 5; fy++) {
-      for (var fx = 0; fx < xs.length; fx++) {
-        samples++;
-        var x = er.left + Math.max(2, Math.min(w - 2, w * xs[fx]));
-        var y = er.top + Math.round(h * [0.06, 0.2, 0.4, 0.6, 0.8][fy]);
+    var rows = [0.06, 0.2, 0.4, 0.6, 0.8];
+    var threshold = nonBlankThreshold(xs.length * rows.length);
+    var hits = 0;
+    for (var ry = 0; ry < rows.length; ry++) {
+      for (var xi = 0; xi < xs.length; xi++) {
+        var x = er.left + Math.max(2, Math.min(w - 2, w * xs[xi]));
+        var y = er.top + Math.round(h * rows[ry]);
         if (hitAt(x, y)) {
+          if (ry === 0) return false; // 顶行有内容：直接非空白
           hits++;
-          if (fy === 0) topHits++;
+          if (hits >= threshold) return false; // 占比已达标：提前非空白
         }
       }
     }
-    if (topHits > 0) return false;
-    return hits / samples < 0.25;
+    return true;
+  }
+
+  // 空白判定缓存：同一布局代际内页面空白性不变，翻页/跳页不再重复支付
+  // 采样成本；prepare()（字号/窗口/双页/图片重排）推进 layoutGen 作废缓存。
+  var layoutGen = 0;
+  var blankCache = {};
+  var blankCacheGen = -1;
+
+  function isPageBlank(page) {
+    if (blankCacheGen !== layoutGen) {
+      blankCache = {};
+      blankCacheGen = layoutGen;
+    }
+    if (page in blankCache) return blankCache[page];
+    var verdict = scanPageBlank(page);
+    blankCache[page] = verdict;
+    return verdict;
   }
 
   function skipToContent(page, dir) {
