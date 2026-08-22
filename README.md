@@ -4,6 +4,16 @@
   <img src="docs/logo/ankeshelf-logo.png" alt="安科书架 AnkeShelf" width="160" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/gighi-947/anke-shelf/actions/workflows/windows.yml"><img src="https://github.com/gighi-947/anke-shelf/actions/workflows/windows.yml/badge.svg" alt="Windows CI" /></a>
+  <a href="https://github.com/gighi-947/anke-shelf/actions/workflows/android.yml"><img src="https://github.com/gighi-947/anke-shelf/actions/workflows/android.yml/badge.svg" alt="Android CI" /></a>
+  <a href="https://github.com/gighi-947/anke-shelf/actions/workflows/contracts.yml"><img src="https://github.com/gighi-947/anke-shelf/actions/workflows/contracts.yml/badge.svg" alt="Contracts CI" /></a>
+  <a href="https://github.com/gighi-947/anke-shelf/releases"><img src="https://img.shields.io/github/v/release/gighi-947/anke-shelf" alt="Latest Release" /></a>
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Android-blue" alt="Platform: Windows | Android" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue" alt="License: AGPL-3.0" /></a>
+  <a href="https://github.com/gighi-947/anke-shelf/stargazers"><img src="https://img.shields.io/github/stars/gighi-947/anke-shelf" alt="Stars" /></a>
+</p>
+
 面向安科读者的跨平台阅读器：**把站点作品下载到本地 → 转换为 EPUB /
 原生书 → 还原安科排版 → 舒适阅读与追更**。NGA 下载与骨碌碌公开书籍转换为标准 EPUB 均支持 Windows 与 Android。两端共享同一套数据契约
 （书架 / 进度 / 标注 / 设置 / 统计），分别独立开发与发布。

@@ -71,6 +71,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-22 docs：README 顶部增加徽章行
+
+- Logo 下方新增居中徽章行：Windows / Android / Contracts 三条 CI 状态
+  （GitHub 原生 workflow badge，链接到对应 workflow 页）、最新 Release、
+  平台（Windows | Android）、AGPL-3.0 许可证（链接 LICENSE）、Stars。
+- 全部采用动态徽章（shields.io / GitHub Actions），无静态版本号，
+  不新增文档漂移面；双端版本线仍以 README 版本表为唯一事实源。
+- 7 个徽章 URL 均已逐一验证（HTTP 200）。
+
 ### 2026-08-22 win/android：防御性编程审查清理批（第二十二批）
 
 背景：按“设计前提退化成运行时补丁 / 名义安全分支 / 投机抽象 / 碎片化控制流”
