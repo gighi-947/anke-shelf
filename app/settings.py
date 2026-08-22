@@ -18,7 +18,7 @@ DEFAULTS: dict[str, Any] = {
     "font_size": 18,
     "line_height": 1.8,
     "font_family": "reader",
-    "custom_font": "sys:weidqczfkyxk.ttf",  # 内置默认字体
+    "custom_font": "sys:weidqczfkyxk.woff2",  # 内置默认字体
     "book_fonts": {},
     "custom_bg": "",        # 自定义背景色（空=跟随主题）
     "custom_primary": "",   # 自定义主题色（空=跟随主题）
@@ -64,7 +64,7 @@ DEFAULTS: dict[str, Any] = {
 
 # 老版本设置一次性迁移：settings_version < 3 时切到新默认值
 _LEGACY_DEFAULTS = {
-    "custom_font": "sys:weidqczfkyxk.ttf",
+    "custom_font": "sys:weidqczfkyxk.woff2",
     "pagination": False,  # 旧版默认误为分页，迁移到滚动阅读
     "settings_version": 3,
 }

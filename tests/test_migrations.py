@@ -34,7 +34,7 @@ class MigrationsTest(unittest.TestCase):
             s.load()
             self.assertEqual(s.get("settings_version"), 3)
             self.assertFalse(s.get("pagination"))
-            self.assertEqual(s.get("custom_font"), "sys:weidqczfkyxk.ttf")
+            self.assertEqual(s.get("custom_font"), "sys:weidqczfkyxk.woff2")
             disk = f.read_text(encoding="utf-8")
             self.assertIn('"settings_version": 3', disk)
 

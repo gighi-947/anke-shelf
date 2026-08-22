@@ -31,7 +31,7 @@
     var style = document.createElement('style');
     style.textContent =
       '@font-face{font-family:"LXGW WenKai";' +
-      'src:url("file:///android_asset/fonts/LXGWWenKai-Regular.ttf") format("truetype");' +
+      'src:url("file:///android_asset/fonts/LXGWWenKai-Regular.woff2") format("woff2");' +
       'font-weight:400;font-display:swap;}';
     document.head.appendChild(style);
     if (document.fonts && document.fonts.load) {
