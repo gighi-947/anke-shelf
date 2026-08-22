@@ -14,8 +14,8 @@ EPUB / 原生书 → 还原安科排版 → 舒适阅读与追更。GNU AGPL-3.0
 
 | 端 | 当前版本 | 技术栈 | 版本源位置 |
 | --- | --- | --- | --- |
-| Windows | **v1.5.1** | Python + Web SPA + pywebview 壳 | 多文件散落（`app/__init__.py`、bridge MOCK、版本测试、README 等，升级按清单全量替换） |
-| Android | **android-v1.2.0** | Kotlin + Compose + WebView 渲染内核 | **唯一定义**：`android/app/build.gradle.kts` |
+| Windows | **v1.6.1** | Python + Web SPA + pywebview 壳 | 代码：`app/__init__.py`；文档权威：README 版本表 |
+| Android | **android-v1.3.1** | Kotlin + Compose + WebView 渲染内核 | **唯一定义**：`android/app/build.gradle.kts` |
 
 - 版本线分离：Windows `vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；Android `android-vX.Y.Z` +
   `AnkeShelf-vX.Y.Z-android.apk`；两端 SOP 独立，不混用。
@@ -176,17 +176,17 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 - 依赖：`requirements.in` / `requirements-build.in` 人工维护，pip-tools 生成带哈希
   `.lock`（3.12 基线，3.14 实测可装）；CI 与打包均按 lock 安装。
 
-## 10. 当前状态（2026-08-20 快照）
+## 10. 当前状态（2026-08-22 快照）
 
-- 基线 `main`（HEAD 以 `git log` 为准）；`win/gululu-reader-interaction` 已并入主干；
-  最近主线为骨碌碌适配（v1.3.0 / v1.5.1）、五批接手风险修复、P5 批次（P5-A/B/D/E1/E2 双端）、NGA 主题自适应与深浅色下载选项移除与
-  多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）；
-  文档漂移治理已强化（AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）。
-- 版本线：Windows v1.5.1、Android android-v1.2.0，均已发布。
-- 待办与延后项见 DevLog §5 与 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
-  （真实待办：Android 全量对齐批 1–9 已发布 `android-v1.2.0`，剩余真机手工验证；
-  P5-C 自动翻章与 P5-F 楼中楼暂不实施；P4 参考仓库 3/8 待补：
-  readest / Kavita / LibreraReader；其余大文件拆分等保持延后）。
+- 基线 `main`（HEAD 以 `git log` 为准）；最近主线：v1.6.0 / android-v1.3.0
+  发布 → 2026-08-22 防御性编程审查清理批（进度错误出口 / store 损坏显式化
+  （IoError 写保护）/ ApiContext 必填 / 恢复锚点单点化（修 crossJump ratio
+  破洞）/ 双端死表面删除）→ 性能专项（A1 翻页单次采样 / A2 空白页判定提前
+  退出+代际缓存 / 内置字体 WOFF2 无损 -61%）→ 发布 v1.6.1 / android-v1.3.1。
+- 待办与延后项见 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
+  （性能 A3 分页二分去滚动位移：评估后暂缓；字体子集化（视觉权衡）未做，
+  WOFF2 已落地；P5-C 自动翻章与 P5-F 楼中楼暂不实施；P4 参考仓库 3/8
+  待补：readest / Kavita / LibreraReader；其余大文件拆分等保持延后）。
 
 ## 11. 已知问题与风险
 

@@ -1,7 +1,7 @@
 # AnkeShelf 架构整合路线图（下阶段任务参考）
 
-> 文档日期：2026-08-20（状态核对）
-> 当前版本：Windows v1.5.1，Android android-v1.2.0（精确 HEAD 以 `git log` 为准）
+> 文档日期：2026-08-22（状态核对）
+> 当前版本：Windows v1.6.1，Android android-v1.3.1（精确 HEAD 以 `git log` 为准）
 > 来源文档：`I:\AnkeShelf_Review_Archive` 下架构改进提案 / review1 / review2 / 架构债清理清单
 >
 > 本文档是四份外部文档与仓库现状的整合产物，只做方向指引，不含代码改动。
@@ -26,10 +26,12 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 当前优先级：
 
-1. 完成 Android 全量对齐专项的真机手工验证（批 1–9 已代码完成，见
-   `ANDROID_PARITY_PLAN.md`）；P5-C/F 等待用户放行后再实施；
-2. 补齐 P4 参考仓库剩余研究；
-3. 其余事项按“触发式引入”原则延后，不提前动工。
+1. 阅读链路性能 A3（分页二分去滚动位移）：可行性已评估（中风险，
+   需完整“退出重进 ×3”进度回归），按需立项；
+2. 字体子集化（26MB→2-4MB 的进一步收益）：需先拍板生僻字回退系统
+   字体的视觉权衡，WOFF2 无损方案已先行落地；
+3. P5-C/F 等待用户放行后再实施；P4 参考仓库剩余研究（3/8）按需补齐；
+4. 其余事项按“触发式引入”原则延后，不提前动工。
 
 ---
 
@@ -39,7 +41,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 主干状态 | `main` 持续推进；PR #13（合并基线 `4b77ded`）之后完成骨碌碌阅读交互 v1.4.0、五批接手风险修复、P5 批次（P5-A/B/D/E 已完成；P5-C/F 暂缓）与 2026-08-19 多轮架构收敛（ApiError / TaskManager / reader-lite 状态机 / MOCKS 移除）；2026-08-20 起进入 Android 全量对齐专项（见 `ANDROID_PARITY_PLAN.md`，批 1–9 已全部落地并发布 `android-v1.2.0`）（HEAD 以 `git log` 为准） |
+| 主干状态 | `main` 持续推进；v1.6.0 / android-v1.3.0 发布后完成 2026-08-22 防御性编程审查清理批（进度错误出口 / store 损坏显式化 / ApiContext 必填 / 恢复锚点单点 / 双端死表面删除）与性能专项（A1 翻页单次采样 / A2 空白页判定 / 字体 WOFF2 -61%），已发布 v1.6.1 / android-v1.3.1（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 328 项（3.14：仅环境性 main_guard 失败（沙箱 tasklist 不可用）；bundled 3.12：全过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 60 methods + `bridge-contract`（桥版本 1 / 能力含 annotation·assist·gululu）+ `reader-lite-parts`（9 parts / 动态字节校验）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-save`（进度写入唯一出口）+ `reader-session` + `nga-cookie` OK |
@@ -64,7 +66,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | `android/.../ui/reader/native/NativeReaderScreen.kt` | 1116 | 外壳已拆 Chrome / Gululu；恢复锚点单点 RestoreAnchor |
 | `android/.../ui/download/DownloadScreen.kt` | 352 | 已拆分面板 |
 | `android/.../assets/reader/reader-lite.js` | 1862 | 现役渲染内核（parts 9 模块；状态机 Step 0–4 + 跨端折叠/骨碌碌能力；2026-08-22 清理死表面） |
-| `web/js/reader.js` | 759 | 核心编排；进度写入经 reader-save.js 唯一出口 |
+| `web/js/reader.js` | 766 | 核心编排；进度写入经 reader-save.js 唯一出口 |
 | `web/js/nga_download.js` | 719 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
 | `app/gululu_service.py` | 488 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |
 | `app/gululu_update.py` | 429 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
@@ -76,8 +78,8 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 债 | 证据 | 影响 |
 | --- | --- | --- |
-| 静默失败（核心已解决） | `readJsonStore` / `StoreLoadResult` / `RepoResult` / `ChapterReadResult` 已显式化；残余 null 清理按 P2 现状收敛 | 失败原因可区分；残余 null 属低风险收尾 |
-| 防御式代码（部分解决） | `Settings.get(key): Any?` 已删除；`BookSession` 5 lambda 为统一只读接口设计保留 | 调用关系已显式化，剩余为设计取舍 |
+| 静默失败（已收敛） | 存储层全链路显式化：六 store Corrupt/IoError 经 `loadGuarded` 报告 issue（书架横幅）+ IoError 写保护；Web 进度/标注写入统一错误出口（ProgressSaver）；ApiContext 服务必填（31 处守卫删除） | 失败用户可见、不覆盖原文件；残余 null 属低风险收尾 |
+| 防御式代码（大部分解决） | `Settings.get(key): Any?` 已删除；2026-08-22 审查清理批删除双端死表面与重复设防（恢复锚点单点化、死导出/尸体代码）；`BookSession` lambda 为两个真实实现的设计取舍保留 | 调用关系已显式化，剩余为设计取舍 |
 | 桥协议无版本（已解决） | ready 握手 `{bridgeVersion:1, capabilities}` + `BridgeProtocol.isCompatible`；ProgressModel 纯决策可回放 | 协议错配在运行期显式失败并记诊断 |
 | API 人工同步（已解决） | 后端 `_HANDLERS` 与前端 `METHODS` 自动对照；`bridge.js` MOCKS 已移除，错误统一走 `ApiError` + HTTP | API 错误不再依赖前端内层 ok 判断 |
 | 正则 HTML 清洗（已解决） | `sanitizeReaderBody()` 改为 jsoup DOM 白名单清洗（P2 已完成） | 不可信 HTML 清洗可证明 |

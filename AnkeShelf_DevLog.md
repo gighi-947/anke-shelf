@@ -94,6 +94,14 @@
   （APK 内仅 woff2、A1/A2 守卫标记在位）。
 - 标签 `v1.6.1` 与 `android-v1.3.1` 指向发布提交，GitHub Release 资产
   名纯 ASCII。
+- 全量文档漂移检查（AGENTS §5 清单逐项 + check-doc-drift.ps1）并修复：
+  使用说明.txt 版本头 v1.5.1→v1.6.1（重建 zip 资产覆盖上传）与字体
+  扩展名补 woff/woff2；MAINTENANCE_GUIDE §1 版本表 / §10 当前状态
+  刷新至 v1.6.1/android-v1.3.1；ROADMAP 顶部核对块（8-20/v1.5.1→
+  8-22/v1.6.1）、§1 当前优先级（A3/字体子集化待拍板）、§2.2 reader.js
+  行数、§2.3 架构债前两行证据收敛；ANDROID_ARCHITECTURE 版本表补
+  v1.3.0/v1.3.1 两行（v1.3.0 行为既有缺失）；SECURITY.md 支持表更新；
+  AGENTS §5 清单修正 DevLog §5 的失效引用（待办以 ROADMAP 为准）。
 
 ### 2026-08-22 win/android：性能优化第三项——内置字体 TTF→WOFF2 无损压缩（第二十五批）
 

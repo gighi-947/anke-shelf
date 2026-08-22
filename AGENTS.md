@@ -97,8 +97,8 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   生成高漂移快照，再人工核对。`docs/DEVLOG_ARCHIVE.md`、`docs/archive/` 等归档只保留历史，不改写。
   **高漂移检查清单（非归档文档）**：
   - `AnkeShelf_DevLog.md`：§1 当前状态（日期 / HEAD / 版本线 / 测试计数 /
-    发布状态）、§4 最近流水（本次改动必补记）、§5 待办与延后项（已完成项不得
-    继续标“剩余”）；
+    发布状态）、§4 最近流水（本次改动必补记）；待办与延后项以
+    `docs/ARCHITECTURE_ROADMAP.md` 为准（已完成项不得继续标“剩余”）；
   - `docs/ARCHITECTURE_ROADMAP.md`：顶部核对块（HEAD 推进链）、§2.1 版本与
     测试基线表、§2.2 代码规模热点行数表、§2.3 架构债表状态、§3 各 P 项状态；
   - `docs/MAINTENANCE_GUIDE.md`：§1 版本线、§7 测试体系与基线、§10 当前状态、
