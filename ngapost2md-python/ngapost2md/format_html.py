@@ -71,9 +71,9 @@ _NO_IMAGES = False  # 集成层开关：EPUB 中移除全部图片（与 Markdow
 
 # 布局主题色（引用块/楼层卡片/骰子等），light/dark
 NGA_THEME_LIGHT = {"border": "#e0e0e0", "quote_bg": "#f7f7f7", "comment_bg": "#fafafa",
-                   "accent": "#2e86ab", "dice": "#b8860b", "muted": "#888888"}
+                   "floor_bg": "#fafafa", "accent": "#2e86ab", "dice": "#b8860b", "muted": "#888888"}
 NGA_THEME_DARK = {"border": "#3a3a3a", "quote_bg": "#2a2a2a", "comment_bg": "#262626",
-                  "accent": "#5ba3d9", "dice": "#d9b45b", "muted": "#8a8a8a"}
+                  "floor_bg": "#2a2a2a", "accent": "#5ba3d9", "dice": "#d9b45b", "muted": "#8a8a8a"}
 _THEME = NGA_THEME_LIGHT
 
 

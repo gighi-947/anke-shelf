@@ -210,7 +210,7 @@ def _css(theme: str) -> str:
     .nga-floor {
       border: 1px solid color-mix(in srgb, var(--reader-fg, #222) 18%, transparent) !important;
       border-left: 4px solid var(--reader-accent, #77bbee) !important;
-      background: color-mix(in srgb, var(--reader-bg, #fff) 55%, transparent) !important;
+      background: color-mix(in srgb, var(--reader-fg, #222) 6%, transparent) !important;
       padding: 12px 14px !important;
       margin: 14px 0 !important;
       border-radius: 2px !important;
@@ -262,9 +262,10 @@ def _render_floor_html(f, theme: dict, img_src) -> str:
         set_no_images(True)
         img_src = lambda url: url
 
+    floor_bg = theme.get("floor_bg") or theme.get("comment_bg") or theme.get("quote_bg") or "#fafafa"
     floor_style = (
         f'border:1px solid {theme["border"]}; border-left:4px solid {theme["accent"]}; '
-        f'padding:12px 14px; margin:14px 0; border-radius:2px;'
+        f'background:{floor_bg}; padding:12px 14px; margin:14px 0; border-radius:2px;'
     )
     head_style = (
         f'color:{theme["muted"]}; font-size:.82em; border-bottom:1px dotted {theme["border"]}; '

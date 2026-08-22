@@ -77,6 +77,18 @@
 
 ## 4. 最近流水
 
+### 2026-08-22 win：同步检查并修复 NGA 楼层卡片背景与内联兜底（第二十七批续）
+
+- Windows 端 `_css` 的 `.nga-floor` 背景原先写的是
+  `color-mix(in srgb, var(--reader-bg) 55%, transparent)`，与页面背景同色，
+  视觉上等于没有卡底；改为 `var(--reader-fg) 6%`，与 Android / 引用块一致。
+- `app/native_book.py` 楼层内联样式补上 `background` 实色兜底
+  （`floor_bg`：浅 #fafafa / 深 #2a2a2a），并对旧主题 dict 无 `floor_bg`
+  时回退 `comment_bg`/`quote_bg`。
+- `ngapost2md-python/format_html.py` 的 NGA_THEME_LIGHT/DARK 增加
+  `floor_bg` 键，保持 Android `NgaFormatHtml` 与桌面同源一致。
+- 验证：`python -m unittest tests.test_native_book` OK；`py_compile` OK。
+
 ### 2026-08-22 android：修复旧 WebView 上 NGA 楼层卡片边框/背景丢失（第二十七批）
 
 - 真机对比 v1.0.0 与 v1.3.1 截图：v1.3.1 楼层卡片只剩左侧主题色竖线，
