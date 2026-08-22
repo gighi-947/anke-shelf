@@ -14,8 +14,8 @@ EPUB / 原生书 → 还原安科排版 → 舒适阅读与追更。GNU AGPL-3.0
 
 | 端 | 当前版本 | 技术栈 | 版本源位置 |
 | --- | --- | --- | --- |
-| Windows | **v1.6.1** | Python + Web SPA + pywebview 壳 | 代码：`app/__init__.py`；文档权威：README 版本表 |
-| Android | **android-v1.3.1** | Kotlin + Compose + WebView 渲染内核 | **唯一定义**：`android/app/build.gradle.kts` |
+| Windows | **v1.6.2** | Python + Web SPA + pywebview 壳 | 代码：`app/__init__.py`；文档权威：README 版本表 |
+| Android | **android-v1.3.2** | Kotlin + Compose + WebView 渲染内核 | **唯一定义**：`android/app/build.gradle.kts` |
 
 - 版本线分离：Windows `vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；Android `android-vX.Y.Z` +
   `AnkeShelf-vX.Y.Z-android.apk`；两端 SOP 独立，不混用。
@@ -182,7 +182,9 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
   发布 → 2026-08-22 防御性编程审查清理批（进度错误出口 / store 损坏显式化
   （IoError 写保护）/ ApiContext 必填 / 恢复锚点单点化（修 crossJump ratio
   破洞）/ 双端死表面删除）→ 性能专项（A1 翻页单次采样 / A2 空白页判定提前
-  退出+代际缓存 / 内置字体 WOFF2 无损 -61%）→ 发布 v1.6.1 / android-v1.3.1。
+  退出+代际缓存 / 内置字体 WOFF2 无损 -61%）→ 发布 v1.6.1 / android-v1.3.1 →
+  发布 v1.6.2 / android-v1.3.2（修复 NGA 楼层卡片边框/卡底在旧 WebView
+  与 Windows 端不可见）。
 - 待办与延后项见 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
   （性能 A3 分页二分去滚动位移：评估后暂缓；字体子集化（视觉权衡）未做，
   WOFF2 已落地；P5-C 自动翻章与 P5-F 楼中楼暂不实施；P4 参考仓库 3/8

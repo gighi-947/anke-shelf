@@ -11,7 +11,7 @@
 ## 1. 当前状态（2026-08-22）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
-  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；v1.6.0 / android-v1.3.0 已发布；五批接手风险修复已合入；
+  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；v1.6.0 / android-v1.3.0 与 v1.6.1 / android-v1.3.1、v1.6.2 / android-v1.3.2 已发布；五批接手风险修复已合入；
   P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统、
   P5-E1 Cookie 粘贴解析、P5-E2 双端应用内登录（Android WebView +
   Windows pywebview 二级窗）、NGA 主题自适应
@@ -26,10 +26,10 @@
   性能优化 A1 翻页单次采样（第二十三批）、A2 空白页判定
   提前退出+代际缓存（第二十四批）、内置字体 WOFF2 无损压缩
   -61%（第二十五批，见 §4）；性能专项收尾并发布
-  v1.6.1 / android-v1.3.1（第二十六批，见 §4）。
+  v1.6.1 / android-v1.3.1（第二十六批）、v1.6.2 / android-v1.3.2（第二十八批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
-- 版本线：Windows `v1.6.1`（已发布，AnkeShelf-v1.6.1.zip）；
-  Android `android-v1.3.1`（已发布，AnkeShelf-v1.3.1-android.apk）。
+- 版本线：Windows `v1.6.2`（已发布，AnkeShelf-v1.6.2.zip）；
+  Android `android-v1.3.2`（已发布，AnkeShelf-v1.3.2-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-22 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 328 项
     （本机 Python 3.14：1 项环境性错误 `test_main_guard`
@@ -76,6 +76,18 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-22 release：v1.6.2 / android-v1.3.2 发布（第二十八批）
+
+- 版本号：Windows `app/__init__.py` → 1.6.2；Android
+  `build.gradle.kts` → versionCode 6 / versionName 1.3.2。
+- 发布原因：NGA 楼层卡片在旧 WebView（Android 10 实机）丢灰边/卡底；
+  Windows 端卡底使用 `--reader-bg` 导致不可见；双端修复后发布补丁版。
+- 构建：`AnkeShelf-v1.6.2.zip`（约 42.7MB，sha256 已生成）、
+  `AnkeShelf-v1.3.2-android.apk`（约 12.7MB，sha256 已生成）。
+- Release：GitHub Releases `v1.6.2` / `android-v1.3.2` 已创建；标签已推送。
+- 全量文档漂移扫描后同步：README / CHANGELOG / VERSIONING / SECURITY /
+  MAINTENANCE_GUIDE / ROADMAP / ANDROID_ARCHITECTURE / 使用说明.txt。
 
 ### 2026-08-22 win：同步检查并修复 NGA 楼层卡片背景与内联兜底（第二十七批续）
 

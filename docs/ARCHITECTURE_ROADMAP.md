@@ -1,7 +1,7 @@
 # AnkeShelf 架构整合路线图（下阶段任务参考）
 
 > 文档日期：2026-08-22（状态核对）
-> 当前版本：Windows v1.6.1，Android android-v1.3.1（精确 HEAD 以 `git log` 为准）
+> 当前版本：Windows v1.6.2，Android android-v1.3.2（精确 HEAD 以 `git log` 为准）
 > 来源文档：`I:\AnkeShelf_Review_Archive` 下架构改进提案 / review1 / review2 / 架构债清理清单
 >
 > 本文档是四份外部文档与仓库现状的整合产物，只做方向指引，不含代码改动。
@@ -41,7 +41,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 | 项 | 现状 |
 | --- | --- |
-| 主干状态 | `main` 持续推进；v1.6.0 / android-v1.3.0 发布后完成 2026-08-22 防御性编程审查清理批（进度错误出口 / store 损坏显式化 / ApiContext 必填 / 恢复锚点单点 / 双端死表面删除）与性能专项（A1 翻页单次采样 / A2 空白页判定 / 字体 WOFF2 -61%），已发布 v1.6.1 / android-v1.3.1（HEAD 以 `git log` 为准） |
+| 主干状态 | `main` 持续推进；v1.6.0 / android-v1.3.0 发布后完成 2026-08-22 防御性编程审查清理批（进度错误出口 / store 损坏显式化 / ApiContext 必填 / 恢复锚点单点 / 双端死表面删除）与性能专项（A1 翻页单次采样 / A2 空白页判定 / 字体 WOFF2 -61%），已发布 v1.6.1 / android-v1.3.1；随后发布 v1.6.2 / android-v1.3.2 修复 NGA 楼层卡片边框/卡底在旧 WebView 与 Windows 端不可见的问题（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
 | Windows Python 单测 | 328 项（3.14：仅环境性 main_guard 失败（沙箱 tasklist 不可用）；bundled 3.12：全过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 60 methods + `bridge-contract`（桥版本 1 / 能力含 annotation·assist·gululu）+ `reader-lite-parts`（9 parts / 动态字节校验）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-save`（进度写入唯一出口）+ `reader-session` + `nga-cookie` OK |
@@ -59,7 +59,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | `android/.../data/Html5Entities.kt` | 2130 | 机械生成表，正常 |
 | `android/.../ui/reader/WebViewChapterView.kt` | 895 | 桥与宿主；已审查并补充失败日志、资源拦截 |
 | `android/.../ui/shelf/BookshelfScreen.kt` | 793 | 书架页（含 store 损坏横幅），未拆分 |
-| `android/.../data/NativeBook.kt` | 636 | 原生书数据层 |
+| `android/.../data/NativeBook.kt` | 632 | 原生书数据层 |
 | `android/.../ui/settings/SettingsScreen.kt` | 564 | 已按 Panel 拆分 |
 | `android/.../ui/search/SearchScreen.kt` | 565 | 搜索页，未拆分 |
 | `android/.../data/Epub.kt` | 574 | EPUB 数据层 |
