@@ -4,8 +4,9 @@
  * #paged-scroll 应用 CSS multi-column，scrollLeft 按 advance 翻页。
  */
 
-/* 内置字体（LXGW WenKai 26MB）改为 JS 动态注入，避免阻塞 onPageFinished
-   导致首屏/换章等待字体解析；字体就绪后由 JS 重排保位。 */
+/* 内置字体（LXGW WenKai WOFF2 10MB，无损压缩自原 26MB TTF）改为 JS 动态
+   注入，避免阻塞 onPageFinished 导致首屏/换章等待字体解析；字体就绪后由
+   JS 重排保位。 */
 
 :root {
     --reader-bg: #ffffff;

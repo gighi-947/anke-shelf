@@ -9,10 +9,14 @@ from .paths import data_dir, web_dir
 
 FONT_EXTS = {".ttf", ".otf", ".ttc", ".woff", ".woff2"}
 
+# 旧逻辑名别名：内置字体由 TTF 换为 WOFF2 后，已保存设置里的
+# sys:weidqczfkyxk.ttf 继续解析到新文件，老用户升级不丢字体。
+_FONT_ALIASES = {"weidqczfkyxk.ttf": "weidqczfkyxk.woff2"}
+
 # (label, filename) pairs; only entries that exist on the current machine are listed.
 _SYSTEM_FONTS = [
-    # 内置默认字体（随发行版打包在 web/fonts/）
-    ("weidqczfkyxk", "weidqczfkyxk.ttf"),
+    # 内置默认字体（WOFF2 无损压缩，canonical 源 assets/fonts）
+    ("weidqczfkyxk", "weidqczfkyxk.woff2"),
     ("Microsoft YaHei", "msyh.ttc"),
     ("Microsoft YaHei Light", "msyhl.ttc"),
     ("SimSun", "simsun.ttc"),
@@ -55,8 +59,8 @@ def _bundled_font(fname: str) -> Optional[Path]:
     p = web_dir() / "fonts" / fname
     if p.is_file():
         return p
-    if fname == "weidqczfkyxk.ttf":
-        c = _assets_fonts_dir() / "LXGWWenKai-Regular.ttf"
+    if fname == "weidqczfkyxk.woff2":
+        c = _assets_fonts_dir() / "LXGWWenKai-Regular.woff2"
         if c.is_file():
             return c
     return None
@@ -115,7 +119,7 @@ def register_font(src: str) -> dict:
 
 def resolve_font_file(kind: str, name: str) -> Optional[Path]:
     """Resolve a font request to a real file, using a strict allowlist."""
-    safe_name = Path(name).name
+    safe_name = _FONT_ALIASES.get(Path(name).name, Path(name).name)
     if kind == "system":
         for _, fname in _SYSTEM_FONTS:
             if fname.lower() == safe_name.lower():

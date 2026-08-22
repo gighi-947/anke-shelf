@@ -22,7 +22,7 @@ class SettingsMigrationTest(unittest.TestCase):
         self.assertEqual(s.get("theme_mode"), "")  # 默认跟随 theme
         self.assertEqual(s.get("dual_page"), False)
         self.assertEqual(s.get("auto_dual"), True)
-        self.assertEqual(s.get("custom_font"), "sys:weidqczfkyxk.ttf")
+        self.assertEqual(s.get("custom_font"), "sys:weidqczfkyxk.woff2")
         self.assertEqual(s.get("custom_bg"), "")
         self.assertEqual(s.get("custom_primary"), "")
         self.assertEqual(s.get("custom_accent"), "")
@@ -38,7 +38,7 @@ class SettingsMigrationTest(unittest.TestCase):
         s.load()
         self.assertEqual(s.get("theme"), "light")  # 用户其他偏好保留
         self.assertEqual(s.get("pagination"), False)  # 新默认：滚动阅读
-        self.assertEqual(s.get("custom_font"), "sys:weidqczfkyxk.ttf")  # 新默认字体
+        self.assertEqual(s.get("custom_font"), "sys:weidqczfkyxk.woff2")  # 内置默认字体（WOFF2）
         self.assertEqual(s.get("settings_version"), 3)
         saved = json.loads(self.path.read_text(encoding="utf-8"))
         self.assertEqual(saved["settings_version"], 3)
