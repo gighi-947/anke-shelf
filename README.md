@@ -113,7 +113,8 @@
 - **设置**：外观 / 阅读 / 操作 / 统计 / 数据 / 帮助六个一级菜单，移动端
   大屏自动左右分栏；内置使用说明、关于信息与「校验数据完整性」
 - **安全**：`allowBackup=false`，NGA 凭据存私有目录；WebView 仅加载本地资产
-  （CSP `script-src 'self'`、禁文件访问、仅放行 https 图片）；debug 构建
+  （禁文件访问 + 章节内容 jsoup 白名单清洗 + 网络出口门禁：NGA 图床主机名
+  精确匹配代理、明文 http 拒绝）；debug 构建
   开启 StrictMode / LeakCanary 便于排障
 
 ---

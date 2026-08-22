@@ -26,12 +26,13 @@
   性能优化 A1 翻页单次采样（第二十三批）、A2 空白页判定
   提前退出+代际缓存（第二十四批）、内置字体 WOFF2 无损压缩
   -61%（第二十五批，见 §4）；性能专项收尾并发布
-  v1.6.1 / android-v1.3.1（第二十六批）、v1.6.2 / android-v1.3.2（第二十八批，见 §4）。
+  v1.6.1 / android-v1.3.1（第二十六批）、v1.6.2 / android-v1.3.2（第二十八批）；
+  安全对齐评估与修复批（第二十九批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.6.2`（已发布，AnkeShelf-v1.6.2.zip）；
   Android `android-v1.3.2`（已发布，AnkeShelf-v1.3.2-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-22 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 328 项
+  - Windows Python：`python -m unittest discover tests` = 330 项
     （本机 Python 3.14：1 项环境性错误 `test_main_guard`
     ——tasklist 在本沙箱返回 None，clean main 同样失败、与代码无关；
     bundled Python 3.12：全量通过）；
@@ -44,7 +45,7 @@
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/paged-blank.test.js`（空白页判定边界）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 217 项（216 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 222 项（221 过 / 1 跳）；
     DisciplineTest 11 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
@@ -76,6 +77,51 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-22 win/android：安全对齐评估与修复批（第二十九批）
+
+背景：按"声明 ↔ 实现"对照做了一次安全对齐评估（结论：总体良好，
+1 个真实实现缺陷 + 1 处声明漂移 + 若干低危残留），本批落地全部可项。
+
+- **修复（android）图床白名单子串匹配缺陷（中危）**：阅读器拦截器原用
+  `url.contains("img.nga.cn")` 等子串匹配，恶意 EPUB 可借
+  `https://evil.com/img.nga.cn/x.gif` 命中并经 ngaHeaders（携带 NGA
+  uid/cid Cookie）把凭据发往任意主机。新增 `ui/reader/ReaderEgress.kt`
+  与桌面 `_is_nga_image_url` 同构的主机名精确后缀匹配
+  （`host == s` 或 `host.endsWith(".$s")`），ReaderEgressTest 锁定
+  子串伪造 / 后缀仿冒 / 大小写 / 畸形 URL 边界。
+- **出口门禁（android）**：明文 http 子资源一律拒绝（404 空响应）——
+  应用全 https，此前章节内容热链可经 mixed-content 加载明文图片，
+  与归档审查"无明文流量"结论相悖；https 外链图片保持放行（与桌面
+  CSP `img-src https:` 同策略；骨碌碌在线图片本就是任意 https 图床，
+  不做主机枚举白名单）。评估中原设想的"拒绝式全白名单"因此调整为
+  明文门禁——凭据外带通道已由主机名修复关闭，全白名单只剩反跟踪
+  价值却会破坏内容兼容。
+- **API 分发收口（win）**：server.py 原 `getattr(self.api, name, None)`
+  分发会把对象任意公共成员（`fullscreen` property、`register` 方法等）
+  暴露成 /api 端点；改为 `ApiRegistry.handler(name)` 只认注册清单
+  （api_manifest 即完整暴露面），`__getattr__` 仅供进程内直调保留。
+  红测试先行（非 handler 属性/方法经 /api 必须 404）。
+- **声明对齐（docs）**：README Android 安全条目移除未实现的
+  "CSP script-src 'self'"（2026-08-08 已实测 file:// 下 'self' 拦 asset
+  而放弃），改为实际防线（jsoup 白名单 + 资源拦截 + 出口门禁）；
+  SECURITY.md 同步（含令牌校验范围为 /api 路由的说明、CSP 不采用的
+  原因与重评估条件）。
+- **依赖审计基线（ci）**：nightly 接入 pip-audit（advisory，
+  continue-on-error，不阻塞）；仓库 Dependabot vulnerability alerts
+  已开启（API 确认 204）。
+- **CSP 路线 B（原型方案，待真机验证后决定落地）**：reader 壳已确认
+  零内联脚本（唯一 `<script>` 为外部 src，ReaderHtml.kt:205），拟用
+  显式 source 规避当年 'self' 失败：
+  `default-src 'none'; script-src file:; style-src 'unsafe-inline' file:; img-src file: data: https:; font-src file:`
+  （不给 unsafe-inline → 注入的内联脚本在浏览器层失效；style 内联
+  变量为首帧需要，与桌面同策略）。未验证点 = WebView 对 `file:`
+  scheme-source 的匹配行为，须真机确认 reader.css/reader-lite.js/
+  字体不被拦（15 分钟：加 meta → assembleDebug → 装真机开书看排版
+  与 [state] ready 日志）。真机不便，本批未盲合。
+- 验证：Android JVM 222 项（221 过/1 跳，+ReaderEgressTest 5 项）+
+  assembleDebug；Windows Python 330 项（329 过 + 既有环境项，+分发
+  收口 2 项）；api-contract 60 方法一致。
 
 ### 2026-08-22 release：v1.6.2 / android-v1.3.2 发布（第二十八批）
 

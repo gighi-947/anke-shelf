@@ -43,9 +43,9 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | --- | --- |
 | 主干状态 | `main` 持续推进；v1.6.0 / android-v1.3.0 发布后完成 2026-08-22 防御性编程审查清理批（进度错误出口 / store 损坏显式化 / ApiContext 必填 / 恢复锚点单点 / 双端死表面删除）与性能专项（A1 翻页单次采样 / A2 空白页判定 / 字体 WOFF2 -61%），已发布 v1.6.1 / android-v1.3.1；随后发布 v1.6.2 / android-v1.3.2 修复 NGA 楼层卡片边框/卡底在旧 WebView 与 Windows 端不可见的问题（HEAD 以 `git log` 为准） |
 | 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
-| Windows Python 单测 | 328 项（3.14：仅环境性 main_guard 失败（沙箱 tasklist 不可用）；bundled 3.12：全过） |
+| Windows Python 单测 | 330 项（3.14：仅环境性 main_guard 失败（沙箱 tasklist 不可用）；bundled 3.12：全过） |
 | JS 契约测试 | `textpos` 15 cases + `api-contract` 60 methods + `bridge-contract`（桥版本 1 / 能力含 annotation·assist·gululu）+ `reader-lite-parts`（9 parts / 动态字节校验）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-save`（进度写入唯一出口）+ `reader-session` + `nga-cookie` OK |
-| Android JVM 单测 | 217 项（216 过 / 1 跳；2026-08-22 实跑复核） |
+| Android JVM 单测 | 222 项（221 过 / 1 跳；2026-08-22 实跑复核） |
 | Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
 | UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
 | CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |

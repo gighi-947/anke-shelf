@@ -22,6 +22,13 @@ jobs:
         run: pip install -r requirements.lock
       - name: Full unit tests (incl. security regression)
         run: python -m unittest discover tests
+      - name: Dependency audit (advisory, 不阻塞)
+        # 依赖漏洞审计基线：发现即在 nightly 汇总中可见，不使流水线失败；
+        # 修复经 Dependabot PR / 手动升级跟踪（Dependabot alerts 已开启）。
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.lock
       - name: Performance benchmark
         run: python -m tests.performance.bench
       - uses: actions/upload-artifact@v7
