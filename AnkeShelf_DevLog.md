@@ -77,6 +77,17 @@
 
 ## 4. 最近流水
 
+### 2026-08-22 docs：仓库扫描与宣传帖模板版本修正（第二十六批补记）
+
+- 应要求检查扫描仓库改动：工作区干净、本地与 origin/main 同步、无
+  未推送提交、无打开 PR；`git diff --check` 无空白错误。
+- 运行 `scripts/check-doc-drift.ps1` 抽查文档漂移，发现并修复
+  `nga-post-template.bbcode` 中“当前版本”小节仍为 v1.6.0 / android-v1.3.0，
+  与标题和安装使用小节的 v1.6.1 / android-v1.3.1 不一致；已改为 v1.6.1 /
+  android-v1.3.1 并补充性能专项说明（采样减半 / 空白页缓存 / 字体 WOFF2）。
+- 复核 README / CHANGELOG / DevLog §1 / MAINTENANCE_GUIDE §1 / ROADMAP §2.1
+  版本与测试基线：均已为 v1.6.1 / android-v1.3.1；CI 全绿。
+
 ### 2026-08-22 release：性能专项收尾，v1.6.1 / android-v1.3.1 发布（第二十六批）
 
 - 性能优化专项结束（A1 翻页单次采样、A2 空白页判定、字体 WOFF2 三项
