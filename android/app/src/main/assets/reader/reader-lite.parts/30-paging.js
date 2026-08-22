@@ -134,10 +134,11 @@
       return;
     }
     gotoPage(skipToContent(m.current + (dir > 0 ? 1 : -1), dir));
-    report(true);
+    // 翻页只采样一次：页顶 offset 同时供落盘（report）与翻页锚点复用。
+    var o = currentOffsetSafe();
+    report(true, o);
     // 分页模式没有滚动事件，翻页时刷新骨碌碌上下文（当前楼/视效/背景/自动音乐）
     reportGululuContext();
-    var o = currentOffsetSafe();
     try {
       var mm = measure();
       log('[flip] after cur=' + mm.current + '/' + mm.total + ' sl=' + scrollEl().scrollLeft + ' off=' + o);
@@ -327,10 +328,12 @@
 
   // doSave=true 只在用户翻页时传；重排/恢复/模式切换只更新 UI，不写进度，
   // 避免把中间布局的临时页码污染已保存的锚点（进度漂移根因）。
-  function report(doSave) {
+  // offset：翻页路径由 flipPage 采样一次后传入复用；doSave=false 的纯 UI
+  // 上报根本不采样（此前 setMode/resize/settle 每次都白付一次页顶扫描）。
+  function report(doSave, offset) {
     if (!state.paged) return;
     var m = measure();
-    var off = currentOffset();
+    var off = doSave ? (typeof offset === 'number' ? offset : currentOffset()) : 0;
     if (state.restorePending && off > 0 && doSave) state.restorePending = false;
     try {
       callBridge('pageChanged', state.chapterIndex, m.current, m.total);

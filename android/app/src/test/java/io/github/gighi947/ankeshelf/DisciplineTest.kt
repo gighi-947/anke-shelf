@@ -107,6 +107,24 @@ class DisciplineTest {
     }
 
     @Test
+    fun `翻页与重排的 offset 采样纪律（A1 单次采样）`() {
+        val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
+
+        assertTrue(
+            "report 必须接受 offset 复用参数",
+            js.contains("function report(doSave, offset)"),
+        )
+        assertTrue(
+            "flipPage 必须单次采样并把结果传给 report",
+            js.contains("report(true, o)"),
+        )
+        assertTrue(
+            "doSave=false 的纯 UI 上报不得采样 offset（setMode/resize/settle 每次白付一次页顶扫描）",
+            js.contains("var off = doSave ? (typeof offset === 'number' ? offset : currentOffset()) : 0;"),
+        )
+    }
+
+    @Test
     fun `reader-lite 状态机保持显式 phase 与统一 settle resize 入口`() {
         val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
 
