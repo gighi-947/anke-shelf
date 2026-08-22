@@ -79,12 +79,13 @@ try {
     }
     # Guard: the canonical font inside the APK must match assets/fonts source.
     # Same UP-TO-DATE risk as reader-lite.js after font dedup (E6).
-    $sourceFont = Join-Path $PSScriptRoot '..\..\assets\fonts\LXGWWenKai-Regular.ttf'
+    # 2026-08-22: TTF → WOFF2 无损压缩，校验对象同步替换。
+    $sourceFont = Join-Path $PSScriptRoot '..\..\assets\fonts\LXGWWenKai-Regular.woff2'
     $fontEntry = $zip.Entries |
-        Where-Object { $_.FullName -eq 'assets/fonts/LXGWWenKai-Regular.ttf' } |
+        Where-Object { $_.FullName -eq 'assets/fonts/LXGWWenKai-Regular.woff2' } |
         Select-Object -First 1
     if ($null -eq $fontEntry) {
-        Write-Host "MISSING entry: assets/fonts/LXGWWenKai-Regular.ttf"
+        Write-Host "MISSING entry: assets/fonts/LXGWWenKai-Regular.woff2"
         $found = $true
     } else {
         $fontSourceHash = (Get-FileHash -LiteralPath (Resolve-Path -LiteralPath $sourceFont) -Algorithm SHA256).Hash
@@ -98,7 +99,7 @@ try {
         }
         Write-Host "font SHA256: apk=$fontApkHash source=$fontSourceHash"
         if ($fontApkHash -ne $fontSourceHash) {
-            Write-Host "MISMATCH: LXGWWenKai-Regular.ttf in APK differs from canonical source"
+            Write-Host "MISMATCH: LXGWWenKai-Regular.woff2 in APK differs from canonical source"
             $found = $true
         }
     }

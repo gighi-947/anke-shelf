@@ -25,10 +25,11 @@
   ApiContext 服务必填、恢复锚点单点化、双端死表面删除；
   性能优化 A1 翻页单次采样（第二十三批）、A2 空白页判定
   提前退出+代际缓存（第二十四批）、内置字体 WOFF2 无损压缩
-  -61%（第二十五批，见 §4）。
+  -61%（第二十五批，见 §4）；性能专项收尾并发布
+  v1.6.1 / android-v1.3.1（第二十六批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
-- 版本线：Windows `v1.6.0`（已发布，AnkeShelf-v1.6.0.zip）；
-  Android `android-v1.3.0`（已发布，AnkeShelf-v1.3.0-android.apk）。
+- 版本线：Windows `v1.6.1`（已发布，AnkeShelf-v1.6.1.zip）；
+  Android `android-v1.3.1`（已发布，AnkeShelf-v1.3.1-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-22 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 328 项
     （本机 Python 3.14：1 项环境性错误 `test_main_guard`
@@ -75,6 +76,24 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-22 release：性能专项收尾，v1.6.1 / android-v1.3.1 发布（第二十六批）
+
+- 性能优化专项结束（A1 翻页单次采样、A2 空白页判定、字体 WOFF2 三项
+  全部落地；A3 二分去滚动位移经评估暂缓，可行性研究结论已记录）。
+- 版本号：Windows `app/__init__.py` → 1.6.1；Android
+  `build.gradle.kts` → versionCode 5 / versionName 1.3.1；
+  README 版本表与下载链接、CHANGELOG 双端条目、android/VERSIONING.md
+  版本线同步。
+- 修复 check-release.ps1 凭据扫描的字体必需项（TTF→WOFF2 误报 FAIL），
+  发布扫描恢复 PASS。
+- 构建与发布：`v1.6.1`（AnkeShelf-v1.6.1.zip 42.1MB + release.txt +
+  sha256；对比 v1.6.0 的 46.9MB 减小 4.8MB）、`android-v1.3.1`
+  （AnkeShelf-v1.3.1-android.apk 12.7MB + release.txt + sha256）；
+  Release APK 过 check-release 凭据扫描与字体/reader-lite 字节实检
+  （APK 内仅 woff2、A1/A2 守卫标记在位）。
+- 标签 `v1.6.1` 与 `android-v1.3.1` 指向发布提交，GitHub Release 资产
+  名纯 ASCII。
 
 ### 2026-08-22 win/android：性能优化第三项——内置字体 TTF→WOFF2 无损压缩（第二十五批）
 
