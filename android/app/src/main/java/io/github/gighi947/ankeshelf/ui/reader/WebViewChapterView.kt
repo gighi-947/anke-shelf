@@ -456,14 +456,11 @@ fun WebViewChapterView(
                                 return WebResourceResponse(mime, null, FileInputStream(f))
                             }
                         }
-                        if (
-                            url.startsWith("http") &&
-                            (
-                                url.contains("img.nga.cn", ignoreCase = true) ||
-                                    url.contains("nga.178.com", ignoreCase = true) ||
-                                    url.contains("ngabbs.com", ignoreCase = true)
-                                )
-                        ) {
+                        // NGA 图床代理：主机名精确后缀匹配（ReaderEgress，与桌面同构）。
+                        // 此前用 url.contains 子串匹配，恶意 EPUB 可借
+                        // https://evil.com/img.nga.cn/x 命中并把 ngaHeaders 携带的
+                        // NGA 凭据发往任意主机（2026-08-22 安全对齐修复）。
+                        if (ReaderEgress.isNgaImageUrl(url)) {
                             return runCatching {
                                 val req = Request.Builder()
                                     .url(url)
@@ -491,6 +488,14 @@ fun WebViewChapterView(
                                 }
                             }.onFailure { Log.w("AnkeShelf", "NGA 图片代理失败 $url：${it.message}") }
                                 .getOrNull()
+                        }
+                        // 出口门禁：明文 http 子资源一律拒绝（应用全 https；
+                        // https 外链图片放行，与桌面 CSP img-src https: 同策略）。
+                        if (ReaderEgress.isCleartext(url)) {
+                            Log.w("AnkeShelf", "拒绝明文子资源：$url")
+                            return WebResourceResponse(
+                                "text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)),
+                            ).apply { setStatusCodeAndReasonPhrase(404, "Cleartext Blocked") }
                         }
                         return super.shouldInterceptRequest(view, request)
                     }
