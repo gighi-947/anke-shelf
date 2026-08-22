@@ -101,7 +101,7 @@
               const session = Reader.ensureSession();
               session.setPosition(offset);
               ProgressSaver.persistProgress(App.state.bookId, App.state.chapterIndex, offset);
-              Reader.updateProgressUI();
+              Reader.updateProgressUI(offset);
             });
           }
         } else if (url.protocol === 'https:') {
@@ -472,7 +472,7 @@
         }
       }
       this.saveProgress(offset);
-      this.updateProgressUI();
+      this.updateProgressUI(offset);
       window.dispatchEvent(new Event('reader-updated'));
     },
 
@@ -484,23 +484,29 @@
       const off = typeof preciseOffset === 'number' ? preciseOffset : this.currentOffset();
       session.setPosition(off);
       ProgressSaver.persistProgress(App.state.bookId, session.chapterIndex, off);
+      return off;
     },
 
     onPageTurned() {
-      this.saveProgress();
-      this.updateProgressUI();
+      // 翻页只采样一次：saveProgress 算出的 offset 直接复用给进度 UI，
+      // 不再让 updateProgressUI 重走几何采样（分页二分 + scrollLeft 抖动
+      // 在大章节下是翻页卡顿的主要来源）。
+      const off = this.saveProgress();
+      this.updateProgressUI(off);
       Stats.addPage();
       window.dispatchEvent(new Event('reader-updated'));
     },
 
-    updateProgressUI() {
+    updateProgressUI(sampledOffset) {
       const book = App.state.book;
       if (!book) return;
       const total = book.chapters.length;
       const ctx = App.state.textCtx;
       const clen = ctx && ctx.text.length ? ctx.text.length : 0;
+      // 调用方已有采样（翻页/定位/滚动防抖）直接复用；其余按需采样。
+      const off = typeof sampledOffset === 'number' ? sampledOffset : this.currentOffset();
       const pct = total > 0
-        ? (App.state.chapterIndex + (clen ? this.currentOffset() / clen : 0)) / total
+        ? (App.state.chapterIndex + (clen ? off / clen : 0)) / total
         : 0;
       const slider = document.getElementById('progress-slider');
       if (slider) slider.value = Math.round(Math.max(0, Math.min(1, pct)) * 1000);
@@ -685,8 +691,9 @@
     clearTimeout(scrollDebounceTimer);
     scrollDebounceTimer = setTimeout(() => {
       if (!Paged.isActive()) {
-        Reader.saveProgress();
-        Reader.updateProgressUI();
+        // 滚动防抖同样单次采样：saveProgress 的结果直接复用给进度 UI。
+        const off = Reader.saveProgress();
+        if (typeof off === 'number') Reader.updateProgressUI(off);
       }
     }, 500);
   });

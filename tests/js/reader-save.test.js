@@ -23,6 +23,26 @@ assert.ok(
   'reader.js 的进度写入应经过 ProgressSaver.persistProgress',
 );
 
+// ---- 结构守卫：翻页/定位/滚动路径单次采样（A1，2026-08-22）----
+// saveProgress 已算出 offset 时，updateProgressUI 必须复用，不得再走一遍
+// 几何采样（分页二分 + scrollLeft 抖动，大章节下是翻页卡顿主源之一）。
+assert.ok(
+  /onPageTurned\(\) \{[\s\S]{0,300}const off = this\.saveProgress\(\);[\s\S]{0,80}this\.updateProgressUI\(off\);/.test(readerSrc),
+  'onPageTurned 必须复用 saveProgress 返回的 offset（单次采样）',
+);
+assert.ok(
+  /saveProgress\(offset\);\s*\n\s*this\.updateProgressUI\(offset\);/.test(readerSrc),
+  'seekToOffset 必须复用定位 offset，不得二次采样',
+);
+assert.ok(
+  /updateProgressUI\(sampledOffset\) \{/.test(readerSrc),
+  'updateProgressUI 必须接受可选 offset 参数供调用方复用',
+);
+assert.ok(
+  readerSrc.includes('const off = Reader.saveProgress();'),
+  '滚动防抖路径必须复用 saveProgress 返回的 offset',
+);
+
 // ---- 行为测试：失败被吞并提示，成功不提示 ----
 let toastCalls = [];
 let apiCalls = [];
