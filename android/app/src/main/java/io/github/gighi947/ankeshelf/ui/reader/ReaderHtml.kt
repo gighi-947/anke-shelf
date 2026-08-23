@@ -55,6 +55,21 @@ private fun isUnsafeUrl(value: String): Boolean {
         v.startsWith("data:text/html")
 }
 
+/**
+ * #RRGGBB / #RGB → "r,g,b"（供 rgba(var(--xxx-rgb), a) 用）；非法输入返回 null
+ * （调用方跳过注入并使用默认分量）。边界由 ReaderHtmlTest 锁定。
+ */
+internal fun hexToRgbComponents(hex: String): String? {
+    val h = hex.trim().removePrefix("#")
+    val full = when (h.length) {
+        6 -> h
+        3 -> h.map { c -> "$c$c" }.joinToString("")
+        else -> return null
+    }
+    val v = full.toIntOrNull(16) ?: return null
+    return "${(v shr 16) and 0xFF},${(v shr 8) and 0xFF},${v and 0xFF}"
+}
+
 /** 章节 HTML 的可渲染部分：<body> 内容 + <head> 里的样式块 + 外部样式表链接。 */
 data class ReaderHtmlParts(
     val body: String,
@@ -181,6 +196,11 @@ fun buildReaderHtml(
             ":root{" +
                 "--reader-bg:${theme.background};--reader-fg:${theme.text};" +
                 "--reader-primary:${theme.accent};" +
+                // rgb 分量变量（与上方 hex 变量成对维护，reader-lite applyTheme 同步）：
+                // 主题透明度样式统一用 rgba(var(--xxx-rgb), a)——color-mix 在华为
+                // WebView 上求值失败会回退 initial 并压掉内联兜底（2026-08-23）。
+                "--reader-fg-rgb:${hexToRgbComponents(theme.text) ?: "34,34,34"};" +
+                "--reader-primary-rgb:${hexToRgbComponents(theme.accent) ?: "46,134,171"};" +
                 "--reader-font-size:${settings.font_size}px;" +
                 "--reader-line-height:${settings.line_height};" +
                 "--reader-margin:${settings.margin_px}px;--reader-gap:${settings.gap_px}px;" +

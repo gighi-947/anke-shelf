@@ -70,11 +70,14 @@ img {
 
 .nga-floor {
     max-width: 100%;
-    /* 现代 WebView：覆盖下载时的内联浅/深主题色，随阅读器主题自适应；
-       旧 WebView 不支持 color-mix 时会保留内联实色兜底。 */
-    border: 1px solid color-mix(in srgb, var(--reader-fg) 18%, transparent) !important;
+    /* 覆盖下载时的内联浅/深主题色，随阅读器主题自适应。
+       主题透明度一律用 rgba(var(--reader-fg-rgb), a)：CSS 颜色混合函数在
+       华为 WebView（HarmonyOS 4）上 parser 接受但求值失败回退 initial，
+       !important 会压掉内联实色兜底导致卡片消失（2026-08-23 真机取证后弃用，
+       DisciplineTest 守卫禁止回归）。 */
+    border: 1px solid rgba(var(--reader-fg-rgb), 0.18) !important;
     border-left: 4px solid var(--reader-primary) !important;
-    background: color-mix(in srgb, var(--reader-fg) 6%, transparent) !important;
+    background: rgba(var(--reader-fg-rgb), 0.06) !important;
     padding: 12px 14px !important;
     margin: 14px 0 !important;
     border-radius: 2px !important;
@@ -82,20 +85,20 @@ img {
 
 blockquote.nga-quote {
     border-left: 3px solid var(--reader-primary) !important;
-    background: color-mix(in srgb, var(--reader-fg) 6%, transparent) !important;
+    background: rgba(var(--reader-fg-rgb), 0.06) !important;
     padding: 8px 12px !important;
     margin: 10px 0 !important;
     font-size: 0.95em !important;
 }
 .nga-comment {
-    background: color-mix(in srgb, var(--reader-fg) 6%, transparent) !important;
-    border: 1px solid color-mix(in srgb, var(--reader-fg) 18%, transparent) !important;
+    background: rgba(var(--reader-fg-rgb), 0.06) !important;
+    border: 1px solid rgba(var(--reader-fg-rgb), 0.18) !important;
     padding: 8px 10px !important;
     margin: 6px 0 6px 14px !important;
     font-size: 0.92em !important;
 }
 .quote-author {
-    color: color-mix(in srgb, var(--reader-fg) 60%, transparent) !important;
+    color: rgba(var(--reader-fg-rgb), 0.6) !important;
     font-size: 0.88em !important;
     margin-bottom: 4px !important;
 }
@@ -104,11 +107,11 @@ blockquote.nga-quote {
     text-decoration: none !important;
 }
 .floor-head {
-    color: color-mix(in srgb, var(--reader-fg) 55%, transparent) !important;
-    border-bottom: 1px dotted color-mix(in srgb, var(--reader-fg) 18%, transparent) !important;
+    color: rgba(var(--reader-fg-rgb), 0.55) !important;
+    border-bottom: 1px dotted rgba(var(--reader-fg-rgb), 0.18) !important;
 }
 .comment-head {
-    color: color-mix(in srgb, var(--reader-fg) 55%, transparent) !important;
+    color: rgba(var(--reader-fg-rgb), 0.55) !important;
 }
 .nga-dice {
     color: var(--reader-primary) !important;
@@ -262,7 +265,7 @@ body.paged .gululu-floor .floor-head {
 .chapter-nav-btn:active,
 .chapter-nav-btn.chapter-nav-btn-pressed {
     opacity: 0.85;
-    background: color-mix(in srgb, var(--reader-primary) 34%, transparent);
+    background: rgba(var(--reader-primary-rgb), 0.34);
     border-color: var(--reader-primary);
     transform: scale(0.96);
 }

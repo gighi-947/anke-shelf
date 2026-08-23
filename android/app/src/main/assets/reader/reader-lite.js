@@ -1065,6 +1065,18 @@
     if (vars && vars.bg) root.style.setProperty('--reader-bg', vars.bg);
     if (vars && vars.fg) root.style.setProperty('--reader-fg', vars.fg);
     if (vars && vars.primary) root.style.setProperty('--reader-primary', vars.primary);
+    // rgb 分量变量与 hex 变量成对维护（ReaderHtml.kt 初始注入同规则）：
+    // reader.css 的主题透明度一律 rgba(var(--xxx-rgb), a)。
+    if (vars && vars.fg) root.style.setProperty('--reader-fg-rgb', hexToRgbComponents(vars.fg));
+    if (vars && vars.primary) root.style.setProperty('--reader-primary-rgb', hexToRgbComponents(vars.primary));
+  }
+
+  /** #RRGGBB / #RGB → "r,g,b"；非法输入回退深灰（与 ReaderHtml.kt 同规则）。 */
+  function hexToRgbComponents(hex) {
+    var h = String(hex || '').trim().replace(/^#/, '');
+    if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+    if (!/^[0-9a-fA-F]{6}$/.test(h)) return '34,34,34';
+    return parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16);
   }
 
   function applyTypography(style) {
