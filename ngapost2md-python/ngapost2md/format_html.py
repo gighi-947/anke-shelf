@@ -4,6 +4,7 @@ Markdown 管线会丢失 NGA 的样式元素（span 颜色、引用块、折叠�
 本模块从 Floor.raw_content（未转 Markdown 的原始 HTML+BBCode）直接渲染 HTML，
 最大程度还原 NGA 网页排版。输出为 EPUB3 要求的 XHTML 片段。
 """
+import html
 import re
 
 from .models import Tiezi
@@ -18,6 +19,7 @@ RE_B = re.compile(r"\[b\](.*?)\[/b\]", re.DOTALL)
 RE_I = re.compile(r"\[i\](.*?)\[/i\]", re.DOTALL)
 RE_URL = re.compile(r"\[url=(.+?)\](.+?)\[/url\]")
 RE_URL_PLAIN = re.compile(r"\[url\](.+?)\[/url\]")
+RE_AUDIO = re.compile(r"\[audio\](https://[^\[\]\"\s]+)\[/audio\]")
 RE_IMG = re.compile(r"\[img\](.+?)\[/img\]")
 RE_SMILE = re.compile(r"\[s\:.+?\:.+?\]")
 RE_UID = re.compile(r"\[uid=(\d+?)\](.+?)\[/uid\]")
@@ -128,6 +130,21 @@ def render_content_html(raw: str, tiezi: Tiezi, img_src) -> str:
     c = RE_DICE.sub(
         lambda m: (f'<div class="nga-dice" style="color:{_THEME["dice"]}; font-weight:bold; '
                    f'margin:6px 0;">ROLL : {m.group(1)}= <b>{m.group(3)}</b></div>'),
+        c,
+    )
+    # 外链音乐（方案 A）：[audio]https://…[/audio] → 骨碌碌同款音乐 cue，
+    # 复用双端宿主层播放器与样式；cue 文本进坐标（与骨碌碌一致，
+    # 提取器与 JS TextPos 同源提取，搜索索引与渲染坐标不漂移）。
+    # 非 https 外链不转换（播放桥只收 https，保留原文双端一致降级）。
+    c = RE_AUDIO.sub(
+        lambda m: (
+            '<p class="gululu-music-row">'
+            f'<button type="button" class="gululu-music-cue" '
+            f'data-gululu-music-url="{m.group(1)}">'
+            '<span class="gululu-music-kind">外链音乐</span>'
+            f'<span class="gululu-music-title">{html.escape(m.group(1))}</span>'
+            "</button></p>"
+        ),
         c,
     )
     # 匿名 ID
