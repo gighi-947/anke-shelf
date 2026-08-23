@@ -89,41 +89,19 @@
   音乐 / 氛围背景 / 视效。
 - 安装包大小按实际产物修正：Windows 约 43MB、Android 约 13MB。
 
-### 2026-08-23 docs：NGA 附件音频需求调研（进行中 · 草稿 · 待切换 Agent 继续）
+### 2026-08-23 docs：NGA 附件音频调研完成（第三十三批）
 
-> ⚠️ 本条为**进行中草稿**：未完成、未形成结论、无功能代码提交。仅作进度
-> 交接存档，勿当作已完成流水。接手 Agent 从「下一步」继续。
-
-- 需求确认（用户）：真实需求主要在**站内附件音频**（作者上传的
-  BGM/音效附件），而非外链 [audio]（第三十二批方案 A 已落地在线播放）。
-  附件音频在双端管线零处理（Go 原版只处理外链 [audio]），站内附件
-  （图床音频 / [attach]）形态未实证。
-- 已确认的代码事实：
-  1. 附件音频 ≠ 外链：数据形态不同（URL 来源、BBCode 标签、是否需
-     Cookie 均待实证）；
-  2. **基础设施已就位**：第三十二批已把音乐 cue 播放器做成与书源解耦
-     （Android `bindMusicCues` 无条件绑定、桥 `gululuMusic` + MediaPlayer
-     同曲再点即停；Windows `bindChapter` 音乐监听提前出 sourceId 门控），
-     附件音频可直接复用 cue 形态与播放器；
-  3. 原生书 append-only：存量楼层不重写，新内容起生效（新书/热更新
-     新增楼层）；
-  4. cue 文本进坐标（提取器与 JS TextPos 同源，不漂移）——上轮已定。
-- 本轮尝试与阻塞：用本机已配置凭据（load_config + NgaClient 正确加载，
-  base_url/cookie/ua 无误）拉 tid 41989465（authorid 62906407）验证
-  附件音频形态，NGA API 返回 `code:46 访客不能直接访问`（带/不带
-  authorid、page 1/2 均同）——疑似凭据失效或 IP 风控，**附件音频的真实
-  形态（是否 img.nga.cn 图床、是否需要 Cookie、BBCode 标签）尚未实证**。
-- 下一步（接手 Agent）：
-  1. 换 NGA 会话/网络环境重试拉取，或用 web 端手动抓包确认附件音频
-     URL 形态与 Cookie 需求；
-  2. 确认后写「附件音频」方案调研结论（URL 形态 + Cookie 需求 +
-     三态/下载设计 + text_offset 语义）存档 docs/；
-  3. 待用户拍板：附件音频走**离线内嵌**（进"内嵌图片"三态管线，
-     下载 mp3 进 EPUB）还是**仅在线 cue 播放**（与外链一致）——用户
-     倾向离线（"附件音频需求多一些"，离线可确保播放稳定），需确认；
-  4. 若立项：复用 NgaImageDownloads/GululuImages 下载框架 + 音乐 cue
-     渲染（含 data-textpos-exclude 语义），红测试先行。
-- 工作区：干净（无未提交功能改动）；本轮仅本草稿提交。
+- 结论：附件音频的原始形态是 NGA 接口返回的 HTML 片段
+  `<span class="audio"><audio src="https://img.nga.cn/attachments/mon_…/lsQ….mp3" …/></span>`，
+  不是 `[audio]` BBCode。`curl -I` 实测 mp3 公网 200，无需 Cookie，
+  Content-Type audio/mpeg，约 1–4MB。
+- 当前双端均未处理该片段：Android sanitizer 会删掉内联事件但保留
+  `<audio>` 标签，reader-lite 无绑定；Windows 宿主无 audioClick 处理，
+  因此读者不可播放。
+- 调研文档：`docs/NGA_ATTACHMENT_AUDIO_RESEARCH.md`（含方案对比：
+  A 在线 cue 播放、B 离线内嵌），已入 docs/README 索引。
+- 建议先实施 A（复用外链音乐 cue 播放器，改动小、双端同构），再根据
+  用户拍板决定是否立 B（离线内嵌）。**待用户拍板后立项**。
 
 ### 2026-08-23 win/android：NGA 外链音乐支持（方案 A：在线播放，2026-08-23）（第三十二批）
 

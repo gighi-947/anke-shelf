@@ -22,6 +22,7 @@
 | [ANDROID_PARITY_PLAN.md](ANDROID_PARITY_PLAN.md) | Android 全量对齐 Windows 的差距矩阵与分批规划 | 现役；Android 对齐专项进度基线 |
 | [REVIEW_ACTION_PLAN.md](REVIEW_ACTION_PLAN.md) | 整改行动计划指针 | 现役指针；历史版见 archive/REVIEW_ACTION_PLAN.md |
 | [GULULU_REFERENCE_MATRIX.md](GULULU_REFERENCE_MATRIX.md) | 骨碌碌全能助手功能对照矩阵 | 现役参考 |
+| [NGA_ATTACHMENT_AUDIO_RESEARCH.md](NGA_ATTACHMENT_AUDIO_RESEARCH.md) | NGA 附件音频调研结论（待拍板） | 现役调研 |
 | [REFERENCE_MATRIX.md](REFERENCE_MATRIX.md) | 开源参考项目研究矩阵 | 现役参考（P4） |
 | [LESSONS_LEARNED.md](LESSONS_LEARNED.md) | 经验教训分类归纳 | 现役 |
 | [nga-post-template.bbcode](nga-post-template.bbcode) | NGA 发帖模板 | 资产模板 |
