@@ -46,7 +46,7 @@
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/paged-blank.test.js`（空白页判定边界）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 226 项（225 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 228 项（227 过 / 1 跳）；
     DisciplineTest 11 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
@@ -78,6 +78,38 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-23 android：修复华为 WebView 楼层卡片消失（rgba 分量变量替代 color-mix）（第三十一批）
+
+- 现象（用户报告 + 真机取证）：ELE-AL00（HarmonyOS 4.0.0.121，华为
+  WebView 14.0.2.306）上 v1.3.2 的楼层卡片修复未生效——新书（tid
+  40811445，v1.3.2 后全新下载）楼层卡片边框/背景仍消失，仅剩蓝色左竖线。
+- 取证（插桩 release，sanitizeReaderBody 出口 dump）：20 个 .nga-floor
+  div 与 v1.3.2 实色内联（border #e0e0e0 / background #fafafa）**完整
+  到达 WebView**——生成端与清洗端正常，丢失在渲染层。
+- 根因：华为 WebView 对 color-mix 是"parser 接受语法、求值失败回退
+  initial"的非标准行为——reader.css 里 `!important` 的 color-mix 声明
+  不被丢弃（不同于标准"声明级错误恢复"），以 initial（transparent/
+  none）压掉内联实色兜底 → 卡片消失；同规则内无 color-mix 的
+  `border-left: var(--reader-primary)` 正常生效 → 只剩蓝竖线。该行为
+  一次性解释 v1.3.1（内联同为 color-mix）与 v1.3.2（实色内联被压）
+  两代现象。
+- 修复：reader.css 全部 10 处代码声明
+  `color-mix(in srgb, var(--X) N%, transparent)` → `rgba(var(--X-rgb), N/100)`
+  （语义等价、2013 年级兼容）；`--reader-fg-rgb` / `--reader-primary-rgb`
+  分量变量成对维护（ReaderHtml.kt 初始注入 + reader-lite applyTheme
+  动态更新，非法 hex 回退默认分量）。视觉差异 ≤2/255（color-mix 与
+  transparent 混合会把 RGB 通道拉向黑，rgba 反而更贴合"fg 的 N% 透明度"
+  的设计意图）；性能持平或略优。
+- 回归：ReaderHtmlTest 新增 rgb 变量注入断言与 hexToRgbComponents
+  边界（#RRGGBB/#RGB/非法）；DisciplineTest 新增守卫——reader.css
+  不得再出现 color-mix token（华为行为不可探测，结构性禁止回归）。
+- 验证：Android JVM 228 项（227 过/1 跳）+ assembleDebug；bundle 字节
+  校验与三套 JS 契约全绿；**真机复验**（装机后截图像素级分析）：
+  深色主题下卡底 #2d2d2d 占阅读区 56.3%（理论值 34×0.94+224×0.06≈46
+  吻合）、卡片缝隙 #222222、4px #77bbee 左竖线与边界梯度完整——
+  卡片结构全部在位。APK 实检：reader.css/reader-lite.js 均为修复版。
+- 插桩说明：取证用的 [floordbg] 一次性日志已随修复分支丢弃，未合入。
 
 ### 2026-08-22 android：修复 NGA 内嵌图片下载无进度且可无限卡住（第三十批）
 

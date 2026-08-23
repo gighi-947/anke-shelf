@@ -35,6 +35,8 @@ class ReaderHtmlTest {
             SettingsData(font_size = 20, line_height = 1.9),
         )
         assertTrue(html.contains("--reader-bg:#222222"))
+        // 华为内核 color-mix 求值失败修复：rgb 分量变量必须与 hex 变量成对注入
+        assertTrue(html.contains("--reader-fg-rgb:"))
         assertTrue(html.contains("--reader-font-size:20px"))
         assertTrue(html.contains("--reader-line-height:1.9"))
         assertTrue(html.contains("href=\"file:///android_asset/reader/reader.css\""))
@@ -167,4 +169,14 @@ class ReaderHtmlTest {
         assertTrue(parts.body.contains("loading=\"lazy\" decoding=\"async\""))
     }
 
+    @Test
+    fun hexToRgbComponentsParsesFormats() {
+        // #RRGGBB / #RGB / 非法输入（返回 null，调用方跳过注入）
+        assertEquals("34,34,34", hexToRgbComponents("#222222"))
+        assertEquals("255,0,0", hexToRgbComponents("#f00"))
+        assertEquals("91,163,217", hexToRgbComponents("#5BA3D9"))
+        assertEquals(null, hexToRgbComponents("not-a-color"))
+        assertEquals(null, hexToRgbComponents("#12345"))
+        assertEquals(null, hexToRgbComponents(""))
+    }
 }

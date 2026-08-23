@@ -147,6 +147,24 @@ class DisciplineTest {
     }
 
     @Test
+    fun `reader-css 不依赖 color-mix 且主题透明度走 rgb 分量变量`() {
+        // 华为 WebView（HarmonyOS 4）对 color-mix 是“parser 接受、求值失败回退
+        // initial”的非标准行为：!important 声明压掉内联实色兜底导致楼层卡片
+        // 边框/背景全部消失（2026-08-23 真机取证）。透明度一律用
+        // rgba(var(--xxx-rgb), a)（2013 年级兼容），变量成对维护见
+        // ReaderHtml.kt 与 reader-lite applyTheme。
+        val css = File(repoRoot, "android/app/src/main/assets/reader/reader.css").readText()
+        assertFalse(
+            "reader.css 不得使用 color-mix（华为内核求值失败会压掉兜底）：" +
+                css.lineSequence().withIndex().filter { it.value.contains("color-mix") }.map { it.index + 1 }.joinToString(),
+            css.contains("color-mix"),
+        )
+        assertTrue("reader.css 必须使用 --reader-fg-rgb 分量变量", css.contains("--reader-fg-rgb"))
+        val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
+        assertTrue("applyTheme 必须成对维护 --reader-fg-rgb", js.contains("--reader-fg-rgb"))
+    }
+
+    @Test
     fun `reader-lite 状态机保持显式 phase 与统一 settle resize 入口`() {
         val js = File(repoRoot, "android/app/src/main/assets/reader/reader-lite.js").readText()
 
