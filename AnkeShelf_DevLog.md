@@ -79,6 +79,37 @@
 
 ## 4. 最近流水
 
+### 2026-08-22 android：修复 NGA 内嵌图片下载无进度且可无限卡住（第三十批）
+
+- 现象（用户报告）：内嵌图片模式下载时看不到图片下载进度，最终卡住。
+- 根因（NGA 链路三叠加）：`NgaDownloader.downloadImages` ① 串行逐张下载；
+  ② 零进度上报——楼层循环最后一次 progress 后直接进入图片下载，
+  前台通知与下载页停在楼层阶段，表现为"无进度"；③ `imageHttp` 用无参
+  `OkHttpClient()`（无超时），慢速滴流连接可无限拖住任务（readTimeout
+  只约束单次 socket read，不约束整图耗时）——表现为"卡住"。
+  通知端与 UI 端本就支持任意 stage（`else -> detail` + current/total
+  进度条），缺口全在 downloader 侧。
+- 修复：
+  - 新增 `service/NgaImageDownloads.kt`：6 路并发（对齐 GululuImages）、
+    **按完成序**上报进度（先完成的先报，不被最慢一张阻塞显示）、缓存
+    图跳过下载但计入进度起点（先报 "2/3" 再 "3/3"）、单图失败不中断
+    （计 failed + LogEvents 诊断）、收结果循环每次检查取消、
+    perResultTimeoutSec=90 兜底——超时窗口内无任何一张完成即判定整体
+    卡死，终止并显式失败（不再无限等）；
+  - `downloadImages` 接入 drain：`progress("images", done, total, detail)`
+    逐张上报，超时抛 `NgaHttpException`（service 层既有 catch → error
+    状态，提示重试或改在线模式）；
+  - `imageHttp` 补 connect 15s / read 30s（对齐 GululuImages）；
+  - `DownloadPanels` 任务状态文案补 "images" 分支（通知端 else 分支
+    已覆盖）。
+- 回归：`NgaImageDownloadsTest` 4 项（红→绿）：逐张进度序列含阶段切换
+  起点、缓存图跳过且计入进度、取消即停不再派发、挂死连接按超时终止
+  （实测不等待）。
+- 验证：Android JVM 226 项（225 过/1 跳，+4）+ assembleDebug。
+- 注：骨碌碌链路（GululuImages）本有逐张上报与 15/30s 超时，不在本次
+  范围；其 `future.get()` 无整体上限属次要残留（单图 socket 级超时仍在），
+  未顺手改动。
+
 ### 2026-08-22 win/android：安全对齐评估与修复批（第二十九批）
 
 背景：按"声明 ↔ 实现"对照做了一次安全对齐评估（结论：总体良好，
