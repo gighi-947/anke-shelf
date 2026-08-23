@@ -297,6 +297,8 @@
     root.style.setProperty('--reader-bottom-inset', state.bottomInset + 'px');
     bindImages();
     bindSelection();
+    // 音乐 cue 与书源无关（NGA [audio] 外链音乐同款元素）：任何书都可点播。
+    bindMusicCues();
     // 骨碌碌书籍：宿主传入已解锁的骰点分组，运行时只切遮罩不改正文。
     // 必须失败隔离：Gululu 初始化异常不能影响下方换章按钮绑定等基础链路。
     if (opts.gululu) {

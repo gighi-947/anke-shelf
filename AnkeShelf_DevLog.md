@@ -33,7 +33,7 @@
 - 版本线：Windows `v1.6.2`（已发布，AnkeShelf-v1.6.2.zip）；
   Android `android-v1.3.2`（已发布，AnkeShelf-v1.3.2-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-22 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 330 项
+  - Windows Python：`python -m unittest discover tests` = 334 项
     （本机 Python 3.14：1 项环境性错误 `test_main_guard`
     ——tasklist 在本沙箱返回 None，clean main 同样失败、与代码无关；
     bundled Python 3.12：全量通过）；
@@ -46,7 +46,7 @@
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/paged-blank.test.js`（空白页判定边界）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 228 项（227 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 231 项（230 过 / 1 跳）；
     DisciplineTest 11 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
@@ -78,6 +78,36 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-23 win/android：NGA 外链音乐支持（方案 A：在线播放，2026-08-23）（第三十二批）
+
+- 背景：NGA 帖子的 [audio]https://…[/audio] 外链音乐在双端 EPUB 渲染链路
+  零处理（ngapost2md 的 Markdown 路径有音频能力但阅读器不用 EPUB 外的
+  路径），读者看到裸 BBCode 文本。研究确认骨碌碌宿主层音乐播放器已成熟，
+  缺的只是"识别 + 接线"，按方案 A（在线播放不拉取文件）实施。
+- 转换层（双端同构）：[audio] 仅 https 外链转为骨碌碌同款音乐 cue
+  （p.gululu-music-row > button.gululu-music-cue[data-gululu-music-url]，
+  kind 文案"外链音乐"，title 显示 URL）；非 https 保留原文（播放桥只收
+  https，双端一致降级）。**cue 文本进坐标**（不带 data-textpos-exclude）：
+  与骨碌碌一致——提取器与 JS TextPos 同源提取，搜索索引与渲染坐标不漂移
+  （研究阶段确认 Kotlin/Python 提取器不识别 exclude 属性，若加 exclude
+  反而造成索引错位）。
+- 宿主接线：
+  - Android reader-lite：音乐 cue/stop 点击分支从 bindGululu 委托移出为
+    bindMusicCues()（document 级、init() 无条件调用、幂等）——NGA 书
+    （不 initGululu）从此可点播；桥 gululuMusic 与 NativeReaderScreen 的
+    MediaPlayer（同曲再点=停止）本就与书源无关，零改动复用。
+  - Windows gululu-immersive.js：bindChapter 把音乐 click/keydown 监听
+    提前到 sourceId 门控之前绑定（其余背景/视效/自动音乐仍按骨碌碌书源
+    门控）；playMusic 的同曲切停/失败提示/https 校验直接复用。
+- 回归：tests/test_nga_audio.py 4 项（转换/坐标语义/明文降级/原文不动）；
+  NgaFormatHtmlTest 增 3 项同构断言。
+- 验证：Windows Python 334 项（+4）；Android JVM 231 项（+3）+
+  assembleDebug；bundle 字节校验、bridge/textpos 契约全绿；UI 实机
+  harness 97/97（gululu 音乐链路与 NGA 渲染无回归）。
+- 语义说明：原生书 append-only——存量楼层保持裸文本（仍可读），新下载/
+  新增楼层起为音乐 cue；离线内嵌（方案 B）与站内附件音频（方案 C）未做，
+  见研究结论。
 
 ### 2026-08-23 android：修复华为 WebView 楼层卡片消失（rgba 分量变量替代 color-mix）（第三十一批）
 

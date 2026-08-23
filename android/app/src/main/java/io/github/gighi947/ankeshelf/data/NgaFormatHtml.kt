@@ -22,6 +22,10 @@ object NgaFormatHtml {
     private val RE_COLOR_OK = Regex("^[a-zA-Z]+$|^#[0-9a-fA-F]{3,8}$")
     private val RE_ANONY = Regex("#anony_.{32}")
     private val RE_DEL_GRAY = Regex("""<del class=['"]gray['"]>""")
+
+    /** 外链音乐（方案 A）：仅 https；URL 排除引号/空白/方括号（与桌面同规则）。 */
+    private val RE_AUDIO = Regex("""\[audio\](https://[^\[\]"\s]+)\[/audio\]""")
+
     private val RE_DICE =
         Regex("""<div class='dice'><b>ROLL : (.+?)</b>=(.+?)=<b>(.+?)</b></div>""")
     private val RE_COLLAPSE = Regex(
@@ -137,6 +141,20 @@ object NgaFormatHtml {
                 "ROLL : ${m.groupValues[1]}= <b>${m.groupValues[3]}</b></div>"
         }
         c = RE_ANONY.replace(c) { m -> safeAnony(m.value) }
+
+        // 外链音乐（方案 A）：[audio]https://…[/audio] → 骨碌碌同款音乐 cue，
+        // 复用双端宿主层播放器与样式；cue 文本进坐标（与骨碌碌一致，提取器
+        // 与 JS TextPos 同源提取，搜索索引与渲染坐标不漂移）。非 https 外链
+        // 不转换（播放桥只收 https，保留原文与桌面一致降级）。
+        c = RE_AUDIO.replace(c) { m ->
+            val url = m.groupValues[1]
+            "<p class=\"gululu-music-row\">" +
+                "<button type=\"button\" class=\"gululu-music-cue\" " +
+                "data-gululu-music-url=\"$url\">" +
+                "<span class=\"gululu-music-kind\">外链音乐</span>" +
+                "<span class=\"gululu-music-title\">${minEscape(url)}</span>" +
+                "</button></p>"
+        }
         c = RE_POSTBY_UID.replace(c) { m ->
             "<div class=\"quote-author\">Post by ${m.groupValues[2]}(${m.groupValues[1]})(${m.groupValues[3]}):</div>"
         }
@@ -186,6 +204,10 @@ object NgaFormatHtml {
     } catch (_: Exception) {
         it
     }
+
+    /** 最小 HTML 转义（音乐 cue 标题用；URL 已被正则排除引号/空白）。 */
+    private fun minEscape(s: String): String =
+        s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     private fun smileHtml(it: String, imgSrc: (String) -> String): String {
         val file = NGA_SMILE_MAP[it] ?: return it

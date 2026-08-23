@@ -297,6 +297,27 @@
         return;
       }
 
+      var badge = t.closest('.gululu-paragraph-badge');
+      if (badge) {
+        e.preventDefault();
+        e.stopPropagation();
+        callBridge('gululuParagraphComments', badge.getAttribute('data-gululu-paragraph') || '');
+      }
+    }, true);
+  }
+
+  /**
+   * 音乐 cue 点击绑定（方案 A，2026-08-23）：与骨碌碌书源无关——NGA 书的
+   * [audio] 外链音乐同样产出 .gululu-music-cue，任何书都可点播/停止。
+   * init() 无条件调用（幂等），bindGululu 的委托不再处理音乐分支。
+   */
+  var musicCuesBound = false;
+  function bindMusicCues() {
+    if (musicCuesBound) return;
+    musicCuesBound = true;
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
       var music = t.closest('.gululu-music-cue');
       if (music) {
         e.preventDefault();
@@ -310,19 +331,10 @@
         );
         return;
       }
-
       if (t.closest('.gululu-music-stop')) {
         e.preventDefault();
         e.stopPropagation();
         callBridge('gululuMusicStop');
-        return;
-      }
-
-      var badge = t.closest('.gululu-paragraph-badge');
-      if (badge) {
-        e.preventDefault();
-        e.stopPropagation();
-        callBridge('gululuParagraphComments', badge.getAttribute('data-gululu-paragraph') || '');
       }
     }, true);
   }
