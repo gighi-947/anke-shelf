@@ -456,6 +456,7 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                 Text(
                     when (status.stage) {
                         "pages" -> status.detail
+                        "images" -> status.detail
                         "format" -> "正在写入原生书…"
                         "done" -> status.detail
                         "error" -> "失败：${NgaServiceStatus.error}"

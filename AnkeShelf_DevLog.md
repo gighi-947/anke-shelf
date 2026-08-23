@@ -27,7 +27,8 @@
   提前退出+代际缓存（第二十四批）、内置字体 WOFF2 无损压缩
   -61%（第二十五批，见 §4）；性能专项收尾并发布
   v1.6.1 / android-v1.3.1（第二十六批）、v1.6.2 / android-v1.3.2（第二十八批）；
-  安全对齐评估与修复批（第二十九批，见 §4）。
+  安全对齐评估与修复批（第二十九批）、NGA 内嵌图片进度修复
+  （第三十批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.6.2`（已发布，AnkeShelf-v1.6.2.zip）；
   Android `android-v1.3.2`（已发布，AnkeShelf-v1.3.2-android.apk）。
@@ -45,7 +46,7 @@
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/paged-blank.test.js`（空白页判定边界）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 222 项（221 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 226 项（225 过 / 1 跳）；
     DisciplineTest 11 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
