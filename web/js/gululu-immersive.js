@@ -447,13 +447,9 @@
   }
 
   function bindChapter(doc) {
-    if (!state.sourceId || !doc) {
-      state.doc = null;
-      return;
-    }
-    state.doc = doc;
-    state.playedAuto = new WeakSet();
-    applyBackground('');
+    if (!doc) return;
+    // 音乐 cue 与书源无关（方案 A，2026-08-23）：NGA [audio] 外链音乐同样
+    // 产出 .gululu-music-cue，任何书都可点播/停止——先绑音乐监听再判书源。
     doc.addEventListener('click', (event) => {
       const cue = event.target.closest('[data-gululu-music-url]');
       const stop = event.target.closest('[data-gululu-music-stop]');
@@ -465,6 +461,13 @@
       event.preventDefault();
       stopMusic();
     });
+    if (!state.sourceId) {
+      state.doc = null;
+      return;
+    }
+    state.doc = doc;
+    state.playedAuto = new WeakSet();
+    applyBackground('');
     doc.addEventListener('mouseover', (event) => {
       const floor = event.target.closest('.gululu-floor');
       if (floor) applyVfx(floor.dataset.gululuVfx || '');
