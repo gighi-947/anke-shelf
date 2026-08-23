@@ -67,7 +67,13 @@ class NgaDownloader(
     private val config: NgaConfig,
     @Volatile var taskId: String = "",
 ) {
-    private val imageHttp = OkHttpClient()
+    // 超时对齐 GululuImages：connect 15s / read 30s。此前用无参 OkHttpClient()，
+    // 慢速滴流连接可无限拖住内嵌图片下载（readTimeout 只约束单次 socket read）。
+    private val imageHttp = OkHttpClient.Builder()
+        .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .followRedirects(true)
+        .build()
 
     @Volatile
     var cancelled = false
@@ -102,31 +108,54 @@ class NgaDownloader(
         }
         if (urls.isEmpty()) return
         val dir = File(appPaths.root, "images/$bookId").apply { mkdirs() }
-        for (url in urls) {
-            val target = File(dir, NativeBookWriter.imageFileName(url))
-            if (target.isFile && target.length() > 0) continue
-            try {
-                val req = Request.Builder()
-                    .url(url)
-                    .ngaHeaders(cfg)
-                    .build()
-                imageHttp.newCall(req).execute().use { resp ->
-                    if (resp.isSuccessful) {
-                        resp.body.byteStream().use { input ->
-                            target.outputStream().use { out -> input.copyTo(out) }
+        // 并发下载 + 逐张进度上报（NgaImageDownloads；修复前串行且零上报，
+        // 前台通知停在楼层阶段表现为"无进度、像卡住"）。单图失败不中断。
+        val completed = NgaImageDownloads.drain(
+            urls = urls.toList(),
+            isCached = { url ->
+                val t = File(dir, NativeBookWriter.imageFileName(url))
+                t.isFile && t.length() > 0
+            },
+            load = { url ->
+                try {
+                    val req = Request.Builder()
+                        .url(url)
+                        .ngaHeaders(cfg)
+                        .build()
+                    imageHttp.newCall(req).execute().use { resp ->
+                        if (!resp.isSuccessful) {
+                            LogEvents.event(
+                                "nga", "image_download_failed",
+                                "task_id" to taskId, "url" to url,
+                                "error" to "HTTP ${resp.code}",
+                            )
+                            null
+                        } else {
+                            resp.body.byteStream().use { it.readBytes() }
                         }
                     }
+                } catch (e: Exception) {
+                    LogEvents.event(
+                        "nga", "image_download_failed",
+                        "task_id" to taskId, "url" to url,
+                        "error" to e.toString(),
+                    )
+                    null
                 }
-            } catch (e: Exception) {
-                // 单图失败不中断整本书：渲染时本地缺图会回退在线 URL；但必须留诊断痕迹。
-                LogEvents.event(
-                    "nga",
-                    "image_download_failed",
-                    "task_id" to taskId,
-                    "url" to url,
-                    "error" to (e.toString()),
-                )
-            }
+            },
+            persist = { url, bytes ->
+                val target = File(dir, NativeBookWriter.imageFileName(url))
+                target.outputStream().use { it.write(bytes) }
+            },
+            onProgress = { done, total, ok, failed ->
+                progress("images", done, total, "正在下载图片 $done/$total（成功 $ok，失败 $failed）")
+            },
+            isCancelled = { cancelled },
+        )
+        if (!completed) {
+            if (cancelled) throw NgaCancelled()
+            // 整体卡死（超时窗口内无任何图片完成）：显式失败，不静默半成品
+            throw NgaHttpException("图片下载超时终止（网络过慢或图床无响应），请重试或改用在线图片模式")
         }
     }
 
