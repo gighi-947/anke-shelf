@@ -155,6 +155,8 @@ fun WebViewChapterView(
     autoScrollSpeed: Double = 2.0,
     /** 骨碌碌书籍才启用宿主层交互（骰点/秘密/音乐/背景/视效/段落评论）。 */
     gululu: Boolean = false,
+    /** 非骨碌碌书（NGA）的音乐 cue 自动播放开关（与骨碌碌自动音乐同偏好）。 */
+    gululuAutoMusic: Boolean = true,
     /** 已揭示的骰点分组（JSON 数组），首次 init 携带。 */
     gululuUnlockedJson: String = "[]",
     /** 段落评论计数（JSON：{paragraphId: count}），变化即重新注入徽标。 */
@@ -278,6 +280,14 @@ fun WebViewChapterView(
                 null,
             )
         }
+    }
+
+    LaunchedEffect(gululuAutoMusic, pageReady.value) {
+        if (!pageReady.value) return@LaunchedEffect
+        webViewRef.value?.evaluateJavascript(
+            "AnkeReader.setGululuAutoMusic($gululuAutoMusic);",
+            null,
+        )
     }
 
     LaunchedEffect(fontSize, lineHeight) {
@@ -528,6 +538,7 @@ fun WebViewChapterView(
                                 "scrollRatio:${initialRatioRef.value}," +
                                 "highlights:${JSONObject.quote(highlightsRef.value)}," +
                                 "gululu:$gululu," +
+                                "gululuAutoMusic:$gululuAutoMusic," +
                                 "gululuUnlocked:${JSONObject.quote(gululuUnlockedJson)}," +
                                 "pageWidth:${s.pageWidth},fontSize:${s.fontSize}," +
                                 "lineHeight:${s.lineHeight},dualPage:${s.dualPage}," +

@@ -299,6 +299,12 @@
     bindSelection();
     // 音乐 cue 与书源无关（NGA [audio] 外链音乐同款元素）：任何书都可点播。
     bindMusicCues();
+    state.gululuActive = !!opts.gululu;
+    state.gululuAutoMusic = opts.gululuAutoMusic !== false;
+    if (!state.gululuActive && state.gululuAutoMusic) {
+      // NGA 书自动播放：首屏也要按当前阅读线触发一次（与骨碌碌 initGululu 对齐）
+      setTimeout(reportGululuContext, 0);
+    }
     // 骨碌碌书籍：宿主传入已解锁的骰点分组，运行时只切遮罩不改正文。
     // 必须失败隔离：Gululu 初始化异常不能影响下方换章按钮绑定等基础链路。
     if (opts.gululu) {
@@ -415,6 +421,13 @@
     return 'false';
   }
 
+  function setGululuAutoMusic(value) {
+    state.gululuAutoMusic = value !== false;
+    if (state.gululuAutoMusic && !state.gululuActive) {
+      setTimeout(reportGululuContext, 0);
+    }
+  }
+
   var AnkeReaderApi = {
     init: init,
     applyTheme: applyTheme,
@@ -441,6 +454,7 @@
     revealNextGululuGroups: revealNextGululuGroups,
     gululuChapterInfo: gululuChapterInfo,
     gululuResetUnlocks: gululuResetUnlocks,
+    setGululuAutoMusic: setGululuAutoMusic,
     bridgeVersion: function () { return BRIDGE_VERSION; },
     bridgeReadyPayload: bridgeReadyPayload,
     emitReady: emitReady,

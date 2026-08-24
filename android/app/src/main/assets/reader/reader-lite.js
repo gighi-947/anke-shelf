@@ -46,6 +46,10 @@
     phase: 'bootstrapping',
     // resize 防抖状态（Step 2 收进 state，避免模块级散落变量）
     resizeOffset: 0,
+    // 音乐 cue 自动播放：gululuActive 只在骨碌碌书为 true；NGA 书用
+    // gululuAutoMusic 控制附件音频/外链音乐是否随阅读线自动播放。
+    gululuActive: false,
+    gululuAutoMusic: true,
   };
 
   function callBridge(name) {
@@ -1352,6 +1356,12 @@
     bindSelection();
     // 音乐 cue 与书源无关（NGA [audio] 外链音乐同款元素）：任何书都可点播。
     bindMusicCues();
+    state.gululuActive = !!opts.gululu;
+    state.gululuAutoMusic = opts.gululuAutoMusic !== false;
+    if (!state.gululuActive && state.gululuAutoMusic) {
+      // NGA 书自动播放：首屏也要按当前阅读线触发一次（与骨碌碌 initGululu 对齐）
+      setTimeout(reportGululuContext, 0);
+    }
     // 骨碌碌书籍：宿主传入已解锁的骰点分组，运行时只切遮罩不改正文。
     // 必须失败隔离：Gululu 初始化异常不能影响下方换章按钮绑定等基础链路。
     if (opts.gululu) {
@@ -1468,6 +1478,13 @@
     return 'false';
   }
 
+  function setGululuAutoMusic(value) {
+    state.gululuAutoMusic = value !== false;
+    if (state.gululuAutoMusic && !state.gululuActive) {
+      setTimeout(reportGululuContext, 0);
+    }
+  }
+
   var AnkeReaderApi = {
     init: init,
     applyTheme: applyTheme,
@@ -1494,6 +1511,7 @@
     revealNextGululuGroups: revealNextGululuGroups,
     gululuChapterInfo: gululuChapterInfo,
     gululuResetUnlocks: gululuResetUnlocks,
+    setGululuAutoMusic: setGululuAutoMusic,
     bridgeVersion: function () { return BRIDGE_VERSION; },
     bridgeReadyPayload: bridgeReadyPayload,
     emitReady: emitReady,
@@ -1738,9 +1756,15 @@
     }
   }
 
-  /** 自动音乐：标记到达阅读线时触发一次（每标记只触发一次）。 */
+  /** 自动音乐：标记到达阅读线时触发一次（每标记只触发一次）。
+      NGA 书没有 data-gululu-music-auto 标记，自动播放开关打开时对所有
+      .gululu-music-cue 生效（附件音频与外链音乐同规则）。 */
   function fireGululuAutoMusic(line) {
-    var cues = document.querySelectorAll('.gululu-music-cue[data-gululu-music-auto]');
+    var selector = state.gululuAutoMusic
+      ? (state.gululuActive ? '.gululu-music-cue[data-gululu-music-auto]' : '.gululu-music-cue')
+      : '';
+    if (!selector) return;
+    var cues = document.querySelectorAll(selector);
     for (var i = 0; i < cues.length; i++) {
       var url = cues[i].getAttribute('data-gululu-music-url') || '';
       if (!url || gululu.autoFired[url]) continue;

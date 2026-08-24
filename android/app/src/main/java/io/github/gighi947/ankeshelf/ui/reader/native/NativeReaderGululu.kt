@@ -44,6 +44,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -430,6 +431,8 @@ private fun BoxScope.GululuMusicQuickMenu(
     barBg: Color,
     fg: Color,
     playingTitle: String,
+    autoPlay: Boolean,
+    onToggleAutoPlay: () -> Unit,
     onStopMusic: () -> Unit,
 ) {
     AnimatedVisibility(
@@ -449,6 +452,23 @@ private fun BoxScope.GululuMusicQuickMenu(
                 .padding(AnkeSpacing.xs),
             verticalArrangement = Arrangement.spacedBy(AnkeSpacing.xxs),
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AnkeSpacing.md, vertical = AnkeSpacing.xxs),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "自动播放",
+                    color = fg,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Switch(
+                    checked = autoPlay,
+                    onCheckedChange = { onToggleAutoPlay() },
+                )
+            }
             Text(
                 text = "正在播放：$playingTitle",
                 color = fg.copy(alpha = 0.75f),
@@ -472,7 +492,9 @@ internal fun BoxScope.GululuMusicQuickButton(
     barBg: Color,
     fg: Color,
     playingTitle: String,
+    autoPlay: Boolean,
     onToggleQuickMenu: () -> Unit,
+    onToggleAutoPlay: () -> Unit,
     onStopMusic: () -> Unit,
 ) {
     GululuMusicQuickMenu(
@@ -480,6 +502,8 @@ internal fun BoxScope.GululuMusicQuickButton(
         barBg = barBg,
         fg = fg,
         playingTitle = playingTitle,
+        autoPlay = autoPlay,
+        onToggleAutoPlay = onToggleAutoPlay,
         onStopMusic = onStopMusic,
     )
     AnimatedVisibility(

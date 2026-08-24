@@ -598,6 +598,7 @@ fun NativeReaderScreen(
                 autoScroll = autoScrollOn,
                 autoScrollSpeed = readerSettings.autoscroll_speed,
                 gululu = isGululu,
+                gululuAutoMusic = readerSettings.gululu_immersive.autoMusic,
                 gululuUnlockedJson = unlockedJson,
                 paragraphCommentsJson = paragraphCommentsJson,
                 gululuCommand = gululuCommand,
@@ -774,7 +775,14 @@ fun NativeReaderScreen(
                 barBg = barBg,
                 fg = fg,
                 playingTitle = musicTitle,
+                autoPlay = readerSettings.gululu_immersive.autoMusic,
                 onToggleQuickMenu = { showMusicQuickMenu = !showMusicQuickMenu },
+                onToggleAutoPlay = {
+                    val cur = readerSettings.gululu_immersive
+                    onSettingsPatch(
+                        SettingsPatch(gululu_immersive = cur.copy(autoMusic = !cur.autoMusic)),
+                    )
+                },
                 onStopMusic = {
                     stopMusic()
                     showMusicQuickMenu = false

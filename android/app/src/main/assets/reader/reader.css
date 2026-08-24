@@ -392,3 +392,65 @@ mark.hl-cyan {
 .img-error-placeholder::after {
     content: "图片加载失败";
 }
+
+
+/* 音乐 cue（NGA 附件音频/外链音乐）：与骨碌碌 EPUB 同款基础样式 + 附件音频卡片 */
+.gululu-music-row {
+    break-inside: avoid;
+}
+.gululu-music-cue {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
+    max-width: 100%;
+    border: 1px solid rgba(var(--reader-fg-rgb, 34, 34, 34), 0.18);
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    padding: 0.45em 0.65em;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+.gululu-music-kind {
+    color: rgba(var(--reader-fg-rgb, 34, 34, 34), 0.55);
+    font-size: 0.78em;
+    white-space: nowrap;
+}
+.gululu-music-title {
+    overflow-wrap: anywhere;
+}
+.gululu-music-cue.playing {
+    border-color: currentColor;
+}
+.gululu-music-cue-attach {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: rgba(var(--reader-fg-rgb, 34, 34, 34), 0.05);
+    border: 1px solid rgba(var(--reader-fg-rgb, 34, 34, 34), 0.14);
+}
+.gululu-music-cue-attach::before {
+    content: "♪";
+    font-size: 1.25em;
+    line-height: 1;
+    opacity: 0.85;
+}
+.gululu-music-cue-attach:active {
+    border-color: rgba(var(--reader-fg-rgb, 34, 34, 34), 0.3);
+    background: rgba(var(--reader-fg-rgb, 34, 34, 34), 0.08);
+}
+.gululu-music-cue-attach.playing {
+    border-color: rgba(var(--reader-primary-rgb, 139, 90, 43), 1);
+    background: rgba(var(--reader-primary-rgb, 139, 90, 43), 0.12);
+}
+.gululu-music-cue-attach .gululu-music-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

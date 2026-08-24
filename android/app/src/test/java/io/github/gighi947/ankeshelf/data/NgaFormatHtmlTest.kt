@@ -95,10 +95,11 @@ class NgaFormatHtmlTest {
             "onerror=\"audioError(event)\" ></audio></span>"
         val out = NgaFormatHtml.renderContentHtml("前文" + raw + "后文")
         assertTrue(out.contains("gululu-music-cue"))
+        assertTrue(out.contains("gululu-music-cue-attach"))
         assertTrue(out.contains("data-gululu-music-url="))
-        assertTrue(out.contains("附件音频"))
-        // 标题显示 filename 查询参数解码后的可读文件名，而不是整段 URL
-        assertTrue(out.contains("01. a.mp3"))
+        assertFalse("不要显示附件音频字样", out.contains("附件音频"))
+        // 标题只显示上传文件名：解码 filename 查询参数并去掉扩展名
+        assertTrue(out.contains("gululu-music-title\">01. a</span>"))
         assertFalse(out.contains("<span class=\"audio\""))
     }
 
@@ -108,7 +109,7 @@ class NgaFormatHtmlTest {
             "src=\"https://img.nga.cn/attachments/mon_1/abc.mp3\"></audio></span>"
         val out = NgaFormatHtml.renderContentHtml(raw)
         assertTrue(out.contains("data-gululu-music-url=\"https://img.nga.cn/attachments/mon_1/abc.mp3\""))
-        assertTrue(out.contains("<span class=\"gululu-music-title\">abc.mp3</span>"))
+        assertTrue(out.contains("<span class=\"gululu-music-title\">abc</span>"))
     }
 
     @Test

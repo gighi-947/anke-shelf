@@ -170,10 +170,9 @@ object NgaFormatHtml {
             if (!url.startsWith("https://", ignoreCase = true)) {
                 m.value
             } else {
-                "<p class=\"gululu-music-row\">" +
-                    "<button type=\"button\" class=\"gululu-music-cue\" " +
+                "<p class=\"gululu-music-row gululu-music-row-attach\">" +
+                    "<button type=\"button\" class=\"gululu-music-cue gululu-music-cue-attach\" " +
                     "data-gululu-music-url=\"${htmlEscape(url)}\">" +
-                    "<span class=\"gululu-music-kind\">附件音频</span>" +
                     "<span class=\"gululu-music-title\">${htmlEscape(attachmentAudioTitle(url))}</span>" +
                     "</button></p>"
             }
@@ -228,15 +227,25 @@ object NgaFormatHtml {
         it
     }
 
-    /** 从附件音频 URL 提取可读文件名：优先 filename 查询参数，缺省用路径末段。 */
+    /** 去掉常见音频扩展名；名称里的其他点（如 01. 歌名）保留。 */
+    private fun stripAudioExtension(name: String): String {
+        val dot = name.lastIndexOf('.')
+        if (dot > 0 && name.substring(dot).lowercase() in AUDIO_EXTENSIONS) {
+            return name.substring(0, dot)
+        }
+        return name
+    }
+
+    /** 从附件音频 URL 提取可读文件名：优先 filename 查询参数，缺省用路径末段；
+        去掉扩展名，只显示上传文件名。 */
     private fun attachmentAudioTitle(url: String): String {
         return try {
             val filename = Regex("""[?&]filename=([^&]+)""").find(url)?.groupValues?.get(1)
             if (!filename.isNullOrEmpty()) {
-                java.net.URLDecoder.decode(filename, "UTF-8")
+                stripAudioExtension(java.net.URLDecoder.decode(filename, "UTF-8"))
             } else {
                 val path = java.net.URI(url).path ?: return url
-                java.net.URLDecoder.decode(path.substringAfterLast('/'), "UTF-8")
+                stripAudioExtension(java.net.URLDecoder.decode(path.substringAfterLast('/'), "UTF-8"))
             }
         } catch (_: Exception) {
             url
@@ -265,4 +274,6 @@ object NgaFormatHtml {
             .replace("<", "&lt;").replace(">", "&gt;")
 
     private const val SMILE_BASE = "https://img4.nga.178.com/ngabbs/post/smile/"
+
+    private val AUDIO_EXTENSIONS = setOf(".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".opus", ".wma")
 }

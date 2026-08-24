@@ -46,6 +46,10 @@
     phase: 'bootstrapping',
     // resize 防抖状态（Step 2 收进 state，避免模块级散落变量）
     resizeOffset: 0,
+    // 音乐 cue 自动播放：gululuActive 只在骨碌碌书为 true；NGA 书用
+    // gululuAutoMusic 控制附件音频/外链音乐是否随阅读线自动播放。
+    gululuActive: false,
+    gululuAutoMusic: true,
   };
 
   function callBridge(name) {

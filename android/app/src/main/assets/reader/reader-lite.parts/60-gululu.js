@@ -231,9 +231,15 @@
     }
   }
 
-  /** 自动音乐：标记到达阅读线时触发一次（每标记只触发一次）。 */
+  /** 自动音乐：标记到达阅读线时触发一次（每标记只触发一次）。
+      NGA 书没有 data-gululu-music-auto 标记，自动播放开关打开时对所有
+      .gululu-music-cue 生效（附件音频与外链音乐同规则）。 */
   function fireGululuAutoMusic(line) {
-    var cues = document.querySelectorAll('.gululu-music-cue[data-gululu-music-auto]');
+    var selector = state.gululuAutoMusic
+      ? (state.gululuActive ? '.gululu-music-cue[data-gululu-music-auto]' : '.gululu-music-cue')
+      : '';
+    if (!selector) return;
+    var cues = document.querySelectorAll(selector);
     for (var i = 0; i < cues.length; i++) {
       var url = cues[i].getAttribute('data-gululu-music-url') || '';
       if (!url || gululu.autoFired[url]) continue;
