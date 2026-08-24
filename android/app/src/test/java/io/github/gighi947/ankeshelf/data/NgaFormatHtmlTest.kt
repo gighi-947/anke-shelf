@@ -86,4 +86,43 @@ class NgaFormatHtmlTest {
             NgaFormatHtml.normalizeImageUrl("./mon_2.png"),
         )
     }
+
+    @Test
+    fun `attachment audio becomes music cue`() {
+        val raw = "<span class=\"audio\" onclick=\"audioClick(event)\"> <audio " +
+            "src=\"https://img.nga.cn/attachments/mon_202410/09/lsQtoqh-1i29Xu.mp3" +
+            "?filename=01%2e%20a.mp3\" onended=\"audioEnd(event)\" " +
+            "onerror=\"audioError(event)\" ></audio></span>"
+        val out = NgaFormatHtml.renderContentHtml("前文" + raw + "后文")
+        assertTrue(out.contains("gululu-music-cue"))
+        assertTrue(out.contains("data-gululu-music-url="))
+        assertTrue(out.contains("附件音频"))
+        assertFalse(out.contains("<span class=\"audio\""))
+    }
+
+    @Test
+    fun `attachment audio cue text enters coordinates`() {
+        val raw = "<span class=\"audio\" onclick=\"audioClick(event)\"> <audio " +
+            "src=\"https://img.nga.cn/attachments/x.mp3\"></audio></span>"
+        val out = NgaFormatHtml.renderContentHtml(raw)
+        assertFalse(out.contains("data-textpos-exclude"))
+    }
+
+    @Test
+    fun `attachment audio self closing becomes music cue`() {
+        val raw = "<span class=\"audio\" onclick=\"audioClick(event)\">" +
+            "<audio src=\"https://img.nga.cn/x.mp3\" /></span>"
+        val out = NgaFormatHtml.renderContentHtml(raw)
+        assertTrue(out.contains("gululu-music-cue"))
+        assertTrue(out.contains("data-gululu-music-url=\"https://img.nga.cn/x.mp3\""))
+    }
+
+    @Test
+    fun `cleartext http attachment audio kept as plain text`() {
+        val raw = "<span class=\"audio\" onclick=\"audioClick(event)\"> <audio " +
+            "src=\"http://img.nga.cn/x.mp3\"></audio></span>"
+        val out = NgaFormatHtml.renderContentHtml(raw)
+        assertTrue(out.contains(raw))
+        assertFalse(out.contains("gululu-music-cue"))
+    }
 }

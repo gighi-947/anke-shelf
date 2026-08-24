@@ -26,6 +26,10 @@ object NgaFormatHtml {
     /** 外链音乐（方案 A）：仅 https；URL 排除引号/空白/方括号（与桌面同规则）。 */
     private val RE_AUDIO = Regex("""\[audio\](https://[^\[\]"\s]+)\[/audio\]""")
 
+    /** 附件音频（方案 A）：<span class="audio"><audio src=…> HTML 片段，仅 https。 */
+    private val RE_AUDIO_ATTACH =
+        Regex("""(?is)<span\s+class="audio"[^>]*>\s*<audio\s+[^>]*\bsrc="([^"]+)"[^>]*/?>\s*(?:</audio>\s*)?</span>""")
+
     private val RE_DICE =
         Regex("""<div class='dice'><b>ROLL : (.+?)</b>=(.+?)=<b>(.+?)</b></div>""")
     private val RE_COLLAPSE = Regex(
@@ -154,6 +158,25 @@ object NgaFormatHtml {
                 "<span class=\"gululu-music-kind\">外链音乐</span>" +
                 "<span class=\"gululu-music-title\">${minEscape(url)}</span>" +
                 "</button></p>"
+        }
+
+        // 附件音频（方案 A）：NGA 帖内附件不是 [audio] BBCode，而是
+        // <span class="audio"><audio src=…></span> 原始 HTML 片段；转为
+        // 骨碌碌同款音乐 cue 后复用宿主播放器在线播放。仅 https 转换
+        // （播放桥只收 https，与 [audio] 同规则）；cue 文本进坐标
+        // （不加 data-textpos-exclude）。非 https 保留原文（双端一致降级）。
+        c = RE_AUDIO_ATTACH.replace(c) { m ->
+            val url = m.groupValues[1]
+            if (!url.startsWith("https://", ignoreCase = true)) {
+                m.value
+            } else {
+                "<p class=\"gululu-music-row\">" +
+                    "<button type=\"button\" class=\"gululu-music-cue\" " +
+                    "data-gululu-music-url=\"${htmlEscape(url)}\">" +
+                    "<span class=\"gululu-music-kind\">附件音频</span>" +
+                    "<span class=\"gululu-music-title\">${htmlEscape(url)}</span>" +
+                    "</button></p>"
+            }
         }
         c = RE_POSTBY_UID.replace(c) { m ->
             "<div class=\"quote-author\">Post by ${m.groupValues[2]}(${m.groupValues[1]})(${m.groupValues[3]}):</div>"
