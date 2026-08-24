@@ -98,6 +98,7 @@
 | `shelf_sort` | string | `"recent"` | 排序方式 |
 | `hide_title_brackets` | bool | `false` | 隐藏书名首个【…】/[…] 前缀（仅显示层剥离，存储原名不变） |
 | `gululu_immersive` | object | `{"autoMusic":true,"backgrounds":true,"vfx":true,"volume":0.45}` | 骨碌碌沉浸体验偏好（Web 端持久化） |
+| `floor_export` | object | `{"theme":"light","fmt":"png","scale":2,"output_dir":"","last_book_id":""}` | 楼层导出偏好（Windows Web 端持久化；Android 读取时忽略未知字段，保存后会丢失该字段） |
 | `margin_px` | int | `40` | 页边距 px |
 | `gap_px` | int | `28` | 列间隙 px |
 | `brightness` | double | `0.0` | 亮度调节 |

@@ -61,6 +61,12 @@ _OVERRIDE_CSS = """
   color: var(--reader-accent, #77bbee) !important;
   font-weight: 700 !important;
 }
+.nga-floor .floor-meta, .nga-floor .floor-head .pid {
+  display: inline-block !important;
+}
+.nga-floor .floor-head {
+  line-height: 1.6 !important;
+}
 .nga-comment, .gululu-comment {
   background: color-mix(in srgb, var(--reader-fg, #222) 6%, transparent) !important;
   border: 1px solid color-mix(in srgb, var(--reader-fg, #222) 18%, transparent) !important;

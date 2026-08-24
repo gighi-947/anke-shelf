@@ -111,6 +111,12 @@
   与 iframe 正文字号不同；现在按 `46em × page_width × 父文档字号 - 64px`
   精确换算，70% 宽度导出的卡片实际为 70% 阅读内容宽。导出页增加
   批量导出进度条（current/total 驱动）。
+- 追加修复：NGA 楼层头部在阅读与导出两端统一归一化——把
+  `0楼 · 赞 · 作者(uid) · 时间 · pid` 拆分进 `.floor-meta` 行内块，
+  窄页宽时按单元换行，不再从 `·` 中间断行；楼层导出设置改为写入
+  `settings.json:floor_export`（Web 端持久化，不再依赖 localStorage，
+  否则 run_app.py 每次随机端口会导致 origin 变化而失效）；同步更新
+  `docs/DATA_CONTRACT.md`。
 - 验证：Windows Python 342 项、API 契约 66 方法一致、JS 契约/守卫全绿。
 ### 2026-08-24 win：楼层导出（图片渲染，第三十八批）
 

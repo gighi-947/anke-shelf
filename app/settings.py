@@ -38,6 +38,13 @@ DEFAULTS: dict[str, Any] = {
         "vfx": True,
         "volume": 0.45,
     },  # 骨碌碌沉浸体验偏好（Web 端持久化）
+    "floor_export": {
+        "theme": "light",
+        "fmt": "png",
+        "scale": 2,
+        "output_dir": "",
+        "last_book_id": "",
+    },  # 楼层导出偏好（Web 端持久化）
     "margin_px": 40,  # 分页阅读边距
     "gap_px": 28,  # 分页列间沟槽
     "brightness": 0.0,  # 亮度遮罩 0~0.7
