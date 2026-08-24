@@ -131,10 +131,12 @@
       btn.classList.toggle('hidden', !show);
       btn.title = state.sourceId > 0 ? '音乐与氛围效果' : '音乐控制';
     }
-    ['gululu-auto-music-row', 'gululu-background-row', 'gululu-vfx-row'].forEach((id) => {
+    ['gululu-background-row', 'gululu-vfx-row'].forEach((id) => {
       const row = el(id);
       if (row) row.classList.toggle('hidden', state.sourceId <= 0);
     });
+    const autoLabel = el('gululu-auto-music-label');
+    if (autoLabel) autoLabel.textContent = state.sourceId > 0 ? '自动音乐' : '自动播放';
     const status = el('gululu-immersive-status');
     if (status && !state.sourceId && !state.audio) {
       status.textContent = '点击正文音乐按钮开始播放';
@@ -451,15 +453,18 @@
   }
 
   function scanChapter() {
-    if (!state.sourceId || !state.doc || !state.doc.body) return;
+    if (!state.doc || !state.doc.body) return;
     const viewport = currentViewport();
     if (!viewport) return;
-    const background = desiredBackground(viewport);
-    if (background !== state.backgroundUrl) applyBackground(background);
-    const floor = activeFloor(viewport);
-    applyVfx((floor && floor.dataset.gululuVfx) || '');
+    if (state.sourceId) {
+      const background = desiredBackground(viewport);
+      if (background !== state.backgroundUrl) applyBackground(background);
+      const floor = activeFloor(viewport);
+      applyVfx((floor && floor.dataset.gululuVfx) || '');
+    }
     if (state.prefs.autoMusic) {
-      state.doc.querySelectorAll('[data-gululu-music-auto="true"]').forEach((cue) => {
+      const selector = state.sourceId ? '[data-gululu-music-auto="true"]' : '.gululu-music-cue';
+      state.doc.querySelectorAll(selector).forEach((cue) => {
         if (!state.playedAuto.has(cue) && isReached(cue, viewport)) {
           state.playedAuto.add(cue);
           playMusic(cue, true);
@@ -483,12 +488,9 @@
       event.preventDefault();
       stopMusic();
     });
-    if (!state.sourceId) {
-      state.doc = null;
-      return;
-    }
     state.doc = doc;
     state.playedAuto = new WeakSet();
+    if (!state.sourceId) return;
     applyBackground('');
     doc.addEventListener('mouseover', (event) => {
       const floor = event.target.closest('.gululu-floor');
@@ -506,7 +508,7 @@
     stopVfx();
     syncMusicChrome();
     clearInterval(state.scanTimer);
-    state.scanTimer = state.sourceId ? setInterval(scanChapter, 250) : null;
+    state.scanTimer = setInterval(scanChapter, 250);
   }
 
   function togglePanel(force, trigger, restoreFocus) {

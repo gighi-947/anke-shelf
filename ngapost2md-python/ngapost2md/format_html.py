@@ -158,14 +158,24 @@ def render_content_html(raw: str, tiezi: Tiezi, img_src) -> str:
     # 骨碌碌同款音乐 cue 后复用宿主播放器在线播放。仅 https 转换
     # （播放桥只收 https，与 [audio] 同规则）；cue 文本进坐标
     # （不加 data-textpos-exclude）。非 https 保留原文（双端一致降级）。
+    def _strip_audio_extension(name: str) -> str:
+        """去掉常见音频扩展名；名称里的其他点（如 01. 歌名）保留。"""
+        dot = name.rfind(".")
+        if dot > 0 and name[dot:].lower() in {
+            ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".opus", ".wma",
+        }:
+            return name[:dot]
+        return name
+
     def _attachment_audio_title(url: str) -> str:
-        """从附件音频 URL 提取可读文件名：优先 filename 查询参数，缺省用路径末段。"""
+        """从附件音频 URL 提取可读文件名：优先 filename 查询参数，缺省用路径末段；
+        去掉扩展名，只显示上传文件名。"""
         try:
             parsed = urlparse(url)
             filename = parse_qs(parsed.query).get("filename", [""])[0]
             if filename:
-                return filename
-            return unquote(parsed.path.rsplit("/", 1)[-1]) or url
+                return _strip_audio_extension(filename)
+            return _strip_audio_extension(unquote(parsed.path.rsplit("/", 1)[-1])) or url
         except Exception:  # noqa: BLE001
             return url
 
@@ -175,10 +185,9 @@ def render_content_html(raw: str, tiezi: Tiezi, img_src) -> str:
             return m.group(0)
         title = _attachment_audio_title(url)
         return (
-            '<p class="gululu-music-row">'
-            f'<button type="button" class="gululu-music-cue" '
+            '<p class="gululu-music-row gululu-music-row-attach">'
+            f'<button type="button" class="gululu-music-cue gululu-music-cue-attach" '
             f'data-gululu-music-url="{html.escape(url)}">'
-            '<span class="gululu-music-kind">附件音频</span>'
             f'<span class="gululu-music-title">{html.escape(title)}</span>'
             "</button></p>"
         )

@@ -440,13 +440,12 @@ async function inspectDesktop(browser) {
   await isolationMusic.waitFor();
   assert(!(await page.locator('#gululu-quick-actions').isVisible()), 'NGA 阅读界面显示骨碌碌快捷操作轨');
   assert(!(await page.locator('#gululu-comments-btn').isVisible()), 'NGA 阅读界面显示骨碌碌评论入口');
-  assert(!(await page.locator('#gululu-immersive-btn').isVisible()), 'NGA 阅读界面显示骨碌碌沉浸入口');
   assert(await isolationFrame.locator('.gululu-floor-comment-button').count() === 0,
     'NGA 正文被注入骨碌碌楼层评论按钮');
-  await isolationMusic.click();
+  // 自动播放开关默认开启：NGA 音乐 cue 到达阅读线会自动播放，并显示音乐控制入口
   await page.waitForFunction(() => GululuImmersive.snapshot().playing);
   assert(await page.locator('#gululu-immersive-btn').isVisible(),
-    'NGA 音乐播放时未显示音乐控制入口');
+    'NGA 自动播放后未显示音乐控制入口');
   await isolationFrame.locator('.gululu-secret-cue').click();
   await page.waitForTimeout(50);
   const isolation = await page.evaluate(() => ({

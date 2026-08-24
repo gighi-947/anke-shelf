@@ -248,6 +248,65 @@ def _css(theme: str) -> str:
     .nga-dice {
       color: var(--reader-accent, #77bbee) !important;
     }
+    .gululu-music-row {
+      break-inside: avoid !important;
+    }
+    .gululu-music-cue {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 0.55em !important;
+      max-width: 100% !important;
+      border: 1px solid color-mix(in srgb, var(--reader-fg, #222) 18%, transparent) !important;
+      border-radius: 6px !important;
+      background: transparent !important;
+      color: inherit !important;
+      padding: 0.45em 0.65em !important;
+      cursor: pointer !important;
+      font: inherit !important;
+      text-align: left !important;
+    }
+    .gululu-music-kind {
+      color: color-mix(in srgb, var(--reader-fg, #222) 55%, transparent) !important;
+      font-size: 0.78em !important;
+      white-space: nowrap !important;
+    }
+    .gululu-music-title {
+      overflow-wrap: anywhere !important;
+    }
+    .gululu-music-cue.playing {
+      border-color: currentColor !important;
+    }
+    .gululu-music-cue-attach {
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+      width: 100% !important;
+      border-radius: 12px !important;
+      padding: 10px 14px !important;
+      background: color-mix(in srgb, var(--reader-fg, #222) 5%, transparent) !important;
+      border: 1px solid color-mix(in srgb, var(--reader-fg, #222) 14%, transparent) !important;
+    }
+    .gululu-music-cue-attach::before {
+      content: "♪" !important;
+      font-size: 1.25em !important;
+      line-height: 1 !important;
+      opacity: 0.85 !important;
+    }
+    .gululu-music-cue-attach:hover {
+      border-color: color-mix(in srgb, var(--reader-fg, #222) 30%, transparent) !important;
+      background: color-mix(in srgb, var(--reader-fg, #222) 8%, transparent) !important;
+    }
+    .gululu-music-cue-attach.playing {
+      border-color: var(--reader-accent, #77bbee) !important;
+      background: color-mix(in srgb, var(--reader-accent, #77bbee) 12%, transparent) !important;
+    }
+    .gululu-music-cue-attach .gululu-music-title {
+      flex: 1 !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
     """
 
 

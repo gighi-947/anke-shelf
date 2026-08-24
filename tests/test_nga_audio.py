@@ -64,16 +64,16 @@ class NgaAttachmentAudioCueTest(unittest.TestCase):
 
     def test_attachment_audio_becomes_music_cue(self):
         out = self._render("前文" + self.RAW + "后文")
-        self.assertIn('class="gululu-music-cue"', out)
+        self.assertIn('gululu-music-cue', out)
         self.assertIn(
             'data-gululu-music-url="https://img.nga.cn/attachments/mon_202410/09/'
             'lsQtoqh-1i29Xu.mp3?filename=01%2e%20a.mp3"',
             out,
         )
-        self.assertIn("gululu-music-kind", out)
-        self.assertIn("附件音频", out)
-        # 标题显示 filename 查询参数解码后的可读文件名，而不是整段 URL
-        self.assertIn("01. a.mp3", out)
+        self.assertNotIn("附件音频", out)
+        self.assertIn("gululu-music-cue-attach", out)
+        # 标题只显示上传文件名：解码 filename 查询参数并去掉扩展名
+        self.assertIn('gululu-music-title">01. a</span>', out)
         self.assertNotIn('<span class="audio"', out)
 
     def test_attachment_audio_title_falls_back_to_path_name(self):
@@ -83,7 +83,7 @@ class NgaAttachmentAudioCueTest(unittest.TestCase):
         )
         out = self._render(raw)
         self.assertIn('data-gululu-music-url="https://img.nga.cn/attachments/mon_1/abc.mp3"', out)
-        self.assertIn('<span class="gululu-music-title">abc.mp3</span>', out)
+        self.assertIn('<span class="gululu-music-title">abc</span>', out)
 
     def test_attachment_audio_cue_text_enters_coordinates(self):
         out = self._render(self.RAW)
@@ -95,7 +95,7 @@ class NgaAttachmentAudioCueTest(unittest.TestCase):
             '<audio src="https://img.nga.cn/x.mp3" /></span>'
         )
         out = self._render(raw)
-        self.assertIn('class="gululu-music-cue"', out)
+        self.assertIn('gululu-music-cue', out)
         self.assertIn('data-gululu-music-url="https://img.nga.cn/x.mp3"', out)
 
     def test_attachment_audio_http_kept(self):
