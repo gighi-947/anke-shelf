@@ -43,5 +43,59 @@ class NgaAudioCueTest(unittest.TestCase):
         self.assertEqual(self._render("普通正文"), "普通正文")
 
 
+class NgaAttachmentAudioCueTest(unittest.TestCase):
+    """NGA 附件音频（<span class="audio"><audio src=…>）转换回归（方案 A）。
+
+    附件音频原始形态是 NGA 接口返回的 HTML 片段（见
+    docs/NGA_ATTACHMENT_AUDIO_RESEARCH.md），双端渲染层把它转为骨碌碌
+    同款音乐 cue 按钮，复用宿主播放器在线播放。规则与 [audio] 一致：
+    仅 https 转换；cue 文本进坐标；非 https 保留原文。
+    """
+
+    RAW = (
+        '<span class="audio" onclick="audioClick(event)"> <audio '
+        'src="https://img.nga.cn/attachments/mon_202410/09/lsQtoqh-1i29Xu.mp3'
+        '?filename=01%2e%20a.mp3" onended="audioEnd(event)" '
+        'onerror="audioError(event)" ></audio></span>'
+    )
+
+    def _render(self, raw: str) -> str:
+        return render_content_html(raw, None, lambda u: u)
+
+    def test_attachment_audio_becomes_music_cue(self):
+        out = self._render("前文" + self.RAW + "后文")
+        self.assertIn('class="gululu-music-cue"', out)
+        self.assertIn(
+            'data-gululu-music-url="https://img.nga.cn/attachments/mon_202410/09/'
+            'lsQtoqh-1i29Xu.mp3?filename=01%2e%20a.mp3"',
+            out,
+        )
+        self.assertIn("gululu-music-kind", out)
+        self.assertIn("附件音频", out)
+        self.assertNotIn('<span class="audio"', out)
+
+    def test_attachment_audio_cue_text_enters_coordinates(self):
+        out = self._render(self.RAW)
+        self.assertNotIn("data-textpos-exclude", out)
+
+    def test_attachment_audio_self_closing(self):
+        raw = (
+            '<span class="audio" onclick="audioClick(event)">'
+            '<audio src="https://img.nga.cn/x.mp3" /></span>'
+        )
+        out = self._render(raw)
+        self.assertIn('class="gululu-music-cue"', out)
+        self.assertIn('data-gululu-music-url="https://img.nga.cn/x.mp3"', out)
+
+    def test_attachment_audio_http_kept(self):
+        raw = (
+            '<span class="audio" onclick="audioClick(event)"> <audio '
+            'src="http://img.nga.cn/x.mp3"></audio></span>'
+        )
+        out = self._render(raw)
+        self.assertIn(raw, out)
+        self.assertNotIn("gululu-music-cue", out)
+
+
 if __name__ == "__main__":
     unittest.main()

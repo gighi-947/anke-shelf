@@ -20,6 +20,10 @@ RE_I = re.compile(r"\[i\](.*?)\[/i\]", re.DOTALL)
 RE_URL = re.compile(r"\[url=(.+?)\](.+?)\[/url\]")
 RE_URL_PLAIN = re.compile(r"\[url\](.+?)\[/url\]")
 RE_AUDIO = re.compile(r"\[audio\](https://[^\[\]\"\s]+)\[/audio\]")
+RE_AUDIO_ATTACH = re.compile(
+    r'<span\s+class=\"audio\"[^>]*>\s*<audio\s+[^>]*\bsrc=\"([^\"]+)\"[^>]*/?>\s*(?:</audio>\s*)?</span>',
+    re.DOTALL | re.IGNORECASE,
+)
 RE_IMG = re.compile(r"\[img\](.+?)\[/img\]")
 RE_SMILE = re.compile(r"\[s\:.+?\:.+?\]")
 RE_UID = re.compile(r"\[uid=(\d+?)\](.+?)\[/uid\]")
@@ -147,6 +151,26 @@ def render_content_html(raw: str, tiezi: Tiezi, img_src) -> str:
         ),
         c,
     )
+
+    # 附件音频（方案 A）：NGA 帖内附件不是 [audio] BBCode，而是
+    # <span class="audio"><audio src=…></span> 原始 HTML 片段；转为
+    # 骨碌碌同款音乐 cue 后复用宿主播放器在线播放。仅 https 转换
+    # （播放桥只收 https，与 [audio] 同规则）；cue 文本进坐标
+    # （不加 data-textpos-exclude）。非 https 保留原文（双端一致降级）。
+    def _attachment_audio_cue(m: re.Match) -> str:
+        url = m.group(1)
+        if not url.lower().startswith("https://"):
+            return m.group(0)
+        return (
+            '<p class="gululu-music-row">'
+            f'<button type="button" class="gululu-music-cue" '
+            f'data-gululu-music-url="{html.escape(url)}">'
+            '<span class="gululu-music-kind">附件音频</span>'
+            f'<span class="gululu-music-title">{html.escape(url)}</span>'
+            "</button></p>"
+        )
+
+    c = RE_AUDIO_ATTACH.sub(_attachment_audio_cue, c)
     # 匿名 ID
     c = RE_ANONY.sub(lambda m: _safe_anony(m.group(0)), c)
     # 引用头（Post by ...:）
