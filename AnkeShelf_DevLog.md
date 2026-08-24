@@ -30,12 +30,13 @@
   安全对齐评估与修复批（第二十九批）、NGA 内嵌图片进度修复
   （第三十批）、华为 WebView 楼层卡片 rgba 修复（第三十一批）、
   NGA 外链音乐在线 cue（第三十二批）、NGA 附件音频调研（第三十三批）、
-  NGA 附件音频在线 cue（第三十四批）、NGA 音乐 cue 播放控件补齐（第三十五批，见 §4）。
+  NGA 附件音频在线 cue（第三十四批）、NGA 音乐 cue 播放控件补齐（第三十五批）、
+  附件音频标题显示为可读文件名（第三十六批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.6.2`（已发布，AnkeShelf-v1.6.2.zip）；
   Android `android-v1.3.2`（已发布，AnkeShelf-v1.3.2-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-24 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 338 项
+  - Windows Python：`python -m unittest discover tests` = 339 项
     （2026-08-24 实跑全过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（60 方法一致）、
@@ -46,7 +47,7 @@
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/paged-blank.test.js`（空白页判定边界）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 235 项（234 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 236 项（235 过 / 1 跳）；
     DisciplineTest 11 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
@@ -79,6 +80,15 @@
 
 ## 4. 最近流水
 
+### 2026-08-24 win/android：附件音频标题显示为可读文件名（第三十六批）
+
+- 现象（用户反馈）：附件音频 cue 的标题直接显示了整段 URL，名称不可读。
+- 修复：双端 `_attachment_audio_title()` / `attachmentAudioTitle()` 从
+  URL 的 `filename` 查询参数提取并百分号解码为可读文件名；缺省时回退到
+  URL 路径末段（同样解码）；仍失败才保留原 URL。`data-gululu-music-url`
+  仍存完整 URL 供播放器使用，仅标题文本改变。
+- 验证：Windows Python 339 项（+1）；Android JVM 236 项（235 过 / 1 跳，
+  +1）；JS 契约/守卫全绿。
 ### 2026-08-24 win/android：NGA 音乐 cue 播放控件补齐（第三十五批）
 
 - 现象（用户反馈）：NGA 附件音频已可播放，但没有类似骨碌碌的播放控件。
