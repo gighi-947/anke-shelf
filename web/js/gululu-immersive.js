@@ -122,6 +122,25 @@
     }
   }
 
+  /** 音乐控制入口与面板内容随书源/播放状态切换：骨碌碌书显示完整面板；
+      NGA 等非骨碌碌书只有音乐播放时显示入口，面板只保留音乐控制。 */
+  function syncMusicChrome() {
+    const btn = el('gululu-immersive-btn');
+    const show = state.sourceId > 0 || !!state.audio;
+    if (btn) {
+      btn.classList.toggle('hidden', !show);
+      btn.title = state.sourceId > 0 ? '音乐与氛围效果' : '音乐控制';
+    }
+    ['gululu-auto-music-row', 'gululu-background-row', 'gululu-vfx-row'].forEach((id) => {
+      const row = el(id);
+      if (row) row.classList.toggle('hidden', state.sourceId <= 0);
+    });
+    const status = el('gululu-immersive-status');
+    if (status && !state.sourceId && !state.audio) {
+      status.textContent = '点击正文音乐按钮开始播放';
+    }
+  }
+
   function toggleMusic() {
     const audio = state.audio;
     if (!audio) return;
@@ -153,6 +172,8 @@
     updatePlayingCue(null);
     hideMusicToast();
     syncMusicControls();
+    syncMusicChrome();
+    if (!state.sourceId && state.panelOpen) closePanel();
     if (audio) {
       const start = Number(audio.volume) || 0;
       const startedAt = performance.now();
@@ -195,6 +216,7 @@
     setStatus(`${automatic ? '自动音乐' : '正在播放'}：${title}`);
     showMusicToast(title, floorLabel(cue));
     syncMusicControls();
+    syncMusicChrome();
     if (audio.addEventListener) {
       audio.addEventListener('error', () => {
         if (state.audio !== audio || generation !== state.audioGeneration) return;
@@ -482,13 +504,13 @@
     stopMusic({ silent: true, immediate: true });
     applyBackground('');
     stopVfx();
-    el('gululu-immersive-btn').classList.add('hidden');
+    syncMusicChrome();
     clearInterval(state.scanTimer);
     state.scanTimer = state.sourceId ? setInterval(scanChapter, 250) : null;
   }
 
   function togglePanel(force, trigger, restoreFocus) {
-    if (!state.sourceId && force !== false) return;
+    if (!state.sourceId && !state.audio && force !== false) return;
     const wasOpen = state.panelOpen;
     state.panelOpen = typeof force === 'boolean' ? force : !state.panelOpen;
     if (state.panelOpen && trigger) state.returnFocus = trigger;
@@ -525,6 +547,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     applyControls();
+    syncMusicChrome();
     el('gululu-immersive-btn').addEventListener('click', (event) => {
       togglePanel(undefined, event.currentTarget, true);
     });

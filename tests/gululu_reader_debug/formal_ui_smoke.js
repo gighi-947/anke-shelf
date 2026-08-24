@@ -444,6 +444,9 @@ async function inspectDesktop(browser) {
   assert(await isolationFrame.locator('.gululu-floor-comment-button').count() === 0,
     'NGA 正文被注入骨碌碌楼层评论按钮');
   await isolationMusic.click();
+  await page.waitForFunction(() => GululuImmersive.snapshot().playing);
+  assert(await page.locator('#gululu-immersive-btn').isVisible(),
+    'NGA 音乐播放时未显示音乐控制入口');
   await isolationFrame.locator('.gululu-secret-cue').click();
   await page.waitForTimeout(50);
   const isolation = await page.evaluate(() => ({
@@ -451,8 +454,8 @@ async function inspectDesktop(browser) {
     secrets: GululuSecrets.snapshot(),
     secretModal: !!document.querySelector('.gululu-secret-modal'),
   }));
-  assert(!isolation.immersive.playing && isolation.immersive.sourceId === 0,
-    `NGA 正文触发骨碌碌音乐：${JSON.stringify(isolation)}`);
+  assert(isolation.immersive.playing && isolation.immersive.sourceId === 0,
+    `NGA 正文未触发音乐 cue：${JSON.stringify(isolation)}`);
   assert(isolation.secrets.sourceId === 0 && !isolation.secretModal,
     `NGA 正文触发骨碌碌秘密：${JSON.stringify(isolation)}`);
   await page.evaluate(() => App.showShelf());
