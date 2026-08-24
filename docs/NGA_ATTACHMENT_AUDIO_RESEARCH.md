@@ -1,6 +1,6 @@
 # NGA 附件音频调研结论（2026-08-23）
 
-> 状态：调研完成，待用户拍板是否立项实施。
+> 状态：方案 A（在线 cue）已于 2026-08-24 实施；方案 B（离线内嵌）待用户后续拍板。
 > 关联流水：AnkeShelf_DevLog.md 第三十二批（外链音乐方案 A）与第三十三批（本调研）。
 
 ## 1. 结论摘要
@@ -54,18 +54,18 @@ URL 公网可直接访问，**不需要 Cookie**。当前双端渲染管线未�
 | A. 在线 cue（推荐先做） | 双端 HTML 渲染层把 `<span class="audio">` 转成 `.gululu-music-cue`（kind=附件音频，title=文件名或 URL），复用宿主播放器 | 改动小、双端同构、立即可播、URL 公网免 Cookie | 依赖网络；不省流量；不存到本地 |
 | B. 离线内嵌（用户倾向） | 在图片三态管线中新增 mp3 下载：online 保持在线 cue；embedded 下载 mp3 进 EPUB/本地资源并改为本地 src；none 移除播放按钮 | 完全离线可播，符合“把书下载到本地”定位 | 改动大：下载器、资源映射、EPUB 打包、阅读器本地资源拦截、断点与失败处理都要动；需处理 1–4MB mp3 与版权/空间 |
 
-## 5. 建议路径
+## 5. 实施记录
 
-1. 先实施 **方案 A**（在线播放），红测试先行：
-   - Android `NgaFormatHtml` 增加 `RE_AUDIO_SPAN` 正则；Windows
-     `format_html.py` 同构增加；新增测试锁定转换与 text_offset 语义。
+1. **方案 A 已实施（2026-08-24）**：
+   - Android `NgaFormatHtml` 增加 `RE_AUDIO_ATTACH`；Windows
+     `format_html.py` 同构增加；新增双端测试锁定转换与 text_offset 语义。
    - 转换后 cue 文本进坐标（与骨碌碌/外链音乐一致）。
-2. 实机验证后，若用户仍要离线，再立 **方案 B**：
+   - 仅 https 转换；非 https 保留原文；自闭合 `<audio …/>` 同样支持。
+2. 若后续仍要离线，再立 **方案 B**：
    - 复用 `NgaImageDownloads` / `GululuImages` 下载框架；
    - EPUB 资源映射扩展 `.mp3` 到 `file:///android_assets` 或 EPUB 本地；
    - 阅读器侧 `shouldInterceptRequest` / `styleHrefs` 已具备本地资源基础。
 
-## 6. 待用户拍板
+## 6. 后续待拍板
 
-- 是否先上方案 A 在线播放？
-- 离线内嵌（方案 B）是否立项，优先级如何？
+- 方案 B（离线内嵌）是否立项，优先级如何？

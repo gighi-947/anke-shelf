@@ -8,7 +8,7 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-22）
+## 1. 当前状态（2026-08-24）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
   沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；v1.6.0 / android-v1.3.0 与 v1.6.1 / android-v1.3.1、v1.6.2 / android-v1.3.2 已发布；五批接手风险修复已合入；
@@ -28,15 +28,15 @@
   -61%（第二十五批，见 §4）；性能专项收尾并发布
   v1.6.1 / android-v1.3.1（第二十六批）、v1.6.2 / android-v1.3.2（第二十八批）；
   安全对齐评估与修复批（第二十九批）、NGA 内嵌图片进度修复
-  （第三十批，见 §4）。
+  （第三十批）、华为 WebView 楼层卡片 rgba 修复（第三十一批）、
+  NGA 外链音乐在线 cue（第三十二批）、NGA 附件音频调研（第三十三批）、
+  NGA 附件音频在线 cue（第三十四批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.6.2`（已发布，AnkeShelf-v1.6.2.zip）；
   Android `android-v1.3.2`（已发布，AnkeShelf-v1.3.2-android.apk）。
-- 测试基线（Windows / JS / Android JVM 于 2026-08-22 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 334 项
-    （本机 Python 3.14：1 项环境性错误 `test_main_guard`
-    ——tasklist 在本沙箱返回 None，clean main 同样失败、与代码无关；
-    bundled Python 3.12：全量通过）；
+- 测试基线（Windows / JS / Android JVM 于 2026-08-24 实跑复核）：
+  - Windows Python：`python -m unittest discover tests` = 338 项
+    （2026-08-24 实跑全过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（60 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
@@ -46,7 +46,7 @@
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/paged-blank.test.js`（空白页判定边界）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 231 项（230 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 235 项（234 过 / 1 跳）；
     DisciplineTest 11 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
@@ -78,6 +78,20 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-24 win/android：NGA 附件音频转在线音乐 cue（方案 A，第三十四批）
+
+- 背景：用户拍板方案 A。NGA 帖内附件音频原始形态是
+  `<span class="audio"><audio src="https://img.nga.cn/attachments/…mp3"></audio></span>`
+  HTML 片段，此前双端渲染层原样穿过、读者不可播放（Android sanitizer
+  删掉内联事件后 `<audio>` 无控件；Windows 宿主无 audioClick 处理）。
+- 修复：Windows `format_html.py` 与 Android `NgaFormatHtml.kt` 同构新增
+  `RE_AUDIO_ATTACH`：把该片段转为骨碌碌同款音乐 cue
+  （`gululu-music-cue`，kind=附件音频，title=URL），复用现有宿主播放器
+  在线播放。仅 https 转换；cue 文本进坐标（不加 data-textpos-exclude）；
+  非 https 保留原文（双端一致降级）；自闭合 `<audio …/>` 同样支持。
+- 验证：Windows Python 338 项（+4）；Android JVM 235 项（234 过 / 1 跳，
+  +4）；JS 契约/守卫全绿。
 
 ### 2026-08-22 docs：重写 v1.6.2 / android-v1.3.2 宣传帖模板（第二十八批补记）
 
