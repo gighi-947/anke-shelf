@@ -170,6 +170,7 @@ fun NativeReaderScreen(
     var paragraphFilter by remember { mutableStateOf("") }
     var showOverview by remember { mutableStateOf(false) }
     var showGululuQuickMenu by remember { mutableStateOf(false) }
+    var showMusicQuickMenu by remember { mutableStateOf(false) }
     var danmakuOn by remember { mutableStateOf(false) }
     var secretDialog by remember { mutableStateOf<Pair<String, String?>?>(null) }
     var musicTitle by remember { mutableStateOf("") }
@@ -506,9 +507,13 @@ fun NativeReaderScreen(
         }
     }
 
-    // 悬浮栏收起来后，骨碌碌快捷菜单也跟着关掉，避免下次唤出时还残留。
+    // 悬浮栏收起来后，骨碌碌快捷菜单与音乐播放菜单也跟着关掉，
+    // 避免下次唤出时还残留。
     LaunchedEffect(barsVisible) {
-        if (!barsVisible) showGululuQuickMenu = false
+        if (!barsVisible) {
+            showGululuQuickMenu = false
+            showMusicQuickMenu = false
+        }
     }
 
     // 沉浸式：进入阅读器隐藏系统栏，退出恢复。
@@ -530,6 +535,7 @@ fun NativeReaderScreen(
                 showGululuComments = false
                 paragraphFilter = ""
             }
+            showMusicQuickMenu -> showMusicQuickMenu = false
             showGululuQuickMenu -> showGululuQuickMenu = false
             editingNote != null -> editingNote = null
             editingHighlight != null -> editingHighlight = null
@@ -757,6 +763,21 @@ fun NativeReaderScreen(
                 onStopMusic = {
                     stopMusic()
                     showGululuQuickMenu = false
+                },
+            )
+        }
+
+        if (!isGululu) {
+            GululuMusicQuickButton(
+                visible = barsVisible && musicTitle.isNotEmpty(),
+                quickMenuOpen = showMusicQuickMenu,
+                barBg = barBg,
+                fg = fg,
+                playingTitle = musicTitle,
+                onToggleQuickMenu = { showMusicQuickMenu = !showMusicQuickMenu },
+                onStopMusic = {
+                    stopMusic()
+                    showMusicQuickMenu = false
                 },
             )
         }

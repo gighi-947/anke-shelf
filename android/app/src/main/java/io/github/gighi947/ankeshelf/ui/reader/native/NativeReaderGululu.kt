@@ -37,6 +37,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -418,6 +419,84 @@ internal fun BoxScope.GululuFloatingQuickButton(
             contentColor = fg,
         ) {
             Icon(Icons.Filled.AutoAwesome, contentDescription = "骨碌碌悬浮菜单")
+        }
+    }
+}
+
+/** 非骨碌碌书的音乐播放菜单：与骨碌碌悬浮菜单同款，仅含当前曲目标题与停止入口。 */
+@Composable
+private fun BoxScope.GululuMusicQuickMenu(
+    visible: Boolean,
+    barBg: Color,
+    fg: Color,
+    playingTitle: String,
+    onStopMusic: () -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .navigationBarsPadding()
+            .padding(end = AnkeSpacing.md, bottom = AnkeSpacing.xxl * 6),
+        enter = scaleIn() + fadeIn(),
+        exit = scaleOut() + fadeOut(),
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(min = AnkeSpacing.xxl * 5)
+                .background(barBg.copy(alpha = 0.98f), AnkeRadius.large)
+                .border(1.dp, fg.copy(alpha = 0.16f), AnkeRadius.large)
+                .padding(AnkeSpacing.xs),
+            verticalArrangement = Arrangement.spacedBy(AnkeSpacing.xxs),
+        ) {
+            Text(
+                text = "正在播放：$playingTitle",
+                color = fg.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .widthIn(max = AnkeSpacing.xxl * 6)
+                    .padding(horizontal = AnkeSpacing.md, vertical = AnkeSpacing.xs),
+            )
+            GululuQuickMenuItem("停止音乐", fg, onClick = onStopMusic)
+        }
+    }
+}
+
+/** 非骨碌碌书右下角音乐播放悬浮入口：有音乐播放时才显示。 */
+@Composable
+internal fun BoxScope.GululuMusicQuickButton(
+    visible: Boolean,
+    quickMenuOpen: Boolean,
+    barBg: Color,
+    fg: Color,
+    playingTitle: String,
+    onToggleQuickMenu: () -> Unit,
+    onStopMusic: () -> Unit,
+) {
+    GululuMusicQuickMenu(
+        visible = visible && quickMenuOpen,
+        barBg = barBg,
+        fg = fg,
+        playingTitle = playingTitle,
+        onStopMusic = onStopMusic,
+    )
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .navigationBarsPadding()
+            .padding(end = AnkeSpacing.md, bottom = AnkeSpacing.xxl * 4),
+        enter = scaleIn() + fadeIn(),
+        exit = scaleOut() + fadeOut(),
+    ) {
+        FloatingActionButton(
+            onClick = onToggleQuickMenu,
+            containerColor = barBg.copy(alpha = 0.96f),
+            contentColor = fg,
+        ) {
+            Icon(Icons.Filled.MusicNote, contentDescription = "音乐播放控件")
         }
     }
 }
