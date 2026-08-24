@@ -174,7 +174,7 @@ object NgaFormatHtml {
                     "<button type=\"button\" class=\"gululu-music-cue\" " +
                     "data-gululu-music-url=\"${htmlEscape(url)}\">" +
                     "<span class=\"gululu-music-kind\">附件音频</span>" +
-                    "<span class=\"gululu-music-title\">${htmlEscape(url)}</span>" +
+                    "<span class=\"gululu-music-title\">${htmlEscape(attachmentAudioTitle(url))}</span>" +
                     "</button></p>"
             }
         }
@@ -226,6 +226,21 @@ object NgaFormatHtml {
         anony(it)
     } catch (_: Exception) {
         it
+    }
+
+    /** 从附件音频 URL 提取可读文件名：优先 filename 查询参数，缺省用路径末段。 */
+    private fun attachmentAudioTitle(url: String): String {
+        return try {
+            val filename = Regex("""[?&]filename=([^&]+)""").find(url)?.groupValues?.get(1)
+            if (!filename.isNullOrEmpty()) {
+                java.net.URLDecoder.decode(filename, "UTF-8")
+            } else {
+                val path = java.net.URI(url).path ?: return url
+                java.net.URLDecoder.decode(path.substringAfterLast('/'), "UTF-8")
+            }
+        } catch (_: Exception) {
+            url
+        }
     }
 
     /** 最小 HTML 转义（音乐 cue 标题用；URL 已被正则排除引号/空白）。 */

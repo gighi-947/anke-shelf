@@ -97,7 +97,18 @@ class NgaFormatHtmlTest {
         assertTrue(out.contains("gululu-music-cue"))
         assertTrue(out.contains("data-gululu-music-url="))
         assertTrue(out.contains("附件音频"))
+        // 标题显示 filename 查询参数解码后的可读文件名，而不是整段 URL
+        assertTrue(out.contains("01. a.mp3"))
         assertFalse(out.contains("<span class=\"audio\""))
+    }
+
+    @Test
+    fun `attachment audio title falls back to path name`() {
+        val raw = "<span class=\"audio\" onclick=\"audioClick(event)\"> <audio " +
+            "src=\"https://img.nga.cn/attachments/mon_1/abc.mp3\"></audio></span>"
+        val out = NgaFormatHtml.renderContentHtml(raw)
+        assertTrue(out.contains("data-gululu-music-url=\"https://img.nga.cn/attachments/mon_1/abc.mp3\""))
+        assertTrue(out.contains("<span class=\"gululu-music-title\">abc.mp3</span>"))
     }
 
     @Test
