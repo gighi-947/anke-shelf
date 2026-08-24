@@ -106,6 +106,11 @@
   `display:flex`（避免窄页面下楼层详情分行怪异）；导出页设置改为
   即时持久化（theme/fmt/scale/lastBookId），并统一为 `nga-field`
   标签包装的下载页风格。
+- 追加修复：导出宽度改由前端计算 `content_width_px`——阅读界面
+  `.chapter-wrap` 的 em 相对父文档字号（默认 16px，受 UI 字体缩放影响），
+  与 iframe 正文字号不同；现在按 `46em × page_width × 父文档字号 - 64px`
+  精确换算，70% 宽度导出的卡片实际为 70% 阅读内容宽。导出页增加
+  批量导出进度条（current/total 驱动）。
 - 验证：Windows Python 342 项、API 契约 66 方法一致、JS 契约/守卫全绿。
 ### 2026-08-24 win：楼层导出（图片渲染，第三十八批）
 

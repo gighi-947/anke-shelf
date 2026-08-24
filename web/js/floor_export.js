@@ -65,11 +65,21 @@
 
   function readerStyle() {
     const s = (App.state && App.state.settings) || {};
+    const pageWidth = Number(s.page_width) || 1.0;
+    // 阅读界面 .chapter-wrap 的 max-width=46em*page_width，em 相对父文档
+    // 字号（默认 16px，可受 UI 字体缩放影响），不是 iframe 正文字号。
+    let parentFontSize = 16;
+    try {
+      const v = parseFloat(getComputedStyle(document.body).fontSize);
+      if (Number.isFinite(v) && v > 0) parentFontSize = v;
+    } catch (e) { parentFontSize = 16; }
+    const contentWidthPx = Math.max(200, Math.round(46 * pageWidth * parentFontSize - 64));
     return {
       font_family: window.ReaderUtils ? ReaderUtils.resolveFamily() : '"Segoe UI", "Microsoft YaHei", serif',
       font_size: s.font_size || 18,
       line_height: s.line_height || 1.8,
-      page_width: s.page_width || 1.0,
+      page_width: pageWidth,
+      content_width_px: contentWidthPx,
       font_face_css: window.ReaderUtils ? ReaderUtils.fontFaceCss() : '',
     };
   }
@@ -113,6 +123,11 @@
       try { s = await Api.floorExportStatus(); } catch (e) { return; }
       const st = document.getElementById('fe-status');
       if (st) st.textContent = s.detail || s.stage || '';
+      const pb = document.getElementById('fe-progress-bar');
+      if (pb) {
+        const pct = s.total > 0 ? Math.round((s.current / s.total) * 100) : 0;
+        pb.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      }
       if (!s.running) {
         stopPoller();
         const btn = document.getElementById('fe-start');
@@ -235,6 +250,11 @@
     body.appendChild(optSection);
 
     const runSection = el('div', 'settings-section');
+    const progress = el('div', 'fe-progress');
+    progress.id = 'fe-progress';
+    const bar = el('div', 'fe-progress-bar');
+    bar.id = 'fe-progress-bar';
+    progress.appendChild(bar);
     const status = el('div', 'fe-status', '请先选择书籍与楼层');
     status.id = 'fe-status';
     const actions = el('div', 'nga-form-row');
@@ -262,7 +282,7 @@
     cancelBtn.addEventListener('click', () => Api.floorExportCancel());
     openBtn.addEventListener('click', () => Api.floorExportOpenDest());
     actions.append(startBtn, cancelBtn, openBtn);
-    runSection.append(status, actions);
+    runSection.append(progress, status, actions);
     body.appendChild(runSection);
 
     v.appendChild(body);

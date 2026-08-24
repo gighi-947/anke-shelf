@@ -2242,3 +2242,17 @@ mark.hl-mark.hl-flash { animation: hl-flash 1.2s ease-out; }
 }
 .fe-dir { font-size: 12px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
 .fe-status { font-size: 12px; opacity: 0.8; min-height: 1.5em; }
+.fe-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+  margin: 4px 0 2px;
+}
+.fe-progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary, #8b5a2b);
+  transition: width 0.25s ease;
+}

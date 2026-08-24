@@ -296,10 +296,21 @@ class FloorExportService:
                 line_height = max(1.2, min(3.0, float(reader.get("line_height") or 1.8)))
             except (TypeError, ValueError):
                 line_height = 1.8
+            content_width_px = None
             try:
-                page_width = max(0.6, min(2.0, float(reader.get("page_width") or 1.0)))
+                cw = int(reader.get("content_width_px") or 0)
+                if cw >= 200:
+                    content_width_px = cw
             except (TypeError, ValueError):
-                page_width = 1.0
+                content_width_px = None
+            if content_width_px is None:
+                try:
+                    page_width = max(0.6, min(2.0, float(reader.get("page_width") or 1.0)))
+                except (TypeError, ValueError):
+                    page_width = 1.0
+                max_width_css = f"calc({46 * page_width:.1f}em - 64px)"
+            else:
+                max_width_css = f"{content_width_px}px"
             typography_css = f"""
 body {{
   font-family: {font_family} !important;
@@ -308,9 +319,7 @@ body {{
 }}
 img {{ max-width: 100% !important; height: auto !important; }}
 .nga-floor, .gululu-floor {{
-  /* 阅读界面 .chapter-wrap 两侧各有 32px padding；导出时去掉 wrap，
-     因此这里减掉 64px 以与阅读实际内容宽度对齐。 */
-  max-width: calc({46 * page_width:.1f}em - 64px) !important;
+  max-width: {max_width_css} !important;
   margin-left: auto !important;
   margin-right: auto !important;
 }}
