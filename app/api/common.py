@@ -15,6 +15,7 @@ from ..shelf import BookRecord, ProgressStore, Shelf
 
 if TYPE_CHECKING:
     from ..annotations import AnnotationStore
+    from ..floor_export_service import FloorExportService
     from ..gululu_service import GululuService
     from ..nga_login import NgaLoginController
     from ..stats import StatsStore
@@ -42,6 +43,7 @@ class ApiContext:
     nga_service: NgaService
     export_service: ExportService
     gululu_service: "GululuService"
+    floor_export_service: "FloorExportService"
     frontend_ready: threading.Event
     window_toggle: Callable[[bool], None]
     nga_login: "NgaLoginController"

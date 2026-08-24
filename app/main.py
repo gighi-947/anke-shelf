@@ -120,6 +120,7 @@ from .annotations import AnnotationStore
 from .api import Api
 from .book_manager import BookManager
 from .export_service import ExportService
+from .floor_export_service import FloorExportService
 from .gululu_service import GululuService
 from .nga_config import ensure_nga_config
 from .nga_service import NgaService
@@ -239,6 +240,7 @@ def main() -> int:
         on_book_updated=_on_book_updated,
     )
     export_svc = ExportService(shelf)
+    floor_export_svc = FloorExportService(shelf, books)
     frontend_ready = threading.Event()
     window_fullscreen_toggle = None
 
@@ -259,12 +261,14 @@ def main() -> int:
         nga_service=nga_svc,
         gululu_service=gululu_svc,
         export_service=export_svc,
+        floor_export_service=floor_export_svc,
         frontend_ready=frontend_ready,
         window_toggle=_toggle_window_fullscreen,
         nga_login=nga_login,
     )
     token = secrets.token_urlsafe(16)
     port = start_server(web_dir(), books, covers_dir(), api=api, token=token)
+    floor_export_svc.server_port = port
     startup_log = logging.getLogger("app.startup")
     startup_log.info("HTTP 服务已启动（端口 %s），开始创建窗口", port)
 

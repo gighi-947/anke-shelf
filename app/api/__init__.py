@@ -7,6 +7,7 @@ from .common import ApiContext, bind
 from .registry import ApiRegistry
 from . import (
     annotation_api,
+    floor_export_api,
     gululu_api,
     library,
     nga_api,
@@ -82,6 +83,13 @@ _HANDLERS = (
     ("gululu_decrypt_secret", gululu_api.gululu_decrypt_secret),
     ("gululu_import_status", gululu_api.gululu_import_status),
     ("gululu_cancel", gululu_api.gululu_cancel),
+    # 楼层导出（图片渲染）
+    ("floor_export_floors", floor_export_api.floor_export_floors),
+    ("floor_export_start", floor_export_api.floor_export_start),
+    ("floor_export_status", floor_export_api.floor_export_status),
+    ("floor_export_cancel", floor_export_api.floor_export_cancel),
+    ("floor_export_open_dest", floor_export_api.floor_export_open_dest),
+    ("pick_folder", floor_export_api.pick_folder),
     # 设置与字体
     ("get_fonts", settings_api.get_fonts),
     ("pick_font_file", settings_api.pick_font_file),
@@ -114,6 +122,7 @@ class Api(ApiRegistry):
         nga_service,
         export_service,
         gululu_service,
+        floor_export_service,
         frontend_ready,
         window_toggle,
         nga_login,
@@ -131,6 +140,7 @@ class Api(ApiRegistry):
             nga_service=nga_service,
             export_service=export_service,
             gululu_service=gululu_service,
+            floor_export_service=floor_export_service,
             frontend_ready=frontend_ready,
             file_dialog=file_dialog,
             window_toggle=window_toggle,

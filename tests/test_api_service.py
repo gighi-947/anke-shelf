@@ -11,6 +11,7 @@ from app.api import Api
 from app.book_manager import BookManager
 from app.errors import ApiError
 from app.export_service import ExportService
+from app.floor_export_service import FloorExportService
 from app.nga_login import NgaLoginController
 from app.gululu_service import GululuService
 from app.nga_service import NgaService
@@ -59,6 +60,7 @@ class ApiServiceTest(unittest.TestCase):
             nga_service=NgaService(lambda _path: ""),
             export_service=ExportService(self.shelf),
             gululu_service=GululuService(lambda _path: ""),
+            floor_export_service=FloorExportService(self.shelf, books),
             frontend_ready=threading.Event(),
             window_toggle=window_toggle,
             nga_login=NgaLoginController(),

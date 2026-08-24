@@ -27,6 +27,7 @@ from app.gululu_update import (
     write_baseline,
 )
 from app.export_service import ExportService
+from app.floor_export_service import FloorExportService
 from app.nga_login import NgaLoginController
 from app.nga_service import NgaService
 from app.search import SearchService
@@ -446,6 +447,7 @@ class GululuServiceTest(unittest.TestCase):
             nga_service=NgaService(lambda _path: ""),
             export_service=ExportService(shelf),
             gululu_service=fake,
+            floor_export_service=FloorExportService(shelf, BookManager()),
             frontend_ready=threading.Event(),
             window_toggle=lambda _entering: None,
             nga_login=NgaLoginController(),
