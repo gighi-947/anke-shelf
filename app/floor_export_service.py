@@ -308,7 +308,9 @@ body {{
 }}
 img {{ max-width: 100% !important; height: auto !important; }}
 .nga-floor, .gululu-floor {{
-  max-width: {46 * page_width:.1f}em !important;
+  /* 阅读界面 .chapter-wrap 两侧各有 32px padding；导出时去掉 wrap，
+     因此这里减掉 64px 以与阅读实际内容宽度对齐。 */
+  max-width: calc({46 * page_width:.1f}em - 64px) !important;
   margin-left: auto !important;
   margin-right: auto !important;
 }}

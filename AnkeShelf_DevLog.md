@@ -101,6 +101,11 @@
   后端生成完整 override CSS（自定义字体 @font-face、正文字号行高、
   图片最大宽度、楼层卡片宽度 46em×page_width），解决无楼层卡片、
   无自定义字体、图文混排比例不当的问题。
+- 追加修复：导出宽度按阅读界面 `.chapter-wrap` 内容宽对齐
+  （46em×page_width - 64px）；分享按钮样式不再给 NGA 楼层头部强制
+  `display:flex`（避免窄页面下楼层详情分行怪异）；导出页设置改为
+  即时持久化（theme/fmt/scale/lastBookId），并统一为 `nga-field`
+  标签包装的下载页风格。
 - 验证：Windows Python 342 项、API 契约 66 方法一致、JS 契约/守卫全绿。
 ### 2026-08-24 win：楼层导出（图片渲染，第三十八批）
 

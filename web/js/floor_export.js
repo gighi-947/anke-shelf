@@ -34,6 +34,13 @@
     return node;
   }
 
+  function field(labelText, input) {
+    const wrap = el('div', 'nga-field');
+    const label = el('label', 'nga-field-label', labelText);
+    wrap.append(label, input);
+    return wrap;
+  }
+
   function view() { return document.getElementById('floor-export-view'); }
 
   function close() {
@@ -154,15 +161,16 @@
 
     const bookSection = el('div', 'settings-section');
     bookSection.appendChild(el('div', 'settings-section-title', '选择安科'));
-    const bookSelect = el('select', 'nga-field');
+    const bookSelect = el('select');
     bookSelect.id = 'fe-book';
     bookSelect.appendChild(el('option', '', '请选择书籍…'));
     bookSelect.addEventListener('change', async () => {
       state.bookId = bookSelect.value;
       state.selected.clear();
+      saveSettings({ lastBookId: bookSelect.value });
       await refreshFloors();
     });
-    bookSection.appendChild(bookSelect);
+    bookSection.appendChild(field('安科', bookSelect));
     body.appendChild(bookSection);
 
     const floorSection = el('div', 'settings-section');
@@ -178,11 +186,14 @@
       state.selected.clear();
       renderFloorList();
     });
-    const filter = el('input', 'nga-field');
-    filter.placeholder = '筛选楼层…';
-    filter.addEventListener('input', () => renderFloorList(filter.value));
-    floorTools.append(allBtn, noneBtn, filter);
+    floorTools.append(allBtn, noneBtn);
     floorSection.appendChild(floorTools);
+    const filterRow = el('div', 'nga-form-row');
+    const filter = el('input');
+    filter.placeholder = '筛选楼层，例如 1-10、15、20';
+    filter.addEventListener('input', () => renderFloorList(filter.value));
+    filterRow.appendChild(field('筛选', filter));
+    floorSection.appendChild(filterRow);
     const floorList = el('div', 'fe-floor-list');
     floorList.id = 'fe-floor-list';
     floorSection.appendChild(floorList);
@@ -191,12 +202,20 @@
     const optSection = el('div', 'settings-section');
     optSection.appendChild(el('div', 'settings-section-title', '导出设定'));
     const row = el('div', 'nga-form-row');
-    const themeSelect = el('select', 'nga-field');
+    const themeSelect = el('select');
     THEMES.forEach(([value, label]) => themeSelect.appendChild(new Option(label, value)));
-    const fmtSelect = el('select', 'nga-field');
+    const fmtSelect = el('select');
     FORMATS.forEach(([value, label]) => fmtSelect.appendChild(new Option(label, value)));
-    const scaleSelect = el('select', 'nga-field');
+    const scaleSelect = el('select');
     SCALES.forEach(([value, label]) => scaleSelect.appendChild(new Option(label, String(value))));
+    const persistSelects = () => saveSettings({
+      theme: themeSelect.value,
+      fmt: fmtSelect.value,
+      scale: Number(scaleSelect.value),
+    });
+    themeSelect.addEventListener('change', persistSelects);
+    fmtSelect.addEventListener('change', persistSelects);
+    scaleSelect.addEventListener('change', persistSelects);
     const dirBtn = el('button', 'btn', '选择输出目录');
     const dirLabel = el('span', 'fe-dir', '未选择');
     dirBtn.addEventListener('click', async () => {
@@ -206,7 +225,12 @@
         dirLabel.textContent = r.path;
       }
     });
-    row.append(themeSelect, fmtSelect, scaleSelect, dirBtn, dirLabel);
+    const dirWrap = field('输出目录', (() => {
+      const box = el('div', 'nga-form-row');
+      box.append(dirBtn, dirLabel);
+      return box;
+    })());
+    row.append(field('主题', themeSelect), field('格式', fmtSelect), field('倍率', scaleSelect), dirWrap);
     optSection.appendChild(row);
     body.appendChild(optSection);
 
@@ -307,6 +331,13 @@
         select.appendChild(opt);
       });
     }
+    const s2 = loadSettings();
+    if (s2.lastBookId && select) {
+      select.value = s2.lastBookId;
+      state.bookId = s2.lastBookId;
+      state.selected.clear();
+      await refreshFloors();
+    }
     const status = document.getElementById('fe-status');
     if (status) status.textContent = '请先选择书籍';
   }
@@ -326,11 +357,11 @@
       const style = doc.createElement('style');
       style.id = '__floor_share_buttons__';
       style.textContent = `
-        .floor-head { display:flex; align-items:center; gap:.6em; }
+        .gululu-floor > .floor-head { display:flex; align-items:center; gap:.6em; }
         .floor-share-button {
           flex:0 0 auto; border:1px solid color-mix(in srgb, currentColor 24%, transparent);
-          border-radius:4px; padding:.28em .6em; background:transparent; color:inherit;
-          cursor:pointer; font:inherit; font-size:.86em;
+          border-radius:4px; padding:.28em .6em; margin-left:.6em; background:transparent; color:inherit;
+          cursor:pointer; font:inherit; font-size:.86em; vertical-align:middle;
         }
         .floor-share-button:hover { background:color-mix(in srgb, currentColor 8%, transparent); }
       `;
