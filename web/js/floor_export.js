@@ -56,10 +56,22 @@
     };
   }
 
+  function readerStyle() {
+    const s = (App.state && App.state.settings) || {};
+    return {
+      font_family: window.ReaderUtils ? ReaderUtils.resolveFamily() : '"Segoe UI", "Microsoft YaHei", serif',
+      font_size: s.font_size || 18,
+      line_height: s.line_height || 1.8,
+      page_width: s.page_width || 1.0,
+      font_face_css: window.ReaderUtils ? ReaderUtils.fontFaceCss() : '',
+    };
+  }
+
   function startExport(bookId, floors, theme, opts, noImages) {
     const s = Object.assign({}, opts);
     const colors = theme === 'current' ? readerColors() : null;
-    // 后端 handler 是位置参数：(book_id, floors, theme, fmt, scale, output_dir, no_images, theme_colors)
+    // 后端 handler 是位置参数：
+    // (book_id, floors, theme, fmt, scale, output_dir, no_images, theme_colors, reader_style)
     return Api.floorExportStart(
       bookId,
       floors,
@@ -69,6 +81,7 @@
       s.outputDir || '',
       !!noImages,
       colors,
+      readerStyle(),
     );
   }
 

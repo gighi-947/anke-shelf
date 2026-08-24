@@ -156,6 +156,7 @@ class FloorExportService:
         output_dir: str = "",
         no_images: bool = False,
         theme_colors: Optional[dict] = None,
+        reader_style: Optional[dict] = None,
     ) -> dict:
         if theme not in _THEME_COLORS:
             raise ApiError(ErrorCode.BOOK_INVALID, "主题仅支持 light / sepia / dark")
@@ -184,7 +185,7 @@ class FloorExportService:
             )
         t = threading.Thread(
             target=self._run_task,
-            args=(rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, task_id),
+            args=(rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, reader_style, task_id),
             daemon=True,
             name="floor-export",
         )
@@ -242,7 +243,7 @@ class FloorExportService:
 
     # ---------- 后台执行 ----------
 
-    def _run_task(self, rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, task_id) -> None:
+    def _run_task(self, rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, reader_style, task_id) -> None:
         def on_progress(p: TaskProgress) -> None:
             self._set(stage=p.stage, current=p.current, total=p.total, detail=p.message)
 
@@ -250,7 +251,7 @@ class FloorExportService:
             status = self._tasks.run(
                 LANE,
                 task_id,
-                lambda report: self._run(rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, report),
+                lambda report: self._run(rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, reader_style, report),
                 on_progress=on_progress,
             )
             if status == TaskStatus.CANCELLED:
@@ -262,7 +263,7 @@ class FloorExportService:
                 if self._current_task == task_id:
                     self._current_task = None
 
-    def _run(self, rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, report) -> None:
+    def _run(self, rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, reader_style, report) -> None:
         def step(stage: str, current: int = 0, total: int = 0, detail: str = "") -> None:
             self._set(stage=stage, current=current, total=total, detail=detail)
             report(TaskProgress(current=current, total=total, stage=stage, message=detail))
@@ -284,6 +285,35 @@ class FloorExportService:
             base = _safe_filename(rec.title) or _safe_filename(book.title) or "未命名安科"
             colors = theme_colors or _THEME_COLORS[theme]
             theme_css = _OVERRIDE_CSS.replace("__BG__", colors["bg"]).replace("__FG__", colors["fg"]).replace("__ACCENT__", colors["accent"])
+            reader = reader_style or {}
+            font_face = str(reader.get("font_face_css") or "")
+            font_family = str(reader.get("font_family") or '"Segoe UI", "Microsoft YaHei", serif')
+            try:
+                font_size = max(12, min(32, int(reader.get("font_size") or 18)))
+            except (TypeError, ValueError):
+                font_size = 18
+            try:
+                line_height = max(1.2, min(3.0, float(reader.get("line_height") or 1.8)))
+            except (TypeError, ValueError):
+                line_height = 1.8
+            try:
+                page_width = max(0.6, min(2.0, float(reader.get("page_width") or 1.0)))
+            except (TypeError, ValueError):
+                page_width = 1.0
+            typography_css = f"""
+body {{
+  font-family: {font_family} !important;
+  font-size: {font_size}px !important;
+  line-height: {line_height} !important;
+}}
+img {{ max-width: 100% !important; height: auto !important; }}
+.nga-floor, .gululu-floor {{
+  max-width: {46 * page_width:.1f}em !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}}
+"""
+            theme_css = font_face + theme_css + typography_css
             jobs = []
             for i, floor_num in enumerate(floors, 1):
                 info = mapping.get(floor_num)

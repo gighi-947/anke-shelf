@@ -13,6 +13,7 @@ def floor_export_start(
     output_dir: str = "",
     no_images: bool = False,
     theme_colors=None,
+    reader_style=None,
 ) -> dict:
     try:
         floor_list = [int(x) for x in floors]
@@ -27,6 +28,7 @@ def floor_export_start(
         output_dir=output_dir,
         no_images=no_images,
         theme_colors=theme_colors,
+        reader_style=reader_style,
     )
 
 

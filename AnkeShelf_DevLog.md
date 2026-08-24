@@ -95,6 +95,12 @@
     `theme_colors` 自定义主题色（bg/fg/accent）。
 - 追加修复：`Api.floorExportStart` 改按后端 handler 的位置参数调用
   （之前传单个对象导致 `missing 1 required positional argument: 'floors'`）。
+- 追加修复：导出渲染注入阅读器排版与字体——前端把
+  `ReaderUtils.activeFontKey/fontFaceCss/resolveFamily` 与
+  `font_size/line_height/page_width` 作为 `reader_style` 传入后端；
+  后端生成完整 override CSS（自定义字体 @font-face、正文字号行高、
+  图片最大宽度、楼层卡片宽度 46em×page_width），解决无楼层卡片、
+  无自定义字体、图文混排比例不当的问题。
 - 验证：Windows Python 342 项、API 契约 66 方法一致、JS 契约/守卫全绿。
 ### 2026-08-24 win：楼层导出（图片渲染，第三十八批）
 
