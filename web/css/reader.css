@@ -2228,3 +2228,29 @@ mark.hl-mark.hl-flash { animation: hl-flash 1.2s ease-out; }
   vertical-align: middle;
   text-align: center;
 }
+
+/* 楼层导出页 */
+.fe-floor-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.fe-floor-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.fe-floor-item input { margin: 0; }
+.fe-dir { font-size: 12px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.fe-status { font-size: 12px; opacity: 0.8; min-height: 1.5em; }

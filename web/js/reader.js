@@ -397,6 +397,7 @@
             GululuImmersive.onChapterLoaded(doc);
             GululuSecrets.onChapterLoaded(doc);
             GululuOverview.onChapterLoaded(doc);
+            if (window.FloorExport && FloorExport.onChapterLoaded) FloorExport.onChapterLoaded(doc);
             App.syncGululuBookmark();
             this.updateProgressUI();
             resolve();
