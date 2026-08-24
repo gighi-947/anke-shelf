@@ -72,7 +72,18 @@ class NgaAttachmentAudioCueTest(unittest.TestCase):
         )
         self.assertIn("gululu-music-kind", out)
         self.assertIn("附件音频", out)
+        # 标题显示 filename 查询参数解码后的可读文件名，而不是整段 URL
+        self.assertIn("01. a.mp3", out)
         self.assertNotIn('<span class="audio"', out)
+
+    def test_attachment_audio_title_falls_back_to_path_name(self):
+        raw = (
+            '<span class="audio" onclick="audioClick(event)"> <audio '
+            'src="https://img.nga.cn/attachments/mon_1/abc.mp3"></audio></span>'
+        )
+        out = self._render(raw)
+        self.assertIn('data-gululu-music-url="https://img.nga.cn/attachments/mon_1/abc.mp3"', out)
+        self.assertIn('<span class="gululu-music-title">abc.mp3</span>', out)
 
     def test_attachment_audio_cue_text_enters_coordinates(self):
         out = self._render(self.RAW)

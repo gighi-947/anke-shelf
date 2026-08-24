@@ -6,6 +6,7 @@ Markdown 管线会丢失 NGA 的样式元素（span 颜色、引用块、折叠�
 """
 import html
 import re
+from urllib.parse import parse_qs, unquote, urlparse
 
 from .models import Tiezi
 from .smile_map import SMILE_MAP
@@ -157,16 +158,28 @@ def render_content_html(raw: str, tiezi: Tiezi, img_src) -> str:
     # 骨碌碌同款音乐 cue 后复用宿主播放器在线播放。仅 https 转换
     # （播放桥只收 https，与 [audio] 同规则）；cue 文本进坐标
     # （不加 data-textpos-exclude）。非 https 保留原文（双端一致降级）。
+    def _attachment_audio_title(url: str) -> str:
+        """从附件音频 URL 提取可读文件名：优先 filename 查询参数，缺省用路径末段。"""
+        try:
+            parsed = urlparse(url)
+            filename = parse_qs(parsed.query).get("filename", [""])[0]
+            if filename:
+                return filename
+            return unquote(parsed.path.rsplit("/", 1)[-1]) or url
+        except Exception:  # noqa: BLE001
+            return url
+
     def _attachment_audio_cue(m: re.Match) -> str:
         url = m.group(1)
         if not url.lower().startswith("https://"):
             return m.group(0)
+        title = _attachment_audio_title(url)
         return (
             '<p class="gululu-music-row">'
             f'<button type="button" class="gululu-music-cue" '
             f'data-gululu-music-url="{html.escape(url)}">'
             '<span class="gululu-music-kind">附件音频</span>'
-            f'<span class="gululu-music-title">{html.escape(url)}</span>'
+            f'<span class="gululu-music-title">{html.escape(title)}</span>'
             "</button></p>"
         )
 
