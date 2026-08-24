@@ -92,38 +92,6 @@ async function imageState(el) {
         }
         const el = page.locator(job.selector).first();
         await el.waitFor({ state: 'attached', timeout: 30000 });
-        await page.evaluate(() => {
-          document.querySelectorAll('.nga-floor .floor-head').forEach((head) => {
-            if (head.dataset.feNormalized === '1') return;
-            const lou = head.querySelector('.lou');
-            const pid = head.querySelector('.pid');
-            if (!lou && !pid) return;
-            const metaTexts = [];
-            head.childNodes.forEach((node) => {
-              if (node === lou || node === pid) return;
-              if (node.nodeType === Node.TEXT_NODE) metaTexts.push(node.textContent.trim());
-              else if (node.nodeType === Node.ELEMENT_NODE && node.classList && node.classList.contains('floor-share-button')) return;
-              else if (node.nodeType === Node.ELEMENT_NODE) metaTexts.push(node.textContent.trim());
-            });
-            const raw = metaTexts.join(' ').trim();
-            const parts = raw.split('·').map((s) => s.trim()).filter(Boolean);
-            const frag = document.createDocumentFragment();
-            if (lou) frag.appendChild(lou);
-            parts.forEach((text) => {
-              const span = document.createElement('span');
-              span.className = 'floor-meta';
-              span.textContent = '· ' + text;
-              frag.appendChild(span);
-            });
-            if (pid) {
-              pid.textContent = '· ' + pid.textContent.replace(/^\s*·\s*/, '').trim();
-              frag.appendChild(pid);
-            }
-            head.textContent = '';
-            head.appendChild(frag);
-            head.dataset.feNormalized = '1';
-          });
-        });
         await el.scrollIntoViewIfNeeded();
         if (job.noImages) {
           await el.evaluate((node) => {

@@ -117,6 +117,10 @@
   `settings.json:floor_export`（Web 端持久化，不再依赖 localStorage，
   否则 run_app.py 每次随机端口会导致 origin 变化而失效）；同步更新
   `docs/DATA_CONTRACT.md`。
+- 追加修复：回退 `.floor-meta` 行内块拆分方案（在导出 flex 容器里
+  变成多列，更奇怪）。改用更简单方案——导出 CSS 中 `.floor-head`
+  仅对骨碌碌启用 flex；NGA 楼层头保持块级自然文本换行，只增加
+  `line-height:1.7` 改善窄行距观感。阅读端不再归一化楼层头。
 - 验证：Windows Python 342 项、API 契约 66 方法一致、JS 契约/守卫全绿。
 ### 2026-08-24 win：楼层导出（图片渲染，第三十八批）
 

@@ -378,52 +378,13 @@
     return m ? Number(m[1]) : 0;
   }
 
-  function normalizeNgaFloorHeads(doc) {
-    doc.querySelectorAll('.nga-floor .floor-head').forEach((head) => {
-      if (head.dataset.feNormalized === '1') return;
-      const lou = head.querySelector('.lou');
-      const pid = head.querySelector('.pid');
-      if (!lou && !pid) return;
-      const metaTexts = [];
-      head.childNodes.forEach((node) => {
-        if (node === lou || node === pid) return;
-        if (node.nodeType === Node.TEXT_NODE) {
-          metaTexts.push(node.textContent.trim());
-        } else if (node.nodeType === Node.ELEMENT_NODE && node.classList && node.classList.contains('floor-share-button')) {
-          return;
-        } else if (node.nodeType === Node.ELEMENT_NODE) {
-          metaTexts.push(node.textContent.trim());
-        }
-      });
-      const raw = metaTexts.join(' ').trim();
-      const parts = raw.split('·').map((s) => s.trim()).filter(Boolean);
-      const frag = doc.createDocumentFragment();
-      if (lou) frag.appendChild(lou);
-      parts.forEach((text) => {
-        const span = doc.createElement('span');
-        span.className = 'floor-meta';
-        span.textContent = '· ' + text;
-        frag.appendChild(span);
-      });
-      if (pid) {
-        pid.textContent = '· ' + pid.textContent.replace(/^\s*·\s*/, '').trim();
-        frag.appendChild(pid);
-      }
-      head.textContent = '';
-      head.appendChild(frag);
-      head.dataset.feNormalized = '1';
-    });
-  }
-
   function onChapterLoaded(doc) {
     if (!doc || !doc.body) return;
-    normalizeNgaFloorHeads(doc);
     if (!doc.getElementById('__floor_share_buttons__')) {
       const style = doc.createElement('style');
       style.id = '__floor_share_buttons__';
       style.textContent = `
         .gululu-floor > .floor-head { display:flex; align-items:center; gap:.6em; }
-        .nga-floor .floor-meta, .nga-floor .floor-head .pid { display:inline-block; }
         .nga-floor .floor-head { line-height:1.6; }
         .floor-share-button {
           flex:0 0 auto; border:1px solid color-mix(in srgb, currentColor 24%, transparent);

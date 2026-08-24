@@ -50,22 +50,22 @@ _OVERRIDE_CSS = """
 .floor-head {
   color: color-mix(in srgb, var(--reader-fg, #222) 62%, transparent) !important;
   border-bottom: 1px dotted color-mix(in srgb, var(--reader-fg, #222) 18%, transparent) !important;
-  display: flex !important;
-  align-items: baseline !important;
   font-size: 0.82em !important;
-  gap: 0.55em !important;
   margin: 0 0 8px !important;
   padding: 0 0 6px !important;
+}
+.gululu-floor > .floor-head {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 0.55em !important;
+}
+.nga-floor > .floor-head {
+  display: block !important;
+  line-height: 1.7 !important;
 }
 .floor-head .lou, .floor-head .floor-number {
   color: var(--reader-accent, #77bbee) !important;
   font-weight: 700 !important;
-}
-.nga-floor .floor-meta, .nga-floor .floor-head .pid {
-  display: inline-block !important;
-}
-.nga-floor .floor-head {
-  line-height: 1.6 !important;
 }
 .nga-comment, .gululu-comment {
   background: color-mix(in srgb, var(--reader-fg, #222) 6%, transparent) !important;
