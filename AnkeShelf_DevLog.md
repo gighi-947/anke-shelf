@@ -31,7 +31,7 @@
   （第三十批）、华为 WebView 楼层卡片 rgba 修复（第三十一批）、
   NGA 外链音乐在线 cue（第三十二批）、NGA 附件音频调研（第三十三批）、
   NGA 附件音频在线 cue（第三十四批）、NGA 音乐 cue 播放控件补齐（第三十五批）、
-  附件音频标题显示为可读文件名（第三十六批，见 §4）。
+  附件音频标题显示为可读文件名（第三十六批）、附件音频自动播放开关与  UI 卡片收敛（第三十七批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.6.2`（已发布，AnkeShelf-v1.6.2.zip）；
   Android `android-v1.3.2`（已发布，AnkeShelf-v1.3.2-android.apk）。
@@ -80,6 +80,26 @@
 
 ## 4. 最近流水
 
+### 2026-08-24 win/android：附件音频自动播放开关与 UI 卡片收敛（第三十七批）
+
+- 现象（用户反馈）：① 希望可自选是否自动播放；② 附件音频卡片不够好看，
+  且不要显示“附件音频”字样与文件扩展名。
+- 修复：
+  - 标题：双端附件音频标题只保留上传文件名（去扩展名）；不再输出
+    “附件音频”kind 标签，改用 `gululu-music-cue-attach` 卡片样式。
+  - 卡片样式：Windows `app/native_book.py` 与 Android
+    `assets/reader/reader.css` 新增音乐 cue 基础样式 + 附件音频卡片
+    （圆角卡片、♪ 前缀、当前播放高亮、超长省略）。
+  - 自动播放：复用既有 `gululu_immersive.autoMusic` 偏好。Windows
+    「音乐与氛围」面板对非骨碌碌书也显示自动播放开关；scanChapter 对
+    非骨碌碌书扫描 `.gululu-music-cue`，到达阅读线自动播放一次。
+    Android `WebViewChapterView` 新增 `gululuAutoMusic` 参数传入
+    reader-lite；`fireGululuAutoMusic` 对非骨碌碌书扫描全部音乐 cue；
+    音乐快捷菜单新增自动播放 Switch，切换即时生效。
+  - 冒烟脚本 NGA 隔离断言同步：自动播放默认开启，NGA 音乐 cue 应自动
+    播放并显示音乐控制入口。
+- 验证：Windows Python 339 项、Android JVM 236 项（235 过 / 1 跳）、
+  reader-lite parts 契约与 bundle 校验通过、JS 契约/守卫全绿。
 ### 2026-08-24 win/android：附件音频标题显示为可读文件名（第三十六批）
 
 - 现象（用户反馈）：附件音频 cue 的标题直接显示了整段 URL，名称不可读。
