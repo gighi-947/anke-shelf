@@ -454,3 +454,11 @@ mark.hl-cyan {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* 头像模式：小圆角方形，紧凑内联展示（官方编辑器“转为头像”） */
+.avatar-image img {
+    width: 2.4em;
+    height: 2.4em;
+    object-fit: cover;
+    border-radius: 6px;
+}

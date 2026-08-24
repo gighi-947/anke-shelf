@@ -74,6 +74,12 @@
       min-width: 0 !important;
       overflow-wrap: anywhere !important;
     }
+    .avatar-image img {
+      width: 2.4em !important;
+      height: 2.4em !important;
+      object-fit: cover !important;
+      border-radius: 6px !important;
+    }
   `;
 
   const PAGINATION_OVERRIDE = `
