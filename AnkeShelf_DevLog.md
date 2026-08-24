@@ -93,6 +93,8 @@
     规范结构，楼层列表改用 `.nga-check` 标准复选样式。
   - 后端 `floor_export_service.py` / `floor_export_api.py` 支持可选
     `theme_colors` 自定义主题色（bg/fg/accent）。
+- 追加修复：`Api.floorExportStart` 改按后端 handler 的位置参数调用
+  （之前传单个对象导致 `missing 1 required positional argument: 'floors'`）。
 - 验证：Windows Python 342 项、API 契约 66 方法一致、JS 契约/守卫全绿。
 ### 2026-08-24 win：楼层导出（图片渲染，第三十八批）
 

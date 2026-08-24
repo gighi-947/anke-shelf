@@ -56,24 +56,25 @@
     };
   }
 
-  function exportArgs(bookId, floors, theme, opts) {
+  function startExport(bookId, floors, theme, opts, noImages) {
     const s = Object.assign({}, opts);
     const colors = theme === 'current' ? readerColors() : null;
-    return {
-      book_id: bookId,
+    // 后端 handler 是位置参数：(book_id, floors, theme, fmt, scale, output_dir, no_images, theme_colors)
+    return Api.floorExportStart(
+      bookId,
       floors,
-      theme: colors ? 'light' : theme,
-      fmt: s.fmt,
-      scale: s.scale,
-      output_dir: s.outputDir || '',
-      theme_colors: colors,
-    };
+      colors ? 'light' : theme,
+      s.fmt,
+      s.scale,
+      s.outputDir || '',
+      !!noImages,
+      colors,
+    );
   }
 
   function shareFloor(bookId, floorNum) {
     const s = loadSettings();
-    const args = exportArgs(bookId, [floorNum], 'current', s);
-    return Api.floorExportStart(args).then((r) => {
+    return startExport(bookId, [floorNum], 'current', s, false).then((r) => {
       if (r && r.ok === false) throw new Error(r.error || '导出失败');
       pollStatus(null, { bookId, floors: [floorNum] });
       return r;
@@ -115,10 +116,8 @@
 
   async function restartNoImages(ctx) {
     const s = loadSettings();
-    const args = exportArgs(ctx.bookId, ctx.floors, s.theme, s);
-    args.no_images = true;
     try {
-      await Api.floorExportStart(args);
+      await startExport(ctx.bookId, ctx.floors, s.theme, s, true);
       pollStatus(null, ctx);
     } catch (e) {
       toast(`无图重导失败：${e && e.message || e}`);
@@ -216,7 +215,7 @@
       const s = loadSettings();
       saveSettings({ theme: themeSelect.value, fmt: fmtSelect.value, scale: Number(scaleSelect.value) });
       try {
-        await Api.floorExportStart(exportArgs(state.bookId, floors, themeSelect.value, s));
+        await startExport(state.bookId, floors, themeSelect.value, s, false);
         pollStatus(null, { bookId: state.bookId, floors });
       } catch (e) {
         toast(`导出失败：${e && e.message || e}`);
