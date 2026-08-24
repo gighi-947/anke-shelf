@@ -2235,22 +2235,10 @@ mark.hl-mark.hl-flash { animation: hl-flash 1.2s ease-out; }
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 8px;
+  padding: 10px 12px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-direction: column;
+  gap: 6px;
 }
-.fe-floor-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 12px;
-  cursor: pointer;
-  user-select: none;
-}
-.fe-floor-item input { margin: 0; }
 .fe-dir { font-size: 12px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
 .fe-status { font-size: 12px; opacity: 0.8; min-height: 1.5em; }

@@ -155,6 +155,7 @@ class FloorExportService:
         scale: float = 2.0,
         output_dir: str = "",
         no_images: bool = False,
+        theme_colors: Optional[dict] = None,
     ) -> dict:
         if theme not in _THEME_COLORS:
             raise ApiError(ErrorCode.BOOK_INVALID, "主题仅支持 light / sepia / dark")
@@ -162,6 +163,10 @@ class FloorExportService:
             raise ApiError(ErrorCode.BOOK_INVALID, "格式仅支持 png / webp")
         if scale not in (1, 1.5, 2, 3):
             raise ApiError(ErrorCode.BOOK_INVALID, "倍率仅支持 1 / 1.5 / 2 / 3")
+        if theme_colors is not None:
+            for key in ("bg", "fg", "accent"):
+                if not theme_colors.get(key):
+                    raise ApiError(ErrorCode.BOOK_INVALID, "自定义主题颜色缺少字段")
         if not floors:
             raise ApiError(ErrorCode.BOOK_INVALID, "请选择要导出的楼层")
         rec = self._shelf.get(book_id)
@@ -179,7 +184,7 @@ class FloorExportService:
             )
         t = threading.Thread(
             target=self._run_task,
-            args=(rec, floors, theme, fmt, scale, output_dir, no_images, task_id),
+            args=(rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, task_id),
             daemon=True,
             name="floor-export",
         )
@@ -237,7 +242,7 @@ class FloorExportService:
 
     # ---------- 后台执行 ----------
 
-    def _run_task(self, rec, floors, theme, fmt, scale, output_dir, no_images, task_id) -> None:
+    def _run_task(self, rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, task_id) -> None:
         def on_progress(p: TaskProgress) -> None:
             self._set(stage=p.stage, current=p.current, total=p.total, detail=p.message)
 
@@ -245,7 +250,7 @@ class FloorExportService:
             status = self._tasks.run(
                 LANE,
                 task_id,
-                lambda report: self._run(rec, floors, theme, fmt, scale, output_dir, no_images, report),
+                lambda report: self._run(rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, report),
                 on_progress=on_progress,
             )
             if status == TaskStatus.CANCELLED:
@@ -257,7 +262,7 @@ class FloorExportService:
                 if self._current_task == task_id:
                     self._current_task = None
 
-    def _run(self, rec, floors, theme, fmt, scale, output_dir, no_images, report) -> None:
+    def _run(self, rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, report) -> None:
         def step(stage: str, current: int = 0, total: int = 0, detail: str = "") -> None:
             self._set(stage=stage, current=current, total=total, detail=detail)
             report(TaskProgress(current=current, total=total, stage=stage, message=detail))
@@ -277,7 +282,7 @@ class FloorExportService:
                 out_dir = Path(picked)
             out_dir.mkdir(parents=True, exist_ok=True)
             base = _safe_filename(rec.title) or _safe_filename(book.title) or "未命名安科"
-            colors = _THEME_COLORS[theme]
+            colors = theme_colors or _THEME_COLORS[theme]
             theme_css = _OVERRIDE_CSS.replace("__BG__", colors["bg"]).replace("__FG__", colors["fg"]).replace("__ACCENT__", colors["accent"])
             jobs = []
             for i, floor_num in enumerate(floors, 1):
