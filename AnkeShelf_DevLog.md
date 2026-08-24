@@ -36,10 +36,10 @@
 - 版本线：Windows `v1.6.2`（已发布，AnkeShelf-v1.6.2.zip）；
   Android `android-v1.3.2`（已发布，AnkeShelf-v1.3.2-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-24 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 339 项
+  - Windows Python：`python -m unittest discover tests` = 342 项
     （2026-08-24 实跑全过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（60 方法一致）、
+    `node contracts/tests/api-contract.test.js`（66 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1，能力含 annotation·assist·gululu）、
     `node contracts/tests/reader-lite-parts.test.js`（9 parts / 动态字节校验）、
@@ -80,6 +80,25 @@
 
 ## 4. 最近流水
 
+### 2026-08-24 win：楼层导出（图片渲染，第三十八批）
+
+- 背景：用户确认“楼层导出”独立于全书下载，按楼层导出 PNG/WebP 图片，
+  便于分享与补档；NGA 与骨碌碌都支持；先做 Windows。
+- 新增能力：
+  - 后端 `app/floor_export_service.py`：单飞任务（lane=floor_export），
+    支持按楼层列表导出；NGA 走原生书章节，骨碌碌走 snapshot floor_index；
+    主题支持 light/sepia/dark；倍率 1/1.5/2/3。
+  - 渲染：`scripts/floor_export_render.js` 使用 Playwright Chromium 打开
+    本地 `/book/` 章节页，注入导出主题 CSS，按楼层元素截图；在线图片
+    失败时通过状态 `image_failed` 提示是否无图重导。
+  - API：`floor_export_floors/start/status/cancel/open_dest`、`pick_folder`。
+  - 前端：书架工具栏新增「楼层导出」入口；导出页支持书籍/楼层多选、
+    主题/格式/倍率设定、输出目录选择与进度轮询；阅读器楼层头部新增
+    「分享」按钮（样式对齐骨碌碌评论按钮），快速导出当前楼层并跟随
+    当前阅读主题，格式/倍率沿用导出页设置。
+- 验证：Windows Python 342 项（+3）；API 契约 66 方法一致；JS 契约/守卫
+  全绿；Android JVM 236 项（235 过 / 1 跳）；真机冒烟：NGA 0 楼与骨碌碌
+  1 楼均成功渲染为 2x PNG/WebP。
 ### 2026-08-24 win/android：附件音频自动播放开关与 UI 卡片收敛（第三十七批）
 
 - 现象（用户反馈）：① 希望可自选是否自动播放；② 附件音频卡片不够好看，
