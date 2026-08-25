@@ -47,7 +47,7 @@
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/paged-blank.test.js`（空白页判定边界）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 236 项（235 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 238 项（237 过 / 1 跳）；
     DisciplineTest 11 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
@@ -80,6 +80,28 @@
 
 ## 4. 最近流水
 
+### 2026-08-25 android：楼层导出对齐 Windows（第四十批）
+
+- 目标：把 Windows 第三十八/三十九批的楼层导出能力对齐到 Android，
+  并复用 Windows 经验（设置持久化、按当前阅读设定、进度条、分享直达、
+  楼层头不拆分 flex）。
+- 新增：
+  - 数据层：`SettingsData.floor_export`（主题/格式/倍率），与
+    `settings.json:floor_export` 同构，Android 原样往返不丢。
+  - 映射：`FloorExportMapper`——NGA 走 `NativeBookWriter.loadFloors` +
+    `NativeBook.chapterIndexForLou`；骨碌碌走 `GululuUpdate.loadBaseline`
+    的 `floor_index/chapter_index`。
+  - 渲染：`FloorExportRenderer` 离屏 WebView 逐楼渲染 PNG/WebP，
+    复用 `buildReaderHtml`（reader.css、主题变量、自定义字体），
+    1x/1.5x/2x/3x；JS 轮询图片/字体完成与页面高度。
+  - UI：下载页新增「楼层导出」组；批量多选楼层、主题/格式/倍率
+    FilterChip、筛选、进度条、开始导出/打开目录。
+  - 分享：reader-lite 注入楼层头「分享」按钮，点击经桥
+    `floorShare(floorNum)` 上报，Compose 侧用当前阅读设定渲染本楼
+    并通过 FileProvider 调起系统分享 Sheet。
+  - FileProvider：`${applicationId}.fileprovider` + `res/xml/file_paths.xml`。
+- 验证：Android JVM 238 项（237 过 / 1 跳，+2）；Windows Python 342 项；
+  API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿。
 ### 2026-08-25 win：楼层导出交互修复（第三十九批）
 
 - 现象（用户反馈）：① 首次导出失败后「开始导出」按钮永久禁用；②
