@@ -114,6 +114,11 @@
   设置对滚动阅读与导出同时生效；离屏 WebView 设置 `useWideViewPort`，
   修复数据页排版每行一字的窄视口问题；导出视口宽度按
   `min(46×字号×page_width, 屏幕 CSS 宽)` 计算。
+- 追加修复（真机三轮反馈）：修复 `extractReaderParts` 返回完整
+  `<style>` 标签导致 `buildReaderHtml` 内嵌 `<style>` 时首个 `</style>`
+  提前闭合、CSS 文本泄漏到正文顶部的问题（改为只返回 style 内文）；
+  离屏 WebView 增加 NGA 图床拦截（OkHttp + ngaHeaders）并设置 NGA UA，
+  在线图片可加载；同时保留字体/EPUB 资源拦截。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 release 覆盖安装并启动。

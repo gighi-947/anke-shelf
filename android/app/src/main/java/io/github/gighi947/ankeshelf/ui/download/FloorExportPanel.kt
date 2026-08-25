@@ -43,10 +43,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.FloorExportPrefs
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.AppContainer
+import io.github.gighi947.ankeshelf.service.ngaHeaders
+import okhttp3.Request
 import io.github.gighi947.ankeshelf.service.BookSession
 import io.github.gighi947.ankeshelf.service.FloorExportFloor
 import io.github.gighi947.ankeshelf.service.FloorExportHtml
@@ -261,6 +264,18 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                 val fontPx = data.font_size
                                 val pageWidth = data.page_width.coerceIn(0.5, 1.5)
                                 val viewportWidth = minOf((46 * fontPx * pageWidth).toInt(), screenCss).coerceAtLeast(320)
+                                val ngaFetcher: (String) -> ByteArray? = { url ->
+                                    try {
+                                        val req = Request.Builder().url(url)
+                                            .ngaHeaders(container.ngaConfig.load())
+                                            .build()
+                                        container.okHttp.newCall(req).execute().use { resp ->
+                                            if (resp.isSuccessful) resp.body?.bytes() else null
+                                        }
+                                    } catch (e: Exception) {
+                                        null
+                                    }
+                                }
                                 val rendered = FloorExportRenderer.render(
                                     context = context,
                                     html = html,
@@ -271,6 +286,8 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                     assetResolver = if (rec.nga_tid > 0) null else { rel ->
                                         s.readAsset(floor.chapterIndex, rel)
                                     },
+                                    ngaImageFetcher = ngaFetcher,
+                                    userAgent = NgaConfig.DEFAULT_UA,
                                     viewportWidth = viewportWidth,
                                 )
                                 val outFile = File(exportDir, "${safeExportName(rec.title)}_第${num}楼.$fmt")

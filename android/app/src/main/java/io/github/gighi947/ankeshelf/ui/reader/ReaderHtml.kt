@@ -93,9 +93,9 @@ fun extractReaderParts(htmlText: String): ReaderHtmlParts {
             .replace(Regex("(?is)^\\s*<\\?xml[^>]*\\?>\\s*"), "")
             .replace(Regex("(?is)^\\s*<!DOCTYPE[^>]*>\\s*"), "")
     }
-    val styles = Regex("(?is)<style[^>]*>.*?</style>")
+    val styles = Regex("(?is)<style[^>]*>(.*?)</style>")
         .findAll(htmlText)
-        .joinToString(" ") { it.value }
+        .joinToString(" ") { it.groupValues[1] }
     // 章节 head 里的 <link rel="stylesheet"> 也要在自建壳里恢复加载；
     // 安卓 WebView 不复用原 XHTML 外壳，不处理会把 EPUB 自带 CSS 弄丢
     // （骨碌碌楼层卡片等样式就是这样丢的）。

@@ -8,6 +8,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import io.github.gighi947.ankeshelf.ui.reader.ReaderEgress
 import java.io.ByteArrayInputStream
 import java.net.URLDecoder
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +53,8 @@ object FloorExportRenderer {
         format: String,
         fontsDir: File? = null,
         assetResolver: ((String) -> ByteArray?)? = null,
+        ngaImageFetcher: ((String) -> ByteArray?)? = null,
+        userAgent: String? = null,
         viewportWidth: Int = VIEWPORT_WIDTH,
         timeoutMs: Long = 30000,
     ): FloorRenderResult = withContext(Dispatchers.Main) {
@@ -59,6 +62,7 @@ object FloorExportRenderer {
         val web = WebView(context.applicationContext)
         val bridge = Bridge()
         web.settings.javaScriptEnabled = true
+        if (!userAgent.isNullOrBlank()) web.settings.userAgentString = userAgent
         web.settings.useWideViewPort = true
         web.settings.loadWithOverviewMode = false
         web.setBackgroundColor(0x00000000)
@@ -74,6 +78,56 @@ object FloorExportRenderer {
         }, "FloorExportBridge")
         val finished = suspendCancellableCoroutine { cont ->
             web.webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(
+                    view: WebView?,
+                    request: WebResourceRequest?,
+                ): WebResourceResponse? {
+                    val url = request?.url?.toString() ?: return null
+                    if (url.startsWith("file:///android_fonts/") && fontsDir != null) {
+                        val name = URLDecoder.decode(url.removePrefix("file:///android_fonts/"), "UTF-8")
+                        val f = File(fontsDir, name)
+                        if (f.isFile) {
+                            val mime = when (f.extension.lowercase()) {
+                                "woff2" -> "font/woff2"
+                                "woff" -> "font/woff"
+                                "ttf" -> "font/ttf"
+                                "otf" -> "font/otf"
+                                else -> "application/octet-stream"
+                            }
+                            return WebResourceResponse(mime, null, ByteArrayInputStream(f.readBytes()))
+                        }
+                    }
+                    if (url.startsWith("file:///android_epub/") && assetResolver != null) {
+                        val rel = URLDecoder.decode(
+                            url.removePrefix("file:///android_epub/").substringAfter('/'),
+                            "UTF-8",
+                        )
+                        val bytes = assetResolver(rel) ?: return null
+                        val mime = when (rel.substringAfterLast('.', "").lowercase()) {
+                            "png" -> "image/png"
+                            "jpg", "jpeg" -> "image/jpeg"
+                            "gif" -> "image/gif"
+                            "webp" -> "image/webp"
+                            "svg" -> "image/svg+xml"
+                            "css" -> "text/css"
+                            else -> "application/octet-stream"
+                        }
+                        return WebResourceResponse(mime, null, ByteArrayInputStream(bytes))
+                    }
+                    if (ReaderEgress.isNgaImageUrl(url) && ngaImageFetcher != null) {
+                        val bytes = ngaImageFetcher(url) ?: return null
+                        val mime = when {
+                            bytes.size >= 3 && bytes[0] == 0x89.toByte() && bytes[1] == 0x50.toByte() && bytes[2] == 0x4E.toByte() -> "image/png"
+                            bytes.size >= 4 && bytes[0] == 0x52.toByte() && bytes[1] == 0x49.toByte() -> "image/webp"
+                            bytes.size >= 3 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte() -> "image/jpeg"
+                            bytes.size >= 3 && bytes[0] == 0x47.toByte() && bytes[1] == 0x49.toByte() -> "image/gif"
+                            else -> "image/jpeg"
+                        }
+                        return WebResourceResponse(mime, null, ByteArrayInputStream(bytes))
+                    }
+                    return null
+                }
+
                 override fun onPageFinished(view: WebView?, url: String?) {
                     if (cont.isActive) cont.resume(Unit)
                 }

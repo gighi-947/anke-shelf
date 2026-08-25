@@ -76,10 +76,13 @@ import io.github.gighi947.ankeshelf.data.Highlight
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.data.BookRecord
+import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookSession
 import io.github.gighi947.ankeshelf.service.LogEvents
+import io.github.gighi947.ankeshelf.service.ngaHeaders
+import okhttp3.Request
 import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.service.FloorExportRenderer
 import io.github.gighi947.ankeshelf.service.FloorExportMapper
@@ -104,7 +107,6 @@ import kotlinx.coroutines.withContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import okhttp3.Request
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -282,6 +284,18 @@ fun NativeReaderScreen(
                 val fontPx = readerSettings.font_size
                 val pageWidth = readerSettings.page_width.coerceIn(0.5, 1.5)
                 val viewportWidth = minOf((46 * fontPx * pageWidth).toInt(), screenCss).coerceAtLeast(320)
+                val ngaFetcher: (String) -> ByteArray? = { url ->
+                    try {
+                        val req = Request.Builder().url(url)
+                            .ngaHeaders(container.ngaConfig.load())
+                            .build()
+                        container.okHttp.newCall(req).execute().use { resp ->
+                            if (resp.isSuccessful) resp.body?.bytes() else null
+                        }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
                 val rendered = FloorExportRenderer.render(
                     context = context,
                     html = html,
@@ -292,6 +306,8 @@ fun NativeReaderScreen(
                     assetResolver = if (record.nga_tid > 0) null else { rel ->
                         session.readAsset(floor.chapterIndex, rel)
                     },
+                    ngaImageFetcher = ngaFetcher,
+                    userAgent = NgaConfig.DEFAULT_UA,
                     viewportWidth = viewportWidth,
                 )
                 val outDir = File(context.getExternalFilesDir(null) ?: context.filesDir, "floor_export")
