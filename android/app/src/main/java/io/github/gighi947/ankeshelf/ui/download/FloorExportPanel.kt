@@ -252,7 +252,10 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                         var ok = 0
                         try {
                             val data = settingsData()
-                            val themeColors = if (theme == "current") readerTheme(data)
+                            val systemDark = (context.resources.configuration.uiMode and
+                                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                                android.content.res.Configuration.UI_MODE_NIGHT_YES
+                            val themeColors = if (theme == "current") readerTheme(data, systemDark)
                             else readerTheme(
                                 data.copy(
                                     theme = theme, theme_mode = theme,

@@ -268,7 +268,10 @@ fun NativeReaderScreen(
                 val list = FloorExportMapper.list(record, session).floors
                 val floor = list.firstOrNull { it.num == floorNum } ?: return@launch
                 val prefs = readerSettings.floor_export
-                val themeColors = readerTheme(readerSettings)
+                val systemDark = (context.resources.configuration.uiMode and
+                    android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                    android.content.res.Configuration.UI_MODE_NIGHT_YES
+                val themeColors = readerTheme(readerSettings, systemDark)
                 val html = if (record.nga_tid > 0) {
                     FloorExportHtml.nga(record, floor, themeColors, readerSettings)
                 } else {
