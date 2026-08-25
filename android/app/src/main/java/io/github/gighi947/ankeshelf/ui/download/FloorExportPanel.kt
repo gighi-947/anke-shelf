@@ -337,10 +337,12 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                     val uris = lastBatch.map { f ->
                         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", f)
                     }
+                    val clip = ClipData.newRawUri(null, uris.first())
+                    uris.drop(1).forEach { uri -> clip.addItem(ClipData.Item(uri)) }
                     val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
                         type = "image/*"
                         putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-                        clipData = ClipData.newRawUri(null, uris.first())
+                        clipData = clip
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
                     runCatching { context.startActivity(Intent.createChooser(send, "分享本批楼层")) }

@@ -168,6 +168,10 @@
   lightbox 增加 `file:///android_images/` 字节读取，并支持双指
   缩放/拖动。骨碌碌头像放大到 4.8em/10px。批量导出增加
   `[floor_export] batch add/share batch` 探针，定位分享空文件问题。
+- 追加修复（真机十五轮，日志定位）：「分享本批」多文件时 ClipData
+  只放了第一个 URI，导致 `ACTION_SEND_MULTIPLE` 只给第一个文件授权
+  （logcat 出现 FileProvider Permission Denial）；已把全部 URI 加进
+  ClipData。NGA 附件音频播放失败增加 `[gululu_music] failed` 探针。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 debug（release 签名）覆盖安装并启动。

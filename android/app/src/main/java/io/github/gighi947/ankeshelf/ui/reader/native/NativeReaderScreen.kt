@@ -258,6 +258,7 @@ fun NativeReaderScreen(
             musicUrl = url
             musicTitle = title.ifEmpty { "BGM" }
         }.onFailure {
+            Log.w("AnkeShelf", "[gululu_music] failed url=$url error=${it.message}")
             LogEvents.event("gululu", "music_failed", "error" to (it.message ?: "unknown"))
             stopMusic()
         }
