@@ -1,6 +1,14 @@
 package io.github.gighi947.ankeshelf.ui.download
 
+import android.content.ClipData
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.core.content.FileProvider
+
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,8 +17,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -44,6 +59,7 @@ import io.github.gighi947.ankeshelf.ui.theme.readerTheme
 import kotlinx.coroutines.launch
 import java.io.File
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
     val context = LocalContext.current
@@ -51,6 +67,8 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
     val books = remember { container.repository.listBooks() }
         .filter { it.record.nga_tid > 0 || it.record.path.contains("gululu_library") }
     var selectedBook by remember { mutableStateOf<BookRecord?>(null) }
+    var bookFilter by remember { mutableStateOf("") }
+    var bookMenuExpanded by remember { mutableStateOf(false) }
     var floors by remember { mutableStateOf<List<FloorExportFloor>>(emptyList()) }
     var selected by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var filter by remember { mutableStateOf("") }
@@ -90,32 +108,60 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
 
     Column(modifier = Modifier.fillMaxSize().padding(AnkeSpacing.lg)) {
         Text("选择安科", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
-        LazyColumn(modifier = Modifier.fillMaxWidth().weight(0.25f)) {
-            items(books) { b ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = AnkeSpacing.xs),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(checked = selectedBook?.id == b.record.id, onCheckedChange = {
-                        selectedBook = if (selectedBook?.id == b.record.id) null else b.record
-                    })
-                    Text(b.record.title, style = MaterialTheme.typography.bodyMedium)
+        val selectedTitle = books.firstOrNull { it.record.id == selectedBook?.id }?.record?.title ?: ""
+        val filteredBooks = if (bookFilter.isBlank()) books
+        else books.filter { it.record.title.contains(bookFilter.trim(), ignoreCase = true) }
+        ExposedDropdownMenuBox(
+            expanded = bookMenuExpanded,
+            onExpandedChange = { bookMenuExpanded = it },
+        ) {
+            OutlinedTextField(
+                value = if (bookMenuExpanded) bookFilter else selectedTitle,
+                onValueChange = { if (bookMenuExpanded) bookFilter = it },
+                singleLine = true,
+                label = { Text("搜索安科") },
+                placeholder = { if (bookMenuExpanded) Text("输入书名筛选…") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bookMenuExpanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
+            )
+            ExposedDropdownMenu(
+                expanded = bookMenuExpanded,
+                onDismissRequest = { bookMenuExpanded = false },
+            ) {
+                if (filteredBooks.isEmpty()) {
+                    DropdownMenuItem(text = { Text("没有匹配的书籍") }, onClick = {}, enabled = false)
+                } else {
+                    filteredBooks.forEach { b ->
+                        DropdownMenuItem(
+                            text = { Text(b.record.title, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+                            onClick = {
+                                selectedBook = b.record
+                                bookFilter = ""
+                                bookMenuExpanded = false
+                            },
+                        )
+                    }
                 }
             }
         }
 
-        Row(
+        Text("导出选项", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
+        Text("主题", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs),
         ) {
             FilterChip(selected = theme == "light", onClick = { theme = "light" }, label = { Text("浅色") })
             FilterChip(selected = theme == "sepia", onClick = { theme = "sepia" }, label = { Text("羊皮纸") })
             FilterChip(selected = theme == "dark", onClick = { theme = "dark" }, label = { Text("深色") })
             FilterChip(selected = theme == "current", onClick = { theme = "current" }, label = { Text("当前阅读设定") })
         }
-        Row(
+        Text("格式与倍率", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs),
         ) {
             FilterChip(selected = fmt == "png", onClick = { fmt = "png" }, label = { Text("PNG") })
             FilterChip(selected = fmt == "webp", onClick = { fmt = "webp" }, label = { Text("WebP") })
@@ -125,6 +171,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
             FilterChip(selected = scale == 3f, onClick = { scale = 3f }, label = { Text("3x") })
         }
 
+        Text("楼层", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Medium)
         OutlinedTextField(
             value = filter,
             onValueChange = { filter = it },
@@ -191,7 +238,22 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                 } else {
                                     "file:///android_epub/${s.id}/${s.chapterBaseDir(floor.chapterIndex)}/"
                                 }
-                                val rendered = FloorExportRenderer.render(context, html, base, scale, fmt)
+                                val density = context.resources.displayMetrics.density
+                                val screenCss = (context.resources.displayMetrics.widthPixels / density).toInt()
+                                val fontPx = data.font_size
+                                val viewportWidth = minOf(46 * fontPx, screenCss).coerceAtLeast(320)
+                                val rendered = FloorExportRenderer.render(
+                                    context = context,
+                                    html = html,
+                                    baseUrl = base,
+                                    scale = scale,
+                                    format = fmt,
+                                    fontsDir = container.appPaths.fontsDir,
+                                    assetResolver = if (rec.nga_tid > 0) null else { rel ->
+                                        s.readAsset(floor.chapterIndex, rel)
+                                    },
+                                    viewportWidth = viewportWidth,
+                                )
                                 val outFile = File(exportDir, "${safeExportName(rec.title)}_第${num}楼.$fmt")
                                 rendered.file.copyTo(outFile, overwrite = true)
                                 failedImages += rendered.imageFailed
@@ -210,10 +272,34 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                 },
             ) { Text("开始导出") }
             Button(enabled = exportDir.isNotEmpty(), onClick = {
-                runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                    setDataAndType(android.net.Uri.fromFile(File(exportDir)), "resource/folder")
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                }) }
+                val dir = File(exportDir)
+                val files = dir.listFiles { f -> f.isFile && (f.extension == "png" || f.extension == "webp") }
+                    ?.sortedByDescending { it.lastModified() }.orEmpty()
+                if (files.isEmpty()) {
+                    Toast.makeText(context, "导出目录为空", Toast.LENGTH_SHORT).show()
+                } else {
+                    val uris = files.map { f ->
+                        FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", f)
+                    }
+                    val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                        type = "image/*"
+                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                        clipData = ClipData.newRawUri(null, uris.first())
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    runCatching { context.startActivity(Intent.createChooser(send, "分享全部楼层")) }
+                        .onFailure { Toast.makeText(context, "无法调起分享", Toast.LENGTH_SHORT).show() }
+                }
+            }) { Text("分享全部") }
+            Button(enabled = exportDir.isNotEmpty(), onClick = {
+                val dir = File(exportDir)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", dir)
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "vnd.android.document/directory")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                runCatching { context.startActivity(intent) }
+                    .onFailure { Toast.makeText(context, "请用文件管理器打开：$exportDir", Toast.LENGTH_LONG).show() }
             }) { Text("打开目录") }
         }
     }

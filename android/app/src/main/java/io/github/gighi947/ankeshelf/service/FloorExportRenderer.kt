@@ -4,8 +4,12 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.webkit.JavascriptInterface
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import java.io.ByteArrayInputStream
+import java.net.URLDecoder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -46,6 +50,9 @@ object FloorExportRenderer {
         baseUrl: String,
         scale: Float,
         format: String,
+        fontsDir: File? = null,
+        assetResolver: ((String) -> ByteArray?)? = null,
+        viewportWidth: Int = VIEWPORT_WIDTH,
         timeoutMs: Long = 30000,
     ): FloorRenderResult = withContext(Dispatchers.Main) {
         val web = WebView(context.applicationContext)
@@ -76,7 +83,7 @@ object FloorExportRenderer {
                     // 单张图片错误不会走到这里；页面级错误由 JS 轮询超时兜底。
                 }
             }
-            web.layout(0, 0, VIEWPORT_WIDTH, 1000)
+            web.layout(0, 0, viewportWidth, 1000)
             web.loadDataWithBaseURL(baseUrl, html, "text/html", "utf-8", null)
         }
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -93,10 +100,10 @@ object FloorExportRenderer {
             delay(150)
         }
         val contentHeight = if (bridge.height > 0) bridge.height else 1000
-        web.layout(0, 0, VIEWPORT_WIDTH, contentHeight)
+        web.layout(0, 0, viewportWidth, contentHeight)
         delay(50)
         val bitmap = Bitmap.createBitmap(
-            (VIEWPORT_WIDTH * scale).toInt().coerceAtLeast(1),
+            (viewportWidth * scale).toInt().coerceAtLeast(1),
             (contentHeight * scale).toInt().coerceAtLeast(1),
             Bitmap.Config.ARGB_8888,
         )
@@ -118,7 +125,7 @@ object FloorExportRenderer {
         bitmap.recycle()
         FloorRenderResult(
             file = outFile,
-            width = (VIEWPORT_WIDTH * scale).toInt(),
+            width = (viewportWidth * scale).toInt(),
             height = (contentHeight * scale).toInt(),
             imageFailed = bridge.failed,
             imageTotal = bridge.total,

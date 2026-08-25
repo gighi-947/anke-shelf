@@ -277,12 +277,21 @@ fun NativeReaderScreen(
                 } else {
                     "file:///android_epub/${session.id}/${session.chapterBaseDir(floor.chapterIndex)}/"
                 }
+                val density = context.resources.displayMetrics.density
+                val screenCss = (context.resources.displayMetrics.widthPixels / density).toInt()
+                val fontPx = readerSettings.font_size
+                val viewportWidth = minOf(46 * fontPx, screenCss).coerceAtLeast(320)
                 val rendered = FloorExportRenderer.render(
                     context = context,
                     html = html,
                     baseUrl = base,
                     scale = prefs.scale.toFloat(),
                     format = prefs.fmt,
+                    fontsDir = container.appPaths.fontsDir,
+                    assetResolver = if (record.nga_tid > 0) null else { rel ->
+                        session.readAsset(floor.chapterIndex, rel)
+                    },
+                    viewportWidth = viewportWidth,
                 )
                 val outDir = File(context.getExternalFilesDir(null) ?: context.filesDir, "floor_export")
                     .apply { mkdirs() }

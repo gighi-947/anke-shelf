@@ -100,8 +100,16 @@
     `floorShare(floorNum)` 上报，Compose 侧用当前阅读设定渲染本楼
     并通过 FileProvider 调起系统分享 Sheet。
   - FileProvider：`${applicationId}.fileprovider` + `res/xml/file_paths.xml`。
+- 追加修复（真机反馈）：楼层导出页安科选择改为可搜索的下拉框（复用
+  搜索页 ExposedDropdownMenu 交互）；导出选项按“主题 / 格式与倍率 /
+  楼层”分组并换 FlowRow 排布；「打开目录」改为「分享全部 + 打开目录」，
+  前者走 ACTION_SEND_MULTIPLE，后者 FileProvider 目录视图并 Toast 兜底；
+  离屏 WebView 增加 `file:///android_fonts/` 与 `file:///android_epub/`
+  拦截，自定义字体与 EPUB 资源正确加载；导出视口宽度改为
+  `min(46×font_size, 屏幕 CSS 宽)`，与真机阅读页一致。
 - 验证：Android JVM 238 项（237 过 / 1 跳，+2）；Windows Python 342 项；
-  API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿。
+  API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
+  真机 release 覆盖安装并启动。
 ### 2026-08-25 win：楼层导出交互修复（第三十九批）
 
 - 现象（用户反馈）：① 首次导出失败后「开始导出」按钮永久禁用；②
