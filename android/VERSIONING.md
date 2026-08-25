@@ -5,9 +5,9 @@
 
 ## 1. 版本线
 
-- 安卓独立版本线：`0.1.0 → 0.2.0 → 0.3.0 → 1.0.0 → 1.1.0 → 1.2.0 → 1.3.0 → 1.3.1 → 1.3.2`。
+- 安卓独立版本线：`0.1.0 → 0.2.0 → 0.3.0 → 1.0.0 → 1.1.0 → 1.2.0 → 1.3.0 → 1.3.1 → 1.3.2 → 1.4.0`。
 - 唯一版本定义位置：`android/app/build.gradle.kts`（`versionName` / `versionCode`）。
-  `versionCode` 每次发布递增 1（当前：versionCode=6，versionName=1.3.2）。
+  `versionCode` 每次发布递增 1（当前：versionCode=7，versionName=1.4.0）。
 - 里程碑与当前进度（2026-08-20）：
 
 | 版本 | 内容 | 状态 |
@@ -20,10 +20,11 @@
 | v1.2.0 | 全量对齐 Windows v1.5.1：阅读器标注/目录/进度滑块/阅读辅助、骨碌碌全链路、NGA 页数上限与目录楼分章、数据完整性校验 | **已发布（android-v1.2.0，2026-08-20）** |
 | v1.3.1 | 性能优化：翻页/重排进度采样减半、空白页判定提速、内置字体 WOFF2 无损压缩（安装包 -16MB）；本地数据损坏书架横幅可见并保护原文件；修复跨章跳转被旧滚动位置覆盖 | **已发布（android-v1.3.1，2026-08-22）** |
 | v1.3.2 | 修复旧 WebView 上 NGA 楼层卡片灰边/卡底丢失，与 Windows v1.6.2 对齐 | **已发布（android-v1.3.2，2026-08-22）** |
+| v1.4.0 | 楼层导出对齐 + GitHub 版本更新提醒 | **已发布（android-v1.4.0，2026-08-25）** |
 | v1.3.0 | 对齐 Windows v1.6.0：标签系统、NGA 登录自动保存、阅读设置与登录配置排版优化、全文检索键入筛选、骨碌碌清除缓存后重下、折叠块摘要与骰子遮罩修复 | **已发布（android-v1.3.0，2026-08-21）** |
 
 > 因 v0.1.0–v0.3.0 均未发布，首个 Release 为 `android-v1.0.0`；后续依次发布
-> `android-v1.1.0`（versionCode=2）、`android-v1.2.0`（versionCode=3）、`android-v1.3.0`（versionCode=4）、`android-v1.3.1`（versionCode=5）、`android-v1.3.2`（versionCode=6），
+> `android-v1.1.0`（versionCode=2）、`android-v1.2.0`（versionCode=3）、`android-v1.3.0`（versionCode=4）、`android-v1.3.1`（versionCode=5）、`android-v1.3.2`（versionCode=6）、`android-v1.4.0`（versionCode=7），
 > 避免无意义的占位版本。
 
 ## 2. 标签与 Release 命名

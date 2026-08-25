@@ -11,7 +11,7 @@
 ## 1. 当前状态（2026-08-24）
 
 - 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
-  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；v1.6.0 / android-v1.3.0 与 v1.6.1 / android-v1.3.1、v1.6.2 / android-v1.3.2 已发布；五批接手风险修复已合入；
+  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；v1.6.0 / android-v1.3.0 与 v1.6.1 / android-v1.3.1、v1.7.0 / android-v1.4.0 已发布；五批接手风险修复已合入；
   P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统、
   P5-E1 Cookie 粘贴解析、P5-E2 双端应用内登录（Android WebView +
   Windows pywebview 二级窗）、NGA 主题自适应
@@ -33,8 +33,8 @@
   NGA 附件音频在线 cue（第三十四批）、NGA 音乐 cue 播放控件补齐（第三十五批）、
   附件音频标题显示为可读文件名（第三十六批）、附件音频自动播放开关与  UI 卡片收敛（第三十七批，见 §4）。
   精确提交与远端状态以 `git log` / `git status` 为准。
-- 版本线：Windows `v1.6.2`（已发布，AnkeShelf-v1.6.2.zip）；
-  Android `android-v1.3.2`（已发布，AnkeShelf-v1.3.2-android.apk）。
+- 版本线：Windows `v1.7.0`（已发布，AnkeShelf-v1.7.0.zip）；
+  Android `android-v1.4.0`（已发布，AnkeShelf-v1.4.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-24 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 342 项
     （2026-08-24 实跑全过）；

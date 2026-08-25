@@ -4,8 +4,8 @@
 
 | 版本 | 平台 | 状态 |
 | --- | --- | --- |
-| v1.6.2 | Windows | 受支持 |
-| android-v1.3.2 | Android | 受支持 |
+| v1.7.0 | Windows | 受支持 |
+| android-v1.4.0 | Android | 受支持 |
 | v1.6.1 | Windows | 受支持（历史版本） |
 | android-v1.3.1 | Android | 受支持（历史版本） |
 

@@ -2,9 +2,9 @@
 
 安卓端采用 Kotlin + Jetpack Compose 原生重写（外壳），阅读正文使用
 `app/src/main/assets/reader/` 下安卓专用精简 WebView 渲染页（不复用桌面
-`web/` 代码）。后端语义按 Windows v1.6.2 逐个移植。
+`web/` 代码）。后端语义按 Windows v1.7.0 逐个移植。
 
-> 当前版本：android-v1.3.2（2026-08-22 发布；功能与 Windows v1.6.2 对齐，
+> 当前版本：android-v1.4.0（2026-08-22 发布；功能与 Windows v1.7.0 对齐，
 > 双端功能与版本状态以根 [README.md](../README.md) 和
 > [ANDROID_PARITY_PLAN.md](../docs/ANDROID_PARITY_PLAN.md) 为准）。
 > 版本线独立：`android-vX.Y.Z`。

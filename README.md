@@ -22,8 +22,8 @@
 
 | 平台 | 当前版本 | 技术栈 | 发布标签 | 安装包 |
 | --- | --- | --- | --- | --- |
-| Windows 桌面端 | **v1.6.2** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
-| Android 手机端 | **v1.3.2** | Kotlin + Jetpack Compose（正文用安卓专用 WebView 渲染内核） | `android-vX.Y.Z` | `AnkeShelf-vX.Y.Z-android.apk` |
+| Windows 桌面端 | **v1.7.0** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
+| Android 手机端 | **v1.4.0** | Kotlin + Jetpack Compose（正文用安卓专用 WebView 渲染内核） | `android-vX.Y.Z` | `AnkeShelf-vX.Y.Z-android.apk` |
 
 > **版本线文档权威**：本表是版本线的唯一文档事实源；代码事实源为 Windows `app/__init__.py`、Android `android/app/build.gradle.kts`。其他文档（DevLog / MAINTENANCE_GUIDE / ROADMAP 等）中的版本线以本表为准。
 
@@ -47,7 +47,7 @@
 
 ## ✨ 功能特性
 
-### Windows 桌面端（v1.6.2）
+### Windows 桌面端（v1.7.0）
 
 - **骨碌碌 EPUB 导入**：顶栏「下载安科」→「骨碌碌」粘贴书籍 ID / 链接，
   后台分批获取楼层、按站点目录分章并自动加入书架；支持取消、进度反馈和完成后打开，
@@ -83,7 +83,7 @@
 - **安全**：本地 HTTP 仅回环监听、随机启动令牌校验、zip 路径穿越防护、
   章节 CSP + base 注入
 
-### Android 手机端（v1.3.2）
+### Android 手机端（v1.4.0）
 
 - **书架**：网格 / 列表双视图、按最近阅读 / 导入时间 / 名称 / 作者排序、导入
   EPUB、封面更新与导出、长按重命名 / 删除；空书架直达「导入 EPUB」或「从 NGA
@@ -124,7 +124,7 @@
 > 截图已压缩为 WebP（总大小约 0.8 MB），避免仓库携带大量大体积二进制文件。
 > 原图不进入仓库。
 
-### Android（v1.3.2 实机截图）
+### Android（v1.4.0 实机截图）
 
 ![书架](docs/screenshots/android/bookshelf.webp)
 书架：封面网格、标签、进度百分比
@@ -147,7 +147,7 @@
 ![设置](docs/screenshots/android/settings.webp)
 设置：外观 / 阅读 / 操作 / 统计 / 数据 / 帮助
 
-### Windows（v1.6.2）
+### Windows（v1.7.0）
 
 ![书架](docs/screenshots/windows/bookshelf.webp)
 书架：搜索、标签显示、NGA / 骨碌碌来源标记
@@ -195,7 +195,7 @@ build.bat
 ### Android
 
 从 [GitHub Releases](https://github.com/gighi-947/anke-shelf/releases) 下载
-`AnkeShelf-v1.3.2-android.apk`（Android 8.0+ / API 26+）安装。
+`AnkeShelf-v1.4.0-android.apk`（Android 8.0+ / API 26+）安装。
 
 源码构建：
 
@@ -269,8 +269,8 @@ gradlew.bat compileDebugAndroidTestKotlin :: 仪器测试编译
 
 ## 📦 版本与发布
 
-- **版本线分离**：Windows 用 `vX.Y.Z`（当前 v1.6.2）；Android 用
-  `android-vX.Y.Z`（当前 v1.3.2），唯一版本定义在
+- **版本线分离**：Windows 用 `vX.Y.Z`（当前 v1.7.0）；Android 用
+  `android-vX.Y.Z`（当前 v1.4.0），唯一版本定义在
   `android/app/build.gradle.kts`。
 - **标签与资产**：`vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；`android-vX.Y.Z` +
   `AnkeShelf-vX.Y.Z-android.apk`（资产名纯 ASCII）。
