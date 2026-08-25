@@ -832,7 +832,7 @@ fun NativeReaderScreen(
                 onDismissRequest = {},
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.md)) {
-                        CircularProgressIndicator(modifier = Modifier.width(AnkeSpacing.lg))
+                        CircularProgressIndicator(modifier = Modifier.size(AnkeSpacing.xl))
                         Text("正在生成楼层图片…")
                     }
                 },

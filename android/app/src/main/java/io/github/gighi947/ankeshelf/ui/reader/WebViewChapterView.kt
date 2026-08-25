@@ -458,6 +458,7 @@ fun WebViewChapterView(
                         if (url.startsWith("file:///android_images/")) {
                             val name = URLDecoder.decode(url.removePrefix("file:///android_images/"), "UTF-8")
                             val f = File(c.appPaths.root, "images/$name")
+                            Log.w("AnkeShelf", "[reading_img] file url=$url exists=${f.isFile} path=${f.absolutePath}")
                             if (f.isFile) {
                                 val mime = when (f.extension.lowercase()) {
                                     "png" -> "image/png"

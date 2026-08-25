@@ -412,6 +412,14 @@ mark.hl-cyan {
     background: rgba(var(--reader-fg-rgb, 34, 34, 34), 0.08);
 }
 
+/* 骨碌碌头像模式：比 EPUB 默认 2.4em 更大，且覆盖已下载书籍的旧样式 */
+.avatar-image img {
+    width: 3.6em !important;
+    height: 3.6em !important;
+    object-fit: cover !important;
+    border-radius: 8px !important;
+}
+
 /* 音乐 cue（NGA 附件音频/外链音乐）：与骨碌碌 EPUB 同款基础样式 + 附件音频卡片 */
 .gululu-music-row {
     break-inside: avoid;

@@ -154,6 +154,9 @@
   代理增加 `[reading_img]` 成功/失败日志；阅读页「分享」增加忙碌
   AlertDialog 与 `[reader_share]` 日志；导出/分享后的临时缓存文件在用
   完即删（分享文件落在 app 私有 `files/floor_export`，生命周期随应用）。
+- 追加修复（真机十二轮）：阅读页图片加载增加 `[reading_img] file` 探针；
+  分享转圈改为固定 24dp 居中；骨碌碌头像模式放大到 3.6em/8px 圆角，
+  并在 `reader.css` 加 `!important` 覆盖已下载 EPUB 的旧样式。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 debug（release 签名）覆盖安装并启动。
