@@ -10,13 +10,14 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import io.github.gighi947.ankeshelf.ui.reader.ReaderEgress
 import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.net.URLDecoder
 import kotlinx.coroutines.Dispatchers
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
 import kotlin.coroutines.resume
 
 /** 离屏 WebView 渲染结果。 */
@@ -29,19 +30,25 @@ data class FloorRenderResult(
 )
 
 /**
- * 离屏 WebView 渲染器：把单楼层 HTML 渲染为 PNG/WebP。
- * 页面不加载 reader-lite.js，只依赖 CSS 与图片加载；JS 仅用于轮询
- * 图片/字体完成状态与测量页面高度。
+ * 楼层导出渲染器：把单楼层 HTML 渲染为 PNG/WebP。
+ *
+ * 教训（见 docs/LESSONS_LEARNED.md 第 10 节）：
+ * - WebView.layout() 单位是物理像素，必须先按密度换算；
+ * - draw() 只画可见区域，所以先把 view 布局成完整内容尺寸，再按纵向分片
+ *   绘制到同一张大图，避免长楼层被截断；
+ * - 导出页面内联 reader.css，不依赖 file:///android_asset 链接；
+ * - 自定义字体经 shouldInterceptRequest 提供，并等待 document.fonts.ready。
  */
 object FloorExportRenderer {
 
-    private const val VIEWPORT_WIDTH = 828 // 46em @ 18px；与 reader.css 的 #paged-scroll 对齐
+    private const val VIEWPORT_WIDTH = 828
+    private const val MAX_SLICE_HEIGHT_PX = 12000
 
     private class Bridge {
         var pending = -1
         var failed = 0
         var total = 0
-        var height = 0
+        var heightCss = 0
         var fontsReady = false
     }
 
@@ -58,7 +65,12 @@ object FloorExportRenderer {
         viewportWidth: Int = VIEWPORT_WIDTH,
         timeoutMs: Long = 30000,
     ): FloorRenderResult = withContext(Dispatchers.Main) {
-        val vw = viewportWidth.coerceAtLeast(320)
+        val density = context.resources.displayMetrics.density.coerceAtLeast(1f)
+        val vwCss = viewportWidth.coerceAtLeast(320)
+        // 先按 1x 密度渲染成底图，再按用户倍率缩放，避免 view 高度过大。
+        val viewWidthPx = (vwCss * density).roundToInt().coerceAtLeast(1)
+        val initialHeightPx = (1000 * density).roundToInt().coerceAtLeast(1)
+
         val web = WebView(context.applicationContext)
         val bridge = Bridge()
         web.settings.javaScriptEnabled = true
@@ -66,30 +78,31 @@ object FloorExportRenderer {
         web.settings.useWideViewPort = true
         web.settings.loadWithOverviewMode = false
         web.setBackgroundColor(0x00000000)
-        // 离屏 WebView 的文件 URL 资源加载不如挂载视图可靠：把 reader.css
-        // 内联进页面，并把 viewport 固定为导出视口宽度，确保排版/主题/字体生效。
+
         val readerCss = runCatching {
             context.assets.open("reader/reader.css").bufferedReader().use { it.readText() }
         }.getOrDefault("")
         val preparedHtml = html
             .replace(
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>",
-                "<meta name=\"viewport\" content=\"width=$vw,initial-scale=1\"/>",
+                "<meta name=\"viewport\" content=\"width=$vwCss,initial-scale=1\"/>",
             )
             .replace(
                 "<link rel=\"stylesheet\" href=\"file:///android_asset/reader/reader.css\"/>",
                 if (readerCss.isBlank()) "" else "<style>$readerCss</style>",
             )
+
         web.addJavascriptInterface(object {
             @JavascriptInterface
             fun ready(pending: Int, failed: Int, total: Int, height: Int, fontsReady: Boolean) {
                 bridge.pending = pending
                 bridge.failed = failed
                 bridge.total = total
-                bridge.height = height
+                bridge.heightCss = height
                 bridge.fontsReady = fontsReady
             }
         }, "FloorExportBridge")
+
         val finished = suspendCancellableCoroutine { cont ->
             web.webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(
@@ -145,43 +158,48 @@ object FloorExportRenderer {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     if (cont.isActive) cont.resume(Unit)
                 }
-                override fun onReceivedError(
-                    view: WebView?,
-                    errorCode: Int,
-                    description: String?,
-                    failingUrl: String?,
-                ) {
-                    // 单张图片错误不会走到这里；页面级错误由 JS 轮询超时兜底。
-                }
             }
-            web.layout(0, 0, vw, 1000)
+            web.layout(0, 0, viewWidthPx, initialHeightPx)
             web.loadDataWithBaseURL(baseUrl, preparedHtml, "text/html", "utf-8", null)
         }
+
         val deadline = System.currentTimeMillis() + timeoutMs
-        var last = ""
         while (System.currentTimeMillis() < deadline) {
             web.evaluateJavascript(JS_POLL, null)
             val pending = bridge.pending
             if (pending == 0 && bridge.fontsReady) break
-            if (pending < 0) { // 页面尚未就绪
+            if (pending < 0) {
                 delay(80)
                 continue
             }
-            last = "pending=$pending failed=${bridge.failed} total=${bridge.total} height=${bridge.height} fonts=${bridge.fontsReady}"
             delay(150)
         }
-        // capturePicture 会捕获整篇文档（含视口外内容），避免离屏 WebView
-        // draw() 只画可见区域导致的楼层截断。
-        val picture = web.capturePicture()
+
+        val contentHeightCss = bridge.heightCss.coerceAtLeast(1000)
+        val contentHeightPx = (contentHeightCss * density).roundToInt().coerceAtLeast(1)
+        web.layout(0, 0, viewWidthPx, contentHeightPx)
+        delay(80)
+
+        val base = Bitmap.createBitmap(viewWidthPx, contentHeightPx, Bitmap.Config.ARGB_8888)
+        val baseCanvas = Canvas(base)
+        var y = 0
+        while (y < contentHeightPx) {
+            val sliceHeight = minOf(MAX_SLICE_HEIGHT_PX, contentHeightPx - y)
+            val slice = Bitmap.createBitmap(viewWidthPx, sliceHeight, Bitmap.Config.ARGB_8888)
+            val sliceCanvas = Canvas(slice)
+            sliceCanvas.translate(0f, -y.toFloat())
+            web.draw(sliceCanvas)
+            baseCanvas.drawBitmap(slice, 0f, y.toFloat(), null)
+            slice.recycle()
+            y += sliceHeight
+        }
+
         web.removeJavascriptInterface("FloorExportBridge")
         web.destroy()
-        val baseW = picture.width.coerceAtLeast(1)
-        val baseH = picture.height.coerceAtLeast(1)
-        val base = Bitmap.createBitmap(baseW, baseH, Bitmap.Config.ARGB_8888)
-        Canvas(base).drawPicture(picture)
-        val outW = (baseW * scale).toInt().coerceAtLeast(1)
-        val outH = (baseH * scale).toInt().coerceAtLeast(1)
-        val bitmap = if (outW == baseW && outH == baseH) base
+
+        val outW = (viewWidthPx * scale).roundToInt().coerceAtLeast(1)
+        val outH = (contentHeightPx * scale).roundToInt().coerceAtLeast(1)
+        val bitmap = if (outW == viewWidthPx && outH == contentHeightPx) base
         else Bitmap.createScaledBitmap(base, outW, outH, true).also { base.recycle() }
 
         val outFile = File.createTempFile("floor_export_", ".$format", context.cacheDir)
@@ -192,7 +210,6 @@ object FloorExportRenderer {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
             if (!ok) {
-                // 极少数 WebView/系统组合下 WebP 编码失败时回退 PNG。
                 val fallback = bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
                 check(fallback) { "图片编码失败" }
             }

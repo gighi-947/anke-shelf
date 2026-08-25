@@ -131,6 +131,11 @@
 - 追加修复（真机六轮反馈）：离屏 WebView 的 draw() 只画可见区域导致
   楼层截断，改用 `capturePicture()` 捕获整篇文档再缩放输出；导出页
   「分享全部」在本次导出没有文件时禁用，避免分享空文件。
+- 追加修复（真机七轮，按 LESSONS_LEARNED 第 10 节重写渲染器）：
+  `FloorExportRenderer` 现在按密度换算物理像素布局 view，内联
+  `reader.css`，等待字体就绪，并按 12000px 纵向分片 `draw()` 后拼成
+  完整大图，再按用户倍率缩放输出。经验教训已写入
+  `docs/LESSONS_LEARNED.md`。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 release 覆盖安装并启动。

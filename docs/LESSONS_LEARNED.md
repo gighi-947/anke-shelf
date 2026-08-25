@@ -108,3 +108,16 @@
 | DevLog 持续膨胀到 18 万字符 | 历史归档（DEVLOG_ARCHIVE）+ 教训分类（LESSONS_LEARNED）+ ADR；DevLog 只留当前状态与最近流水 | 10.15 / 本轮 |
 | 推送/发布权限不清 | 用户未明确授权前不推送、不发布；发行版必须带 README/LICENSE/OFL/使用说明 | 6.2 |
 
+
+
+## 10. 楼层导出（Android 离屏 WebView，2026-08-25）
+
+| 教训 | 规则 | 出处 |
+| --- | --- | --- |
+| 离屏 WebView 的 `draw()` 只画可见区域 | 不要用 `draw()` 直接导长内容；必须先把 view 尺寸设为完整内容物理尺寸，或分片绘制后拼接 | 第四十批 |
+| `capturePicture()` 在新 WebView 上不可靠 | 不依赖 `capturePicture()` 捕获长文档；优先显式控制 view 尺寸 + 分片 | 第四十批 |
+| CSS px 与物理 px/密度/倍率必须显式换算 | WebView `layout()` 单位是物理像素；`viewWidth = cssWidth × density × scale`，`viewHeight = contentHeight × density × scale` | 第四十批 |
+| `file:///android_asset` 与 `file:///android_fonts` 在离屏 WebView 中不稳定 | 导出渲染器内联 `reader.css`；自定义字体经 `shouldInterceptRequest` 提供并等待 `document.fonts.ready` | 第四十批 |
+| 修改共享 HTML 构造/reader.css 会回归阅读链路 | 导出渲染的 CSS 注入应局限在导出渲染器内；阅读公共代码改动必须立即跑 ReaderHtmlTest + 阅读主题回归 | 第四十批 |
+| 长楼层会超过 WebView/位图最大纹理尺寸 | 楼层高度超阈值时纵向分片渲染（如 12000px 一片），最后拼接为一张图 | 第四十批（计划） |
+| 功能开发应先做最小技术验证，再铺 UI | 先用真实长楼层跑通“离屏渲染成图 → 尺寸/主题/字体/图片检查”，再写页面与分享 | 第四十批 |
