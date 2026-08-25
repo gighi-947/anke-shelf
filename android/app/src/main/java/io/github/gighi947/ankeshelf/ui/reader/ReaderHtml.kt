@@ -30,7 +30,7 @@ private val ALLOWED_TAGS = setOf(
 /** 直接移除的标签：脚本/嵌入/表单/元数据/矢量容器，畸形 HTML 也由解析器兜底。 */
 private val BLOCKED_TAGS = setOf(
     "script", "iframe", "object", "embed", "form", "base", "meta", "link",
-    "input", "button", "select", "textarea", "template", "noscript",
+    "input", "select", "textarea", "template", "noscript",
     "applet", "frame", "frameset", "svg", "math",
 )
 

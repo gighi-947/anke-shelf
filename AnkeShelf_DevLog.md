@@ -172,6 +172,10 @@
   只放了第一个 URI，导致 `ACTION_SEND_MULTIPLE` 只给第一个文件授权
   （logcat 出现 FileProvider Permission Denial）；已把全部 URI 加进
   ClipData。NGA 附件音频播放失败增加 `[gululu_music] failed` 探针。
+- 追加修复（真机十六轮）：附件音频框空白根因是 `BLOCKED_TAGS` 仍包含
+  `button`，`sanitizeReaderBody` 第一步就把按钮整体 remove（ALLOWED_TAGS
+  加白名单无效）；已从 BLOCKED_TAGS 移除。多文件分享在 chooser 上补充
+  `FLAG_GRANT_READ_URI_PERMISSION`。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 debug（release 签名）覆盖安装并启动。

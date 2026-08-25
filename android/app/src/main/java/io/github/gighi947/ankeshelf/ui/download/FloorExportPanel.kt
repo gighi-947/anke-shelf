@@ -345,7 +345,9 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                         clipData = clip
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    runCatching { context.startActivity(Intent.createChooser(send, "分享本批楼层")) }
+                    val chooser = Intent.createChooser(send, "分享本批楼层")
+                    chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    runCatching { context.startActivity(chooser) }
                         .onFailure { Toast.makeText(context, "无法调起分享", Toast.LENGTH_SHORT).show() }
                 }
             }) { Text("分享本批") }
