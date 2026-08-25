@@ -57,15 +57,15 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | 文件 | 行数 | 关注点 |
 | --- | --- | --- |
 | `android/.../data/Html5Entities.kt` | 2130 | 机械生成表，正常 |
-| `android/.../ui/reader/WebViewChapterView.kt` | 895 | 桥与宿主；已审查并补充失败日志、资源拦截 |
+| `android/.../ui/reader/WebViewChapterView.kt` | 930 | 桥与宿主；已审查并补充失败日志、资源拦截、file 子资源放行 |
 | `android/.../ui/shelf/BookshelfScreen.kt` | 793 | 书架页（含 store 损坏横幅），未拆分 |
 | `android/.../data/NativeBook.kt` | 632 | 原生书数据层 |
 | `android/.../ui/settings/SettingsScreen.kt` | 564 | 已按 Panel 拆分 |
 | `android/.../ui/search/SearchScreen.kt` | 565 | 搜索页，未拆分 |
 | `android/.../data/Epub.kt` | 574 | EPUB 数据层 |
-| `android/.../ui/reader/native/NativeReaderScreen.kt` | 1116 | 外壳已拆 Chrome / Gululu；恢复锚点单点 RestoreAnchor |
-| `android/.../ui/download/DownloadScreen.kt` | 352 | 已拆分面板 |
-| `android/.../assets/reader/reader-lite.js` | 1862 | 现役渲染内核（parts 9 模块；状态机 Step 0–4 + 跨端折叠/骨碌碌能力；2026-08-22 清理死表面） |
+| `android/.../ui/reader/native/NativeReaderScreen.kt` | 1275 | 外壳已拆 Chrome / Gululu；恢复锚点单点 RestoreAnchor；楼层分享进度/音乐头 |
+| `android/.../ui/download/DownloadScreen.kt` | 386 | 已拆分面板；含楼层导出入口 |
+| `android/.../assets/reader/reader-lite.js` | 1942 | 现役渲染内核（parts 9 模块；状态机 Step 0–4 + 跨端折叠/骨碌碌能力；2026-08-22 清理死表面） |
 | `web/js/reader.js` | 766 | 核心编排；进度写入经 reader-save.js 唯一出口 |
 | `web/js/nga_download.js` | 719 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
 | `app/gululu_service.py` | 488 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |

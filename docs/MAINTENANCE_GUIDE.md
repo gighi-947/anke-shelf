@@ -133,7 +133,7 @@ NgaConfig / StatsStore / AnnotationStore / BookRepository / OkHttp）+ 四 Tab �
 
 ## 7. 测试体系与基线
 
-| 范围 | 基线（2026-08-24 复核） | 命令 / 位置 |
+| 范围 | 基线（2026-08-25 复核） | 命令 / 位置 |
 | --- | --- | --- |
 | Windows Python | 342 项（2026-08-24 实跑全过） | `python -m unittest discover tests` |
 | JS 契约 | textpos 15 例、api-contract 67 方法、launch 诊断、bridge v1（能力含 annotation·assist·gululu）、parts 9/动态字节校验、reader-lite-textpos 跨端折叠 12 例、reader-save（进度写入唯一出口）、paged-blank（空白页判定边界）、reader-session、nga-cookie OK | `node contracts/tests/*.test.js` + `node tests/js/*.test.js` |
@@ -176,15 +176,16 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 - 依赖：`requirements.in` / `requirements-build.in` 人工维护，pip-tools 生成带哈希
   `.lock`（3.12 基线，3.14 实测可装）；CI 与打包均按 lock 安装。
 
-## 10. 当前状态（2026-08-22 快照）
+## 10. 当前状态（2026-08-25 快照）
 
 - 基线 `main`（HEAD 以 `git log` 为准）；最近主线：v1.6.0 / android-v1.3.0
   发布 → 2026-08-22 防御性编程审查清理批（进度错误出口 / store 损坏显式化
   （IoError 写保护）/ ApiContext 必填 / 恢复锚点单点化（修 crossJump ratio
   破洞）/ 双端死表面删除）→ 性能专项（A1 翻页单次采样 / A2 空白页判定提前
   退出+代际缓存 / 内置字体 WOFF2 无损 -61%）→ 发布 v1.6.1 / android-v1.3.1 →
-  发布 v1.7.0 / android-v1.4.0（修复 NGA 楼层卡片边框/卡底在旧 WebView
-  与 Windows 端不可见）。
+  v1.6.2 / android-v1.3.2（NGA 楼层卡片修复）→ 2026-08-25 楼层导出对齐
+  （第四十批）与双端 GitHub 版本更新提醒（第四十一批）→
+  发布 v1.7.0 / android-v1.4.0。
 - 待办与延后项见 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
   （性能 A3 分页二分去滚动位移：评估后暂缓；字体子集化（视觉权衡）未做，
   WOFF2 已落地；P5-C 自动翻章与 P5-F 楼中楼暂不实施；P4 参考仓库 3/8
