@@ -229,6 +229,19 @@ class NativeBook(val path: File) : Closeable {
         return tocMap[chapters[index].href] ?: "第 ${index + 1} 章"
     }
 
+    /** 楼层号 → 章节索引（导出/定位用；meta 未打开或越界返回 -1）。 */
+    fun chapterIndexForLou(lou: Int): Int {
+        val m = meta ?: return -1
+        m.chapters.forEachIndexed { i, c ->
+            if (lou >= c.first_lou && lou <= c.last_lou) return i
+        }
+        return -1
+    }
+
+    /** 原生书元数据（打开后可读取章节分组/图片模式）。 */
+    fun metaOrNull(): NativeMeta? = meta
+
+
     fun tocSpineIndex(href: String): Int? {
         val h = href.substringBefore('#')
         chapters.forEachIndexed { i, c ->
@@ -513,7 +526,7 @@ object NativeBookWriter {
     private fun ts2t(ts: Long): String =
         TS_FORMAT.format(Instant.ofEpochSecond(ts).atZone(ZoneId.systemDefault()))
 
-    private fun renderFloorHtml(
+    fun renderFloorHtml(
         f: NativeFloor,
         dark: Boolean,
         imgSrc: (String) -> String = { it },

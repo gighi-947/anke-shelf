@@ -345,6 +345,34 @@
     }, true);
   }
 
+  /** 楼层头分享按钮：点击上报当前楼层号（NGA 用 lou，骨碌碌用 floorNum）。 */
+  function floorNumFromHead(head) {
+    var node = head.querySelector('.lou') || head.querySelector('.floor-number');
+    if (!node) return 0;
+    var m = node.textContent.trim().match(/(\d+)/);
+    return m ? Number(m[1]) : 0;
+  }
+
+  function bindFloorShareButtons() {
+    document.querySelectorAll('.nga-floor[id^="pid"], .gululu-floor[id^="floor-"]').forEach(function (section) {
+      var head = section.querySelector('.floor-head');
+      if (!head || head.querySelector('.floor-share-button')) return;
+      var num = floorNumFromHead(head);
+      if (!num && num !== 0) return;
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'floor-share-button';
+      button.setAttribute('data-textpos-exclude', 'true');
+      button.textContent = '分享';
+      button.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        callBridge('floorShare', num);
+      });
+      head.appendChild(button);
+    });
+  }
+
   /** 章节内的全部骰点分组（宿主用于「接下来 10 组」按钮的可用性判断）。 */
   function gululuChapterInfo() {
     var groups = collectGroupIds(document);

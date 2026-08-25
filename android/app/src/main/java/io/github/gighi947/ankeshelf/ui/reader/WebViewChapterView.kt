@@ -110,6 +110,8 @@ data class WebViewReaderCallbacks(
     val onGululuClue: (title: String, password: String) -> Unit = { _, _ -> },
     /** 点击段落评论徽标。 */
     val onGululuParagraphComments: (String) -> Unit = {},
+    /** 点击楼层“分享”按钮：参数为楼层号（NGA lou / 骨碌碌 floorNum）。 */
+    val onFloorShare: (Int) -> Unit = {},
     /** 本章骨碌碌元素统计：[组数, 未揭示组数, 秘密数, 线索数, 楼数]。 */
     val onGululuStats: (List<Int>) -> Unit = {},
 )
@@ -885,6 +887,12 @@ private class LiteBridge(
     @JavascriptInterface
     fun gululuMusicStop() {
         main.post { callbacks().onGululuMusicStop() }
+    }
+
+    @JavascriptInterface
+    fun floorShare(floorNum: Int) {
+        if (floorNum < 0) return
+        main.post { callbacks().onFloorShare(floorNum) }
     }
 
     @JavascriptInterface

@@ -299,6 +299,8 @@
     bindSelection();
     // 音乐 cue 与书源无关（NGA [audio] 外链音乐同款元素）：任何书都可点播。
     bindMusicCues();
+    // 楼层“分享”按钮：NGA/骨碌碌楼层头都注入，点击上报楼层号。
+    bindFloorShareButtons();
     state.gululuActive = !!opts.gululu;
     state.gululuAutoMusic = opts.gululuAutoMusic !== false;
     if (!state.gululuActive && state.gululuAutoMusic) {

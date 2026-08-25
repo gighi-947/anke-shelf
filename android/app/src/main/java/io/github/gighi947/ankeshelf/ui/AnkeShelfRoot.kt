@@ -168,6 +168,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                 if (session != null) {
                     NativeReaderScreen(
                         session = session,
+                        record = requireNotNull(record) { "reader session without record" },
                         initialChapter = chapter,
                         savedOffset = jumpOffset ?: (savedProgress?.text_offset ?: 0),
                         initialPage = if (jumpOffset == null) savedProgress?.page_index ?: -1 else -1,

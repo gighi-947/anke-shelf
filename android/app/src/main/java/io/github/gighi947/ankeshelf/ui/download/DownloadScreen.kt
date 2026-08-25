@@ -125,6 +125,7 @@ private val DOWNLOAD_TABS = listOf(
     DownloadTab("config", "登录配置", Icons.Filled.Key, "NGA Cookie 凭据，仅存本机"),
     DownloadTab("download", "下载", Icons.Filled.FileDownload, "NGA 帖子 / 骨碌碌公开书籍，统一入口"),
     DownloadTab("library", "已下载", Icons.Filled.FolderOpen, "导出 EPUB/Markdown 与更新"),
+    DownloadTab("floor_export", "楼层导出", Icons.Filled.IosShare, "按楼层导出 PNG/WebP，便于分享与补档"),
 )
 
 /**
@@ -299,6 +300,7 @@ private fun DownloadGroupContent(
         "config" -> ConfigPanel(container)
         "download" -> UnifiedDownloadPanel(container, onChanged)
         "library" -> LibraryPanel(container, onChanged)
+        "floor_export" -> FloorExportPanel(container, onChanged)
     }
 }
 

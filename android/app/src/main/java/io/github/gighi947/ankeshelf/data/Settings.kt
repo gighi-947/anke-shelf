@@ -27,6 +27,15 @@ data class GululuImmersivePrefs(
 )
 
 @Serializable
+data class FloorExportPrefs(
+    val theme: String = "light",
+    val fmt: String = "png",
+    val scale: Double = 2.0,
+    val output_dir: String = "",
+    val last_book_id: String = "",
+)
+
+@Serializable
 data class SettingsData(
     val settings_version: Int = 3,
     val theme: String = "dark",
@@ -51,6 +60,8 @@ data class SettingsData(
     val hide_title_brackets: Boolean = false,
     /** 骨碌碌沉浸体验偏好（双端契约字段；Android 尚未消费，但必须原样往返不丢）。 */
     val gululu_immersive: GululuImmersivePrefs = GululuImmersivePrefs(),
+    /** 楼层导出偏好（双端契约字段；Windows 已使用，Android 必须原样往返不丢）。 */
+    val floor_export: FloorExportPrefs = FloorExportPrefs(),
     val margin_px: Int = 40,
     val gap_px: Int = 28,
     val brightness: Double = 0.0,
@@ -98,6 +109,7 @@ data class SettingsPatch(
     val shelf_sort: String? = null,
     val hide_title_brackets: Boolean? = null,
     val gululu_immersive: GululuImmersivePrefs? = null,
+    val floor_export: FloorExportPrefs? = null,
     val margin_px: Int? = null,
     val gap_px: Int? = null,
     val brightness: Double? = null,

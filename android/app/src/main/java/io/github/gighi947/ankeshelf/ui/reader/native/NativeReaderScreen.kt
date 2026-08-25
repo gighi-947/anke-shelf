@@ -1,5 +1,6 @@
 package io.github.gighi947.ankeshelf.ui.reader.native
 
+import android.content.Intent
 import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -73,10 +75,15 @@ import io.github.gighi947.ankeshelf.data.GululuSecretReveal
 import io.github.gighi947.ankeshelf.data.Highlight
 import io.github.gighi947.ankeshelf.data.SettingsData
 import io.github.gighi947.ankeshelf.data.SettingsPatch
+import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookSession
 import io.github.gighi947.ankeshelf.service.LogEvents
+import io.github.gighi947.ankeshelf.service.safeExportName
+import io.github.gighi947.ankeshelf.service.FloorExportRenderer
+import io.github.gighi947.ankeshelf.service.FloorExportMapper
+import io.github.gighi947.ankeshelf.service.FloorExportHtml
 import io.github.gighi947.ankeshelf.service.ngaHeaders
 import io.github.gighi947.ankeshelf.ui.reader.extractReaderParts
 import io.github.gighi947.ankeshelf.ui.reader.buildReaderHtml
@@ -123,6 +130,7 @@ private sealed interface ChapterUiState {
 @Composable
 fun NativeReaderScreen(
     session: BookSession,
+    record: BookRecord,
     initialChapter: Int,
     savedOffset: Int,
     initialPage: Int = -1,
@@ -251,6 +259,55 @@ fun NativeReaderScreen(
     var liveOffset by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    fun shareFloor(floorNum: Int) {
+        scope.launch {
+            try {
+                val list = FloorExportMapper.list(record, session).floors
+                val floor = list.firstOrNull { it.num == floorNum } ?: return@launch
+                val prefs = readerSettings.floor_export
+                val themeColors = readerTheme(readerSettings)
+                val html = if (record.nga_tid > 0) {
+                    FloorExportHtml.nga(record, floor, themeColors, readerSettings)
+                } else {
+                    FloorExportHtml.gululu(session, floor, themeColors, readerSettings)
+                }
+                val base = if (record.nga_tid > 0) {
+                    "file:///android_asset/reader/"
+                } else {
+                    "file:///android_epub/${session.id}/${session.chapterBaseDir(floor.chapterIndex)}/"
+                }
+                val rendered = FloorExportRenderer.render(
+                    context = context,
+                    html = html,
+                    baseUrl = base,
+                    scale = prefs.scale.toFloat(),
+                    format = prefs.fmt,
+                )
+                val outDir = File(context.getExternalFilesDir(null) ?: context.filesDir, "floor_export")
+                    .apply { mkdirs() }
+                val outFile = File(outDir, "${safeExportName(record.title)}_第${floorNum}楼.${prefs.fmt}")
+                rendered.file.copyTo(outFile, overwrite = true)
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    outFile,
+                )
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = if (prefs.fmt == "webp") "image/webp" else "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(send, "分享楼层"))
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(
+                    context,
+                    "分享失败：${e.message ?: e}",
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
     // 恢复锚点每章只取一次：书架刷新等外部变化会重建 savedOffset（可能读到旧值），
     // 不能让它在阅读中途变化并把滚动/分页位置拉回章节首。
     val progressTracker = remember(session.id) {
@@ -721,6 +778,7 @@ fun NativeReaderScreen(
                         showGululuComments = true
                     },
                     onGululuStats = { stats -> chapterStats = stats },
+                    onFloorShare = { num -> shareFloor(num) },
                 ),
                 modifier = Modifier.fillMaxSize(),
             )

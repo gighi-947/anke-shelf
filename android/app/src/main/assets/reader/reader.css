@@ -394,6 +394,24 @@ mark.hl-cyan {
 }
 
 
+/* 楼层分享按钮（NGA/骨碌碌楼层头） */
+.floor-share-button {
+    flex: 0 0 auto;
+    border: 1px solid rgba(var(--reader-fg-rgb, 34, 34, 34), 0.24);
+    border-radius: 4px;
+    padding: 0.28em 0.6em;
+    margin-left: 0.6em;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.86em;
+    vertical-align: middle;
+}
+.floor-share-button:active {
+    background: rgba(var(--reader-fg-rgb, 34, 34, 34), 0.08);
+}
+
 /* 音乐 cue（NGA 附件音频/外链音乐）：与骨碌碌 EPUB 同款基础样式 + 附件音频卡片 */
 .gululu-music-row {
     break-inside: avoid;
