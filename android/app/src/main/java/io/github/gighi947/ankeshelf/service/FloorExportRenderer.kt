@@ -1,6 +1,7 @@
 package io.github.gighi947.ankeshelf.service
 
 import android.content.Context
+import android.util.Log
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.webkit.JavascriptInterface
@@ -67,6 +68,7 @@ object FloorExportRenderer {
     ): FloorRenderResult = withContext(Dispatchers.Main) {
         val density = context.resources.displayMetrics.density.coerceAtLeast(1f)
         val vwCss = viewportWidth.coerceAtLeast(320)
+        Log.w("AnkeShelf", "[floor_export] density=$density vwCss=$vwCss scale=$scale format=$format")
         // 先按 1x 密度渲染成底图，再按用户倍率缩放，避免 view 高度过大。
         val viewWidthPx = (vwCss * density).roundToInt().coerceAtLeast(1)
         val initialHeightPx = (1000 * density).roundToInt().coerceAtLeast(1)
@@ -177,6 +179,7 @@ object FloorExportRenderer {
 
         val contentHeightCss = bridge.heightCss.coerceAtLeast(1000)
         val contentHeightPx = (contentHeightCss * density).roundToInt().coerceAtLeast(1)
+        Log.w("AnkeShelf", "[floor_export] contentHeightCss=$contentHeightCss contentHeightPx=$contentHeightPx viewWidthPx=$viewWidthPx fontsReady=${bridge.fontsReady}")
         web.layout(0, 0, viewWidthPx, contentHeightPx)
         delay(80)
 
@@ -192,6 +195,7 @@ object FloorExportRenderer {
             baseCanvas.drawBitmap(slice, 0f, y.toFloat(), null)
             slice.recycle()
             y += sliceHeight
+            if (y < contentHeightPx) delay(1)
         }
 
         web.removeJavascriptInterface("FloorExportBridge")
@@ -203,25 +207,29 @@ object FloorExportRenderer {
         else Bitmap.createScaledBitmap(base, outW, outH, true).also { base.recycle() }
 
         val outFile = File.createTempFile("floor_export_", ".$format", context.cacheDir)
-        FileOutputStream(outFile).use { out ->
-            val ok = if (format == "webp") {
-                bitmap.compress(Bitmap.CompressFormat.WEBP, 82, out)
-            } else {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+        val result = withContext(Dispatchers.Default) {
+            FileOutputStream(outFile).use { out ->
+                val ok = if (format == "webp") {
+                    bitmap.compress(Bitmap.CompressFormat.WEBP, 82, out)
+                } else {
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                if (!ok) {
+                    val fallback = bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    check(fallback) { "图片编码失败" }
+                }
             }
-            if (!ok) {
-                val fallback = bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                check(fallback) { "图片编码失败" }
-            }
+            bitmap.recycle()
+            FloorRenderResult(
+                file = outFile,
+                width = outW,
+                height = outH,
+                imageFailed = bridge.failed,
+                imageTotal = bridge.total,
+            )
         }
-        bitmap.recycle()
-        FloorRenderResult(
-            file = outFile,
-            width = outW,
-            height = outH,
-            imageFailed = bridge.failed,
-            imageTotal = bridge.total,
-        )
+        Log.w("AnkeShelf", "[floor_export] done out=${result.width}x${result.height} failed=${result.imageFailed}/${result.imageTotal}")
+        result
     }
 
     private const val JS_POLL = """

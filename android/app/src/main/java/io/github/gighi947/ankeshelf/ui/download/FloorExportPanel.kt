@@ -1,5 +1,7 @@
 package io.github.gighi947.ankeshelf.ui.download
 
+import android.util.Log
+
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
@@ -249,6 +251,8 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                     custom_accent = "", custom_text = "",
                                 ),
                             )
+
+                            Log.w("AnkeShelf", "[floor_export] theme=$theme colors=${themeColors.background}/${themeColors.text}/${themeColors.accent} customFont=${data.custom_font} bookFonts=${data.book_fonts}")
                             picks.forEachIndexed { index, num ->
                                 val floor = floors.first { it.num == num }
                                 val html = if (rec.nga_tid > 0) {

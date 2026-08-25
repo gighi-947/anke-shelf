@@ -136,6 +136,10 @@
   `reader.css`，等待字体就绪，并按 12000px 纵向分片 `draw()` 后拼成
   完整大图，再按用户倍率缩放输出。经验教训已写入
   `docs/LESSONS_LEARNED.md`。
+- 追加修复（真机八轮）：渲染器增加 `[floor_export]` 日志（密度/视口/
+  内容高度/字体就绪/编码结果/主题与字体设置），便于定位自定义主题和
+  字体问题；分片绘制循环中 `delay(1)` 让出主线程，压缩移到
+  `Dispatchers.Default`，缓解 ANR 与“一直卡住”。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 release 覆盖安装并启动。
