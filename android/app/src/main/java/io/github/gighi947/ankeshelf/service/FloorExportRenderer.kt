@@ -66,6 +66,20 @@ object FloorExportRenderer {
         web.settings.useWideViewPort = true
         web.settings.loadWithOverviewMode = false
         web.setBackgroundColor(0x00000000)
+        // 离屏 WebView 的文件 URL 资源加载不如挂载视图可靠：把 reader.css
+        // 内联进页面，并把 viewport 固定为导出视口宽度，确保排版/主题/字体生效。
+        val readerCss = runCatching {
+            context.assets.open("reader/reader.css").bufferedReader().use { it.readText() }
+        }.getOrDefault("")
+        val preparedHtml = html
+            .replace(
+                "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>",
+                "<meta name=\"viewport\" content=\"width=$vw,initial-scale=1\"/>",
+            )
+            .replace(
+                "<link rel=\"stylesheet\" href=\"file:///android_asset/reader/reader.css\"/>",
+                if (readerCss.isBlank()) "" else "<style>$readerCss</style>",
+            )
         web.addJavascriptInterface(object {
             @JavascriptInterface
             fun ready(pending: Int, failed: Int, total: Int, height: Int, fontsReady: Boolean) {
@@ -141,7 +155,7 @@ object FloorExportRenderer {
                 }
             }
             web.layout(0, 0, vw, 1000)
-            web.loadDataWithBaseURL(baseUrl, html, "text/html", "utf-8", null)
+            web.loadDataWithBaseURL(baseUrl, preparedHtml, "text/html", "utf-8", null)
         }
         val deadline = System.currentTimeMillis() + timeoutMs
         var last = ""

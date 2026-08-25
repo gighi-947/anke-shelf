@@ -124,6 +124,10 @@
   reader.css 的 `html,body` 背景加 `!important`，恢复主题切换。图片编码
   失败增加 WebP→PNG 回退。楼层列表默认倒序（最新楼层在前）并增加
   时间信息（NGA timestamp / 骨碌碌 updateTime/createTime）。
+- 追加修复（真机五轮反馈）：离屏 WebView 的 `file:///android_asset` CSS
+  与 `device-width` viewport 不可靠，导致导出排版/主题/字体不生效和
+  每行一字；`FloorExportRenderer` 现在把 `reader.css` 内联进页面，并把
+  viewport meta 改为固定导出视口宽度，CSS 与排版稳定生效。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 release 覆盖安装并启动。
