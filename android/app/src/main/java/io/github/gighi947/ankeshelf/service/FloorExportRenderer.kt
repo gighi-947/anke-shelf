@@ -170,19 +170,19 @@ object FloorExportRenderer {
             last = "pending=$pending failed=${bridge.failed} total=${bridge.total} height=${bridge.height} fonts=${bridge.fontsReady}"
             delay(150)
         }
-        val contentHeight = if (bridge.height > 0) bridge.height else 1000
-        web.layout(0, 0, vw, contentHeight)
-        delay(50)
-        val bitmap = Bitmap.createBitmap(
-            (vw * scale).toInt().coerceAtLeast(1),
-            (contentHeight * scale).toInt().coerceAtLeast(1),
-            Bitmap.Config.ARGB_8888,
-        )
-        val canvas = Canvas(bitmap)
-        canvas.scale(scale, scale)
-        web.draw(canvas)
+        // capturePicture 会捕获整篇文档（含视口外内容），避免离屏 WebView
+        // draw() 只画可见区域导致的楼层截断。
+        val picture = web.capturePicture()
         web.removeJavascriptInterface("FloorExportBridge")
         web.destroy()
+        val baseW = picture.width.coerceAtLeast(1)
+        val baseH = picture.height.coerceAtLeast(1)
+        val base = Bitmap.createBitmap(baseW, baseH, Bitmap.Config.ARGB_8888)
+        Canvas(base).drawPicture(picture)
+        val outW = (baseW * scale).toInt().coerceAtLeast(1)
+        val outH = (baseH * scale).toInt().coerceAtLeast(1)
+        val bitmap = if (outW == baseW && outH == baseH) base
+        else Bitmap.createScaledBitmap(base, outW, outH, true).also { base.recycle() }
 
         val outFile = File.createTempFile("floor_export_", ".$format", context.cacheDir)
         FileOutputStream(outFile).use { out ->
@@ -200,8 +200,8 @@ object FloorExportRenderer {
         bitmap.recycle()
         FloorRenderResult(
             file = outFile,
-            width = (vw * scale).toInt(),
-            height = (contentHeight * scale).toInt(),
+            width = outW,
+            height = outH,
             imageFailed = bridge.failed,
             imageTotal = bridge.total,
         )

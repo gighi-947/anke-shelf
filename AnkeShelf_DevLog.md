@@ -128,6 +128,9 @@
   与 `device-width` viewport 不可靠，导致导出排版/主题/字体不生效和
   每行一字；`FloorExportRenderer` 现在把 `reader.css` 内联进页面，并把
   viewport meta 改为固定导出视口宽度，CSS 与排版稳定生效。
+- 追加修复（真机六轮反馈）：离屏 WebView 的 draw() 只画可见区域导致
+  楼层截断，改用 `capturePicture()` 捕获整篇文档再缩放输出；导出页
+  「分享全部」在本次导出没有文件时禁用，避免分享空文件。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 release 覆盖安装并启动。

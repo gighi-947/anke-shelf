@@ -76,6 +76,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
     var selected by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var filter by remember { mutableStateOf("") }
     var running by remember { mutableStateOf(false) }
+    var hasFiles by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
     var status by remember { mutableStateOf("请选择安科与楼层") }
     var session by remember { mutableStateOf<BookSession?>(null) }
@@ -232,6 +233,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                     val prefs = FloorExportPrefs(theme = theme, fmt = fmt, scale = scale.toDouble())
                     container.settings.update(SettingsPatch(floor_export = prefs))
                     running = true
+                    hasFiles = false
                     progress = 0f
                     status = "准备导出…"
                     scope.launch {
@@ -298,6 +300,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                 status = "已导出 $ok/${picks.size} 层"
                             }
                             status = "导出完成：$ok 层" + if (failedImages > 0) "，$failedImages 张图片加载失败" else ""
+                            hasFiles = ok > 0
                         } catch (e: Exception) {
                             status = "导出失败：${e.message ?: e}"
                         } finally {
@@ -307,7 +310,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                     }
                 },
             ) { Text("开始导出") }
-            Button(enabled = exportDir.isNotEmpty(), onClick = {
+            Button(enabled = hasFiles && !running, onClick = {
                 val dir = File(exportDir)
                 val files = dir.listFiles { f -> f.isFile && (f.extension == "png" || f.extension == "webp") }
                     ?.sortedByDescending { it.lastModified() }.orEmpty()
