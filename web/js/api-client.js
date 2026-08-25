@@ -11,6 +11,7 @@
     ['toggle_fullscreen', 'toggleFullscreen'],
     ['log_frontend', 'logFrontend'],
     ['get_version', 'getVersion'],
+    ['check_update', 'checkUpdate'],
     ['open_data_dir', 'openDataDir'],
     ['uninstall_and_quit', 'uninstallAndQuit'],
     ['export_diagnostics', 'exportDiagnostics'],

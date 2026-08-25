@@ -26,12 +26,14 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +47,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.gighi947.ankeshelf.service.AppContainer
+import io.github.gighi947.ankeshelf.service.UpdateChecker
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.service.RepoResult
@@ -56,7 +59,9 @@ import io.github.gighi947.ankeshelf.ui.settings.SettingsScreen
 import io.github.gighi947.ankeshelf.ui.shelf.BookshelfScreen
 import io.github.gighi947.ankeshelf.ui.stats.StatsScreen
 import io.github.gighi947.ankeshelf.ui.theme.AnkeShelfTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 
 private data class TabSpec(
@@ -84,6 +89,7 @@ fun AnkeShelfRoot(container: AppContainer) {
     var refresh by remember { mutableIntStateOf(0) }
     var settingsTick by remember { mutableIntStateOf(0) }
     var lastServiceStage by remember { mutableStateOf("") }
+    var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var lastShelfMtime by remember { mutableStateOf(0L) }
     val context = LocalContext.current
     val activity = LocalActivity.current
@@ -115,6 +121,12 @@ fun AnkeShelfRoot(container: AppContainer) {
         }
     }
     val statsGlobal = remember(refresh, settingsTick) { container.stats.getGlobal() }
+
+    // 版本更新提醒：GitHub 网络失败静默；只在有更新时弹一次礼貌对话框。
+    LaunchedEffect(Unit) {
+        val info = withContext(Dispatchers.IO) { UpdateChecker.check(container.okHttp) }
+        if (info.hasUpdate) updateInfo = info
+    }
 
     // 下载服务状态变化 / 书架文件变化后自动刷新书架，避免下载完看不到新书。
     LaunchedEffect(Unit) {
@@ -360,6 +372,20 @@ fun AnkeShelfRoot(container: AppContainer) {
                     }
                 }
             }
+        }
+
+        updateInfo?.let { info ->
+            AlertDialog(
+                onDismissRequest = { updateInfo = null },
+                title = { Text("发现新版本") },
+                text = { Text("${info.latestVersion} 已发布，欢迎前往 GitHub Releases 获取。") },
+                confirmButton = {
+                    TextButton(onClick = { updateInfo = null }) { Text("知道了") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { updateInfo = null }) { Text("稍后") }
+                },
+            )
         }
     }
 }

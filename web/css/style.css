@@ -991,3 +991,46 @@ html, body {
   from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
 }
+
+/* 版本更新提醒横幅（礼貌、非阻塞、可关闭） */
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(680px, calc(100vw - 24px));
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: var(--base-200);
+  color: var(--base-content);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 2000;
+  font-size: 14px;
+}
+.update-banner.hidden {
+  display: none;
+}
+.update-banner-text {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.update-banner-close {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--neutral-content);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.update-banner-close:hover {
+  background: rgba(127, 127, 127, 0.12);
+  color: var(--base-content);
+}

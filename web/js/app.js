@@ -44,12 +44,50 @@
         } catch (e) {
           Api.logFrontend( 'init:shelf_failed: ' + (e.message || e)).catch(() => {});
         }
+        this.checkUpdateSilently();
       } catch (e) {
         Api.logFrontend( 'init:fatal: ' + (e.message || e)).catch(() => {});
       } finally {
         // 无论初始化是否完整，都通知 Python 可以显示窗口（超时保护在桥接层）。
         Api.onFrontendReady().catch(() => {});
       }
+    },
+
+    /** 版本更新检查：失败静默，绝不在 UI 显式报错。 */
+    checkUpdateSilently() {
+      try {
+        Api.checkUpdate().then((r) => {
+          if (r && r.has_update && r.latest_version) {
+            this.showUpdateBanner(r.latest_version, r.html_url || '');
+          }
+        }).catch(() => {});
+      } catch (e) {
+        Api.logFrontend('check_update_error: ' + (e.message || e)).catch(() => {});
+      }
+    },
+
+    showUpdateBanner(version, url) {
+      let el = document.getElementById('update-banner');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'update-banner';
+        el.className = 'update-banner';
+        document.body.insertBefore(el, document.body.firstChild);
+      }
+      el.innerHTML = '';
+      const msg = document.createElement('span');
+      msg.className = 'update-banner-text';
+      msg.textContent = `发现新版本 ${version}，欢迎前往 GitHub Releases 更新。`;
+      if (url) msg.title = url;
+      el.appendChild(msg);
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'update-banner-close';
+      close.setAttribute('aria-label', '关闭');
+      close.textContent = '×';
+      close.addEventListener('click', () => el.remove());
+      el.appendChild(close);
+      el.classList.remove('hidden');
     },
 
     /** Theme button icons follow the current theme (sun for dark, moon otherwise). */

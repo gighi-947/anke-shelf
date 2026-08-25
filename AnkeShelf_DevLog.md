@@ -39,7 +39,7 @@
   - Windows Python：`python -m unittest discover tests` = 342 项
     （2026-08-24 实跑全过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（66 方法一致）、
+    `node contracts/tests/api-contract.test.js`（67 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
     `node contracts/tests/bridge-contract.test.js`（桥版本 1，能力含 annotation·assist·gululu）、
     `node contracts/tests/reader-lite-parts.test.js`（9 parts / 动态字节校验）、
@@ -80,6 +80,22 @@
 
 ## 4. 最近流水
 
+### 2026-08-25 双端：GitHub 版本更新提醒（第四十一批）
+
+- 需求：进入应用时礼貌提醒有新版本；GitHub 网络失败静默，不在 UI 显式报错。
+- Windows：
+  - 新增 `check_update` API：`urllib` 5s 超时拉取 GitHub Releases，
+    过滤 `android-v*`、draft/prerelease，比较当前 `app.__version__`。
+  - 前端 `Api.checkUpdate()` 启动后异步调用；有更新显示可关闭横幅
+    “发现新版本 vX.Y.Z，欢迎前往 GitHub Releases 更新”。
+- Android：
+  - 新增 `UpdateChecker`：OkHttp 拉取 Releases，过滤 `android-v*`，
+    比较 `BuildConfig.VERSION_NAME`；网络失败静默。
+  - `AnkeShelfRoot` 启动后 IO 检查，有更新弹 `AlertDialog`
+    「发现新版本」/「知道了」/「稍后」，用 M3 令牌。
+- 验证：Windows Python 342 项、API 契约 67 方法一致、JS 契约/守卫全绿；
+  Android JVM 238 项（237 过 / 1 跳）；真机 debug（release 签名）
+  覆盖安装并启动。
 ### 2026-08-25 android：楼层导出对齐 Windows（第四十批）
 
 - 目标：把 Windows 第三十八/三十九批的楼层导出能力对齐到 Android，
@@ -177,7 +193,7 @@
   加白名单无效）；已从 BLOCKED_TAGS 移除。多文件分享在 chooser 上补充
   `FLAG_GRANT_READ_URI_PERMISSION`。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
-  API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
+  API 契约 67 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 debug（release 签名）覆盖安装并启动。
 ### 2026-08-25 win：楼层导出交互修复（第三十九批）
 
@@ -220,7 +236,7 @@
   变成多列，更奇怪）。改用更简单方案——导出 CSS 中 `.floor-head`
   仅对骨碌碌启用 flex；NGA 楼层头保持块级自然文本换行，只增加
   `line-height:1.7` 改善窄行距观感。阅读端不再归一化楼层头。
-- 验证：Windows Python 342 项、API 契约 66 方法一致、JS 契约/守卫全绿。
+- 验证：Windows Python 342 项、API 契约 67 方法一致、JS 契约/守卫全绿。
 ### 2026-08-24 win：楼层导出（图片渲染，第三十八批）
 
 - 背景：用户确认“楼层导出”独立于全书下载，按楼层导出 PNG/WebP 图片，
@@ -237,7 +253,7 @@
     主题/格式/倍率设定、输出目录选择与进度轮询；阅读器楼层头部新增
     「分享」按钮（样式对齐骨碌碌评论按钮），快速导出当前楼层并跟随
     当前阅读主题，格式/倍率沿用导出页设置。
-- 验证：Windows Python 342 项（+3）；API 契约 66 方法一致；JS 契约/守卫
+- 验证：Windows Python 342 项（+3）；API 契约 67 方法一致；JS 契约/守卫
   全绿；Android JVM 236 项（235 过 / 1 跳）；真机冒烟：NGA 0 楼与骨碌碌
   1 楼均成功渲染为 2x PNG/WebP。
 ### 2026-08-24 win/android：附件音频自动播放开关与 UI 卡片收敛（第三十七批）

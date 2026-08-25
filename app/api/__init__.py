@@ -16,6 +16,7 @@ from . import (
     settings_api,
     stats_api,
     system_api,
+    update_api,
 )
 
 _HANDLERS = (
@@ -24,6 +25,7 @@ _HANDLERS = (
     ("toggle_fullscreen", system_api.toggle_fullscreen),
     ("log_frontend", system_api.log_frontend),
     ("get_version", system_api.get_version),
+    ("check_update", update_api.check_update),
     ("open_data_dir", system_api.open_data_dir),
     ("uninstall_and_quit", system_api.uninstall_and_quit),
     ("export_diagnostics", system_api.export_diagnostics),
