@@ -2,6 +2,7 @@ package io.github.gighi947.ankeshelf.ui.reader.native
 
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -261,10 +262,14 @@ fun NativeReaderScreen(
     var liveOffset by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var shareBusy by remember { mutableStateOf(false) }
 
     fun shareFloor(floorNum: Int) {
+        if (shareBusy) return
+        shareBusy = true
         scope.launch {
             try {
+                Log.w("AnkeShelf", "[reader_share] start floor=$floorNum")
                 val list = FloorExportMapper.list(record, session).floors
                 val floor = list.firstOrNull { it.num == floorNum } ?: return@launch
                 val prefs = readerSettings.floor_export
@@ -317,6 +322,8 @@ fun NativeReaderScreen(
                     .apply { mkdirs() }
                 val outFile = File(outDir, "${safeExportName(record.title)}_第${floorNum}楼.${prefs.fmt}")
                 rendered.file.copyTo(outFile, overwrite = true)
+                rendered.file.delete()
+                Log.w("AnkeShelf", "[reader_share] rendered -> $outFile")
                 val uri = FileProvider.getUriForFile(
                     context,
                     "${context.packageName}.fileprovider",
@@ -328,12 +335,16 @@ fun NativeReaderScreen(
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 context.startActivity(Intent.createChooser(send, "分享楼层"))
+                Log.w("AnkeShelf", "[reader_share] share sheet opened")
             } catch (e: Exception) {
+                Log.w("AnkeShelf", "[reader_share] failed ${e.message}")
                 android.widget.Toast.makeText(
                     context,
                     "分享失败：${e.message ?: e}",
                     android.widget.Toast.LENGTH_SHORT,
                 ).show()
+            } finally {
+                shareBusy = false
             }
         }
     }
@@ -815,6 +826,19 @@ fun NativeReaderScreen(
 
         // 亮度遮罩（阅读器外层）
         ReaderBrightnessOverlay(brightness = readerSettings.brightness)
+
+        if (shareBusy) {
+            AlertDialog(
+                onDismissRequest = {},
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.md)) {
+                        CircularProgressIndicator(modifier = Modifier.width(AnkeSpacing.lg))
+                        Text("正在生成楼层图片…")
+                    }
+                },
+                confirmButton = {},
+            )
+        }
 
         // 悬浮操作栏隐藏后，底部细条展示本章进度（分页=页码比例，滚动=滚动比例）
         ReaderChapterProgressBar(

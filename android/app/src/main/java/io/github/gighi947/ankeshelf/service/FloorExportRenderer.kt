@@ -84,6 +84,10 @@ object FloorExportRenderer {
         val readerCss = runCatching {
             context.assets.open("reader/reader.css").bufferedReader().use { it.readText() }
         }.getOrDefault("")
+        val builtinFontCss =
+            "@font-face{font-family:\"LXGW WenKai\";" +
+                "src:url(\"file:///android_asset/fonts/LXGWWenKai-Regular.woff2\") format(\"woff2\");" +
+                "font-weight:400;font-display:swap;}"
         val preparedHtml = html
             .replace(
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>",
@@ -92,6 +96,10 @@ object FloorExportRenderer {
             .replace(
                 "<link rel=\"stylesheet\" href=\"file:///android_asset/reader/reader.css\"/>",
                 if (readerCss.isBlank()) "" else "<style>$readerCss</style>",
+            )
+            .replace(
+                "</head>",
+                "<style>$builtinFontCss</style></head>",
             )
 
         web.addJavascriptInterface(object {
@@ -123,7 +131,23 @@ object FloorExportRenderer {
                                 "otf" -> "font/otf"
                                 else -> "application/octet-stream"
                             }
+                            Log.w("AnkeShelf", "[floor_export] font hit $name")
                             return WebResourceResponse(mime, null, ByteArrayInputStream(f.readBytes()))
+                        }
+                    }
+                    if (url.startsWith("file:///android_asset/fonts/")) {
+                        val rel = url.removePrefix("file:///android_asset/fonts/")
+                        val bytes = runCatching { context.assets.open("fonts/$rel").readBytes() }.getOrNull()
+                        if (bytes != null) {
+                            val mime = when (rel.substringAfterLast('.', "").lowercase()) {
+                                "woff2" -> "font/woff2"
+                                "woff" -> "font/woff"
+                                "ttf" -> "font/ttf"
+                                "otf" -> "font/otf"
+                                else -> "application/octet-stream"
+                            }
+                            Log.w("AnkeShelf", "[floor_export] asset-font hit $rel")
+                            return WebResourceResponse(mime, null, ByteArrayInputStream(bytes))
                         }
                     }
                     if (url.startsWith("file:///android_epub/") && assetResolver != null) {
@@ -241,7 +265,13 @@ object FloorExportRenderer {
     else if (!img.naturalWidth) failed += 1;
   });
   var fontsReady = true;
-  try { fontsReady = !document.fonts || document.fonts.status === 'loaded'; } catch (e) { fontsReady = true; }
+  try {
+    if (document.fonts && document.fonts.load) {
+      document.fonts.load('16px "LXGW WenKai"');
+      document.fonts.load('16px "AnkeCustom"');
+    }
+    fontsReady = !document.fonts || document.fonts.status === 'loaded';
+  } catch (e) { fontsReady = true; }
   var h = Math.max(document.body ? document.body.scrollHeight : 0, document.documentElement ? document.documentElement.scrollHeight : 0);
   FloorExportBridge.ready(pending, failed, total, h, fontsReady);
   return '';

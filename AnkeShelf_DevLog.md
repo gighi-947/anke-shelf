@@ -147,6 +147,13 @@
   `readerTheme` 时漏传 `systemDark`，`theme_mode=system` 时会被错误
   解析成 light（日志 #ffffff）；现已按系统深色模式传参，导出与阅读
   主题一致。
+- 追加修复（真机十一轮）：导出渲染器现在注入内置字体
+  `LXGW WenKai` 的 @font-face（阅读器靠 JS 注入，导出前会剥离脚本，
+  因此必须手动注入）并经 shouldInterceptRequest 提供资产字体；JS 轮询
+  显式 `document.fonts.load("LXGW WenKai")`/`"AnkeCustom"`；阅读图床
+  代理增加 `[reading_img]` 成功/失败日志；阅读页「分享」增加忙碌
+  AlertDialog 与 `[reader_share]` 日志；导出/分享后的临时缓存文件在用
+  完即删（分享文件落在 app 私有 `files/floor_export`，生命周期随应用）。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 debug（release 签名）覆盖安装并启动。

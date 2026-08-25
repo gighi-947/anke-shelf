@@ -480,11 +480,13 @@ fun WebViewChapterView(
                                     .build()
                                 val resp = c.okHttp.newCall(req).execute()
                                 if (!resp.isSuccessful) {
+                                    Log.w("AnkeShelf", "[reading_img] http ${resp.code} $url")
                                     resp.close()
                                     null
                                 } else {
                                     val mime = resp.header("Content-Type")?.substringBefore(";")
                                         ?: "image/jpeg"
+                                    Log.w("AnkeShelf", "[reading_img] ok $url $mime")
                                     val body = resp.body
                                     // WebView 关闭返回流时同步释放 OkHttp Response，避免连接泄漏。
                                     val stream = object : FilterInputStream(body.byteStream()) {

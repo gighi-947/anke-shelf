@@ -310,6 +310,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                 )
                                 val outFile = File(exportDir, "${safeExportName(rec.title)}_第${num}楼.$fmt")
                                 rendered.file.copyTo(outFile, overwrite = true)
+                                rendered.file.delete()
                                 lastBatch = lastBatch + outFile
                                 failedImages += rendered.imageFailed
                                 ok++
