@@ -280,7 +280,8 @@ fun NativeReaderScreen(
                 val density = context.resources.displayMetrics.density
                 val screenCss = (context.resources.displayMetrics.widthPixels / density).toInt()
                 val fontPx = readerSettings.font_size
-                val viewportWidth = minOf(46 * fontPx, screenCss).coerceAtLeast(320)
+                val pageWidth = readerSettings.page_width.coerceIn(0.5, 1.5)
+                val viewportWidth = minOf((46 * fontPx * pageWidth).toInt(), screenCss).coerceAtLeast(320)
                 val rendered = FloorExportRenderer.render(
                     context = context,
                     html = html,

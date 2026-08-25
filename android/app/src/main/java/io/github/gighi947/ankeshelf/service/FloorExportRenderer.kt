@@ -55,9 +55,12 @@ object FloorExportRenderer {
         viewportWidth: Int = VIEWPORT_WIDTH,
         timeoutMs: Long = 30000,
     ): FloorRenderResult = withContext(Dispatchers.Main) {
+        val vw = viewportWidth.coerceAtLeast(320)
         val web = WebView(context.applicationContext)
         val bridge = Bridge()
         web.settings.javaScriptEnabled = true
+        web.settings.useWideViewPort = true
+        web.settings.loadWithOverviewMode = false
         web.setBackgroundColor(0x00000000)
         web.addJavascriptInterface(object {
             @JavascriptInterface
@@ -83,7 +86,7 @@ object FloorExportRenderer {
                     // 单张图片错误不会走到这里；页面级错误由 JS 轮询超时兜底。
                 }
             }
-            web.layout(0, 0, viewportWidth, 1000)
+            web.layout(0, 0, vw, 1000)
             web.loadDataWithBaseURL(baseUrl, html, "text/html", "utf-8", null)
         }
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -100,10 +103,10 @@ object FloorExportRenderer {
             delay(150)
         }
         val contentHeight = if (bridge.height > 0) bridge.height else 1000
-        web.layout(0, 0, viewportWidth, contentHeight)
+        web.layout(0, 0, vw, contentHeight)
         delay(50)
         val bitmap = Bitmap.createBitmap(
-            (viewportWidth * scale).toInt().coerceAtLeast(1),
+            (vw * scale).toInt().coerceAtLeast(1),
             (contentHeight * scale).toInt().coerceAtLeast(1),
             Bitmap.Config.ARGB_8888,
         )
@@ -125,7 +128,7 @@ object FloorExportRenderer {
         bitmap.recycle()
         FloorRenderResult(
             file = outFile,
-            width = (viewportWidth * scale).toInt(),
+            width = (vw * scale).toInt(),
             height = (contentHeight * scale).toInt(),
             imageFailed = bridge.failed,
             imageTotal = bridge.total,

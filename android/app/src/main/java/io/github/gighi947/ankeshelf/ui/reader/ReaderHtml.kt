@@ -211,6 +211,9 @@ fun buildReaderHtml(
         if (parts.headStyles.isNotBlank()) {
             append("\n").append(parts.headStyles)
         }
+        // 页面宽度系数：滚动模式 #paged-scroll 的 max-width 与阅读器设置对齐。
+        val pageWidth = settings.page_width.toDouble().coerceIn(0.5, 1.5)
+        append("\n#paged-scroll { max-width: ${"%.1f".format(46 * pageWidth)}em !important; }")
     }
     return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"/>" +
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>" +

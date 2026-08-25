@@ -83,7 +83,20 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
     var fmt by remember { mutableStateOf(all.floor_export.fmt) }
     var scale by remember { mutableStateOf(all.floor_export.scale.toFloat()) }
 
-    fun settingsData() = all
+    fun settingsData() = container.settings.getAll()
+
+    fun persistPrefs() {
+        container.settings.update(
+            SettingsPatch(
+                floor_export = FloorExportPrefs(
+                    theme = theme,
+                    fmt = fmt,
+                    scale = scale.toDouble(),
+                    last_book_id = selectedBook?.id ?: "",
+                ),
+            ),
+        )
+    }
 
     LaunchedEffect(selectedBook) {
         session?.close()
@@ -104,6 +117,10 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
     LaunchedEffect(Unit) {
         exportDir = File(context.getExternalFilesDir(null) ?: context.filesDir, "floor_export")
             .apply { mkdirs() }.absolutePath
+        val lastBookId = container.settings.getAll().floor_export.last_book_id
+        if (lastBookId.isNotBlank()) {
+            selectedBook = books.firstOrNull { it.record.id == lastBookId }?.record
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(AnkeSpacing.lg)) {
@@ -140,6 +157,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                 selectedBook = b.record
                                 bookFilter = ""
                                 bookMenuExpanded = false
+                                persistPrefs()
                             },
                         )
                     }
@@ -153,18 +171,18 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs),
         ) {
-            FilterChip(selected = theme == "light", onClick = { theme = "light" }, label = { Text("浅色") })
-            FilterChip(selected = theme == "sepia", onClick = { theme = "sepia" }, label = { Text("羊皮纸") })
-            FilterChip(selected = theme == "dark", onClick = { theme = "dark" }, label = { Text("深色") })
-            FilterChip(selected = theme == "current", onClick = { theme = "current" }, label = { Text("当前阅读设定") })
+            FilterChip(selected = theme == "light", onClick = { theme = "light"; persistPrefs() }, label = { Text("浅色") })
+            FilterChip(selected = theme == "sepia", onClick = { theme = "sepia"; persistPrefs() }, label = { Text("羊皮纸") })
+            FilterChip(selected = theme == "dark", onClick = { theme = "dark"; persistPrefs() }, label = { Text("深色") })
+            FilterChip(selected = theme == "current", onClick = { theme = "current"; persistPrefs() }, label = { Text("当前阅读设定") })
         }
         Text("格式与倍率", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs),
         ) {
-            FilterChip(selected = fmt == "png", onClick = { fmt = "png" }, label = { Text("PNG") })
-            FilterChip(selected = fmt == "webp", onClick = { fmt = "webp" }, label = { Text("WebP") })
+            FilterChip(selected = fmt == "png", onClick = { fmt = "png"; persistPrefs() }, label = { Text("PNG") })
+            FilterChip(selected = fmt == "webp", onClick = { fmt = "webp"; persistPrefs() }, label = { Text("WebP") })
             FilterChip(selected = scale == 1f, onClick = { scale = 1f }, label = { Text("1x") })
             FilterChip(selected = scale == 1.5f, onClick = { scale = 1.5f }, label = { Text("1.5x") })
             FilterChip(selected = scale == 2f, onClick = { scale = 2f }, label = { Text("2x") })
@@ -241,7 +259,8 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                 val density = context.resources.displayMetrics.density
                                 val screenCss = (context.resources.displayMetrics.widthPixels / density).toInt()
                                 val fontPx = data.font_size
-                                val viewportWidth = minOf(46 * fontPx, screenCss).coerceAtLeast(320)
+                                val pageWidth = data.page_width.coerceIn(0.5, 1.5)
+                                val viewportWidth = minOf((46 * fontPx * pageWidth).toInt(), screenCss).coerceAtLeast(320)
                                 val rendered = FloorExportRenderer.render(
                                     context = context,
                                     html = html,
@@ -292,15 +311,12 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                 }
             }) { Text("分享全部") }
             Button(enabled = exportDir.isNotEmpty(), onClick = {
-                val dir = File(exportDir)
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", dir)
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, "vnd.android.document/directory")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                runCatching {
+                    val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("楼层导出目录", exportDir))
                 }
-                runCatching { context.startActivity(intent) }
-                    .onFailure { Toast.makeText(context, "请用文件管理器打开：$exportDir", Toast.LENGTH_LONG).show() }
-            }) { Text("打开目录") }
+                Toast.makeText(context, "导出目录：$exportDir", Toast.LENGTH_LONG).show()
+            }) { Text("目录路径") }
         }
     }
 }

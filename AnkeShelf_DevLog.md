@@ -107,7 +107,14 @@
   离屏 WebView 增加 `file:///android_fonts/` 与 `file:///android_epub/`
   拦截，自定义字体与 EPUB 资源正确加载；导出视口宽度改为
   `min(46×font_size, 屏幕 CSS 宽)`，与真机阅读页一致。
-- 验证：Android JVM 238 项（237 过 / 1 跳，+2）；Windows Python 342 项；
+- 追加修复（真机二轮反馈）：移除 FileProvider 目录 URI 的「打开目录」
+  闪退，改为「目录路径」复制并 Toast；主题/格式/倍率/选书即时写入
+  `settings.json:floor_export`，重进恢复上次书；`buildReaderHtml` 增加
+  `#paged-scroll { max-width: 46em×page_width !important }`，使页面宽度
+  设置对滚动阅读与导出同时生效；离屏 WebView 设置 `useWideViewPort`，
+  修复数据页排版每行一字的窄视口问题；导出视口宽度按
+  `min(46×字号×page_width, 屏幕 CSS 宽)` 计算。
+- 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 release 覆盖安装并启动。
 ### 2026-08-25 win：楼层导出交互修复（第三十九批）
