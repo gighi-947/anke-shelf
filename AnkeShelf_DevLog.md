@@ -162,6 +162,12 @@
   `file:///android_images`/`file:///android_epub` 子资源；改为
   `allowFileAccess(true)`，并在 shouldInterceptRequest 末尾把未知
   `file://` 一律拦截为 404，保证安全边界不放开。
+- 追加修复（真机十四轮）：附件音乐框阅读页不显示是因为
+  `sanitizeReaderBody` 的 ALLOWED_TAGS 缺少 `button`，导致
+  `.gululu-music-cue` 被解包；已放行 button 与 type 属性。长按图片
+  lightbox 增加 `file:///android_images/` 字节读取，并支持双指
+  缩放/拖动。骨碌碌头像放大到 4.8em/10px。批量导出增加
+  `[floor_export] batch add/share batch` 探针，定位分享空文件问题。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 debug（release 签名）覆盖安装并启动。

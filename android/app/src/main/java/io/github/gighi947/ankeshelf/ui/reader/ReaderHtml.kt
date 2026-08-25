@@ -22,6 +22,7 @@ private val ALLOWED_TAGS = setOf(
     "blockquote", "details", "summary",
     "table", "thead", "tbody", "tfoot", "tr", "td", "th", "caption", "colgroup", "col",
     "img", "picture", "video", "audio", "source",
+    "button",
     "font", "center", "ruby", "rt", "rp", "figure", "figcaption",
     "style",
 )
@@ -40,6 +41,7 @@ private val TAG_ATTRS: Map<String, Set<String>> = mapOf(
     "img" to setOf("src", "alt", "width", "height", "loading", "decoding", "referrerpolicy"),
     "video" to setOf("src", "poster", "controls", "autoplay", "loop", "muted", "preload", "width", "height"),
     "audio" to setOf("src", "controls", "autoplay", "loop", "muted", "preload"),
+    "button" to setOf("type"),
     "source" to setOf("src", "srcset", "type", "media"),
     "td" to setOf("colspan", "rowspan", "headers"),
     "th" to setOf("colspan", "rowspan", "headers", "scope"),

@@ -312,6 +312,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                 rendered.file.copyTo(outFile, overwrite = true)
                                 rendered.file.delete()
                                 lastBatch = lastBatch + outFile
+                                Log.w("AnkeShelf", "[floor_export] batch add ${outFile.absolutePath} size=${outFile.length()}")
                                 failedImages += rendered.imageFailed
                                 ok++
                                 progress = (index + 1f) / picks.size
@@ -332,6 +333,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                 if (lastBatch.isEmpty()) {
                     Toast.makeText(context, "本批导出没有文件", Toast.LENGTH_SHORT).show()
                 } else {
+                    Log.w("AnkeShelf", "[floor_export] share batch n=${lastBatch.size} sizes=${lastBatch.map { it.length() }}")
                     val uris = lastBatch.map { f ->
                         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", f)
                     }

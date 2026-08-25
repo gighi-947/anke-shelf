@@ -1,6 +1,7 @@
 package io.github.gighi947.ankeshelf.ui.reader.native
 
 import android.content.Intent
+import android.net.Uri
 import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.activity.compose.BackHandler
@@ -82,6 +83,8 @@ import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookSession
 import io.github.gighi947.ankeshelf.service.LogEvents
+import io.github.gighi947.ankeshelf.service.NGA_REFERER
+import io.github.gighi947.ankeshelf.ui.reader.ReaderEgress
 import io.github.gighi947.ankeshelf.service.ngaHeaders
 import okhttp3.Request
 import io.github.gighi947.ankeshelf.service.safeExportName
@@ -221,6 +224,8 @@ fun NativeReaderScreen(
         gululuCommentError = scope?.error.orEmpty().ifEmpty { result.error }
     }
 
+    val context = LocalContext.current
+
     // 音乐播放器：同曲再点=停止，切歌=换源；退出阅读器释放。
     val musicPlayer = remember { android.media.MediaPlayer() }
     var musicUrl by remember { mutableStateOf("") }
@@ -237,7 +242,16 @@ fun NativeReaderScreen(
         }
         runCatching {
             musicPlayer.reset()
-            musicPlayer.setDataSource(url)
+            if (ReaderEgress.isNgaImageUrl(url)) {
+                val cfg = container.ngaConfig.load()
+                val headers = mutableMapOf(
+                    "User-Agent" to cfg.ua.ifBlank { NgaConfig.DEFAULT_UA },
+                    "Referer" to NGA_REFERER,
+                )
+                musicPlayer.setDataSource(context, Uri.parse(url), headers)
+            } else {
+                musicPlayer.setDataSource(url)
+            }
             musicPlayer.isLooping = true
             musicPlayer.setOnPreparedListener { it.start() }
             musicPlayer.prepareAsync()
@@ -260,7 +274,6 @@ fun NativeReaderScreen(
     // 跨章标注跳转：换章后由 init 的 offset 完成定位（与搜索跳转同路径）。
     var crossJump by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var liveOffset by remember { mutableIntStateOf(0) }
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var shareBusy by remember { mutableStateOf(false) }
 
@@ -524,6 +537,11 @@ fun NativeReaderScreen(
     // 图片字节：EPUB 走压缩包相对路径；NGA 在线图走 OkHttp（防盗链头）。
     suspend fun imageBytes(src: String): ByteArray? = withContext(Dispatchers.IO) {
         when {
+            src.startsWith("file:///android_images/") -> {
+                val name = src.removePrefix("file:///android_images/")
+                val f = File(container.appPaths.root, "images/$name")
+                if (f.isFile) f.readBytes() else null
+            }
             src.startsWith("file:///android_epub/") -> {
                 val rel = src.removePrefix("file:///android_epub/").substringAfter('/')
                 session.readAsset(chapterIndex, rel)

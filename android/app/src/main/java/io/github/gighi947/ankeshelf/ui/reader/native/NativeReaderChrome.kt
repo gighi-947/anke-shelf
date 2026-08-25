@@ -11,6 +11,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +74,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -439,6 +442,7 @@ internal fun NativeLightboxImage(
             }
         }
     }
+    var offset by remember(src) { mutableStateOf(Offset.Zero) }
     val bmp = bitmap
     Box(
         modifier = modifier,
@@ -453,6 +457,14 @@ internal fun NativeLightboxImage(
                     .graphicsLayer {
                         scaleX = zoom
                         scaleY = zoom
+                        translationX = offset.x
+                        translationY = offset.y
+                    }
+                    .pointerInput(src, zoom) {
+                        detectTransformGestures { _, pan, gestureZoom, _ ->
+                            onZoom((zoom * gestureZoom).coerceIn(1f, 5f))
+                            offset += pan
+                        }
                     }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },

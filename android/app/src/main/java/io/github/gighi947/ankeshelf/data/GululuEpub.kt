@@ -428,7 +428,7 @@ object GululuEpub {
 .empty-paragraph { min-height:.6em; margin:.15em 0 !important; }
 .gululu-image { margin:.8em 0; text-align:center; break-inside:avoid; }
 .gululu-image img { max-width:100%; height:auto; object-fit:contain; }
-.avatar-image img { width:3.6em; height:3.6em; object-fit:cover; border-radius:8px; }
+.avatar-image img { width:4.8em; height:4.8em; object-fit:cover; border-radius:10px; }
 .gululu-music-row { break-inside:avoid; }
 .gululu-music-cue { display:inline-flex; align-items:center; gap:.55em; max-width:100%;
   border:1px solid #aaa; border-radius:6px; background:transparent; color:inherit;
