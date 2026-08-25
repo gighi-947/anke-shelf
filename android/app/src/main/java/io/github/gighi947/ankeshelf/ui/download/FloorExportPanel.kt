@@ -79,6 +79,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
     var filter by remember { mutableStateOf("") }
     var running by remember { mutableStateOf(false) }
     var hasFiles by remember { mutableStateOf(false) }
+    var lastBatch by remember { mutableStateOf<List<File>>(emptyList()) }
     var progress by remember { mutableStateOf(0f) }
     var status by remember { mutableStateOf("请选择安科与楼层") }
     var session by remember { mutableStateOf<BookSession?>(null) }
@@ -205,7 +206,14 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
         )
 
         LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            items(floors.filter { it.label.contains(filter) || it.num.toString().contains(filter) }) { f ->
+            val floorFilter = filter.trim()
+            val numQuery = Regex("^(\\d+)\\s*楼?$").find(floorFilter)?.groupValues?.get(1)?.toIntOrNull()
+            val filteredFloors = if (floorFilter.isBlank()) floors
+            else floors.filter { f ->
+                if (numQuery != null) f.num == numQuery
+                else f.label.contains(floorFilter, ignoreCase = true) || f.num.toString() == floorFilter
+            }
+            items(filteredFloors) { f ->
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = AnkeSpacing.xs),
                     verticalAlignment = Alignment.CenterVertically,
@@ -236,6 +244,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                     container.settings.update(SettingsPatch(floor_export = prefs))
                     running = true
                     hasFiles = false
+                    lastBatch = emptyList()
                     progress = 0f
                     status = "准备导出…"
                     scope.launch {
@@ -298,6 +307,7 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                                 )
                                 val outFile = File(exportDir, "${safeExportName(rec.title)}_第${num}楼.$fmt")
                                 rendered.file.copyTo(outFile, overwrite = true)
+                                lastBatch = lastBatch + outFile
                                 failedImages += rendered.imageFailed
                                 ok++
                                 progress = (index + 1f) / picks.size
@@ -314,14 +324,11 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                     }
                 },
             ) { Text("开始导出") }
-            Button(enabled = hasFiles && !running, onClick = {
-                val dir = File(exportDir)
-                val files = dir.listFiles { f -> f.isFile && (f.extension == "png" || f.extension == "webp") }
-                    ?.sortedByDescending { it.lastModified() }.orEmpty()
-                if (files.isEmpty()) {
-                    Toast.makeText(context, "导出目录为空", Toast.LENGTH_SHORT).show()
+            Button(enabled = hasFiles && !running && lastBatch.isNotEmpty(), onClick = {
+                if (lastBatch.isEmpty()) {
+                    Toast.makeText(context, "本批导出没有文件", Toast.LENGTH_SHORT).show()
                 } else {
-                    val uris = files.map { f ->
+                    val uris = lastBatch.map { f ->
                         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", f)
                     }
                     val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
@@ -330,10 +337,10 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                         clipData = ClipData.newRawUri(null, uris.first())
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    runCatching { context.startActivity(Intent.createChooser(send, "分享全部楼层")) }
+                    runCatching { context.startActivity(Intent.createChooser(send, "分享本批楼层")) }
                         .onFailure { Toast.makeText(context, "无法调起分享", Toast.LENGTH_SHORT).show() }
                 }
-            }) { Text("分享全部") }
+            }) { Text("分享本批") }
             Button(enabled = exportDir.isNotEmpty(), onClick = {
                 runCatching {
                     val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
