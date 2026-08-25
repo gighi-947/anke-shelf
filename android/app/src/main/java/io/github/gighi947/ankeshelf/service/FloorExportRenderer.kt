@@ -177,7 +177,11 @@ object FloorExportRenderer {
             } else {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
-            check(ok) { "图片编码失败" }
+            if (!ok) {
+                // 极少数 WebView/系统组合下 WebP 编码失败时回退 PNG。
+                val fallback = bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                check(fallback) { "图片编码失败" }
+            }
         }
         bitmap.recycle()
         FloorRenderResult(

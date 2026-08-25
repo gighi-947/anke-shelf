@@ -28,7 +28,7 @@ html,
 body {
     margin: 0 !important;
     padding: 0 !important;
-    background: var(--reader-bg);
+    background: var(--reader-bg) !important;
     /* 对齐桌面 BASE/NGA_OVERRIDE：排版以阅读器设置为准（!important 压过章节自带
        body 样式）；默认文字色只作用于继承色，楼层内显式彩色字体保留。 */
     color: var(--reader-fg) !important;

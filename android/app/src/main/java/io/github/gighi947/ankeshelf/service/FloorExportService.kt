@@ -12,6 +12,9 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.jsoup.Jsoup
 import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /** 楼层导出：可导出的楼层描述。 */
 data class FloorExportFloor(
@@ -20,6 +23,7 @@ data class FloorExportFloor(
     val chapterIndex: Int,
     val selector: String,
     val floorId: Long = 0L,
+    val timeText: String = "",
 )
 
 /** 楼层导出结果：kind + 楼层列表（空列表表示无法定位/无快照）。 */
@@ -44,17 +48,20 @@ object FloorExportMapper {
         if (!root.isDirectory) return FloorExportList("nga", emptyList())
         val book: NativeBook = NativeBook(root).open()
         val floors: List<NativeFloor> = NativeBookWriter.loadFloors(root)
+        val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
         val list = floors.mapNotNull { f ->
             val chapter = book.chapterIndexForLou(f.lou)
             if (chapter < 0) null
             else FloorExportFloor(
                 num = f.lou,
-                label = if (f.lou == 0) "主楼" else "${f.lou}楼",
+                label = (if (f.lou == 0) "主楼" else "${f.lou}楼") +
+                    (if (f.timestamp > 0) " · ${fmt.format(Instant.ofEpochSecond(f.timestamp).atZone(ZoneId.systemDefault()))}" else ""),
                 chapterIndex = chapter,
                 selector = "#pid${f.pid}",
                 floorId = f.pid,
+                timeText = if (f.timestamp > 0) fmt.format(Instant.ofEpochSecond(f.timestamp).atZone(ZoneId.systemDefault())) else "",
             )
-        }
+        }.sortedByDescending { it.num }
         return FloorExportList("nga", list)
     }
 
@@ -70,11 +77,19 @@ object FloorExportMapper {
         if (chapters.isEmpty()) return FloorExportList("gululu", emptyList())
         val floorByNum = mutableMapOf<Int, Int>()
         val floorNames = mutableMapOf<Int, String>()
+        val floorTimes = mutableMapOf<Int, String>()
         for (item in baseline.floorIndex) {
             val num = item["floorNum"]?.jsonPrimitive?.intOrNull ?: continue
             val id = item["floorId"]?.jsonPrimitive?.intOrNull ?: continue
             floorByNum[num] = id
             floorNames[num] = item["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        }
+        for (floor in baseline.floors) {
+            val id = floor["id"]?.jsonPrimitive?.intOrNull ?: continue
+            val num = floorByNum.entries.firstOrNull { it.value == id }?.key ?: continue
+            val time = floor["updateTime"]?.jsonPrimitive?.contentOrNull
+                ?: floor["createTime"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            if (time.isNotBlank()) floorTimes[num] = time
         }
         val chapterStarts = mutableListOf<Int>()
         for (item in baseline.chapterIndex) {
@@ -87,17 +102,20 @@ object FloorExportMapper {
             val id = floorByNum[num] ?: continue
             val chapter = chapterStarts.indexOfLast { it <= num }.coerceAtLeast(0)
                 .coerceAtMost(chapters.size - 1)
+            val timeText = floorTimes[num].orEmpty()
             list.add(
                 FloorExportFloor(
                     num = num,
-                    label = "第${num}楼 ${floorNames[num].orEmpty()}".trim(),
+                    label = ("第${num}楼 ${floorNames[num].orEmpty()}".trim() +
+                        (if (timeText.isNotBlank()) " · $timeText" else "")),
                     chapterIndex = chapter,
                     selector = "#floor-$id",
                     floorId = id.toLong(),
+                    timeText = timeText,
                 ),
             )
         }
-        return FloorExportList("gululu", list)
+        return FloorExportList("gululu", list.sortedByDescending { it.num })
     }
 }
 

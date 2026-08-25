@@ -21,10 +21,10 @@ class FloorExportMapperTest {
         val session = fakeSession()
         val list = FloorExportMapper.list(record, session)
         assertEquals("nga", list.kind)
-        assertEquals(listOf(0, 1), list.floors.map { it.num })
-        assertEquals("#pid111", list.floors[0].selector)
-        assertEquals(0, list.floors[0].chapterIndex)
-        assertEquals(1, list.floors[1].chapterIndex)
+        assertEquals(listOf(1, 0), list.floors.map { it.num })
+        assertEquals("#pid222", list.floors[0].selector)
+        assertEquals(1, list.floors[0].chapterIndex)
+        assertEquals(0, list.floors[1].chapterIndex)
     }
 
     @Test
@@ -41,10 +41,10 @@ class FloorExportMapperTest {
         val session = fakeSession(gululuSourceId = 68846, chapterCount = 2)
         val list = FloorExportMapper.list(record, session)
         assertEquals("gululu", list.kind)
-        assertEquals(listOf(1, 2), list.floors.map { it.num })
-        assertEquals("#floor-1001", list.floors[0].selector)
-        assertEquals(0, list.floors[0].chapterIndex)
-        assertEquals(1, list.floors[1].chapterIndex)
+        assertEquals(listOf(2, 1), list.floors.map { it.num })
+        assertEquals("#floor-1002", list.floors[0].selector)
+        assertEquals(1, list.floors[0].chapterIndex)
+        assertEquals(0, list.floors[1].chapterIndex)
     }
 
     private fun fakeSession(gululuSourceId: Int = 0, chapterCount: Int = 1): BookSession {

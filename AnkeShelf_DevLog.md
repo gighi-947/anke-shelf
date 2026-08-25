@@ -119,6 +119,11 @@
   提前闭合、CSS 文本泄漏到正文顶部的问题（改为只返回 style 内文）；
   离屏 WebView 增加 NGA 图床拦截（OkHttp + ngaHeaders）并设置 NGA UA，
   在线图片可加载；同时保留字体/EPUB 资源拦截。
+- 追加修复（真机四轮反馈）：阅读界面主题失效根因是章节 `<style>` 内文
+  生效后 `body{background:#fff}` 压过 reader.css 的 `--reader-bg`；已给
+  reader.css 的 `html,body` 背景加 `!important`，恢复主题切换。图片编码
+  失败增加 WebP→PNG 回退。楼层列表默认倒序（最新楼层在前）并增加
+  时间信息（NGA timestamp / 骨碌碌 updateTime/createTime）。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 release 覆盖安装并启动。
