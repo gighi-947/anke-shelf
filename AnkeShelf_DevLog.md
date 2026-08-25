@@ -157,6 +157,11 @@
 - 追加修复（真机十二轮）：阅读页图片加载增加 `[reading_img] file` 探针；
   分享转圈改为固定 24dp 居中；骨碌碌头像模式放大到 3.6em/8px 圆角，
   并在 `reader.css` 加 `!important` 覆盖已下载 EPUB 的旧样式。
+- 追加修复（真机十三轮，日志定位）：阅读页 `ERR_ACCESS_DENIED` 是
+  `setAllowFileAccess(false)` 在 shouldInterceptRequest 之前拦掉了
+  `file:///android_images`/`file:///android_epub` 子资源；改为
+  `allowFileAccess(true)`，并在 shouldInterceptRequest 末尾把未知
+  `file://` 一律拦截为 404，保证安全边界不放开。
 - 验证：Android JVM 238 项（237 过 / 1 跳）；Windows Python 342 项；
   API 契约 66 方法一致；reader-lite parts 69735 字节；JS 契约/守卫全绿；
   真机 debug（release 签名）覆盖安装并启动。

@@ -407,7 +407,9 @@ fun WebViewChapterView(
                 val fontsDir = containerRef.value.appPaths.fontsDir
                 if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
                 settings.javaScriptEnabled = true
-                settings.setAllowFileAccess(false)
+                // 需要 file:///android_images 与 file:///android_epub 子资源；
+                // 未知 file:// 统一在 shouldInterceptRequest 末尾拦截为 404。
+                settings.setAllowFileAccess(true)
                 settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 settings.userAgentString = NgaConfig.DEFAULT_UA
                 setBackgroundColor(Color.parseColor(themeRef.value.background))
@@ -511,6 +513,12 @@ fun WebViewChapterView(
                             return WebResourceResponse(
                                 "text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)),
                             ).apply { setStatusCodeAndReasonPhrase(404, "Cleartext Blocked") }
+                        }
+                        if (url.startsWith("file:///") && !url.startsWith("file:///android_asset/")) {
+                            Log.w("AnkeShelf", "[reading_file] blocked $url")
+                            return WebResourceResponse(
+                                "text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)),
+                            ).apply { setStatusCodeAndReasonPhrase(404, "Blocked") }
                         }
                         return super.shouldInterceptRequest(view, request)
                     }
