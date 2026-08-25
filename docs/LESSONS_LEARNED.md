@@ -121,3 +121,25 @@
 | 修改共享 HTML 构造/reader.css 会回归阅读链路 | 导出渲染的 CSS 注入应局限在导出渲染器内；阅读公共代码改动必须立即跑 ReaderHtmlTest + 阅读主题回归 | 第四十批 |
 | 长楼层会超过 WebView/位图最大纹理尺寸 | 楼层高度超阈值时纵向分片渲染（如 12000px 一片），最后拼接为一张图 | 第四十批（计划） |
 | 功能开发应先做最小技术验证，再铺 UI | 先用真实长楼层跑通“离屏渲染成图 → 尺寸/主题/字体/图片检查”，再写页面与分享 | 第四十批 |
+
+### 10.1 楼层导出复盘（2026-08-25，18 轮收敛）
+
+**为什么这一轮会拖这么久？**
+
+不是功能本身难，而是我违反了项目已有的调试纪律。Windows 楼层导出能快速做完，是因为先做了最小技术验证（渲染链路冒烟），再铺 UI。Android 这一轮我反过来了：先写了完整的 Mapper/Html/Renderer/UI，再用真机反馈一点一点修，导致：
+- 离屏 WebView 的四个基础事实（`draw()` 只画可见区、`capturePicture()` 不可靠、`layout()` 单位是物理像素、`allowFileAccess` 会拦 `file://` 子资源）没有在第一天用最小样例验证，而是分了好几轮逐一踩坑。
+- 前几轮没有探针，靠猜；后几轮加了 `[floor_export]` / `[reading_img]` / `[gululu_music]` 日志后，定位速度立刻变快（缺 systemDark、ClipData 只放第一个 URI、BLOCKED_TAGS 移除 button 都是看日志直接定位）。
+- 为修导出，多次改动阅读链路共享代码（`extractReaderParts`、`reader.css`、`WebViewChapterView`、`ReaderHtml` 白名单），每改一次就制造一个阅读回归（主题白底、图片 ERR_ACCESS_DENIED、音乐框被删除）。导出专用逻辑本应完全内聚在 `FloorExportRenderer` / `FloorExportHtml`。
+
+**以后必须遵守的规则：**
+1. 任何 WebView/渲染类功能，先写一个 50 行的设备端 spike：渲染一个真实楼层 → 看宽高/主题/字体/图片是否与阅读页一致，再开始写 UI。
+2. 探针从第一版就带：`Log.w("AnkeShelf", "[feature] ...")`，不要等用户反馈后再补。
+3. 导出/渲染的 CSS 与资源注入只允许发生在导出渲染器内部；阅读公共代码改动必须先跑 `ReaderHtmlTest` + 阅读主题回归。
+4. Android WebView 特殊事实必须默背：`layout()` 是物理像素；`draw()` 只画可见区；`capturePicture()` 不可靠；`setAllowFileAccess(false)` 会先于 `shouldInterceptRequest` 拒绝 `file://` 子资源；`sanitizeReaderBody` 的 BLOCKED_TAGS 先于 ALLOWED_TAGS 执行。
+5. UI 打磨（进度、对话框、空状态）等核心链路在真机通过后再做，否则 UI 会反复返工。
+
+**这次做得对的：**
+- 最终把导出设置持久化在 `settings.json:floor_export`，没有用 localStorage 类易失方案。
+- 复用 `buildReaderHtml` + `reader.css` + `readerTheme`，导出与阅读保持一致。
+- 分享走 FileProvider + ClipData，生命周期清晰。
+- 每一轮保持测试基线：Android JVM 238、Python 342、API 契约 66、reader-lite parts 9。
