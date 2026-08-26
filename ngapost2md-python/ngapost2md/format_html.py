@@ -131,10 +131,12 @@ def render_content_html(raw: str, tiezi: Tiezi, img_src) -> str:
         lambda m: f"<details><summary>{m.group(1)}</summary><div>{m.group(2)}</div></details>",
         c,
     )
-    # 骰子
+    # 骰子：默认收起详细骰点（过程），点击 summary 展开（对齐 NGA 折叠交互）
     c = RE_DICE.sub(
-        lambda m: (f'<div class="nga-dice" style="color:{_THEME["dice"]}; font-weight:bold; '
-                   f'margin:6px 0;">ROLL : {m.group(1)}= <b>{m.group(3)}</b></div>'),
+        lambda m: (f'<details class="nga-dice" style="color:{_THEME["dice"]}; font-weight:bold; '
+                   f'margin:6px 0;"><summary style="cursor:pointer;">ROLL : {m.group(1)}= '
+                   f'<b>{m.group(3)}</b></summary>'
+                   f'<div style="font-weight:normal;">{m.group(2)}</div></details>'),
         c,
     )
     # 外链音乐（方案 A）：[audio]https://…[/audio] → 骨碌碌同款音乐 cue，
