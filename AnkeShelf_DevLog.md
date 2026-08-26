@@ -36,13 +36,14 @@
   （第四十批，见 §4）、双端 GitHub 版本更新提醒（第四十一批）已合入并
   发布 v1.7.0 / android-v1.4.0；
   NGA「只看楼主」开关改造（第四十二批，见 §4）：下载页 uid 输入框改为
-  只看楼主开关（自动获取楼主 uid）；更新页开关锁定为书模式，杜绝楼层坐标混用。
+  只看楼主开关（自动获取楼主 uid）；更新页开关锁定为书模式，杜绝楼层坐标混用；
+  NGA 骰子详细骰点折叠（第四十三批，见 §4）：默认收起过程骰点，点击展开。
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.7.0`（已发布，AnkeShelf-v1.7.0.zip）；
   Android `android-v1.4.0`（已发布，AnkeShelf-v1.4.0-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-25 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 342 项
-    （2026-08-24 实跑全过）；
+  - Windows Python：`python -m unittest discover tests` = 345 项
+    （2026-08-26 实跑全过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
     `node contracts/tests/api-contract.test.js`（67 方法一致）、
     `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
@@ -52,7 +53,7 @@
     `node tests/js/reader-save.test.js`（进度写入唯一出口）、
     `node tests/js/paged-blank.test.js`（空白页判定边界）、
     `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 238 项（237 过 / 1 跳）；
+  - Android JVM：`gradlew testDebugUnitTest` = 241 项（240 过 / 1 跳）；
     DisciplineTest 11 项在岗；
   - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
   - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
@@ -84,6 +85,21 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-26 win/android：NGA 骰子详细骰点折叠（第四十三批）
+
+- 需求：NGA 骰子此前只显示结果（`ROLL:d2=2`），丢弃了详细骰点
+  （`d2(2)` / `d10(9)+d10(10)+d10(3)+d10(4)`）；改为默认收起过程骰点、
+  点击展开（对齐 NGA 折叠交互）。
+- 根因：`RE_DICE` 正则捕获三组（指令/详细骰点/结果），双端渲染时丢弃了
+  详细骰点组。
+- 改动：`format_html.py` 与 `NgaFormatHtml.kt` 的骰子渲染改为
+  `<details class="nga-dice"><summary>ROLL : 指令= 结果</summary><div>详细骰点</div></details>`
+  （双端 HTML 逐字节一致，坐标同源提取）；Markdown 导出保持只留结果
+  （纯文本无法折叠）。
+- 坐标：详细骰点进 text_offset（与现有 NGA 折叠一致，无 data-textpos-exclude）。
+- 验证：Windows Python 345 项全过（新增 3）；Android JVM 241 项
+  （240 过 / 1 跳，新增 3）。
 
 ### 2026-08-26 win/android：NGA「只看楼主」开关改造（第四十二批）
 
