@@ -176,7 +176,7 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 - 依赖：`requirements.in` / `requirements-build.in` 人工维护，pip-tools 生成带哈希
   `.lock`（3.12 基线，3.14 实测可装）；CI 与打包均按 lock 安装。
 
-## 10. 当前状态（2026-08-25 快照）
+## 10. 当前状态（2026-08-26 快照）
 
 - 基线 `main`（HEAD 以 `git log` 为准）；最近主线：v1.6.0 / android-v1.3.0
   发布 → 2026-08-22 防御性编程审查清理批（进度错误出口 / store 损坏显式化

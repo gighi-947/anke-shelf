@@ -35,7 +35,7 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ---
 
-## 2. 现状核验（2026-08-24 测试基线复核；代码规模沿用 2026-08-22）
+## 2. 现状核验（2026-08-26 基线复核；代码规模沿用 2026-08-26）
 
 ### 2.1 版本与测试基线
 
@@ -59,20 +59,20 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 | `android/.../data/Html5Entities.kt` | 2130 | 机械生成表，正常 |
 | `android/.../ui/reader/WebViewChapterView.kt` | 930 | 桥与宿主；已审查并补充失败日志、资源拦截、file 子资源放行 |
 | `android/.../ui/shelf/BookshelfScreen.kt` | 793 | 书架页（含 store 损坏横幅），未拆分 |
-| `android/.../data/NativeBook.kt` | 632 | 原生书数据层 |
-| `android/.../ui/settings/SettingsScreen.kt` | 564 | 已按 Panel 拆分 |
-| `android/.../ui/search/SearchScreen.kt` | 565 | 搜索页，未拆分 |
+| `android/.../data/NativeBook.kt` | 645 | 原生书数据层 |
+| `android/.../ui/settings/SettingsScreen.kt` | 560 | 已按 Panel 拆分 |
+| `android/.../ui/search/SearchScreen.kt` | 580 | 搜索页，未拆分 |
 | `android/.../data/Epub.kt` | 574 | EPUB 数据层 |
 | `android/.../ui/reader/native/NativeReaderScreen.kt` | 1275 | 外壳已拆 Chrome / Gululu；恢复锚点单点 RestoreAnchor；楼层分享进度/音乐头 |
 | `android/.../ui/download/DownloadScreen.kt` | 386 | 已拆分面板；含楼层导出入口 |
-| `android/.../assets/reader/reader-lite.js` | 1942 | 现役渲染内核（parts 9 模块；状态机 Step 0–4 + 跨端折叠/骨碌碌能力；2026-08-22 清理死表面） |
-| `web/js/reader.js` | 766 | 核心编排；进度写入经 reader-save.js 唯一出口 |
-| `web/js/nga_download.js` | 719 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
-| `app/gululu_service.py` | 488 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |
-| `app/gululu_update.py` | 429 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
-| `app/nga_service.py` | 701 | 下载/更新/清理语义集中；已迁入 TaskManager |
-| `web/js/settings.js` | 184 | 已拆 settings-ui / settings-panels |
-| `web/css/reader.css` | 2219 | 样式，暂不处理 |
+| `android/.../assets/reader/reader-lite.js` | 1937 | 现役渲染内核（parts 9 模块；状态机 Step 0–4 + 跨端折叠/骨碌碌能力；2026-08-22 清理死表面） |
+| `web/js/reader.js` | 767 | 核心编排；进度写入经 reader-save.js 唯一出口 |
+| `web/js/nga_download.js` | 725 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
+| `app/gululu_service.py` | 491 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |
+| `app/gululu_update.py` | 427 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
+| `app/nga_service.py` | 712 | 下载/更新/清理语义集中；已迁入 TaskManager |
+| `web/js/settings.js` | 181 | 已拆 settings-ui / settings-panels |
+| `web/css/reader.css` | 2258 | 样式，暂不处理 |
 
 ### 2.3 已确认的架构债
 

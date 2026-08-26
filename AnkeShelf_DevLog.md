@@ -42,7 +42,7 @@
   精确提交与远端状态以 `git log` / `git status` 为准。
 - 版本线：Windows `v1.7.1`（已发布，AnkeShelf-v1.7.1.zip）；
   Android `android-v1.4.1`（已发布，AnkeShelf-v1.4.1-android.apk）。
-- 测试基线（Windows / JS / Android JVM 于 2026-08-25 实跑复核）：
+- 测试基线（Windows / JS / Android JVM 于 2026-08-26 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 345 项
     （2026-08-26 实跑全过）；
   - JS：`node contracts/tests/textpos.test.js`（15 例）、
