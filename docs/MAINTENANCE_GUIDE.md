@@ -14,8 +14,8 @@ EPUB / 原生书 → 还原安科排版 → 舒适阅读与追更。GNU AGPL-3.0
 
 | 端 | 当前版本 | 技术栈 | 版本源位置 |
 | --- | --- | --- | --- |
-| Windows | **v1.7.0** | Python + Web SPA + pywebview 壳 | 代码：`app/__init__.py`；文档权威：README 版本表 |
-| Android | **android-v1.4.0** | Kotlin + Compose + WebView 渲染内核 | **唯一定义**：`android/app/build.gradle.kts` |
+| Windows | **v1.7.1** | Python + Web SPA + pywebview 壳 | 代码：`app/__init__.py`；文档权威：README 版本表 |
+| Android | **android-v1.4.1** | Kotlin + Compose + WebView 渲染内核 | **唯一定义**：`android/app/build.gradle.kts` |
 
 - 版本线分离：Windows `vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；Android `android-vX.Y.Z` +
   `AnkeShelf-vX.Y.Z-android.apk`；两端 SOP 独立，不混用。
@@ -185,7 +185,8 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
   退出+代际缓存 / 内置字体 WOFF2 无损 -61%）→ 发布 v1.6.1 / android-v1.3.1 →
   v1.6.2 / android-v1.3.2（NGA 楼层卡片修复）→ 2026-08-25 楼层导出对齐
   （第四十批）与双端 GitHub 版本更新提醒（第四十一批）→
-  发布 v1.7.0 / android-v1.4.0。
+  发布 v1.7.0 / android-v1.4.0 → 2026-08-26 NGA 只看楼主开关（第四十二批）
+  与 NGA 骰子详细骰点折叠（第四十三批）→ 发布 v1.7.1 / android-v1.4.1。
 - 待办与延后项见 [ARCHITECTURE_ROADMAP.md](ARCHITECTURE_ROADMAP.md)
   （性能 A3 分页二分去滚动位移：评估后暂缓；字体子集化（视觉权衡）未做，
   WOFF2 已落地；P5-C 自动翻章与 P5-F 楼中楼暂不实施；P4 参考仓库 3/8

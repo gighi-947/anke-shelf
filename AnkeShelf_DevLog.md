@@ -37,10 +37,11 @@
   发布 v1.7.0 / android-v1.4.0；
   NGA「只看楼主」开关改造（第四十二批，见 §4）：下载页 uid 输入框改为
   只看楼主开关（自动获取楼主 uid）；更新页开关锁定为书模式，杜绝楼层坐标混用；
-  NGA 骰子详细骰点折叠（第四十三批，见 §4）：默认收起过程骰点，点击展开。
+  NGA 骰子详细骰点折叠（第四十三批，见 §4）：默认收起过程骰点，点击展开；
+  以上已发布 v1.7.1 / android-v1.4.1。
   精确提交与远端状态以 `git log` / `git status` 为准。
-- 版本线：Windows `v1.7.0`（已发布，AnkeShelf-v1.7.0.zip）；
-  Android `android-v1.4.0`（已发布，AnkeShelf-v1.4.0-android.apk）。
+- 版本线：Windows `v1.7.1`（已发布，AnkeShelf-v1.7.1.zip）；
+  Android `android-v1.4.1`（已发布，AnkeShelf-v1.4.1-android.apk）。
 - 测试基线（Windows / JS / Android JVM 于 2026-08-25 实跑复核）：
   - Windows Python：`python -m unittest discover tests` = 345 项
     （2026-08-26 实跑全过）；
@@ -85,6 +86,16 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-26 win/android：发布 v1.7.1 / android-v1.4.1（第四十四批）
+
+- 内容：NGA 只看楼主开关（第四十二批）+ NGA 骰子详细骰点折叠（第四十三批）。
+- 版本号：Windows v1.7.1（`app/__init__.py`）；Android android-v1.4.1
+  （`android/app/build.gradle.kts`，versionCode=8）。
+- 发布：打标签 `v1.7.1` / `android-v1.4.1`，构建 `AnkeShelf-v1.7.1.zip` 与
+  `AnkeShelf-v1.4.1-android.apk`，创建 GitHub Release。
+- 验证：Windows Python 345 项全过；Android JVM 241 项（240 过 / 1 跳）；
+  文档漂移检查通过。
 
 ### 2026-08-26 win/android：NGA 骰子详细骰点折叠（第四十三批）
 
