@@ -508,7 +508,10 @@
     stopVfx();
     syncMusicChrome();
     clearInterval(state.scanTimer);
-    state.scanTimer = setInterval(scanChapter, 250);
+    // scanChapter 每 250ms 做楼层/背景/视效/自动音乐扫描；NGA 书（sourceId=0）
+    // 只有音乐 cue，不值得为它保持 4Hz 空扫——音乐点击由 bindChapter 的
+    // 监听处理（方案 A 已提前出 sourceId 门控）。
+    state.scanTimer = state.sourceId ? setInterval(scanChapter, 250) : null;
   }
 
   function togglePanel(force, trigger, restoreFocus) {

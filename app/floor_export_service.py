@@ -291,7 +291,8 @@ class FloorExportService:
 
     def _run(self, rec, floors, theme, fmt, scale, output_dir, no_images, theme_colors, reader_style, report) -> None:
         def step(stage: str, current: int = 0, total: int = 0, detail: str = "") -> None:
-            self._set(stage=stage, current=current, total=total, detail=detail)
+            # 状态单一事实源：report 经 on_progress 写 _set（此前这里双写
+            # _set + report，同一进度每次写两遍）。
             report(TaskProgress(current=current, total=total, stage=stage, message=detail))
 
         try:
