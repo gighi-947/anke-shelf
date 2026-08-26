@@ -141,8 +141,10 @@ object NgaFormatHtml {
             "<details><summary>${m.groupValues[1]}</summary><div>${m.groupValues[2]}</div></details>"
         }
         c = RE_DICE.replace(c) { m ->
-            "<div class=\"nga-dice\" style=\"color:${theme.dice}; font-weight:bold; margin:6px 0;\">" +
-                "ROLL : ${m.groupValues[1]}= <b>${m.groupValues[3]}</b></div>"
+            // 默认收起详细骰点（过程），点击 summary 展开（与桌面 format_html 逐字节一致）
+            "<details class=\"nga-dice\" style=\"color:${theme.dice}; font-weight:bold; margin:6px 0;\">" +
+                "<summary style=\"cursor:pointer;\">ROLL : ${m.groupValues[1]}= <b>${m.groupValues[3]}</b></summary>" +
+                "<div style=\"font-weight:normal;\">${m.groupValues[2]}</div></details>"
         }
         c = RE_ANONY.replace(c) { m -> safeAnony(m.value) }
 

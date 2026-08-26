@@ -137,4 +137,31 @@ class NgaFormatHtmlTest {
         assertTrue(out.contains(raw))
         assertFalse(out.contains("gululu-music-cue"))
     }
+
+    @Test
+    fun `dice folds detail into details summary`() {
+        val raw = "<div class='dice'><b>ROLL : d2</b>=d2(2)=<b>2</b></div>"
+        val out = NgaFormatHtml.renderContentHtml(raw)
+        assertTrue(out.contains("<details class=\"nga-dice\""))
+        assertTrue(out.contains("<summary"))
+        assertTrue(out.contains("ROLL : d2= <b>2</b>"))
+        assertTrue("详细骰点进折叠内容", out.contains("d2(2)"))
+        assertFalse("原始 dice div 不残留", out.contains("class='dice'"))
+    }
+
+    @Test
+    fun `multi dice folds detail`() {
+        val raw = "<div class='dice'><b>ROLL : 4d10</b>=d10(9)+d10(10)+d10(3)+d10(4)=<b>26</b></div>"
+        val out = NgaFormatHtml.renderContentHtml(raw)
+        assertTrue(out.contains("ROLL : 4d10= <b>26</b>"))
+        assertTrue(out.contains("d10(9)+d10(10)+d10(3)+d10(4)"))
+    }
+
+    @Test
+    fun `dice detail enters coordinates`() {
+        // 详细骰点进坐标（与 NGA 折叠一致，不加 data-textpos-exclude）
+        val raw = "<div class='dice'><b>ROLL : d2</b>=d2(2)=<b>2</b></div>"
+        val out = NgaFormatHtml.renderContentHtml(raw)
+        assertFalse(out.contains("data-textpos-exclude"))
+    }
 }
