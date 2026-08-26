@@ -86,6 +86,7 @@ class NgaDownloadService : Service() {
                 val params = NgaDownloadParams(
                     tid = tid,
                     authorId = intent.getLongExtra("authorId", 0L),
+                    authorOnly = intent.getBooleanExtra("authorOnly", false),
                     maxFloors = intent.getIntExtra("maxFloors", 0),
                     pageLimit = intent.getIntExtra("pageLimit", 0),
                     imageMode = intent.getStringExtra("imageMode") ?: "online",
@@ -136,7 +137,9 @@ class NgaDownloadService : Service() {
                 val effective = if (d != null) {
                     NgaDownloadParams(
                         tid = params.tid,
-                        authorId = if (params.authorId > 0) params.authorId else d.authorId,
+                        // 模式固定（下载时确定）：更新沿用书的 author_id，忽略 UI 传入，
+                        // 避免只看楼主序号与全局楼号坐标混用
+                        authorId = d.authorId,
                         imageMode = if (params.imageMode in setOf("online", "embedded", "none")) {
                             params.imageMode
                         } else {

@@ -62,6 +62,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -259,7 +260,7 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
     val context = LocalContext.current
     val activity = LocalActivity.current
     var tidText by remember { mutableStateOf("") }
-    var authorIdText by remember { mutableStateOf("") }
+    var authorOnly by remember { mutableStateOf(false) }
     var maxFloorsText by remember { mutableStateOf("") }
     var perChapterText by remember { mutableStateOf("20") }
     var pageLimitText by remember { mutableStateOf("") }
@@ -300,16 +301,19 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
             )
-            OutlinedTextField(
-                value = authorIdText,
-                onValueChange = { authorIdText = it.filter { c -> c.isDigit() } },
-                label = { Text("只看楼主 uid（0=全部）") },
-                singleLine = true,
-                shape = MaterialTheme.shapes.medium,
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = AnkeSpacing.sm),
-            )
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "只看楼主（自动获取楼主 uid）",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(checked = authorOnly, onCheckedChange = { authorOnly = it })
+            }
             OutlinedTextField(
                 value = maxFloorsText,
                 onValueChange = { maxFloorsText = it.filter { c -> c.isDigit() } },
@@ -405,7 +409,7 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                         val intent = Intent(context, NgaDownloadService::class.java).apply {
                             action = NgaDownloadService.ACTION_START
                             putExtra("tid", tid)
-                            putExtra("authorId", authorIdText.trim().toLongOrNull() ?: 0L)
+                            putExtra("authorOnly", authorOnly)
                             putExtra("maxFloors", maxFloorsText.trim().toIntOrNull() ?: 0)
                             putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
                             putExtra("pageLimit", pageLimitText.trim().toIntOrNull() ?: 0)
@@ -430,7 +434,7 @@ internal fun DownloadPanel(container: AppContainer, onChanged: () -> Unit) {
                                 putExtra("action", "update")
                                 putExtra("bookId", existing.id)
                                 putExtra("tid", tid)
-                                putExtra("authorId", authorIdText.trim().toLongOrNull() ?: 0L)
+                                // 快捷更新：不传 authorId/authorOnly，由服务层固定为书模式
                                 putExtra("perChapter", perChapterText.trim().toIntOrNull() ?: 20)
                                 putExtra("pageLimit", pageLimitText.trim().toIntOrNull() ?: 0)
                                 putExtra("imageMode", imageMode)

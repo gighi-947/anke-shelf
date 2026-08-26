@@ -20,6 +20,8 @@ import okhttp3.Request
 data class NgaDownloadParams(
     val tid: Long,
     val authorId: Long = 0,
+    /** 只看楼主开关：开启后自动获取楼主 uid（tauthorid）作 authorId 过滤。 */
+    val authorOnly: Boolean = false,
     val maxFloors: Int = 0,
     /** 单次最多新增页数（0=不限制；对齐桌面 cfg.page_download_limit）。 */
     val pageLimit: Int = 0,
@@ -178,13 +180,26 @@ class NgaDownloader(
             throw NgaHttpException("请先在下载页填写 NGA Cookie（ngaPassportUid / ngaPassportCid）")
         }
         val client = NgaClient(cookieUid = cfg.uid, cookieCid = cfg.cid, userAgent = cfg.ua, baseUrl = cfg.baseUrl)
-        val folderName = folderNameFor(params.tid, params.authorId)
+        // 只看楼主：自动获取楼主 uid（tauthorid），无过滤拉第 1 页
+        var authorId = params.authorId
+        if (params.authorOnly && authorId <= 0) {
+            val probe = client.fetchPageFull(params.tid, 1, 0)
+            if (probe.code != 0) {
+                throw NgaHttpException("NGA 返回代码不为 0：${probe.code} ${probe.msg}")
+            }
+            authorId = probe.authorId
+            if (authorId <= 0) {
+                throw NgaHttpException("自动获取楼主 uid 失败，请确认帖子可访问")
+            }
+        }
+        val effectiveParams = params.copy(authorId = authorId)
+        val folderName = folderNameFor(params.tid, authorId)
         val nativeDir = NativeBookWriter.nativeDirFor(appPaths.ngaLibraryDir, folderName)
         if (params.fullRedownload) {
             File(appPaths.ngaLibraryDir, folderName).deleteRecursively()
         } else if (NativeBookWriter.isNativeDir(nativeDir)) {
             // 已存在同 tid 原生书且非强制重下：对齐桌面走增量更新
-            val added = updateFolder(folderName, params.tid, params.authorId, params)
+            val added = updateFolder(folderName, params.tid, authorId, effectiveParams)
             val rec = repository.findByNgaTid(params.tid)
                 ?: throw NgaHttpException("书架中找不到该书")
             LogEvents.event(
@@ -200,7 +215,7 @@ class NgaDownloader(
         }
         try {
             progress("pages", 0, 1, "正在初始化…")
-            val first = client.fetchPageFull(params.tid, 1, params.authorId)
+            val first = client.fetchPageFull(params.tid, 1, authorId)
             if (first.code != 0) {
                 throw NgaHttpException("NGA 返回代码不为 0：${first.code} ${first.msg}")
             }
@@ -217,7 +232,7 @@ class NgaDownloader(
             progress("pages", 1, lastWanted, "正在下载第 1/$lastWanted 页")
             for (p in 2..lastWanted) {
                 checkCancel()
-                val pageData = client.fetchPageFull(params.tid, p, params.authorId)
+                val pageData = client.fetchPageFull(params.tid, p, authorId)
                 if (pageData.code != 0) {
                     throw NgaHttpException("NGA 返回代码不为 0：${pageData.code} ${pageData.msg}")
                 }
@@ -244,7 +259,7 @@ class NgaDownloader(
                     tieziTitle = first.title,
                     author = first.author,
                     tid = params.tid,
-                    authorId = params.authorId,
+                    authorId = authorId,
                     createdTime = nowIso(),
                     updatedTime = nowIso(),
                     validFloors = valid,
@@ -256,7 +271,7 @@ class NgaDownloader(
                     tocMode = params.tocMode,
                     imagesDir = imagesDir,
                 )
-                saveState(folderName, lastPage, valid, params)
+                saveState(folderName, lastPage, valid, effectiveParams)
                 val registered = repository.registerNativeDir(nativeDir, params.tid)
                 if (registered is RepoResult.Err) {
                     throw NgaHttpException("书籍登记失败：${registered.error.message}")

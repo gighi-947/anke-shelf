@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +15,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -21,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import io.github.gighi947.ankeshelf.data.BookRecord
@@ -50,9 +53,8 @@ fun NgaUpdateDialog(
                 .defaultsFor(book.id)
         }.getOrNull()
     }
-    var authorIdText by remember(book.id) {
-        mutableStateOf((defaults?.authorId ?: 0L).takeIf { it > 0 }?.toString() ?: "")
-    }
+    // 只看楼主开关锁定为书模式（下载时确定，更新不可切换）
+    val authorOnly = (defaults?.authorId ?: 0L) > 0
     var themeDark by remember(book.id) { mutableStateOf((defaults?.theme ?: "light") == "dark") }
     var perChapterText by remember(book.id) { mutableStateOf((defaults?.perChapter ?: 20).toString()) }
     var pageLimitText by remember(book.id) {
@@ -70,13 +72,26 @@ fun NgaUpdateDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
             ) {
-                OutlinedTextField(
-                    value = authorIdText,
-                    onValueChange = { authorIdText = it.filter { c -> c.isDigit() } },
-                    label = { Text("只看楼主 uid（0=全部）") },
-                    singleLine = true,
-                    shape = AnkeRadius.medium,
+                Row(
                     modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "只看楼主",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = authorOnly,
+                        onCheckedChange = null,
+                        enabled = false,
+                    )
+                }
+                Text(
+                    "模式在下载时确定，如需切换请重新下载。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = AnkeSpacing.xs),
                 )
                 Text(
                     "主题",
@@ -151,7 +166,8 @@ fun NgaUpdateDialog(
                     onConfirm(
                         NgaDownloadParams(
                             tid = book.nga_tid.toLong(),
-                            authorId = authorIdText.trim().toLongOrNull() ?: 0L,
+                            authorId = defaults?.authorId ?: 0L,
+                            authorOnly = authorOnly,
                             imageMode = imageMode,
                             theme = if (themeDark) "dark" else "light",
                             perChapter = perChapterText.trim().toIntOrNull()?.coerceIn(1, 200) ?: 20,
@@ -175,6 +191,7 @@ fun launchNgaUpdate(context: Context, book: BookRecord, params: NgaDownloadParam
         putExtra("bookId", book.id)
         putExtra("tid", params.tid)
         putExtra("authorId", params.authorId)
+        putExtra("authorOnly", params.authorOnly)
         putExtra("theme", params.theme)
         putExtra("perChapter", params.perChapter)
         putExtra("pageLimit", params.pageLimit)
