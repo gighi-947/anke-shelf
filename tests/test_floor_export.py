@@ -86,3 +86,54 @@ class FloorExportMappingTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FloorExportCancelTest(unittest.TestCase):
+    """渲染子进程窗口内的取消语义（2026-08-27 审查清理回归）。
+
+    修复前：_render 用阻塞 subprocess.run(timeout=1800)，report（取消检查点）
+    只在子进程返回后调用——最长 30 分钟的渲染窗口里取消完全失效。
+    修复后：Popen + 0.5s 轮询 report 检查取消，取消即杀进程树。
+    """
+
+    def test_cancel_during_render_kills_subprocess(self):
+        import sys
+        import time
+
+        import app.floor_export_service as fes
+        from app.tasks import TaskCancelled
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # 伪渲染脚本：睡 6 秒后输出空结果（模拟长时间渲染）。
+            script = root / "sleeper.py"
+            script.write_text(
+                'import time\ntime.sleep(6)\nprint(\'{"results": []}\')\n',
+                encoding="utf-8",
+            )
+            service = FloorExportService(None, None, server_port=12345)
+            saved = (fes._NODE, fes._find_render_script, fes._find_chromium)
+            fes._NODE = sys.executable  # 生产为 node；测试用本解释器跑伪脚本
+            fes._find_render_script = lambda: str(script)
+            fes._find_chromium = lambda: None
+            try:
+                calls = {"n": 0}
+
+                def report(p):
+                    calls["n"] += 1
+                    if calls["n"] >= 2:
+                        raise TaskCancelled("cancelled by test")
+
+                start = time.monotonic()
+                with self.assertRaises(TaskCancelled):
+                    service._render(
+                        [{"url": "u", "selector": "s", "out": "o.png", "noImages": False}],
+                        "png", 1, "", report,
+                    )
+                elapsed = time.monotonic() - start
+                self.assertLess(
+                    elapsed, 3.0,
+                    f"取消必须在数秒内终止渲染子进程（实测 {elapsed:.1f}s）",
+                )
+            finally:
+                (fes._NODE, fes._find_render_script, fes._find_chromium) = saved

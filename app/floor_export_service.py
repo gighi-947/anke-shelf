@@ -10,6 +10,7 @@ import os
 import re
 import subprocess
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Callable, Optional
@@ -24,6 +25,12 @@ from .tasks import TaskCancelled, TaskManager, TaskProgress, TaskStatus
 log = logging.getLogger("floor_export")
 
 LANE = "floor_export"
+
+# 渲染进程解释器（生产为 node；测试注入 sys.executable 跑伪脚本）
+_NODE = "node"
+
+_RENDER_TIMEOUT_SEC = 1800
+_CANCEL_POLL_SEC = 0.5
 
 _THEME_COLORS = {
     "light": {"bg": "#ffffff", "fg": "#201a15", "accent": "#8b5a2b"},
@@ -90,6 +97,19 @@ def _safe_filename(name: str) -> str:
 
 def _find_render_script() -> str:
     return str(Path(__file__).resolve().parent.parent / "scripts" / "floor_export_render.js")
+
+
+def _kill_tree(proc: subprocess.Popen) -> None:
+    """终止渲染进程树（node + 其启动的 Chromium）。Windows 下 taskkill /T；
+    失败回退 kill（仅终止 node 本身，Chromium 可能残留至自行退出）。"""
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        proc.kill()
 
 
 def _find_chromium() -> Optional[str]:
@@ -456,16 +476,31 @@ img {{ max-width: 100% !important; height: auto !important; }}
         config_path = Path(os.environ.get("TEMP", ".")) / f"floor_export_{uuid.uuid4().hex}.json"
         config_path.write_text(json.dumps(config, ensure_ascii=False), encoding="utf-8")
         try:
-            proc = subprocess.run(
-                ["node", script, str(config_path)],
-                capture_output=True,
-                timeout=1800,
+            # 取消下沉到子进程：阻塞 run() 期间 report（取消检查点）不会被
+            # 调用，最长 30 分钟的渲染窗口里取消完全失效。轮询期间经 report
+            # 检查取消标志（TaskManager 契约），取消/超时即杀进程树。
+            proc = subprocess.Popen(
+                [_NODE, script, str(config_path)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 env=env,
                 cwd=str(Path(script).parent.parent),
             )
+            try:
+                deadline = time.monotonic() + _RENDER_TIMEOUT_SEC
+                while proc.poll() is None:
+                    if time.monotonic() >= deadline:
+                        _kill_tree(proc)
+                        raise RuntimeError(f"楼层渲染超时（{_RENDER_TIMEOUT_SEC // 60} 分钟）")
+                    report(TaskProgress(stage="render", message="正在渲染楼层…"))
+                    time.sleep(_CANCEL_POLL_SEC)
+            except TaskCancelled:
+                _kill_tree(proc)
+                raise
+            stdout, stderr = proc.communicate()
             if proc.returncode != 0:
-                raise RuntimeError(proc.stderr.decode("utf-8", errors="replace")[-2000:])
-            data = json.loads(proc.stdout.decode("utf-8", errors="replace"))
+                raise RuntimeError(stderr.decode("utf-8", errors="replace")[-2000:])
+            data = json.loads(stdout.decode("utf-8", errors="replace"))
             results = data.get("results") or []
             for i, r in enumerate(results):
                 report(TaskProgress(
