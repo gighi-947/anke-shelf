@@ -2,6 +2,7 @@ package io.github.gighi947.ankeshelf.service
 
 import io.github.gighi947.ankeshelf.data.BookRecord
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.nio.file.Files
@@ -61,4 +62,27 @@ class FloorExportMapperTest {
             gululuSourceId = gululuSourceId,
         )
     }
+
+    @Test
+    fun `导出编排收敛到 pipeline，UI 不得各自内联渲染管线`() {
+        // 2026-08-27 审查清理：批量面板与单楼分享此前各自内联同一段
+        // "映射→HTML→视口→ngaFetcher→render→落盘"，且已在主题覆写策略上
+        // 漂移；统一走 FloorExportPipeline.renderFloor。
+        val panel = File(rootRepo(), "app/src/main/java/io/github/gighi947/ankeshelf/ui/download/FloorExportPanel.kt")
+            .readText()
+        val reader = File(rootRepo(), "app/src/main/java/io/github/gighi947/ankeshelf/ui/reader/native/NativeReaderScreen.kt")
+            .readText()
+        for (f in listOf(panel, reader)) {
+            assertTrue(
+                "UI 不得再直接调 FloorExportRenderer.render（应走 FloorExportPipeline）",
+                !f.contains("FloorExportRenderer.render("),
+            )
+            assertTrue("UI 必须经 FloorExportPipeline.renderFloor", f.contains("FloorExportPipeline.renderFloor"))
+        }
+    }
+
+    private fun rootRepo(): java.io.File =
+        // gradle 单测工作目录是 android/（user.dir=…/android），回退一级到
+        // android 工程根（UI 源文件在 android/app/src/main/…）
+        java.io.File(System.getProperty("user.dir")).parentFile
 }

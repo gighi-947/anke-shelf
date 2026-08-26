@@ -57,6 +57,8 @@ import io.github.gighi947.ankeshelf.service.FloorExportFloor
 import io.github.gighi947.ankeshelf.service.FloorExportHtml
 import io.github.gighi947.ankeshelf.service.FloorExportMapper
 import io.github.gighi947.ankeshelf.service.FloorExportRenderer
+import io.github.gighi947.ankeshelf.service.FloorExportPipeline
+import io.github.gighi947.ankeshelf.service.FloorExportSpec
 import io.github.gighi947.ankeshelf.service.RepoResult
 import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
@@ -267,52 +269,22 @@ fun FloorExportPanel(container: AppContainer, onChanged: () -> Unit) {
                             Log.w("AnkeShelf", "[floor_export] theme=$theme colors=${themeColors.background}/${themeColors.text}/${themeColors.accent} customFont=${data.custom_font} bookFonts=${data.book_fonts}")
                             picks.forEachIndexed { index, num ->
                                 val floor = floors.first { it.num == num }
-                                val html = if (rec.nga_tid > 0) {
-                                    FloorExportHtml.nga(rec, floor, themeColors, data)
-                                } else {
-                                    FloorExportHtml.gululu(s, floor, themeColors, data)
-                                }
-                                val base = if (rec.nga_tid > 0) {
-                                    "file:///android_asset/reader/"
-                                } else {
-                                    "file:///android_epub/${s.id}/${s.chapterBaseDir(floor.chapterIndex)}/"
-                                }
-                                val density = context.resources.displayMetrics.density
-                                val screenCss = (context.resources.displayMetrics.widthPixels / density).toInt()
-                                val fontPx = data.font_size
-                                val pageWidth = data.page_width.coerceIn(0.5, 1.5)
-                                val viewportWidth = minOf((46 * fontPx * pageWidth).toInt(), screenCss).coerceAtLeast(320)
-                                val ngaFetcher: (String) -> ByteArray? = { url ->
-                                    try {
-                                        val req = Request.Builder().url(url)
-                                            .ngaHeaders(container.ngaConfig.load())
-                                            .build()
-                                        container.okHttp.newCall(req).execute().use { resp ->
-                                            if (resp.isSuccessful) resp.body?.bytes() else null
-                                        }
-                                    } catch (e: Exception) {
-                                        null
-                                    }
-                                }
-                                val rendered = FloorExportRenderer.render(
+                                val rendered = FloorExportPipeline.renderFloor(
                                     context = context,
-                                    html = html,
-                                    baseUrl = base,
-                                    scale = scale,
-                                    format = fmt,
-                                    fontsDir = container.appPaths.fontsDir,
-                                    assetResolver = if (rec.nga_tid > 0) null else { rel ->
-                                        s.readAsset(floor.chapterIndex, rel)
-                                    },
-                                    ngaImageFetcher = ngaFetcher,
-                                    userAgent = NgaConfig.DEFAULT_UA,
-                                    viewportWidth = viewportWidth,
+                                    container = container,
+                                    record = rec,
+                                    session = s,
+                                    floor = floor,
+                                    spec = FloorExportSpec(
+                                        format = fmt,
+                                        scale = scale.toDouble(),
+                                        themeColors = themeColors,
+                                        settings = data,
+                                    ),
+                                    outDir = File(exportDir),
                                 )
-                                val outFile = File(exportDir, "${safeExportName(rec.title)}_第${num}楼.$fmt")
-                                rendered.file.copyTo(outFile, overwrite = true)
-                                rendered.file.delete()
-                                lastBatch = lastBatch + outFile
-                                Log.w("AnkeShelf", "[floor_export] batch add ${outFile.absolutePath} size=${outFile.length()}")
+                                lastBatch = lastBatch + rendered.file
+                                Log.w("AnkeShelf", "[floor_export] batch add ${rendered.file.absolutePath} size=${rendered.file.length()}")
                                 failedImages += rendered.imageFailed
                                 ok++
                                 progress = (index + 1f) / picks.size

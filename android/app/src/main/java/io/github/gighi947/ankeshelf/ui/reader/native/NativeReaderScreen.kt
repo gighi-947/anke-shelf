@@ -91,6 +91,8 @@ import io.github.gighi947.ankeshelf.service.safeExportName
 import io.github.gighi947.ankeshelf.service.FloorExportRenderer
 import io.github.gighi947.ankeshelf.service.FloorExportMapper
 import io.github.gighi947.ankeshelf.service.FloorExportHtml
+import io.github.gighi947.ankeshelf.service.FloorExportPipeline
+import io.github.gighi947.ankeshelf.service.FloorExportSpec
 import io.github.gighi947.ankeshelf.service.ngaHeaders
 import io.github.gighi947.ankeshelf.ui.reader.extractReaderParts
 import io.github.gighi947.ankeshelf.ui.reader.buildReaderHtml
@@ -291,52 +293,21 @@ fun NativeReaderScreen(
                     android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                     android.content.res.Configuration.UI_MODE_NIGHT_YES
                 val themeColors = readerTheme(readerSettings, systemDark)
-                val html = if (record.nga_tid > 0) {
-                    FloorExportHtml.nga(record, floor, themeColors, readerSettings)
-                } else {
-                    FloorExportHtml.gululu(session, floor, themeColors, readerSettings)
-                }
-                val base = if (record.nga_tid > 0) {
-                    "file:///android_asset/reader/"
-                } else {
-                    "file:///android_epub/${session.id}/${session.chapterBaseDir(floor.chapterIndex)}/"
-                }
-                val density = context.resources.displayMetrics.density
-                val screenCss = (context.resources.displayMetrics.widthPixels / density).toInt()
-                val fontPx = readerSettings.font_size
-                val pageWidth = readerSettings.page_width.coerceIn(0.5, 1.5)
-                val viewportWidth = minOf((46 * fontPx * pageWidth).toInt(), screenCss).coerceAtLeast(320)
-                val ngaFetcher: (String) -> ByteArray? = { url ->
-                    try {
-                        val req = Request.Builder().url(url)
-                            .ngaHeaders(container.ngaConfig.load())
-                            .build()
-                        container.okHttp.newCall(req).execute().use { resp ->
-                            if (resp.isSuccessful) resp.body?.bytes() else null
-                        }
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-                val rendered = FloorExportRenderer.render(
-                    context = context,
-                    html = html,
-                    baseUrl = base,
-                    scale = prefs.scale.toFloat(),
-                    format = prefs.fmt,
-                    fontsDir = container.appPaths.fontsDir,
-                    assetResolver = if (record.nga_tid > 0) null else { rel ->
-                        session.readAsset(floor.chapterIndex, rel)
-                    },
-                    ngaImageFetcher = ngaFetcher,
-                    userAgent = NgaConfig.DEFAULT_UA,
-                    viewportWidth = viewportWidth,
-                )
                 val outDir = File(context.getExternalFilesDir(null) ?: context.filesDir, "floor_export")
-                    .apply { mkdirs() }
-                val outFile = File(outDir, "${safeExportName(record.title)}_第${floorNum}楼.${prefs.fmt}")
-                rendered.file.copyTo(outFile, overwrite = true)
-                rendered.file.delete()
+                val outFile = FloorExportPipeline.renderFloor(
+                    context = context,
+                    container = container,
+                    record = record,
+                    session = session,
+                    floor = floor,
+                    spec = FloorExportSpec(
+                        format = prefs.fmt,
+                        scale = prefs.scale,
+                        themeColors = themeColors,
+                        settings = readerSettings,
+                    ),
+                    outDir = outDir,
+                ).file
                 Log.w("AnkeShelf", "[reader_share] rendered -> $outFile")
                 val uri = FileProvider.getUriForFile(
                     context,

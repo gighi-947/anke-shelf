@@ -460,7 +460,6 @@ fun WebViewChapterView(
                         if (url.startsWith("file:///android_images/")) {
                             val name = URLDecoder.decode(url.removePrefix("file:///android_images/"), "UTF-8")
                             val f = File(c.appPaths.root, "images/$name")
-                            Log.w("AnkeShelf", "[reading_img] file url=$url exists=${f.isFile} path=${f.absolutePath}")
                             if (f.isFile) {
                                 val mime = when (f.extension.lowercase()) {
                                     "png" -> "image/png"
@@ -483,13 +482,11 @@ fun WebViewChapterView(
                                     .build()
                                 val resp = c.okHttp.newCall(req).execute()
                                 if (!resp.isSuccessful) {
-                                    Log.w("AnkeShelf", "[reading_img] http ${resp.code} $url")
                                     resp.close()
                                     null
                                 } else {
                                     val mime = resp.header("Content-Type")?.substringBefore(";")
                                         ?: "image/jpeg"
-                                    Log.w("AnkeShelf", "[reading_img] ok $url $mime")
                                     val body = resp.body
                                     // WebView 关闭返回流时同步释放 OkHttp Response，避免连接泄漏。
                                     val stream = object : FilterInputStream(body.byteStream()) {
@@ -515,7 +512,6 @@ fun WebViewChapterView(
                             ).apply { setStatusCodeAndReasonPhrase(404, "Cleartext Blocked") }
                         }
                         if (url.startsWith("file:///") && !url.startsWith("file:///android_asset/")) {
-                            Log.w("AnkeShelf", "[reading_file] blocked $url")
                             return WebResourceResponse(
                                 "text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)),
                             ).apply { setStatusCodeAndReasonPhrase(404, "Blocked") }
