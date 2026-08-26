@@ -1,0 +1,14 @@
+{
+  "include": ["app", "ngapost2md-python", "tests"],
+  "exclude": [
+    "**/__pycache__",
+    "dist",
+    "build",
+    ".tools",
+    ".local"
+  ],
+  "extraPaths": ["ngapost2md-python"],
+  "typeCheckingMode": "basic",
+  "pythonVersion": "3.12",
+  "reportMissingImports": "warning"
+}
