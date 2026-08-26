@@ -92,7 +92,7 @@ def main() -> int:
         // 小任务下载中取消
         NgaDownload.open();
         document.getElementById('nga-tid').value = '41989465';
-        document.getElementById('nga-authorid').value = '62906407';
+        document.getElementById('nga-author-only').checked = true;
         document.getElementById('nga-max-floors').value = '5';
         document.getElementById('nga-image-mode').value = 'online';
         const r = await Bridge.call('nga_start_download', {

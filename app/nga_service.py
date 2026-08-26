@@ -182,7 +182,7 @@ class NgaService:
     # ---------- 启动/取消 ----------
 
     def start(self, params: dict) -> dict:
-        """启动后台下载。params: tid/url, authorid, max_floors, image_mode,
+        """启动后台下载。params: tid/url, author_only, max_floors, image_mode,
         theme, toc_pid, per_chapter, no_images, full_redownload, open_after."""
         with self._lock:
             if self._status["running"]:
@@ -395,16 +395,27 @@ class NgaService:
         try:
             cfg = _build_cfg(config_mod, params, epub_enabled=True)
 
+            author_only = bool(params.get("author_only", False))
             author_id = _param_int(params, "authorid")
             full = bool(params.get("full_redownload", False))
-            folder = nga_mod.find_folder_name_by_tid(tid, author_id)
-            if full and folder:
-                _remove_tree(Path(nga_library_dir()) / folder)
-                folder = ""
 
             nga_client = client_mod.NgaClient(cfg)
             try:
                 nga_mod.init_nga(nga_client, cfg)
+                if author_only and author_id <= 0:
+                    # 只看楼主：自动获取楼主 uid（tauthorid），无过滤拉第 1 页
+                    probe = Tiezi(tid=tid, author_id=0)
+                    nga_mod.init_from_web(probe)
+                    author_id = int(getattr(probe, "user_id", 0) or 0)
+                    if author_id <= 0:
+                        raise ApiError(
+                            ErrorCode.BOOK_INVALID,
+                            "自动获取楼主 uid 失败，请确认帖子可访问",
+                        )
+                folder = nga_mod.find_folder_name_by_tid(tid, author_id)
+                if full and folder:
+                    _remove_tree(Path(nga_library_dir()) / folder)
+                    folder = ""
                 tiezi = Tiezi(tid=tid, author_id=author_id)
                 if folder:
                     try:
@@ -562,14 +573,14 @@ class NgaService:
         nga_client = client_mod.NgaClient(cfg)
         try:
             nga_mod.init_nga(nga_client, cfg)
-            fetch_author_id = _int_setting(params, "authorid", author_id)
             tiezi = Tiezi(tid=tid, author_id=author_id)
             if native:
                 nga_mod.init_from_local(tiezi)
             else:
                 nga_mod.init_from_web(tiezi)
-            # 文件夹按原始 author_id 定位；抓取过滤可单独切换（仅影响新楼层）
-            tiezi.author_id = fetch_author_id
+            # 模式固定（下载时确定）：author_id 恒为文件夹名中的原始 uid，
+            # 更新不切换过滤——只看楼主模式下 lou 是过滤序号，与全局楼号
+            # 是两套坐标体系，切换会导致楼层错乱。
             nga_mod.download(tiezi, progress=self._progress_cb,
                              cancel=cancelled, no_images=False)
         finally:

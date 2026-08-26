@@ -12,8 +12,9 @@
 
     wrap.appendChild(field('帖子', input('nga-tid', '帖子 tid 或链接，如 41989465 或 read.php?tid=41989465')));
 
-    const authorRow = field('只看楼主', input('nga-authorid', '楼主 uid（留空=全部楼层）'));
-    authorRow.id = 'nga-authorid-row';
+    // 只看楼主开关：开启后自动获取楼主 uid 过滤；楼层号采用只看楼主序号
+    const authorRow = checkbox('nga-author-only', false, '只看楼主（自动获取楼主 uid）');
+    authorRow.id = 'nga-author-only-row';
     wrap.appendChild(authorRow);
 
     const row1 = document.createElement('div');
@@ -104,12 +105,16 @@
     wrap.appendChild(field('帖子', bookSel));
     bookSel.addEventListener('change', () => loadUpdateDefaults(val('dl-update-book')));
 
-    const row1 = document.createElement('div');
-    row1.className = 'nga-form-row';
-    row1.append(
-      field('只看楼主 uid', numInput('dl-update-authorid', '0', '0=全部楼层')),
-    );
-    wrap.appendChild(row1);
+    // 只看楼主开关：锁定为书模式（下载时确定，更新不可切换，避免楼层坐标混用）
+    const onlyBox = checkbox('dl-update-author-only', false, '只看楼主');
+    onlyBox.id = 'dl-update-author-only-row';
+    const onlyInput = onlyBox.querySelector('input');
+    if (onlyInput) onlyInput.disabled = true;
+    wrap.appendChild(onlyBox);
+    const onlyHint = document.createElement('p');
+    onlyHint.className = 'muted settings-hint';
+    onlyHint.textContent = '只看楼主模式在下载时确定；如需切换，请在下载页重新下载。';
+    wrap.appendChild(onlyHint);
 
     const row2 = document.createElement('div');
     row2.className = 'nga-form-row';

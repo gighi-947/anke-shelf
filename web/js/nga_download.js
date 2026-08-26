@@ -224,7 +224,7 @@
     }
     const params = {
       tid,
-      authorid: intVal('nga-authorid'),
+      author_only: check('nga-author-only'),
       max_floors: intVal('nga-max-floors'),
       per_chapter: intVal('nga-per-chapter') || 20,
       image_mode: val('nga-image-mode'),
@@ -540,7 +540,8 @@
     if (!bookId) return;
     try {
       const d = await Api.ngaUpdateDefaults( bookId);
-      setVal('dl-update-authorid', d.author_id || '0');
+      // 只看楼主开关锁定为书模式（下载时确定，更新不可切换，避免楼层坐标混用）
+      setCheck('dl-update-author-only', (d.author_id || 0) > 0);
       setVal('dl-update-image-mode', d.image_mode || 'online');
       setVal('dl-update-per-chapter', d.per_chapter || '20');
       setVal('dl-update-toc-pid', d.toc_pid || '0');
@@ -571,7 +572,7 @@
       return;
     }
     const params = {
-      authorid: intVal('dl-update-authorid'),
+      author_only: check('dl-update-author-only'),
       image_mode: val('dl-update-image-mode'),
       per_chapter: intVal('dl-update-per-chapter') || 20,
       toc_pid: intVal('dl-update-toc-pid'),
@@ -672,6 +673,11 @@
   function setVal(id, v) {
     const el = document.getElementById(id);
     if (el) el.value = v;
+  }
+
+  function setCheck(id, v) {
+    const el = document.getElementById(id);
+    if (el) el.checked = !!v;
   }
 
   // ---------- 页面开关 ----------
