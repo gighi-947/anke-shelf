@@ -30,6 +30,38 @@ data class FloorRenderResult(
     val imageTotal: Int,
 )
 
+/** 渲染等待超时：调用方必须显式失败，不得渲染半成品（显式失败，非静默降级）。 */
+class FloorRenderTimeoutException(message: String) : Exception(message)
+
+/**
+ * 渲染等待循环（抽取为注入式纯函数，FloorExportWaitTest 锁定语义）：
+ * 轮询 → 就绪即 true；deadline 到仍未就绪返回 false（调用方转
+ * [FloorRenderTimeoutException]）。修复前超时静默继续渲染（空图"成功"）。
+ */
+internal object FloorExportWait {
+
+    /**
+     * @param poll 执行一次 JS 状态探测（evaluateJavascript(JS_POLL)）
+     * @param snapshot 读取桥快照：(pending, fontsReady)
+     * @param timedOut deadline 是否已到
+     * @param sleep 让步（pending<0 桥未上报时短间隔 80ms，否则 150ms）
+     */
+    suspend fun awaitReady(
+        poll: () -> Unit,
+        snapshot: () -> Pair<Int, Boolean>,
+        timedOut: () -> Boolean,
+        sleep: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
+    ): Boolean {
+        while (true) {
+            poll()
+            val (pending, fontsReady) = snapshot()
+            if (pending == 0 && fontsReady) return true
+            if (timedOut()) return false
+            sleep(if (pending < 0) 80L else 150L)
+        }
+    }
+}
+
 /**
  * 楼层导出渲染器：把单楼层 HTML 渲染为 PNG/WebP。
  *
@@ -74,186 +106,201 @@ object FloorExportRenderer {
         val initialHeightPx = (1000 * density).roundToInt().coerceAtLeast(1)
 
         val web = WebView(context.applicationContext)
-        val bridge = Bridge()
-        web.settings.javaScriptEnabled = true
-        if (!userAgent.isNullOrBlank()) web.settings.userAgentString = userAgent
-        web.settings.useWideViewPort = true
-        web.settings.loadWithOverviewMode = false
-        web.setBackgroundColor(0x00000000)
+        // 生命周期铁律：WebView 与位图只在 happy path 释放 → 取消/异常路径
+        // 全部泄漏（可达数百 MB）。所有权约定：成功路径在编码后回收（recycle
+        // 幂等），失败/取消路径由 finally 兜底回收。
+        var base: Bitmap? = null
+        var scaled: Bitmap? = null
+        try {
+            val bridge = Bridge()
+            web.settings.javaScriptEnabled = true
+            if (!userAgent.isNullOrBlank()) web.settings.userAgentString = userAgent
+            web.settings.useWideViewPort = true
+            web.settings.loadWithOverviewMode = false
+            web.setBackgroundColor(0x00000000)
 
-        val readerCss = runCatching {
-            context.assets.open("reader/reader.css").bufferedReader().use { it.readText() }
-        }.getOrDefault("")
-        val builtinFontCss =
-            "@font-face{font-family:\"LXGW WenKai\";" +
-                "src:url(\"file:///android_asset/fonts/LXGWWenKai-Regular.woff2\") format(\"woff2\");" +
-                "font-weight:400;font-display:swap;}"
-        val preparedHtml = html
-            .replace(
-                "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>",
-                "<meta name=\"viewport\" content=\"width=$vwCss,initial-scale=1\"/>",
-            )
-            .replace(
-                "<link rel=\"stylesheet\" href=\"file:///android_asset/reader/reader.css\"/>",
-                if (readerCss.isBlank()) "" else "<style>$readerCss</style>",
-            )
-            .replace(
-                "</head>",
-                "<style>$builtinFontCss</style></head>",
-            )
+            val readerCss = runCatching {
+                context.assets.open("reader/reader.css").bufferedReader().use { it.readText() }
+            }.getOrDefault("")
+            val builtinFontCss =
+                "@font-face{font-family:\"LXGW WenKai\";" +
+                    "src:url(\"file:///android_asset/fonts/LXGWWenKai-Regular.woff2\") format(\"woff2\");" +
+                    "font-weight:400;font-display:swap;}"
+            val preparedHtml = html
+                .replace(
+                    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>",
+                    "<meta name=\"viewport\" content=\"width=$vwCss,initial-scale=1\"/>",
+                )
+                .replace(
+                    "<link rel=\"stylesheet\" href=\"file:///android_asset/reader/reader.css\"/>",
+                    if (readerCss.isBlank()) "" else "<style>$readerCss</style>",
+                )
+                .replace(
+                    "</head>",
+                    "<style>$builtinFontCss</style></head>",
+                )
 
-        web.addJavascriptInterface(object {
-            @JavascriptInterface
-            fun ready(pending: Int, failed: Int, total: Int, height: Int, fontsReady: Boolean) {
-                bridge.pending = pending
-                bridge.failed = failed
-                bridge.total = total
-                bridge.heightCss = height
-                bridge.fontsReady = fontsReady
-            }
-        }, "FloorExportBridge")
+            web.addJavascriptInterface(object {
+                @JavascriptInterface
+                fun ready(pending: Int, failed: Int, total: Int, height: Int, fontsReady: Boolean) {
+                    bridge.pending = pending
+                    bridge.failed = failed
+                    bridge.total = total
+                    bridge.heightCss = height
+                    bridge.fontsReady = fontsReady
+                }
+            }, "FloorExportBridge")
 
-        val finished = suspendCancellableCoroutine { cont ->
-            web.webViewClient = object : WebViewClient() {
-                override fun shouldInterceptRequest(
-                    view: WebView?,
-                    request: WebResourceRequest?,
-                ): WebResourceResponse? {
-                    val url = request?.url?.toString() ?: return null
-                    if (url.startsWith("file:///android_fonts/") && fontsDir != null) {
-                        val name = URLDecoder.decode(url.removePrefix("file:///android_fonts/"), "UTF-8")
-                        val f = File(fontsDir, name)
-                        if (f.isFile) {
-                            val mime = when (f.extension.lowercase()) {
-                                "woff2" -> "font/woff2"
-                                "woff" -> "font/woff"
-                                "ttf" -> "font/ttf"
-                                "otf" -> "font/otf"
-                                else -> "application/octet-stream"
+            val finished = suspendCancellableCoroutine { cont ->
+                web.webViewClient = object : WebViewClient() {
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?,
+                    ): WebResourceResponse? {
+                        val url = request?.url?.toString() ?: return null
+                        if (url.startsWith("file:///android_fonts/") && fontsDir != null) {
+                            val name = URLDecoder.decode(url.removePrefix("file:///android_fonts/"), "UTF-8")
+                            val f = File(fontsDir, name)
+                            if (f.isFile) {
+                                val mime = when (f.extension.lowercase()) {
+                                    "woff2" -> "font/woff2"
+                                    "woff" -> "font/woff"
+                                    "ttf" -> "font/ttf"
+                                    "otf" -> "font/otf"
+                                    else -> "application/octet-stream"
+                                }
+                                Log.w("AnkeShelf", "[floor_export] font hit $name")
+                                return WebResourceResponse(mime, null, ByteArrayInputStream(f.readBytes()))
                             }
-                            Log.w("AnkeShelf", "[floor_export] font hit $name")
-                            return WebResourceResponse(mime, null, ByteArrayInputStream(f.readBytes()))
                         }
-                    }
-                    if (url.startsWith("file:///android_asset/fonts/")) {
-                        val rel = url.removePrefix("file:///android_asset/fonts/")
-                        val bytes = runCatching { context.assets.open("fonts/$rel").readBytes() }.getOrNull()
-                        if (bytes != null) {
+                        if (url.startsWith("file:///android_asset/fonts/")) {
+                            val rel = url.removePrefix("file:///android_asset/fonts/")
+                            val bytes = runCatching { context.assets.open("fonts/$rel").readBytes() }.getOrNull()
+                            if (bytes != null) {
+                                val mime = when (rel.substringAfterLast('.', "").lowercase()) {
+                                    "woff2" -> "font/woff2"
+                                    "woff" -> "font/woff"
+                                    "ttf" -> "font/ttf"
+                                    "otf" -> "font/otf"
+                                    else -> "application/octet-stream"
+                                }
+                                Log.w("AnkeShelf", "[floor_export] asset-font hit $rel")
+                                return WebResourceResponse(mime, null, ByteArrayInputStream(bytes))
+                            }
+                        }
+                        if (url.startsWith("file:///android_epub/") && assetResolver != null) {
+                            val rel = URLDecoder.decode(
+                                url.removePrefix("file:///android_epub/").substringAfter('/'),
+                                "UTF-8",
+                            )
+                            val bytes = assetResolver(rel) ?: return null
                             val mime = when (rel.substringAfterLast('.', "").lowercase()) {
-                                "woff2" -> "font/woff2"
-                                "woff" -> "font/woff"
-                                "ttf" -> "font/ttf"
-                                "otf" -> "font/otf"
+                                "png" -> "image/png"
+                                "jpg", "jpeg" -> "image/jpeg"
+                                "gif" -> "image/gif"
+                                "webp" -> "image/webp"
+                                "svg" -> "image/svg+xml"
+                                "css" -> "text/css"
                                 else -> "application/octet-stream"
                             }
-                            Log.w("AnkeShelf", "[floor_export] asset-font hit $rel")
                             return WebResourceResponse(mime, null, ByteArrayInputStream(bytes))
                         }
-                    }
-                    if (url.startsWith("file:///android_epub/") && assetResolver != null) {
-                        val rel = URLDecoder.decode(
-                            url.removePrefix("file:///android_epub/").substringAfter('/'),
-                            "UTF-8",
-                        )
-                        val bytes = assetResolver(rel) ?: return null
-                        val mime = when (rel.substringAfterLast('.', "").lowercase()) {
-                            "png" -> "image/png"
-                            "jpg", "jpeg" -> "image/jpeg"
-                            "gif" -> "image/gif"
-                            "webp" -> "image/webp"
-                            "svg" -> "image/svg+xml"
-                            "css" -> "text/css"
-                            else -> "application/octet-stream"
+                        if (ReaderEgress.isNgaImageUrl(url) && ngaImageFetcher != null) {
+                            val bytes = ngaImageFetcher(url) ?: return null
+                            val mime = when {
+                                bytes.size >= 3 && bytes[0] == 0x89.toByte() && bytes[1] == 0x50.toByte() && bytes[2] == 0x4E.toByte() -> "image/png"
+                                bytes.size >= 4 && bytes[0] == 0x52.toByte() && bytes[1] == 0x49.toByte() -> "image/webp"
+                                bytes.size >= 3 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte() -> "image/jpeg"
+                                bytes.size >= 3 && bytes[0] == 0x47.toByte() && bytes[1] == 0x49.toByte() -> "image/gif"
+                                else -> "image/jpeg"
+                            }
+                            return WebResourceResponse(mime, null, ByteArrayInputStream(bytes))
                         }
-                        return WebResourceResponse(mime, null, ByteArrayInputStream(bytes))
+                        return null
                     }
-                    if (ReaderEgress.isNgaImageUrl(url) && ngaImageFetcher != null) {
-                        val bytes = ngaImageFetcher(url) ?: return null
-                        val mime = when {
-                            bytes.size >= 3 && bytes[0] == 0x89.toByte() && bytes[1] == 0x50.toByte() && bytes[2] == 0x4E.toByte() -> "image/png"
-                            bytes.size >= 4 && bytes[0] == 0x52.toByte() && bytes[1] == 0x49.toByte() -> "image/webp"
-                            bytes.size >= 3 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte() -> "image/jpeg"
-                            bytes.size >= 3 && bytes[0] == 0x47.toByte() && bytes[1] == 0x49.toByte() -> "image/gif"
-                            else -> "image/jpeg"
-                        }
-                        return WebResourceResponse(mime, null, ByteArrayInputStream(bytes))
+
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        if (cont.isActive) cont.resume(Unit)
                     }
-                    return null
                 }
-
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    if (cont.isActive) cont.resume(Unit)
-                }
+                web.layout(0, 0, viewWidthPx, initialHeightPx)
+                web.loadDataWithBaseURL(baseUrl, preparedHtml, "text/html", "utf-8", null)
             }
-            web.layout(0, 0, viewWidthPx, initialHeightPx)
-            web.loadDataWithBaseURL(baseUrl, preparedHtml, "text/html", "utf-8", null)
-        }
 
-        val deadline = System.currentTimeMillis() + timeoutMs
-        while (System.currentTimeMillis() < deadline) {
-            web.evaluateJavascript(JS_POLL, null)
-            val pending = bridge.pending
-            if (pending == 0 && bridge.fontsReady) break
-            if (pending < 0) {
-                delay(80)
-                continue
-            }
-            delay(150)
-        }
-
-        val contentHeightCss = bridge.heightCss.coerceAtLeast(1000)
-        val contentHeightPx = (contentHeightCss * density).roundToInt().coerceAtLeast(1)
-        Log.w("AnkeShelf", "[floor_export] contentHeightCss=$contentHeightCss contentHeightPx=$contentHeightPx viewWidthPx=$viewWidthPx fontsReady=${bridge.fontsReady}")
-        web.layout(0, 0, viewWidthPx, contentHeightPx)
-        delay(80)
-
-        val base = Bitmap.createBitmap(viewWidthPx, contentHeightPx, Bitmap.Config.ARGB_8888)
-        val baseCanvas = Canvas(base)
-        var y = 0
-        while (y < contentHeightPx) {
-            val sliceHeight = minOf(MAX_SLICE_HEIGHT_PX, contentHeightPx - y)
-            val slice = Bitmap.createBitmap(viewWidthPx, sliceHeight, Bitmap.Config.ARGB_8888)
-            val sliceCanvas = Canvas(slice)
-            sliceCanvas.translate(0f, -y.toFloat())
-            web.draw(sliceCanvas)
-            baseCanvas.drawBitmap(slice, 0f, y.toFloat(), null)
-            slice.recycle()
-            y += sliceHeight
-            if (y < contentHeightPx) delay(1)
-        }
-
-        web.removeJavascriptInterface("FloorExportBridge")
-        web.destroy()
-
-        val outW = (viewWidthPx * scale).roundToInt().coerceAtLeast(1)
-        val outH = (contentHeightPx * scale).roundToInt().coerceAtLeast(1)
-        val bitmap = if (outW == viewWidthPx && outH == contentHeightPx) base
-        else Bitmap.createScaledBitmap(base, outW, outH, true).also { base.recycle() }
-
-        val outFile = File.createTempFile("floor_export_", ".$format", context.cacheDir)
-        val result = withContext(Dispatchers.Default) {
-            FileOutputStream(outFile).use { out ->
-                val ok = if (format == "webp") {
-                    bitmap.compress(Bitmap.CompressFormat.WEBP, 82, out)
-                } else {
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                }
-                if (!ok) {
-                    val fallback = bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                    check(fallback) { "图片编码失败" }
-                }
-            }
-            bitmap.recycle()
-            FloorRenderResult(
-                file = outFile,
-                width = outW,
-                height = outH,
-                imageFailed = bridge.failed,
-                imageTotal = bridge.total,
+            // 等待就绪；超时是显式失败（此前静默继续渲染 → 1000px 空图"成功"）。
+            val deadline = System.currentTimeMillis() + timeoutMs
+            val settled = FloorExportWait.awaitReady(
+                poll = { web.evaluateJavascript(JS_POLL, null) },
+                snapshot = { bridge.pending to bridge.fontsReady },
+                timedOut = { System.currentTimeMillis() >= deadline },
             )
+            if (!settled) {
+                throw FloorRenderTimeoutException(
+                    "楼层渲染超时（${timeoutMs / 1000} 秒内图片/字体未就绪），已放弃导出",
+                )
+            }
+
+            val contentHeightCss = bridge.heightCss.coerceAtLeast(1000)
+            val contentHeightPx = (contentHeightCss * density).roundToInt().coerceAtLeast(1)
+            Log.w("AnkeShelf", "[floor_export] contentHeightCss=$contentHeightCss contentHeightPx=$contentHeightPx viewWidthPx=$viewWidthPx fontsReady=${bridge.fontsReady}")
+            web.layout(0, 0, viewWidthPx, contentHeightPx)
+            delay(80)
+
+            base = Bitmap.createBitmap(viewWidthPx, contentHeightPx, Bitmap.Config.ARGB_8888)
+            val baseCanvas = Canvas(base!!)
+            var y = 0
+            while (y < contentHeightPx) {
+                val sliceHeight = minOf(MAX_SLICE_HEIGHT_PX, contentHeightPx - y)
+                val slice = Bitmap.createBitmap(viewWidthPx, sliceHeight, Bitmap.Config.ARGB_8888)
+                try {
+                    val sliceCanvas = Canvas(slice)
+                    sliceCanvas.translate(0f, -y.toFloat())
+                    web.draw(sliceCanvas)
+                    baseCanvas.drawBitmap(slice, 0f, y.toFloat(), null)
+                } finally {
+                    slice.recycle()
+                }
+                y += sliceHeight
+                if (y < contentHeightPx) delay(1)
+            }
+
+            val outW = (viewWidthPx * scale).roundToInt().coerceAtLeast(1)
+            val outH = (contentHeightPx * scale).roundToInt().coerceAtLeast(1)
+            val bitmap = if (outW == viewWidthPx && outH == contentHeightPx) base!!
+            else Bitmap.createScaledBitmap(base!!, outW, outH, true).also { scaled = it }
+
+            val outFile = File.createTempFile("floor_export_", ".$format", context.cacheDir)
+            val result = withContext(Dispatchers.Default) {
+                FileOutputStream(outFile).use { out ->
+                    val ok = if (format == "webp") {
+                        bitmap.compress(Bitmap.CompressFormat.WEBP, 82, out)
+                    } else {
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    }
+                    if (!ok) {
+                        val fallback = bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                        check(fallback) { "图片编码失败" }
+                    }
+                }
+                bitmap.recycle()
+                FloorRenderResult(
+                    file = outFile,
+                    width = outW,
+                    height = outH,
+                    imageFailed = bridge.failed,
+                    imageTotal = bridge.total,
+                )
+            }
+            Log.w("AnkeShelf", "[floor_export] done out=${result.width}x${result.height} failed=${result.imageFailed}/${result.imageTotal}")
+            result
+        } finally {
+            // 所有路径（成功/异常/取消）统一释放：recycle 幂等，成功路径的
+            // 重复调用是 no-op；WebView 销毁必须在主线程（withContext(Main) 内）。
+            runCatching { base?.recycle() }
+            runCatching { scaled?.recycle() }
+            runCatching { web.removeJavascriptInterface("FloorExportBridge") }
+            runCatching { web.destroy() }
         }
-        Log.w("AnkeShelf", "[floor_export] done out=${result.width}x${result.height} failed=${result.imageFailed}/${result.imageTotal}")
-        result
     }
 
     private const val JS_POLL = """
