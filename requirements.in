@@ -3,7 +3,7 @@
 pywebview==6.2.1
 httpx==0.28.1
 ebooklib==0.20
-curl_cffi==0.16.0
+curl_cffi==0.16.2
 Pillow==12.3.0
 jsonschema==4.26.0
 cryptography==50.0.0
