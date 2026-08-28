@@ -66,6 +66,52 @@
 
 ## 4. 最近流水
 
+### 2026-08-28 双端：原生书增量追加重复插入缺陷修复（第四十六批）
+
+- 现象（双端同源）：`append_container`（Windows `app/native_book.py`）与
+  `appendContainer`（Android `data/NativeBook.kt`）在向未满章节追加新楼层时，
+  用 `text.replace("</body>", html + "</body>")` 定位插入点。
+  **Python 的 str.replace 与 Kotlin 的 String.replace 都替换【所有】匹配**。
+- 根因：`render_content_html / renderContentHtml` 不整体转义楼层正文
+  （raw_content 本就是 HTML、需渲染成标签，`html_escape` 只用于属性值），
+  因此正文中的字面量 `</body>`（如作者在 `[code]` 块贴 HTML 示例）会原样
+  留在章节里。已用探针实测确认：`[code]</body>[/code]`、正文裸写、
+  `[quote]` 三种场景的输出 `kept=1`，字面量确实泄漏。
+- 后果：追加时新楼层被插入到**每一处**匹配位置——内容重复、DOM 结构错乱，
+  并连带破坏 text_offset 坐标（影响阅读进度）。
+- 附带缺陷（同一行代码）：`replace` 无匹配时**静默返回原文本且不报错**，
+  而紧随其后的 `floor_count += len(take)`、`last_lou = take[-1].lou`
+  **无条件推进**。结果是 meta 声称有这些楼、章节里却没有；且因
+  `existing_pids` 去重，后续更新不会再补——**不可逆的静默丢失**。
+- 修复（两端同语义，见函数注释）：
+  - 改用 `rindex` / `lastIndexOf` 定位**最后一处** `</body>`。真实闭合标签
+    恒为最后一处（正文内容在其之前），故可安全定位；正文里的字面量不再被命中。
+  - 找不到标记时**显式抛错**（Python `ValueError` / Kotlin `IllegalStateException`），
+    让本次更新失败，而不是静默推进索引。失败时 meta 与 floors 均未被改写
+    （两者都在函数末尾统一保存）。
+  - 章节写入改为原子写（`atomic_write_text` / `atomicWriteText`），
+    与项目既有存储策略一致。
+  - 已确认章节读取是**按 meta 索引**而非枚举目录，故 `.bak` 不会被误当章节。
+- 纪律：先写复现测试（红）再修复（绿）。Windows 2 例、Android 2 例，
+  均实测由 FAIL 转 PASS（红时精确报 `1 != 2`，即重复插入 2 次）。
+- 验证：Python 350 项全过；Android JVM 251 项 0 失败；
+  既有双端差分对照（`appendContainer_matchesDesktopReference`）保持通过。
+
+### 2026-08-28 android：instrumentation 改用 ubuntu + KVM（第四十五批跟进）
+
+- 现象：第四十五批新增的 `instrumented` job 在 CI 首次运行即红
+  （`Timeout waiting for emulator to boot`、`port 5554: Connection refused`）。
+- 根因：`macos-latest` 现为 Apple Silicon（ARM64），而 API 26 只有 x86_64
+  镜像，ARM Mac 上无法硬件加速启动模拟器。此缺陷本地无法验证（无 ARM Mac）。
+- 修复：改用 `ubuntu-latest`（有 KVM 硬件加速）+ udev 放开 `/dev/kvm` 权限
+  + `emulator-boot-timeout: 600`（默认 60s 不足以冷启动），并保留一次
+  失败重试（第二次仍失败如实判红，不掩盖真实回归）。
+- 守卫：DisciplineTest 新增「instrumentation 必须跑在支持硬件加速的 runner 上」
+  （禁止 `runs-on: macos-latest`、要求 ubuntu + 显式 boot timeout），共 16 项。
+- 注：同期 `build` job 的 R8 守卫实际是通过的（mapping.txt 51033938 bytes）。
+  日志里 `::error::mapping.txt missing or empty` 是 `set -x` 对未进入分支的
+  trace 回显，不是真实错误——排查时勿被误导。
+
 ### 2026-08-28 双端/CI：维护接手·工程守卫补齐批（第四十五批）
 
 背景：以“长期维护者”视角做了一次仓库评审，结论是**代码质量高于流程质量**——

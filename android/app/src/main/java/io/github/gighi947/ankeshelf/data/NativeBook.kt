@@ -336,6 +336,39 @@ object NativeBookWriter {
         return nativeDir
     }
 
+    private const val BODY_MARKER = "</body>"
+
+    /**
+     * 把 html 追加进章节正文（插入到真实的 [BODY_MARKER] 之前）。与桌面
+     * `app/native_book.py::_append_into_chapter` 同语义（双端差分一致）。
+     *
+     * 为什么用 lastIndexOf 而不是 replace：`String.replace` 会替换【所有】
+     * 匹配。楼层正文可能含字面量 `</body>`（如 [code] 块里贴 HTML 示例），
+     * 而 renderContentHtml 不整体转义正文（raw_content 本就是 HTML、需渲染成
+     * 标签），该字面量会原样留在章节里。此时 replace 会把新楼层插入到每一处
+     * 匹配位置，造成内容重复、DOM 错乱，并破坏 text_offset 坐标（影响进度）。
+     * 真实闭合标签恒为最后一处（正文内容在其之前），故从末尾定位。
+     *
+     * 找不到标记时抛 [IllegalStateException] 而非静默返回原文本：静默 no-op
+     * 会让调用方继续推进 floor_count / last_lou，导致 meta 声称有这些楼、
+     * 章节里却没有；且因 pid 去重，后续更新不会再补——不可逆的静默丢失。
+     */
+    internal fun appendIntoChapter(text: String, html: String): String {
+        val idx = text.lastIndexOf(BODY_MARKER)
+        if (idx < 0) {
+            throw IllegalStateException(
+                "章节文件缺少 $BODY_MARKER 闭合标记，拒绝追加" +
+                    "（静默跳过会导致 meta 与章节内容不一致且不可逆）",
+            )
+        }
+        return text.substring(0, idx) + html + text.substring(idx)
+    }
+
+    /** 章节文件原子写（与桌面 atomic_write_text 同策略：临时文件 + 替换）。 */
+    private fun writeChapterAtomically(file: File, text: String) {
+        atomicWriteText(file, text)
+    }
+
     /** 把新楼层追加进已有原生书，返回实际追加数（按 pid 去重）。 */
     fun appendContainer(
         ngaLibraryRoot: File,
@@ -372,7 +405,7 @@ object NativeBookWriter {
                     }
                     val chapterFile = File(nativeDir, last.file)
                     val text = chapterFile.readText(Charsets.UTF_8)
-                    chapterFile.writeText(text.replace("</body>", html + "</body>"), Charsets.UTF_8)
+                    writeChapterAtomically(chapterFile, appendIntoChapter(text, html))
                     val updated = last.copy(
                         floor_count = last.floor_count + take.size,
                         last_lou = take.last().lou,

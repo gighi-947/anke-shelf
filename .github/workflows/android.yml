@@ -88,7 +88,10 @@ jobs:
   instrumented:
     name: Instrumented tests (API 26)
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: macos-latest
+    # 必须用 ubuntu（有 KVM 硬件加速）。不可用 macos-latest：现为 Apple Silicon
+    # (ARM64)，而 API 26 只有 x86_64 镜像，ARM Mac 上无法硬件加速启动，
+    # 实测直接 "Timeout waiting for emulator to boot"。
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: android
@@ -100,17 +103,43 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v6
 
+      # 启用 KVM 组权限，否则模拟器回退到软件渲染、启动极慢乃至超时。
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       # API 26 = minSdk：覆盖最老受支持版本，最能暴露 WebView / 存储行为差异。
       - name: Run instrumented tests on emulator
+        id: instrumented
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 26
           arch: x86_64
           profile: Nexus 6
           disable-animations: true
+          # 冷启动偶发抖动（首次需下载系统镜像），给一次重试。
+          # 重试前清理，避免残留 AVD 占用端口 5554。
+          emulator-boot-timeout: 600
           working-directory: android
           # 只跑需要真实 WebView 的跨端对照套件（Kotlin PagedLayout ↔
           # JS reader-lite.js 双实现漂移），避免全套 UI 测试拖长反馈。
+          script: ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gighi947.ankeshelf.ui.reader.ReaderPagedCrossTest
+
+      # 模拟器冷启动偶发失败（端口未就绪/镜像下载慢），失败重试一次。
+      # 仅在首次失败时重试，第二次仍失败则如实判红，不掩盖真实回归。
+      - name: Retry instrumented tests once on emulator flake
+        if: failure() && steps.instrumented.outcome == 'failure'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 26
+          arch: x86_64
+          profile: Nexus 6
+          disable-animations: true
+          emulator-boot-timeout: 600
+          working-directory: android
           script: ./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gighi947.ankeshelf.ui.reader.ReaderPagedCrossTest
 
       - name: Upload instrumentation report

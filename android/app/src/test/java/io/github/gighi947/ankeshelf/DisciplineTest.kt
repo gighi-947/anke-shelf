@@ -303,6 +303,33 @@ class DisciplineTest {
     }
 
     @Test
+    fun `instrumentation 必须跑在支持硬件加速的 runner 上`() {
+        // 回归背景：曾用 macos-latest 跑 API 26（minSdk）模拟器，CI 直接
+        // "Timeout waiting for emulator to boot" 失败。根因是 macos-latest
+        // 现为 Apple Silicon(ARM64)，而 API 26 只有 x86_64 镜像，
+        // ARM Mac 上无法硬件加速启动。必须用 ubuntu（KVM）。
+        val yml = codeOnly(File(repoRoot, ".github/workflows/android.yml"))
+        val instrumentedBlock = yml.substringAfter("instrumented:", "").substringBefore("build:")
+        assertTrue(
+            "android.yml 的 instrumented job 缺失",
+            instrumentedBlock.isNotEmpty(),
+        )
+        assertFalse(
+            "instrumentation 不得用 macos-latest（Apple Silicon 无法硬件加速 x86_64 模拟器）",
+            instrumentedBlock.contains("runs-on: macos-latest"),
+        )
+        assertTrue(
+            "instrumentation 必须用 ubuntu-latest（有 KVM 硬件加速）",
+            instrumentedBlock.contains("runs-on: ubuntu-latest"),
+        )
+        // 模拟器冷启动偶发超时，需显式放宽 boot timeout 并保留一次重试
+        assertTrue(
+            "必须设置 emulator-boot-timeout（默认 60s 不足以冷启动 API 26）",
+            instrumentedBlock.contains("emulator-boot-timeout"),
+        )
+    }
+
+    @Test
     fun `契约 CI 必须目录级触发而非文件白名单`() {
         // 回归背景：contracts.yml 曾用 20+ 行逐文件 paths 白名单，新增一个跨端
         // 文件而忘记往列表里加 → 守卫静默缺失。目录级触发代价是多跑一分钟，

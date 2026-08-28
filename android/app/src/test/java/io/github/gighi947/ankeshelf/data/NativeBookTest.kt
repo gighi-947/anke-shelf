@@ -118,6 +118,117 @@ class NativeBookTest {
     }
 
     @Test
+    fun appendContainer_insertsOnce_whenContentContainsBodyMarker() {
+        // 回归：楼层正文含字面量 `</body>` 时，追加内容只能插入一次。
+        // String.replace 会替换【所有】匹配；安科作品常在正文贴 HTML 示例，
+        // 渲染后该字面量留在章节里，导致新楼层被插入到每一处，
+        // 内容重复、DOM 错乱，并破坏 text_offset 坐标（影响阅读进度）。
+        // 真实闭合标签恒为最后一处（正文在其之前），故从末尾定位。
+        val marker = "</body>"
+        val tmp = kotlin.io.path.createTempDirectory("native-marker-").toFile()
+        try {
+            val base = listOf(
+                NativeFloor(pid = 0L, lou = 1, username = "u", user_id = 1, raw_content = "<p>main</p>"),
+                NativeFloor(
+                    pid = 1002L, lou = 2, username = "u", user_id = 1,
+                    raw_content = "<p>代码示例：$marker</p>",
+                ),
+            )
+            NativeBookWriter.writeContainer(
+                ngaLibraryRoot = tmp, folderName = "marker", tieziTitle = "t", author = "a",
+                tid = 1, authorId = 0, createdTime = "2026-01-01T00:00:00+08:00",
+                updatedTime = "2026-01-01T00:00:00+08:00", validFloors = base,
+                perChapter = 20, imageMode = "online", theme = "light", bookId = "bookid123",
+            )
+            val dir = NativeBookWriter.nativeDirFor(tmp, "marker")
+            val chapterFile = File(dir, "chapters/0001.xhtml")
+            assertEquals(
+                "前置条件：初始章节应含 2 处 marker（正文 1 处 + 真实闭合 1 处）",
+                2, chapterFile.readText(Charsets.UTF_8).windowed(marker.length)
+                    .count { it == marker },
+            )
+
+            NativeBookWriter.appendContainer(
+                tmp, "marker",
+                listOf(
+                    NativeFloor(
+                        pid = 1003L, lou = 3, username = "u", user_id = 1,
+                        raw_content = "<p>floor-3</p>",
+                    ),
+                ),
+                20, "online", "light",
+            )
+
+            val text = chapterFile.readText(Charsets.UTF_8)
+            assertEquals(
+                "新楼层内容被重复插入（replace 命中多处）——应只插入真实闭合处一次",
+                1, text.windowed("floor-3".length).count { it == "floor-3" },
+            )
+            assertTrue(
+                "追加内容应插在真实闭合标签之前",
+                text.indexOf("floor-3") < text.lastIndexOf(marker),
+            )
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun appendContainer_fails_whenChapterHasNoBodyMarker() {
+        // 回归：章节文件找不到 </body> 时必须显式失败。
+        // 静默 no-op 会让调用方继续推进 floor_count / last_lou，
+        // 导致 meta 声称有这些楼、章节里却没有；且因 pid 去重，
+        // 后续更新不会再补——不可逆的静默丢失。
+        val tmp = kotlin.io.path.createTempDirectory("native-nomarker-").toFile()
+        try {
+            val base = listOf(
+                NativeFloor(pid = 0L, lou = 1, username = "u", user_id = 1, raw_content = "<p>main</p>"),
+                NativeFloor(pid = 1002L, lou = 2, username = "u", user_id = 1, raw_content = "<p>f2</p>"),
+            )
+            NativeBookWriter.writeContainer(
+                ngaLibraryRoot = tmp, folderName = "nomarker", tieziTitle = "t", author = "a",
+                tid = 1, authorId = 0, createdTime = "2026-01-01T00:00:00+08:00",
+                updatedTime = "2026-01-01T00:00:00+08:00", validFloors = base,
+                perChapter = 20, imageMode = "online", theme = "light", bookId = "bookid123",
+            )
+            val dir = NativeBookWriter.nativeDirFor(tmp, "nomarker")
+            File(dir, "chapters/0001.xhtml").writeText(
+                "<html><body>no closing marker", Charsets.UTF_8,
+            )
+            val metaBefore = meta(dir)
+            val floorsBefore = floors(dir).size
+
+            var threw = false
+            try {
+                NativeBookWriter.appendContainer(
+                    tmp, "nomarker",
+                    listOf(
+                        NativeFloor(
+                            pid = 1003L, lou = 3, username = "u", user_id = 1,
+                            raw_content = "<p>floor-3</p>",
+                        ),
+                    ),
+                    20, "online", "light",
+                )
+            } catch (e: IllegalStateException) {
+                threw = true
+            }
+            assertTrue("章节缺少 </body> 时应显式失败，不能静默丢楼层", threw)
+
+            val metaAfter = meta(dir)
+            assertEquals("失败后不应写入 floors", floorsBefore, floors(dir).size)
+            assertEquals("失败后不应推进 last_lou", metaBefore.last_lou, metaAfter.last_lou)
+            assertEquals(
+                "失败后不应推进 floor_count（否则 meta 与章节内容不一致）",
+                metaBefore.chapters.last().floor_count,
+                metaAfter.chapters.last().floor_count,
+            )
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
     fun nativeBook_readsDesktopReference() {
         val dir = referenceDir("write25")
         val book = NativeBook(dir).open()
