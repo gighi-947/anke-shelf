@@ -295,5 +295,105 @@ class GululuEpubFixtureTest(unittest.TestCase):
                 self.assertEqual(html, case["expected_html"])
 
 
+class NativeAppendFixtureTest(unittest.TestCase):
+    """原生书增量追加的双端 golden 对照（Android 侧同夹具见 NativeAppendFixtureTest）。
+
+    夹具为 contracts/fixtures/native-book/append-cases.json，期望值是【正确行为】
+    的权威定义。重点覆盖"楼层正文含字面量 </body>"这类边界输入——历史上双端
+    都用 replace 定位插入点，会把新楼层插到每一处匹配，造成内容重复并破坏
+    text_offset 坐标；两端曾同时存在该缺陷而互不察觉，因为契约此前只覆盖
+    数据格式与 text_offset 计算，未覆盖"章节追加算法"。
+    """
+
+    FIXTURE_REL = "fixtures/native-book/append-cases.json"
+
+    def setUp(self):
+        import sys
+        import tempfile
+        from unittest.mock import patch
+
+        sys.path.insert(0, str(PROJECT / "ngapost2md-python"))
+        self.tmp = tempfile.TemporaryDirectory()
+        self.patcher = patch(
+            "app.native_book.nga_library_dir", return_value=Path(self.tmp.name)
+        )
+        self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
+        self.tmp.cleanup()
+
+    def _floor(self, d):
+        from ngapost2md.models import Floor
+
+        return Floor(
+            lou=d["lou"], pid=d["pid"], timestamp=0, username="u", user_id=1,
+            like_num=0, content="", raw_content=d["raw_content"],
+        )
+
+    def test_append_matches_fixture(self):
+        from ngapost2md.models import Tiezi
+
+        from app.native_book import (
+            append_container,
+            load_meta,
+            native_dir_for,
+            write_container,
+        )
+
+        data = _load(self.FIXTURE_REL)
+        cases = data["cases"]
+        defaults = data.get("defaults", {})
+        self.assertGreaterEqual(len(cases), 5)
+        for c in cases:
+            with self.subTest(case=c["name"]):
+                per_chapter = c["per_chapter"]
+                image_mode = c.get("image_mode", defaults.get("image_mode", "online"))
+                theme = c.get("theme", defaults.get("theme", "light"))
+                folder = "case"
+
+                initial = [self._floor(f) for f in c["initial"]]
+                tiezi = Tiezi(
+                    tid=1, author_id=0, title="t", username="a",
+                    folder_name=folder, floors=initial, max_lou=-1,
+                )
+                write_container(
+                    folder, tiezi, initial, per_chapter, image_mode, theme, "bookid123"
+                )
+
+                new_floors = [self._floor(f) for f in c["append"]]
+                got = append_container(
+                    folder, new_floors, per_chapter, image_mode, theme, "bookid123"
+                )
+
+                exp = c["expected"]
+                self.assertEqual(exp["appended_count"], got, "追加数不符")
+
+                native_dir = native_dir_for(folder)
+                meta = load_meta(native_dir)
+                self.assertEqual(exp["chapter_count"], len(meta["chapters"]))
+                self.assertEqual(
+                    exp["last_chapter_floor_count"], meta["chapters"][-1]["floor_count"]
+                )
+                self.assertEqual(
+                    exp["last_chapter_last_lou"], meta["chapters"][-1]["last_lou"]
+                )
+
+                text = (native_dir / exp["chapter_file"]).read_text(encoding="utf-8")
+                probe = exp["probe"]
+                self.assertEqual(
+                    exp["probe_count"],
+                    text.count(probe),
+                    f"探针 {probe} 出现次数不符——重复插入或未插入都会体现在这里",
+                )
+                self.assertEqual(exp["body_marker_count"], text.count("</body>"))
+                if exp["probe_before_last_body_marker"]:
+                    self.assertLess(
+                        text.index(probe),
+                        text.rindex("</body>"),
+                        "追加内容必须落在真实闭合标签之前",
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()

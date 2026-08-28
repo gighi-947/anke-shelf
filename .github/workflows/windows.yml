@@ -58,6 +58,17 @@ jobs:
           }
           if ($failed) { exit 1 }
 
+      - name: Clean stale bytecode
+        # 孤儿 .pyc（源文件已删、字节码残留）会被 unittest discover 导入。
+        # 若残留的是调试探针等"故意失败"的模块，会让测试偶发失败且极难定位
+        # （实测出现过 1/15 概率的假红）。CI 每次从干净 checkout 开始本不会遇到，
+        # 但本地复跑会；统一清理以保证本地与 CI 结果一致。
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path . -Recurse -Filter "__pycache__" -Directory -ErrorAction SilentlyContinue |
+            ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+          Write-Output "pycache cleaned"
+
       - name: JS guard tests (auto-discovered)
         # 自动发现：新增 tests/js/*.test.js 与 contracts/tests/*.test.js 自动纳入，
         # 无需改 CI（此前人工列举导致 reader-save / paged-blank 等守卫漏跑）。
