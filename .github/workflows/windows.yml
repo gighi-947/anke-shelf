@@ -58,11 +58,23 @@ jobs:
           }
           if ($failed) { exit 1 }
 
-      - name: Contract JS tests (textpos + reader-session + nga-cookie)
+      - name: JS guard tests (auto-discovered)
+        # 自动发现：新增 tests/js/*.test.js 与 contracts/tests/*.test.js 自动纳入，
+        # 无需改 CI（此前人工列举导致 reader-save / paged-blank 等守卫漏跑）。
+        shell: pwsh
         run: |
-          node contracts/tests/textpos.test.js
-          node tests/js/reader-session.test.js
-          node tests/js/nga-cookie.test.js
+          $failed = @()
+          $tests = @()
+          $tests += Get-ChildItem tests/js -Filter *.test.js -File
+          $tests += Get-ChildItem contracts/tests -Filter *.test.js -File
+          if ($tests.Count -eq 0) { throw "no JS guard tests discovered" }
+          foreach ($t in $tests) {
+            Write-Output "--- $($t.FullName)"
+            node $t.FullName
+            if ($LASTEXITCODE -ne 0) { $failed += $t.Name }
+          }
+          if ($failed.Count -gt 0) { throw "failing JS guard tests: $($failed -join ', ')" }
+          Write-Output "ran $($tests.Count) JS guard tests"
 
       - name: Unit tests
         run: python -m unittest discover tests

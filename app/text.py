@@ -15,12 +15,15 @@
 注意：本模块输出的偏移坐标 **包含折叠后的空白字符**，搜索/进度/标注统一
 使用此坐标；snippet 等展示层可再做显示美化（不影响坐标）。
 """
+import logging
 import re
 from html.parser import HTMLParser
 
 _RE_WS = re.compile(r"\s+")
 
 _SKIP_TAGS = {"script", "style"}
+
+log = logging.getLogger("app.text")
 
 
 class _TextBuilder(HTMLParser):
@@ -80,8 +83,16 @@ def extract_dom_text(html_text: str) -> str:
     try:
         builder.feed(html_text)
         builder.close()
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 - 记为显式失败，不做静默降级
+        # 不静默吞掉：本函数是 text_offset 的唯一坐标来源，解析中断会让
+        # 该函数返回"半截"文本，进而使进度 / 搜索 / 标注的 offset 整体偏小，
+        # 且症状要到用户重开书才发现。这里记录样本便于定位是哪类标记导致的。
+        log.warning(
+            "HTML 文本提取中断，坐标可能不完整（长度=%d，预览=%r）：%s",
+            len(html_text),
+            html_text[:80],
+            exc,
+        )
     return _RE_WS.sub(" ", builder.result()).strip()
 
 

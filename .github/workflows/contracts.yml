@@ -1,49 +1,29 @@
 name: Contracts CI
 
+# 目录级触发（非逐文件白名单）：此前白名单式 paths 会随新增跨端文件静默失效
+# （新增一个双端对应文件却忘了往列表里加 = 守卫静默缺失）。
+# 代价是 `app/**`、`web/**`、`android/**` 任一改动都会跑契约套件（约 1 分钟），
+# 换来的是"永不漏守卫"。测试自身不依赖构建产物。
 on:
   push:
     paths:
       - 'contracts/**'
-      - 'app/api/**'
-      - 'web/js/api-client.js'
-      - 'web/js/bridge.js'
-      - 'web/js/textpos.js'
+      - 'app/**'
+      - 'web/**'
+      - 'ngapost2md-python/**'
       - 'android/app/src/main/assets/reader/**'
-      - 'android/app/src/main/java/io/github/gighi947/ankeshelf/data/NgaTocParser.kt'
-      - 'ngapost2md-python/ngapost2md/toc.py'
-      - 'app/gululu_assistant.py'
-      - 'app/gululu_epub.py'
-      - 'app/gululu_immersive.py'
-      - 'app/gululu_comments.py'
-      - 'app/gululu_client.py'
-      - 'app/gululu_images.py'
-      - 'app/gululu_source.py'
-      - 'app/gululu_ast.py'
-      - 'android/app/src/main/java/io/github/gighi947/ankeshelf/data/GululuAst.kt'
-      - 'tests/test_contracts.py'
-      - 'tests/test_api_contract.py'
+      - 'android/app/src/main/java/**'
+      - 'tests/**'
       - '.github/workflows/contracts.yml'
   pull_request:
     paths:
       - 'contracts/**'
-      - 'app/api/**'
-      - 'web/js/api-client.js'
-      - 'web/js/bridge.js'
-      - 'web/js/textpos.js'
+      - 'app/**'
+      - 'web/**'
+      - 'ngapost2md-python/**'
       - 'android/app/src/main/assets/reader/**'
-      - 'android/app/src/main/java/io/github/gighi947/ankeshelf/data/NgaTocParser.kt'
-      - 'ngapost2md-python/ngapost2md/toc.py'
-      - 'app/gululu_assistant.py'
-      - 'app/gululu_epub.py'
-      - 'app/gululu_immersive.py'
-      - 'app/gululu_comments.py'
-      - 'app/gululu_client.py'
-      - 'app/gululu_images.py'
-      - 'app/gululu_source.py'
-      - 'app/gululu_ast.py'
-      - 'android/app/src/main/java/io/github/gighi947/ankeshelf/data/GululuAst.kt'
-      - 'tests/test_contracts.py'
-      - 'tests/test_api_contract.py'
+      - 'android/app/src/main/java/**'
+      - 'tests/**'
       - '.github/workflows/contracts.yml'
   workflow_dispatch:
 
