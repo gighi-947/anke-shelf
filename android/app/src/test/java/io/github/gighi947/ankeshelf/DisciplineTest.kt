@@ -350,6 +350,16 @@ class DisciplineTest {
             "必须设置 emulator-boot-timeout（默认 60s 不足以冷启动 API 26）",
             instrumentedBlock.contains("emulator-boot-timeout"),
         )
+        // 镜像必须含 WebView：default(AOSP) 镜像不带 WebView，ReaderPagedCrossTest
+        // 会直接 MissingWebViewPackageException: No WebView installed（实测）。
+        assertTrue(
+            "模拟器镜像必须用 target: google_apis（default/AOSP 镜像不含 WebView）",
+            instrumentedBlock.contains("target: google_apis"),
+        )
+        assertFalse(
+            "不得用 target: default（AOSP 镜像无 WebView，跨端对照测试必然失败）",
+            instrumentedBlock.contains("target: default"),
+        )
     }
 
     @Test

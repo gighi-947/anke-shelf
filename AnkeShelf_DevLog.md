@@ -66,6 +66,24 @@
 
 ## 4. 最近流水
 
+### 2026-08-28 android：instrumentation 改用 google_apis 镜像（第四十七批跟进）
+
+- 现象：改用 ubuntu + KVM 后模拟器能启动（`emulator-5554 - 8.0.0`），
+  但 `ReaderPagedCrossTest` 三个方法全部失败：
+  `MissingWebViewPackageException: Failed to load WebView provider: No WebView installed`。
+- 根因：`reactivecircus/android-emulator-runner` 默认 `target: default`
+  是 **AOSP 镜像，不含 WebView**；而本套件测的正是 Kotlin `PagedLayout` 与
+  JS `reader-lite.js` 在真实 WebView 中的双实现对照，天然依赖 WebView。
+- 修复：主任务与重试任务均显式指定 `target: google_apis`。
+- 守卫：DisciplineTest 新增——要求 `target: google_apis`、禁止
+  `target: default`，把"镜像必须含 WebView"固化（共 17 项）。
+- 环境备注：本轮 github.com:443 被本地网络阻断（api.github.com 可达、
+  ssh.github.com:443 可达但本机 id_ed25519 是 Gitee 密钥未登记 GitHub），
+  提交改用 GitHub Git Data API 推送：精确复制 tree/parent/author/committer/
+  message，重建出的 SHA 与本地**逐一完全一致**，历史未重写。
+  踩坑：`--format=%B` 取 message 会多一个末尾换行（body 是 `...\n`、
+  %B 是 `...\n\n`），导致 SHA 漂移；须用 `git cat-file commit` 解析。
+
 ### 2026-08-28 双端：章节追加算法纳入契约 + 字节码污染治理（第四十七批）
 
 - 背景：第四十六批的缺陷在两端**同时存在**而契约未捕获，根因是既有

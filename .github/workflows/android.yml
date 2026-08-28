@@ -122,6 +122,10 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 26
+          # 必须用 google_apis：default（AOSP）镜像【不含 WebView】，跑
+          # ReaderPagedCrossTest 会直接
+          # MissingWebViewPackageException: No WebView installed（实测）。
+          target: google_apis
           arch: x86_64
           profile: Nexus 6
           disable-animations: true
@@ -140,6 +144,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 26
+          # 同主任务：default(AOSP) 镜像不含 WebView，必须 google_apis。
+          target: google_apis
           arch: x86_64
           profile: Nexus 6
           disable-animations: true
