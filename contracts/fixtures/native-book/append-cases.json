@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "note": "原生书增量追加（append_container / appendContainer）的双端 golden 夹具。Windows tests/test_contracts.py::NativeAppendFixtureTest 与 Android NativeAppendFixtureTest 消费同一份数据。期望值是【正确行为】的权威定义（按 contracts/README 规则 4），不是某端当前实现的输出快照——任何一端与期望不符即为契约漂移。",
+  "defaults": {
+    "image_mode": "online",
+    "theme": "light"
+  },
+  "cases": [
+    {
+      "name": "append_into_unfilled_chapter",
+      "why": "基线：新楼层填入尚未装满的最后一个普通章节。",
+      "per_chapter": 20,
+      "initial": [
+        { "pid": 0, "lou": 1, "raw_content": "<p>main</p>" },
+        { "pid": 1002, "lou": 2, "raw_content": "<p>f2</p>" }
+      ],
+      "append": [
+        { "pid": 1003, "lou": 3, "raw_content": "<p>PROBE-ALPHA</p>" }
+      ],
+      "expected": {
+        "appended_count": 1,
+        "chapter_count": 2,
+        "chapter_file": "chapters/0001.xhtml",
+        "last_chapter_floor_count": 2,
+        "last_chapter_last_lou": 3,
+        "probe": "PROBE-ALPHA",
+        "probe_count": 1,
+        "body_marker_count": 1,
+        "probe_before_last_body_marker": true
+      }
+    },
+    {
+      "name": "append_when_content_has_body_marker",
+      "why": "回归：楼层正文含字面量 </body>（如 [code] 块贴 HTML 示例）。渲染不整体转义正文，该字面量会留在章节里；追加必须只插入真实闭合处一次，不能每处匹配都插。",
+      "per_chapter": 20,
+      "initial": [
+        { "pid": 0, "lou": 1, "raw_content": "<p>main</p>" },
+        { "pid": 1002, "lou": 2, "raw_content": "<p>code: </body></p>" }
+      ],
+      "append": [
+        { "pid": 1003, "lou": 3, "raw_content": "<p>PROBE-BETA</p>" }
+      ],
+      "expected": {
+        "appended_count": 1,
+        "chapter_count": 2,
+        "chapter_file": "chapters/0001.xhtml",
+        "last_chapter_floor_count": 2,
+        "last_chapter_last_lou": 3,
+        "probe": "PROBE-BETA",
+        "probe_count": 1,
+        "body_marker_count": 2,
+        "probe_before_last_body_marker": true
+      }
+    },
+    {
+      "name": "append_when_content_has_body_and_html_marker",
+      "why": "正文同时含 </body> 与 </html> 字面量。真实闭合标签恒为最后一处，追加点必须落在它之前。",
+      "per_chapter": 20,
+      "initial": [
+        { "pid": 0, "lou": 1, "raw_content": "<p>main</p>" },
+        { "pid": 1002, "lou": 2, "raw_content": "<p>a </body> b </html> c</p>" }
+      ],
+      "append": [
+        { "pid": 1003, "lou": 3, "raw_content": "<p>PROBE-GAMMA</p>" }
+      ],
+      "expected": {
+        "appended_count": 1,
+        "chapter_count": 2,
+        "chapter_file": "chapters/0001.xhtml",
+        "last_chapter_floor_count": 2,
+        "last_chapter_last_lou": 3,
+        "probe": "PROBE-GAMMA",
+        "probe_count": 1,
+        "body_marker_count": 2,
+        "probe_before_last_body_marker": true
+      }
+    },
+    {
+      "name": "append_opens_new_chapter_when_last_full",
+      "why": "最后一个普通章节已满时，新楼层必须另开章节而不是塞进已满的章节。",
+      "per_chapter": 2,
+      "initial": [
+        { "pid": 0, "lou": 1, "raw_content": "<p>main</p>" },
+        { "pid": 1002, "lou": 2, "raw_content": "<p>f2</p>" },
+        { "pid": 1003, "lou": 3, "raw_content": "<p>f3</p>" }
+      ],
+      "append": [
+        { "pid": 1004, "lou": 4, "raw_content": "<p>PROBE-DELTA</p>" }
+      ],
+      "expected": {
+        "appended_count": 1,
+        "chapter_count": 3,
+        "chapter_file": "chapters/0002.xhtml",
+        "last_chapter_floor_count": 1,
+        "last_chapter_last_lou": 4,
+        "probe": "PROBE-DELTA",
+        "probe_count": 1,
+        "body_marker_count": 1,
+        "probe_before_last_body_marker": true
+      }
+    },
+    {
+      "name": "append_duplicate_pid_is_deduped",
+      "why": "pid 已存在时必须整批去重、不写入，章节内容保持不变。",
+      "per_chapter": 20,
+      "initial": [
+        { "pid": 0, "lou": 1, "raw_content": "<p>main</p>" },
+        { "pid": 1002, "lou": 2, "raw_content": "<p>f2</p>" }
+      ],
+      "append": [
+        { "pid": 1002, "lou": 2, "raw_content": "<p>PROBE-EPSILON</p>" }
+      ],
+      "expected": {
+        "appended_count": 0,
+        "chapter_count": 2,
+        "chapter_file": "chapters/0001.xhtml",
+        "last_chapter_floor_count": 1,
+        "last_chapter_last_lou": 2,
+        "probe": "PROBE-EPSILON",
+        "probe_count": 0,
+        "body_marker_count": 1,
+        "probe_before_last_body_marker": false
+      }
+    }
+  ]
+}

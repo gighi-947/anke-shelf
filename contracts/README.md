@@ -19,6 +19,7 @@ contracts/
 │                       reader-lite-parts / reader-lite-textpos 跨端折叠对照）
 └── fixtures/
     └── native-book/basic-nga/   最小原生书 fixture（meta/floors/chapters + 期望纯文本）
+    └── native-book/append-cases.json   原生书增量追加 golden（见下文规则 10）
     └── nga-toc/       NGA 目录楼 fixture（原始楼层 HTML + 期望章节与 split 分章结果）
     └── gululu/        骨碌碌富文本 AST → XHTML 期望（ast-cases.json；批 5 追加助手/沉浸用例）
     └── progress/      进度事件序列夹具（滚动防抖/翻页即时/模式隔离/比例锚点/
@@ -63,6 +64,19 @@ contracts/
      否则每 20 楼一章）与单楼 `section` HTML（`floor-<id>` 锚点、楼层头、评论块、
      `data-gululu-vfx`）。
    期望值由 Windows 现行实现生成并人工审核锁定（见规则 4）。
+10. 原生书增量追加跨端对照（`fixtures/native-book/append-cases.json`）：Windows
+    `app/native_book.append_container` 与 Android `data/NativeBookWriter.appendContainer`
+    消费同一份夹具（Windows `tests/test_contracts.py::NativeAppendFixtureTest`
+    与 Android `data/NativeAppendFixtureTest`）。
+    设立原因：此前契约只覆盖**数据格式**与 **text_offset 计算**，未覆盖
+    **章节追加算法**，导致"用 replace 定位插入点、正文含 `</body>` 时重复插入"
+    的缺陷在两端独立实现中同时存活且互不察觉（第四十六批修复）。
+    夹具以**行为特征**断言而非完整 HTML：追加内容出现次数（`probe_count`，
+    重复插入会被立刻捕获）、`</body>` 总数、追加位置是否落在真实闭合之前，
+    以及章节数 / floor_count / last_lou / pid 去重。
+    覆盖边界：正文含 `</body>`、正文同时含 `</body>` 与 `</html>`、
+    末章已满需开新章、重复 pid 去重。
+    新增用例时按规则 4：先写期望（红），再改实现（绿），不允许只改测试绕过。
 
 ## 版本
 
