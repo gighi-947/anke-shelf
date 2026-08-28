@@ -516,6 +516,29 @@ def write_container(
     return native_dir
 
 
+_BODY_MARKER = "</body>"
+
+
+def _append_into_chapter(text: str, html: str) -> str:
+    """把 html 追加进章节正文（插入到真实的 </body> 之前）。
+
+    为什么用 rindex 而不是 replace：
+    `str.replace` 会替换【所有】匹配。楼层正文可能含字面量 `</body>`
+    （例如在 [code] 块里贴 HTML 示例），而 render_content_html 不整体转义
+    正文（raw_content 本就是 HTML、需渲染成标签），该字面量会原样留在章节里。
+    此时 replace 会把新楼层插入到每一处匹配位置，造成内容重复、DOM 错乱，
+    并连带破坏 text_offset 坐标（影响阅读进度）。
+    真实闭合标签恒为最后一处（正文内容在其之前），故从末尾定位。
+
+    找不到标记时抛 ValueError 而非静默返回原文本：
+    静默 no-op 会让调用方继续推进 floor_count / last_lou，导致 meta 声称
+    有这些楼、章节里却没有；且因 existing_pids 去重，后续更新不会再补——
+    不可逆的静默丢失。宁可让本次更新显式失败。
+    """
+    idx = text.rindex(_BODY_MARKER)
+    return text[:idx] + html + text[idx:]
+
+
 def append_container(
     folder_name: str,
     new_floors: list,
@@ -550,8 +573,7 @@ def append_container(
                 html = "".join(_render_floor_html(f, theme_colors, img_src) for f in take)
                 path = native_dir / last["file"]
                 text = path.read_text(encoding="utf-8")
-                text = text.replace("</body>", html + "</body>")
-                path.write_text(text, encoding="utf-8")
+                atomic_write_text(path, _append_into_chapter(text, html))
                 last["floor_count"] = int(last["floor_count"]) + len(take)
                 last["last_lou"] = take[-1].lou
                 if take[-1].lou != last["first_lou"]:
