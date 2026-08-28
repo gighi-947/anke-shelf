@@ -50,16 +50,16 @@ powershell -ExecutionPolicy Bypass -File android/scripts/check-release.ps1 -ApkP
 - 提交前缀：`android:` / `win:` / `docs:`；功能分支 `android/<feature>`、`win/<feature>`。
 - 每次改动必须补记 [AnkeShelf_DevLog.md](AnkeShelf_DevLog.md)「最近流水」（日期 + 提交 + 现象/结论）。
   **外部贡献者**只需在 PR 中写明改动摘要与验证结果，DevLog 流水由维护者合并时代写。
-- 涉及 HEAD/版本线/测试基线/CI 清单/文件行数/待办状态的改动，收尾跑文档漂移检查
-  并同步非归档文档（可先 `powershell -ExecutionPolicy Bypass -File scripts/check-doc-drift.ps1`
-  生成快照，再按 `AGENTS.md` §5 高漂移检查清单逐项核对）。
+- 文档不得写入会过期的事实（HEAD / 提交号 / 版本号 / 测试计数 / 文件行数 /
+  日期快照 / CI 清单）；需要现查的就写查询命令。详见 `AGENTS.md` §5
+  “文档只写工具推断不出来的内容”。
 
 ## Pull Request 清单
 
 - [ ] 说明改动目标、成功标准与验证方式
 - [ ] 相关单测 / 契约守卫 / `DisciplineTest` 通过
 - [ ] DevLog「最近流水」已补记（外部贡献者：PR 已写明改动摘要与验证即可，由维护者代写）
-- [ ] 涉及 HEAD/版本线/测试基线/CI 清单/文件行数/待办状态时，已跑文档漂移扫描并同步非归档文档（`scripts/check-doc-drift.ps1` + AGENTS.md §5 清单）
+- [ ] 文档未引入会过期的事实（HEAD / 提交号 / 版本号 / 测试计数 / 文件行数 / 日期快照 / CI 清单）；需要现查的已写为查询命令（AGENTS.md §5）
 - [ ] 共享文件 / 数据契约字段已做 Diff 影响检查（Windows / Android / CI / 文档）
 - [ ] 无凭据、敏感数据与大体积二进制混入
 

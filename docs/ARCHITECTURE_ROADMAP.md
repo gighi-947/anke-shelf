@@ -35,44 +35,54 @@ AnkeShelf 已经跨过“功能原型”阶段，进入“稳定产品 + 持续�
 
 ---
 
-## 2. 现状核验（2026-08-26 基线复核；代码规模沿用 2026-08-26）
+## 2. 现状核验
 
-### 2.1 版本与测试基线
+> **本节不写会过期的事实**。HEAD、版本号、测试计数、代码行数一律以工具实跑
+> 为准（命令见下），文档只保留"工具推断不出来的判断"：某个热点文件*为什么*
+> 大、是否已拆分、拆到什么程度。历史上本节维护过逐行数字与测试计数，
+> 每次提交即失效，反而催生出专门的"补文档漂移"提交——已按治理原则移除。
 
-| 项 | 现状 |
+### 2.1 版本与测试基线（以实跑为准）
+
+| 事实 | 获取方式 |
 | --- | --- |
-| 主干状态 | `main` 持续推进；v1.6.0 / android-v1.3.0 发布后完成 2026-08-22 防御性编程审查清理批（进度错误出口 / store 损坏显式化 / ApiContext 必填 / 恢复锚点单点 / 双端死表面删除）与性能专项（A1 翻页单次采样 / A2 空白页判定 / 字体 WOFF2 -61%），已发布 v1.7.0 / android-v1.4.0 修复 NGA 楼层卡片边框/卡底在旧 WebView 与 Windows 端不可见的问题；随后发布 v1.7.1 / android-v1.4.1（NGA 只看楼主开关 + 骰子详细骰点折叠）（HEAD 以 `git log` 为准） |
-| 当前开发分支 | `main`；Windows 骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并 |
-| Windows Python 单测 | 345 项（2026-08-26 实跑全过） |
-| JS 契约测试 | `textpos` 15 cases + `api-contract` 67 methods + `bridge-contract`（桥版本 1 / 能力含 annotation·assist·gululu）+ `reader-lite-parts`（9 parts / 动态字节校验）+ `reader-lite-textpos`（跨端折叠 12 例）+ 启动失败诊断 + `reader-save`（进度写入唯一出口）+ `reader-session` + `nga-cookie` OK |
-| Android JVM 单测 | 241 项（240 过 / 1 跳；2026-08-26 实跑复核） |
-| Android 真机测试 | ELE-AL00 instrumentation 11 / 11；滚动/分页/交叉模式/图片章节重进通过 |
-| UI 实机 harness | 97 项 PASS（需桌面 WebView2） |
-| CI | `windows.yml` / `android.yml` / `nightly.yml` / `contracts.yml` |
+| 当前 HEAD / 分支 | `git rev-parse HEAD`、`git branch --show-current` |
+| 版本线 | README 版本表（唯一文档事实源）；代码源为 `app/__init__.py`、`android/app/build.gradle.kts` |
+| Windows Python 单测 | `python -m unittest discover tests` |
+| JS 契约与守卫 | `node contracts/tests/*.test.js`、`node tests/js/*.test.js`（CI 自动发现，见 §3） |
+| Android JVM 单测 | `android/gradlew.bat testDebugUnitTest`（含 `DisciplineTest` 纪律守卫） |
+| Android 真机 | instrumentation（见 §4.2 接入计划），需设备 |
+| CI 工作流 | `.github/workflows/`（现役：`windows` / `android` / `nightly` / `contracts`） |
 
-> 权威基线：版本线见 README 版本表；测试基线详见 `MAINTENANCE_GUIDE.md` §7；本节为路线图快照。
+补充说明（非计数，属判断）：
+- 主干为 `main`，骨碌碌 EPUB、图片三态与追加式增量热更新已完成主干合并。
+- 历史批次（防御性编程审查清理、性能专项 A1/A2、字体 WOFF2 压缩、
+  NGA 楼层卡片兼容、只看楼主开关、骰子详细骰点折叠）均已发布，
+  流水见 `AnkeShelf_DevLog.md` §4，本表不复述。
 
-### 2.2 代码规模热点
+### 2.2 代码规模热点（只记"为什么大 / 拆到哪一步"）
 
-| 文件 | 行数 | 关注点 |
-| --- | --- | --- |
-| `android/.../data/Html5Entities.kt` | 2130 | 机械生成表，正常 |
-| `android/.../ui/reader/WebViewChapterView.kt` | 930 | 桥与宿主；已审查并补充失败日志、资源拦截、file 子资源放行 |
-| `android/.../ui/shelf/BookshelfScreen.kt` | 793 | 书架页（含 store 损坏横幅），未拆分 |
-| `android/.../data/NativeBook.kt` | 645 | 原生书数据层 |
-| `android/.../ui/settings/SettingsScreen.kt` | 560 | 已按 Panel 拆分 |
-| `android/.../ui/search/SearchScreen.kt` | 580 | 搜索页，未拆分 |
-| `android/.../data/Epub.kt` | 574 | EPUB 数据层 |
-| `android/.../ui/reader/native/NativeReaderScreen.kt` | 1275 | 外壳已拆 Chrome / Gululu；恢复锚点单点 RestoreAnchor；楼层分享进度/音乐头 |
-| `android/.../ui/download/DownloadScreen.kt` | 386 | 已拆分面板；含楼层导出入口 |
-| `android/.../assets/reader/reader-lite.js` | 1937 | 现役渲染内核（parts 9 模块；状态机 Step 0–4 + 跨端折叠/骨碌碌能力；2026-08-22 清理死表面） |
-| `web/js/reader.js` | 767 | 核心编排；进度写入经 reader-save.js 唯一出口 |
-| `web/js/nga_download.js` | 725 | 已拆 nga-download-panels；骨碌碌逻辑独立在 gululu-download.js |
-| `app/gululu_service.py` | 491 | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |
-| `app/gululu_update.py` | 427 | Windows 私有基线、append-only 合并、旧书迁移与可恢复 EPUB 替换 |
-| `app/nga_service.py` | 712 | 下载/更新/清理语义集中；已迁入 TaskManager |
-| `web/js/settings.js` | 181 | 已拆 settings-ui / settings-panels |
-| `web/css/reader.css` | 2258 | 样式，暂不处理 |
+行数会随每次提交变化，**需要数字时现查**：
+`git ls-files '*.kt' '*.js' '*.py' | xargs wc -l | sort -rn | head -20`
+
+| 文件 | 关注点（与行数无关的判断） |
+| --- | --- |
+| `android/.../data/Html5Entities.kt` | 机械生成表，不计入复杂度债 |
+| `android/.../ui/reader/WebViewChapterView.kt` | 桥与宿主；已补充失败日志、资源拦截、file 子资源放行 |
+| `android/.../ui/shelf/BookshelfScreen.kt` | 书架页（含 store 损坏横幅），**未拆分** |
+| `android/.../ui/search/SearchScreen.kt` | 搜索页，**未拆分** |
+| `android/.../ui/reader/native/NativeReaderScreen.kt` | 外壳已拆 Chrome / Gululu；恢复锚点单点 `RestoreAnchor` |
+| `android/.../ui/settings/SettingsScreen.kt` | 已按 Panel 拆分 |
+| `android/.../ui/download/DownloadScreen.kt` | 已拆分面板；含楼层导出入口 |
+| `android/.../assets/reader/reader-lite.js` | 现役渲染内核（parts 模块化；状态机 + 跨端折叠/骨碌碌能力） |
+| `web/js/reader.js` | 核心编排；进度写入经 `reader-save.js` 唯一出口 |
+| `web/js/nga_download.js` | 已拆 `nga-download-panels`；骨碌碌逻辑独立在 `gululu-download.js` |
+| `app/gululu_service.py` | 导入/导出/更新任务状态、取消与事件编排；已去重启动/任务包装 |
+| `app/nga_service.py` | 下载/更新/清理语义集中；已迁入 `TaskManager` |
+| `web/css/reader.css` | 样式，暂不处理 |
+
+> 拆分触发条件（见 §1.5 抽象门槛）：单文件超过 500 行才审查；机械生成表豁免。
+> 上表"未拆分"两项是当前已知候选，未达痛点不动。
 
 ### 2.3 已确认的架构债
 

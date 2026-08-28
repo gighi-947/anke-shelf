@@ -8,62 +8,41 @@
 > 记录纪律：**此后每一次改动、调试、发布都必须在本文件“最近流水”追加记录**
 > （日期 + 提交 + 现象/结论）。
 
-## 1. 当前状态（2026-08-26）
+## 1. 当前状态
 
-- 当前开发基线：`main`；骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 /
-  沉浸总览 / 骰点解锁菜单）已全部合入并发布 v1.5.1；v1.6.0 / android-v1.3.0 与 v1.6.1 / android-v1.3.1、v1.7.0 / android-v1.4.0 已发布；五批接手风险修复已合入；
-  P5 批次已启动并完成 P5-A 快赢批、P5-B 裂图修复、P5-D 封面系统、
-  P5-E1 Cookie 粘贴解析、P5-E2 双端应用内登录（Android WebView +
-  Windows pywebview 二级窗）、NGA 主题自适应
-  （含 UI 图标规范核查）；多轮架构收敛已完成：
-  EventBus→显式回调、API 错误统一到 HTTP/ApiError、reader-lite 状态机
-  Step 0–4、TaskManager 统一 NGA/Gululu/Export；
-  文档漂移治理已强化
-  （AGENTS §5 高漂移清单 + `scripts/check-doc-drift.ps1`）；
-  2026-08-22 防御性编程审查清理批（第二十二批，见 §4）：
-  Web 进度/标注写入错误出口、Android store 损坏显式化、
-  ApiContext 服务必填、恢复锚点单点化、双端死表面删除；
-  性能优化 A1 翻页单次采样（第二十三批）、A2 空白页判定
-  提前退出+代际缓存（第二十四批）、内置字体 WOFF2 无损压缩
-  -61%（第二十五批，见 §4）；性能专项收尾并发布
-  v1.6.1 / android-v1.3.1（第二十六批）、v1.6.2 / android-v1.3.2（第二十八批）；
-  安全对齐评估与修复批（第二十九批）、NGA 内嵌图片进度修复
-  （第三十批）、华为 WebView 楼层卡片 rgba 修复（第三十一批）、
-  NGA 外链音乐在线 cue（第三十二批）、NGA 附件音频调研（第三十三批）、
-  NGA 附件音频在线 cue（第三十四批）、NGA 音乐 cue 播放控件补齐（第三十五批）、
-  附件音频标题显示为可读文件名（第三十六批）、附件音频自动播放开关与  UI 卡片收敛（第三十七批，见 §4）；
-  楼层导出双端能力（第三十八/三十九/四十批）与 Android 楼层导出对齐
-  （第四十批，见 §4）、双端 GitHub 版本更新提醒（第四十一批）已合入并
-  发布 v1.7.0 / android-v1.4.0；
-  NGA「只看楼主」开关改造（第四十二批，见 §4）：下载页 uid 输入框改为
-  只看楼主开关（自动获取楼主 uid）；更新页开关锁定为书模式，杜绝楼层坐标混用；
-  NGA 骰子详细骰点折叠（第四十三批，见 §4）：默认收起过程骰点，点击展开；
-  以上已发布 v1.7.1 / android-v1.4.1。
-  精确提交与远端状态以 `git log` / `git status` 为准。
-- 版本线：Windows `v1.7.1`（已发布，AnkeShelf-v1.7.1.zip）；
-  Android `android-v1.4.1`（已发布，AnkeShelf-v1.4.1-android.apk）。
-- 测试基线（Windows / JS / Android JVM 于 2026-08-26 实跑复核）：
-  - Windows Python：`python -m unittest discover tests` = 345 项
-    （2026-08-26 实跑全过）；
-  - JS：`node contracts/tests/textpos.test.js`（15 例）、
-    `node contracts/tests/api-contract.test.js`（67 方法一致）、
-    `node contracts/tests/api-contract-launch.test.js`（Python 启动失败诊断）、
-    `node contracts/tests/bridge-contract.test.js`（桥版本 1，能力含 annotation·assist·gululu）、
-    `node contracts/tests/reader-lite-parts.test.js`（9 parts / 动态字节校验）、
-    `node contracts/tests/reader-lite-textpos.test.js`（跨端折叠 12 例）、
-    `node tests/js/reader-save.test.js`（进度写入唯一出口）、
-    `node tests/js/paged-blank.test.js`（空白页判定边界）、
-    `node tests/js/reader-session.test.js`、`node tests/js/nga-cookie.test.js` 均 OK；
-  - Android JVM：`gradlew testDebugUnitTest` = 241 项（240 过 / 1 跳）；
-    DisciplineTest 11 项在岗；
-  - Android 真机：ELE-AL00（Android 10）instrumentation 11 / 11 通过；
-  - UI 实机 harness：`python -m tests.ui.runner` = 97 项 PASS
-    （2026-08-22 A1 后复跑全绿；需桌面 WebView2）；
-  - 骨碌碌正式冒烟 `formal_ui_smoke.js`（桌面 + 430px，含骰点菜单/段落评论/总览/
-    抽屉保位断言）全过。
+> **本节不写会过期的事实**。HEAD、版本号、测试计数一律以工具实跑为准：
+> `git rev-parse HEAD` / README 版本表 / 下方测试命令。
+> 文档只记录"已完成哪些批次 + 当前的架构判断"，逐次数字不复述
+> （历史做法是在此处维护测试计数与日期快照，每次提交即失效，
+> 反而催生出专门的"补文档漂移"提交，已按治理原则移除）。
+
+- 当前开发基线：`main`。已完成的里程碑批次：
+  - 骨碌碌阅读交互改造（悬浮气泡 / 侧边评论 / 段落评论 / 沉浸总览 /
+    骰点解锁菜单）→ v1.5.1；
+  - 防御性编程审查清理批（Web 进度/标注写入错误出口、Android store 损坏显式化、
+    ApiContext 服务必填、恢复锚点单点化、双端死表面删除）；
+  - 性能专项（A1 翻页单次采样 / A2 空白页判定提前退出+代际缓存 /
+    内置字体 WOFF2 无损压缩）→ v1.6.x；
+  - NGA 系列修复（裂图、楼层卡片旧 WebView 兼容、外链与附件音频 cue、
+    音乐播放控件、只看楼主开关、骰子详细骰点折叠）→ v1.7.x；
+  - 楼层导出双端能力 + 双端 GitHub 版本更新提醒 → v1.7.0 / android-v1.4.0；
+  - 架构收敛：EventBus→显式回调、API 错误统一到 HTTP/ApiError、
+    reader-lite 状态机、TaskManager 统一 NGA/Gululu/Export。
+  - 逐批流水（日期 + 提交 + 现象/结论）见 §4 与 `docs/DEVLOG_ARCHIVE.md`。
+- 版本线（唯一文档事实源为 README 版本表；代码源为 `app/__init__.py`、
+  `android/app/build.gradle.kts`）：Windows `vX.Y.Z`、Android `android-vX.Y.Z`，
+  两端独立发布。
+- 测试基线（**现查现用，不复述计数**）：
+  - Windows Python：`python -m unittest discover tests`
+  - JS 契约与守卫：`node contracts/tests/*.test.js`、`node tests/js/*.test.js`
+    （CI 自动发现全部文件，不再人工列举，见 `.github/workflows/windows.yml`）
+  - Android JVM：`android/gradlew.bat testDebugUnitTest`
+    （含 `DisciplineTest`——结构性纪律守卫，改 CI/依赖/契约后必须保持通过）
+  - Android 真机：instrumentation，需设备（接入计划见
+    `docs/ARCHITECTURE_ROADMAP.md`）
+  - UI 实机 harness：`python -m tests.ui.runner`（需桌面 WebView2）
 - CI：`windows.yml`、`android.yml`、`nightly.yml`、`contracts.yml`。
-- 权威基线：版本线见 README 版本表；测试基线详见 `docs/MAINTENANCE_GUIDE.md` §7；
-  待办以 `docs/ARCHITECTURE_ROADMAP.md` 为准（本节为快速快照）。
+- 待办与延后项以 `docs/ARCHITECTURE_ROADMAP.md` 为准（本节为快速快照）。
 
 ## 2. 本机环境（Windows 开发机）
 
@@ -86,6 +65,65 @@
 - `dist/`、`build/`、`.tools/`：构建产物与工具链。
 
 ## 4. 最近流水
+
+### 2026-08-28 双端/CI：维护接手·工程守卫补齐批（第四十五批）
+
+背景：以“长期维护者”视角做了一次仓库评审，结论是**代码质量高于流程质量**——
+存储耐久性、进度架构、契约守卫都站得住，但 CI 存在静默盲区、文档治理已反噬。
+本批只修流程与守卫，不动业务功能。
+
+- **P0-1 JS 守卫进 CI（此前漏跑）**：`windows.yml` 原先人工列举 3 个 JS 测试，
+  导致 `reader-save`（**进度写入唯一出口**）与 `paged-blank` 两个关键守卫
+  长期不在 CI。改为自动发现 `tests/js/*.test.js` + `contracts/tests/*.test.js`
+  全部文件，新增守卫无需改 CI。
+- **P0-2 release 构建进 CI（此前从未验证）**：正式签名缺失使 `assembleRelease`
+  从未在 CI 跑过，R8/ProGuard 规则错误只会在发版当天暴露。新增：
+  CI 用一次性临时 keystore（`keytool` 现场生成、validity=1、`if: always()` 清理）
+  跑 `assembleRelease`，并断言 `mapping.txt` 非空以证明 R8 真的执行
+  （此前全是 UP-TO-DATE 会蒙混过关）。**本地已 clean 实跑验证**：R8 真实执行
+  6m45s，mapping 51MB、APK 12.15MB、无 missing-rules 警告。
+- **P1-3 依赖锁定**：`android/app/build.gradle.kts` 按名激活
+  `activateDependencyLocking()`，生成 `android/app/gradle.lockfile`（完整传递依赖图）。
+  **守卫效力已实测**：篡改锁文件里 jsoup 版本 → 构建失败
+  （`Dependency version enforced by Dependency Locking`）。
+  未用 `lockAllConfigurations()`——它会波及版本目录内部配置，产出
+  `settings-gradle.lockfile`（内容仅 `empty=incomingCatalogForLibs0`）噪音文件；
+  该文件是 `--write-locks` 全局标志的固有副产物、无法在 settings 侧关闭，
+  故按构建噪音加入 `.gitignore`。
+- **P1-4 contracts.yml 改目录触发**：原为 20+ 行逐文件 paths 白名单，
+  新增一个跨端文件而忘记加进列表 → **守卫静默缺失**。改为目录级触发
+  （`app/**`、`web/**`、`android/app/src/main/**` 等），代价是多跑约一分钟，
+  换“永不漏守卫”。
+- **P1-5 文档去噪（治理反噬修复）**：
+  - 删除 `ARCHITECTURE_ROADMAP.md` §2.2 的**逐行数字表**（每次提交即失效）；
+    改为只记“为什么大 / 拆到哪一步”+ 查询命令。
+  - `DevLog` §1、`MAINTENANCE_GUIDE` §7 的**测试计数全部移除**，改为
+    “命令 + 通过判据（不变量）”——回归看是否全绿，而非总数是否等于历史数字。
+  - `AGENTS.md` §5 的 **18 项高漂移检查清单 + “停止递归”条款删除**
+    （当需要专门写“停止递归”时，机制已失控），替换为一条原则：
+    **文档只写工具推断不出来的内容**（意图/理由/教训/查询命令），
+    禁止写 HEAD/版本号/测试计数/行数/日期快照/CI 清单。
+  - 删除 `scripts/check-doc-drift.ps1`：它服务于已废除的流程，保留即僵尸工具。
+- **P2-6 纪律守卫加密（11 → 15 项）**：`DisciplineTest` 新增——依赖必须锁定、
+  契约 CI 必须目录级触发、JS 守卫必须自动发现、release 构建必须进 CI。
+  新增 `codeOnly()` 辅助：**断言只针对代码行、剥掉注释**
+  （教训：说明性注释里写“不用 lockAllConfigurations()”会被误判为违规）。
+- **P2-6b Python 静默吞错守卫**：新增 `tests/test_error_discipline.py`
+  （标准库 `ast` 零依赖）。扫描 18 处嫌疑后逐一核查，确认 17 处属
+  **可选依赖探测/分级降级/非关键 UI 增强**（合理，已加白名单），
+  **1 处是真问题**：`app/text.py` 的 `extract_dom_text` 用 `except: pass`
+  吞掉 HTMLParser 异常——该函数是 **text_offset 的唯一坐标来源**，
+  静默失败会返回半截文本、使进度/搜索/标注的 offset 整体偏小，
+  且症状要到用户重开书才发现。已改为记录 warning（含长度与样本预览）。
+  守卫自带自检用例 + 已用探针验证“注入违规会真失败”（非永真断言）。
+- **P2-7 instrumentation 进 CI**：新增 `instrumented` job（macOS + API 26 模拟器），
+  只跑 `ReaderPagedCrossTest`（Kotlin `PagedLayout` ↔ JS `reader-lite.js`
+  双实现对照，此前仅人工手跑）。分级策略：PR 走快反馈 job，
+  push 到 main / 手动触发才跑模拟器。选 API 26 = minSdk，
+  覆盖最老受支持版本，最能暴露 WebView / 存储行为差异。
+- 验证：Python 348 项全过；JS 守卫全绿；Android JVM 248 项 0 失败；
+  DisciplineTest 15 项在岗；四个 workflow YAML 结构校验通过；
+  release 构建本地 clean 实跑通过。
 
 ### 2026-08-26 win/android：发布 v1.7.1 / android-v1.4.1（第四十四批）
 

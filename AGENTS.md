@@ -89,30 +89,16 @@ WebView 渲染内核（`ui/reader/WebViewChapterView.kt` + `assets/reader/reader
   禁 transition:all、悬停配 (hover:hover)）；阅读器动画不得影响 text_offset。
 - **Diff 影响检查**：改动涉及共享文件或数据契约字段时，先列出受影响端
   （Windows / Android / CI / 文档），逐项核对后再提交。
-- **文档漂移检查**：任何改动收尾（尤其涉及 HEAD / 版本线 / 测试基线 / CI 清单 /
-  文件行数 / 待办状态时）必须跑一次漂移扫描：用
-  `git rev-parse HEAD`、最新测试计数、`.github/workflows/*.yml` 清单逐一对照
-  下列非归档文档声明；可先用
-  `powershell -ExecutionPolicy Bypass -File scripts/check-doc-drift.ps1`
-  生成高漂移快照，再人工核对。`docs/DEVLOG_ARCHIVE.md`、`docs/archive/` 等归档只保留历史，不改写。
-  **高漂移检查清单（非归档文档）**：
-  - `AnkeShelf_DevLog.md`：§1 当前状态（日期 / HEAD / 版本线 / 测试计数 /
-    发布状态）、§4 最近流水（本次改动必补记）；待办与延后项以
-    `docs/ARCHITECTURE_ROADMAP.md` 为准（已完成项不得继续标“剩余”）；
-  - `docs/ARCHITECTURE_ROADMAP.md`：顶部核对块（HEAD 推进链）、§2.1 版本与
-    测试基线表、§2.2 代码规模热点行数表、§2.3 架构债表状态、§3 各 P 项状态；
-  - `docs/MAINTENANCE_GUIDE.md`：§1 版本线、§7 测试体系与基线、§10 当前状态、
-    §11 已知问题与风险；
-  - `docs/ANIMATION_STANDARDS.md`：动效审查标准（现役；新增/修改动画必须遵守）；
-  - `docs/README.md`：文档索引（现役/历史分类；新增文档必须同步本索引）；
-  - `README.md`：版本表、系统要求、功能清单、测试命令；
-  - `CHANGELOG.md`、`SECURITY.md`、`使用说明.txt`、`VERSIONING.md`、
-    `contracts/README.md`、`docs/CODEBASE_MAP.md`、`docs/GLOSSARY.md`、
-    `docs/DATA_CONTRACT.md`、`docs/ANDROID_ARCHITECTURE.md`、
-    `nga-post-template.bbcode`。
-  **治理固定点（停止递归）**：本清单与 `scripts/check-doc-drift.ps1` 是漂移检查的
-  固定点；不为它们编写元文档，不递归治理。新增高漂移文档时改本清单与脚本即可，
-  活状态字段照常同步。
+- **文档只写“工具推断不出来的内容”**（治理原则，取代旧的高漂移清单）：
+  - **禁止**在文档里写：HEAD / 提交号、版本号（README 版本表除外，它是事实源）、
+    测试计数、文件行数、日期快照、CI 工作流清单。这些每次提交即失效，
+    历史上曾催生出专门的“补文档漂移”提交，纯属负债。
+  - **可以**写：设计意图、决策理由、踩坑教训、查询命令（如
+    `git rev-parse HEAD`、`python -m unittest discover tests`）、
+    某个热点文件*为什么*大、是否已拆分。
+  - 需要现查的事实就写“用 X 命令查看”，不要抄一份会过期的数字进文档。
+  - 改文档时顺手删掉遇到的过期计数/行数/提交号，不必为此单开提交。
+  - 归档（`docs/DEVLOG_ARCHIVE.md`、`docs/archive/`）只保留历史，不改写。
 
 ## 6. 数据契约（docs/DATA_CONTRACT.md）
 

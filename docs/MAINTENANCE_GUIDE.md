@@ -126,24 +126,29 @@ NgaConfig / StatsStore / AnnotationStore / BookRepository / OkHttp）+ 四 Tab �
 7. 改 `reader-lite.js`：重跑 bundle（parts 字节级校验）并**解包确认 APK 内已更新**
    （Gradle 曾误判 UP-TO-DATE）。
 8. 改文本规则：先改 `text-cases.json`（红）再改实现（绿），同步 SPEC + DATA_CONTRACT + DevLog。
-9. 涉及 HEAD / 版本线 / 测试基线 / CI 清单 / 文件行数 / 待办状态的改动，收尾跑**文档漂移检查**
-   （可先 `scripts/check-doc-drift.ps1` 生成快照，再按 AGENTS.md §5 高漂移清单核对）；改动必补记 DevLog。
+9. 文档不得写入会过期的事实（HEAD / 提交号 / 版本号 / 测试计数 / 文件行数 /
+   日期快照 / CI 清单）；需要现查的就写查询命令。详见 `AGENTS.md` §5。
+   改动必补记 DevLog「最近流水」。
 10. 新增/修改动画遵守 `docs/ANIMATION_STANDARDS.md`（只动 transform/opacity、UI ≤300ms、
     `prefers-reduced-motion`、禁 `transition:all`、悬停配 `(hover:hover)`）；阅读器动画不得影响 text_offset。
 
 ## 7. 测试体系与基线
 
-| 范围 | 基线（2026-08-25 复核） | 命令 / 位置 |
-| --- | --- | --- |
-| Windows Python | 345 项（2026-08-26 实跑全过） | `python -m unittest discover tests` |
-| JS 契约 | textpos 15 例、api-contract 67 方法、launch 诊断、bridge v1（能力含 annotation·assist·gululu）、parts 9/动态字节校验、reader-lite-textpos 跨端折叠 12 例、reader-save（进度写入唯一出口）、paged-blank（空白页判定边界）、reader-session、nga-cookie OK | `node contracts/tests/*.test.js` + `node tests/js/*.test.js` |
-| Android JVM | 241 项（240 过 / 1 跳）+ DisciplineTest 11 项 | `cd android && gradlew.bat testDebugUnitTest` |
-| 真机 | instrumentation 11/11（ELE-AL00） | adb instrument |
-| UI harness | 97 项 PASS（需桌面 WebView2，CI 无头跳过） | `python -m tests.ui.runner` |
-| 安全回归 | ZIP 炸弹上限 / 穿越拒绝 / CSP `script-src 'none'` | `tests/security/` |
-| 性能基准 | 提取 ≈1.1ms/章、开读 3.2ms、搜索 7.0ms | `tests/performance/bench.py` + nightly |
+**计数不入库**：测试总数每次改动都会变，写进文档必然过期（且曾催生专门的
+“补文档漂移”提交）。下表只记**命令与不变量**，需要计数时直接跑命令看输出。
 
-> **测试基线文档权威**：本节是测试基线的唯一文档事实源；DevLog §1、ARCHITECTURE_ROADMAP §2.1 等处的计数仅为快照/指针，以本节为准。
+| 范围 | 命令 / 位置 | 通过判据（不变量） |
+| --- | --- | --- |
+| Windows Python | `python -m unittest discover tests` | 全绿；失败即阻塞 |
+| JS 契约与守卫 | `node contracts/tests/*.test.js` + `node tests/js/*.test.js` | 全绿。**CI 自动发现目录下全部文件**，新增守卫无需改 CI |
+| Android JVM | `cd android && gradlew.bat testDebugUnitTest` | 全绿；含 `DisciplineTest` 结构性纪律守卫（改 CI/依赖/契约后必须保持通过） |
+| 真机 | adb instrument | 需设备；覆盖滚动/分页/交叉模式/图片章节重进 |
+| UI harness | `python -m tests.ui.runner` | 需桌面 WebView2，CI 无头跳过 |
+| 安全回归 | `tests/security/` | ZIP 炸弹上限 / 路径穿越拒绝 / CSP `script-src 'none'` |
+| 性能基准 | `tests/performance/bench.py` + nightly | 与 `baseline.json` 比对（相对趋势，非绝对计数） |
+
+> **判据优先于计数**：回归看的是“是否全绿 / 不变量是否成立”，
+> 而不是“总数是否等于某个历史数字”。
 
 守卫矩阵：api-contract（handler↔client↔MOCK）、textpos（逐字符对齐）、
 bridge-contract（桥版本）、reader-lite-parts（字节级防拆分漂移）、
@@ -210,7 +215,7 @@ contracts/fixtures/progress/01~07（进度事件序列，Android ProgressModel �
 | 改阅读器 | JS + Kotlin 双实现一致（ReaderPagedCrossTest 保护）+ 重 bundle + APK 校验 + 进度回归 |
 | 改文本规则 | 先改 `text-cases.json`（红）→ 实现（绿）→ 同步 SPEC / DATA_CONTRACT / DevLog |
 | 发新版本 | §9 双端 SOP 独立；收尾文档漂移检查 + 补记 DevLog「当前状态」 |
-| 文档漂移检查 | `scripts/check-doc-drift.ps1` 生成快照 + AGENTS.md §5 高漂移清单逐项核对 |
+| 文档维护 | 不写会过期的事实（HEAD/版本号/测试计数/行数/日期），需要现查的写查询命令；见 AGENTS.md §5 |
 | 新增/移动文档 | 同步 `docs/README.md` 索引；历史文档移入 `docs/archive/`（只读不改写） |
 
 ---
