@@ -66,6 +66,57 @@
 
 ## 4. 最近流水
 
+### 2026-08-28 仓库治理：分支清理 + 6 个 dependabot PR 处理 + 锁文件欠账补齐（第四十八批）
+
+- **分支清理（4 个，删前逐一审计）**：
+  - `android/m1-data-layer`、`win/gululu-reader-interaction`：
+    `merge-base --is-ancestor` 确认已并入 main，直接删。
+  - `win/gululu-adapter-research`：patch-id 比对确认 6 个提交**全部**在 main
+    中有等价提交（rebase 后 SHA 不同导致误判"未合并"），删。
+  - `win/reader-pagination-fullscreen-fix`：40 行采样 36 行已在 main；缺失的
+    resize 防抖逻辑 main 已有**改良版**（setTimeout(120ms) 等尺寸稳定 vs 分支的
+    requestAnimationFrame；锚点保留条件更严谨），删。
+  - dependabot 分支保留（对应开放 PR）。
+
+- **requirements.lock 系统性脱节发现与补齐**（commit 544d8b4d）：
+  #22（curl-cffi 0.16.2）合并后 dependabot 只改 `requirements.in` 不改 lock。
+  核查发现并非孤例：历史 PR #10（pillow 12.3.0）、#14（cryptography 50.0.0）
+  同样只改了 in 未改 lock——历史 PR 全部 `closed merged=False`
+  （依赖升级历来直接改声明文件），锁文件与声明早已脱节。
+  用 pip-compile --generate-hashes 重新生成，对齐 7 个直接依赖
+  （curl-cffi 0.16.2 / pillow 12.3.0 / cryptography 50.0.0），
+  其余 18 个传递依赖版本不变仅哈希重算。**教训：dependabot 对
+  requirements.in 的更新必须人工补齐 requirements.lock**。
+
+- **6 个 dependabot PR 处理**：
+  - #26（wrapper 9.7.1）、#24（coroutines 1.11.0，自动带 lockfile）、
+    #23（AGP 9.3.2，buildscript 插件不在 lockfile 中）：CI 全绿，直接合并。
+  - #21（setup-java v5→v6）：首次 CI 失败——**第四十七批写的守卫把
+    "当前版本"锁成了"必须版本"**（assertTrue contains setup-java@v5），
+    合法升级被拦截。已在 2f8a4e3 修复为只禁弃用版本（v4 及以下），
+    dependabot rebase 后 CI 全绿，合并。**教训：版本类守卫只禁弃用版本，
+    不锁当前版本。**
+  - #25（compose-bom 2026.08.00）：CI 失败，`checkDebugAarMetadata` 报 11 个
+    传递依赖要求 compileSdk >= 37。已在 b945c151 一并完成：
+    compileSdk 36→37（targetSdk 保持 36，运行时行为与编译目标可独立演进）+
+    compose 1.11.2→1.12.0 + 重新生成 gradle.lockfile。
+    本地验证：单测全过 + assembleRelease(R8) 6m36s 无 missing-class。
+    PR 由 dependabot 自动关闭（检测到 main 已含变更）。
+  - #22（curl-cffi）：CI 全绿直接合并，lock 欠账同批补齐。
+
+- **网络阻断下的工作流沉淀**（github.com:443 仍被本地网络阻断）：
+  - PR 合并用 `gh pr merge`（走 api.github.com）✓
+  - 本地需远端最新文件时用 API `/contents` 拉取（libs.versions.toml /
+    gradle.lockfile / gradle-wrapper.properties）
+  - **services.gradle.org 也被阻断**：Gradle 9.7.1 发行包改从腾讯镜像下载
+    （151433392 字节精确校验），放入 wrapper dists 后 `gradlew --version` 识别
+    （删除残留 .part/.lck）。
+  - PyPI 可达（与 github.com 不同阻断面），pip-compile 正常。
+
+- **守卫盲区提醒**：DisciplineTest 读取磁盘上的 workflow/构建文件，
+  Gradle 感知不到这些文件的变化，本地会 UP-TO-DATE 跳过——本地验证
+  守卫行为需 `--rerun-tasks`（CI 每次全新 checkout 无此问题）。
+
 ### 2026-08-28 android：instrumentation 改用 google_apis 镜像（第四十七批跟进）
 
 - 现象：改用 ubuntu + KVM 后模拟器能启动（`emulator-5554 - 8.0.0`），
