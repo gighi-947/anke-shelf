@@ -227,7 +227,15 @@ class DisciplineTest {
             "android.yml 不得使用弃用的 @v4 动作",
             yml.contains("actions/checkout@v4") || yml.contains("actions/upload-artifact@v4"),
         )
-        assertTrue("android.yml 应使用 setup-java@v5", yml.contains("actions/setup-java@v5"))
+        // 注意：这里【不锁定具体版本】。历史教训：曾写成
+        // assertTrue(yml.contains("actions/setup-java@v5"))，把"当前使用的版本"
+        // 误当成"必须使用的版本"，导致 dependabot 把 v5 升到 v6 时本守卫误报，
+        // 反而阻塞了合法的依赖升级。纪律守卫只应禁止【弃用版本】。
+        assertTrue("android.yml 必须使用 actions/setup-java", yml.contains("actions/setup-java@"))
+        assertFalse(
+            "android.yml 不得使用弃用的 setup-java@v4 及以下（应 v5+；本守卫只禁弃用版本，不锁具体版本）",
+            Regex("""actions/setup-java@v[1-4](?![0-9])""").containsMatchIn(yml),
+        )
         assertTrue("android.yml 应含 reader JS 语法检查", yml.contains("node --check"))
         assertTrue(
             "android.yml 的 run 工作目录已是 android/，bundle 脚本应使用 scripts/ 相对路径",
