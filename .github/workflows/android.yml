@@ -5,11 +5,16 @@ on:
     paths:
       - 'android/**'
       - 'assets/**'
+      # 双端共享契约：Android 侧消费 contracts/fixtures（如 native-book/append-cases.json
+      # 由 NativeAppendFixtureTest 消费）。改夹具若不触发本工作流，Android 端就会
+      # 带着过期的期望值继续通过——共享契约变更必须两端同时验证。
+      - 'contracts/**'
       - '.github/workflows/android.yml'
   pull_request:
     paths:
       - 'android/**'
       - 'assets/**'
+      - 'contracts/**'
       - '.github/workflows/android.yml'
   workflow_dispatch:
 

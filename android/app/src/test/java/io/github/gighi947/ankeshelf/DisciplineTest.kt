@@ -303,6 +303,29 @@ class DisciplineTest {
     }
 
     @Test
+    fun `android CI 必须监听共享契约目录`() {
+        // 回归背景：Android 侧消费 contracts/fixtures（如
+        // native-book/append-cases.json 由 NativeAppendFixtureTest 消费），
+        // 但 android.yml 原先只监听 android/** 与 assets/**。改夹具不触发
+        // Android CI，Android 端就会带着过期期望值继续"通过"——共享契约
+        // 失去意义。contracts/** 是双端共享目录，不是"另一端代码目录"，
+        // 因此不违反双端边界纪律。
+        val yml = codeOnly(File(repoRoot, ".github/workflows/android.yml"))
+        val pathsBlock = yml.substringAfter("on:").substringBefore("jobs:")
+        assertTrue(
+            "android.yml 必须监听 'contracts/**'（Android 消费共享 fixture，改夹具须验证本端）",
+            pathsBlock.contains("'contracts/**'"),
+        )
+        // 双端边界不被破坏：不得监听另一端代码目录
+        for (forbidden in listOf("'app/**'", "'web/**'", "'tests/**'")) {
+            assertFalse(
+                "android.yml 不得监听另一端代码目录 $forbidden（双端边界铁律）",
+                pathsBlock.contains(forbidden),
+            )
+        }
+    }
+
+    @Test
     fun `instrumentation 必须跑在支持硬件加速的 runner 上`() {
         // 回归背景：曾用 macos-latest 跑 API 26（minSdk）模拟器，CI 直接
         // "Timeout waiting for emulator to boot" 失败。根因是 macos-latest

@@ -66,6 +66,34 @@
 
 ## 4. 最近流水
 
+### 2026-08-28 双端：章节追加算法纳入契约 + 字节码污染治理（第四十七批）
+
+- 背景：第四十六批的缺陷在两端**同时存在**而契约未捕获，根因是既有
+  `contracts/` 只验证**数据格式**与 **text_offset 计算**，未覆盖
+  **算法行为**。为此把"章节追加"纳入共享 golden 契约。
+- 新增 `contracts/fixtures/native-book/append-cases.json`（5 例），
+  由 Windows `tests/test_contracts.py::NativeAppendFixtureTest` 与 Android
+  `data/NativeAppendFixtureTest` 消费同一份夹具。
+- 夹具设计：断言**行为特征**而非完整 HTML——追加内容出现次数
+  （`probe_count`，重复插入会立刻暴露）、`</body>` 总数、追加位置是否落在
+  真实闭合之前，以及章节数 / floor_count / last_lou / pid 去重。
+  覆盖边界：正文含 `</body>`、正文同时含 `</body>` 与 `</html>`、
+  末章已满需开新章、重复 pid 去重。
+- **守卫有效性已双端实测**：把实现临时退回 `replace` 后，两端夹具均精确
+  捕获目标回归（Windows 报 `1 != 2`、Android 测试失败），
+  其余 3 例仍通过（正文不含 marker，符合预期）。非假绿。
+- CI 触发补全：Android 侧消费 `contracts/fixtures`，但 android.yml 原先只
+  监听 `android/**` 与 `assets/**`——改夹具不触发 Android CI，会导致
+  Android 带着过期期望值继续"通过"。已加入 `contracts/**`
+  （共享契约目录，不违反双端边界铁律），并新增 DisciplineTest 守卫：
+  要求监听 `contracts/**`、禁止监听 `app/**` `web/**` `tests/**`（共 17 项）。
+- 字节码污染治理：孤儿 `.pyc`（源文件已删、字节码残留）会被
+  `unittest discover` 导入；若残留的是调试探针等"故意失败"模块，会造成
+  **约 1/15 概率的假红且极难定位**（本次实测遇到一次）。已清理 7 个历史
+  遗留孤儿 pyc，并在 windows.yml 增加清理步骤，保证本地与 CI 结果一致。
+- 验证：Python 351 项全过；Android JVM 253 项 0 失败；JS 守卫全绿；
+  四个 workflow YAML 结构校验通过。
+
 ### 2026-08-28 双端：原生书增量追加重复插入缺陷修复（第四十六批）
 
 - 现象（双端同源）：`append_container`（Windows `app/native_book.py`）与
