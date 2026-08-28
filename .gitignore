@@ -39,6 +39,9 @@ android/keystore.properties
 android/app/release/
 *.jks
 android/*.epub
+# `--write-locks` 的全局副作用：仅含 empty=incomingCatalogForLibs0（版本目录内部
+# 配置，无外部依赖），按噪音忽略。真正生效的是 android/app/gradle.lockfile。
+android/settings-gradle.lockfile
 
 node_modules/
 

@@ -42,3 +42,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "AnkeShelfAndroid"
 include(":app")
+
+// 注：`--write-locks` 是全局标志，执行 `resolveAndLockAll --write-locks` 时
+// 会连带为 settings 项目写出 settings-gradle.lockfile，内容为
+// `empty=incomingCatalogForLibs0`（版本目录内部配置，无实际外部依赖）。
+// 这是 Gradle 的固有行为、无法在 settings 侧关闭，故该文件按构建噪音处理：
+// 已加入 .gitignore，真正生效的锁定只有 android/app/gradle.lockfile。

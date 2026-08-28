@@ -54,6 +54,21 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // 依赖锁定：与 Python 侧 requirements.lock 同目标——同一提交可复现构建。
+    // 版本目录（libs.versions.toml）只锁直接依赖，传递依赖仍会随时间漂移；
+    // gradle.lockfile 固化完整解析图（含传递依赖）。
+    //
+    // 按名锁定"参与编译/运行/测试"的入向依赖配置，不用 lockAllConfigurations()：
+    // 后者会波及 incomingCatalogForLibs 等版本目录内部配置，产出
+    // settings-gradle.lockfile（内容仅 `empty=...`）之类的噪音文件。
+    // 守卫效力已验证：篡改锁文件版本会令构建失败
+    // （"Dependency version enforced by Dependency Locking"）。
+    configurations.configureEach {
+        if (isCanBeResolved && name.matches(Regex("(?:debug|release)(?:UnitTest|AndroidTest)?(?:Compile|Runtime)Classpath"))) {
+            resolutionStrategy.activateDependencyLocking()
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -101,4 +116,29 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+}
+
+// 生成/更新锁文件的显式入口：./gradlew resolveAndLockAll --write-locks
+// （日常构建不写锁，保证 CI 上"锁定文件与解析图不符即失败"的守卫有效）
+//
+// 只解析"入向依赖"配置：AGP 产生的 *ApiElements / *RuntimeElements 等出向
+// 变体配置虽 isCanBeResolved=true，但直接 resolve() 会因变体歧义失败
+// （AGP 9 的 merged-test-only-native-libs 等多变体），它们也不携带外部依赖。
+tasks.register("resolveAndLockAll") {
+    notCompatibleWithConfigurationCache("resolveAndLockAll 需要解析全部依赖配置")
+    doFirst {
+        require(gradle.startParameter.isWriteDependencyLocks) {
+            "必须带 --write-locks：./gradlew resolveAndLockAll --write-locks"
+        }
+    }
+    doLast {
+        val lockable = configurations.filter {
+            it.isCanBeResolved && !it.name.endsWith("Elements", ignoreCase = true)
+        }
+        lockable.forEach { config ->
+            runCatching { config.resolve() }
+                .onFailure { logger.lifecycle("skip ${config.name}: ${it.message?.lineSequence()?.first()}") }
+        }
+        logger.lifecycle("resolved ${lockable.size} configurations into lockfile")
+    }
 }

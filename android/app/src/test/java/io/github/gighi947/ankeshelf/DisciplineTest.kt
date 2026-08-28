@@ -30,6 +30,22 @@ class DisciplineTest {
         }
         .toList()
 
+    /**
+     * 取文件的"代码行"部分（剥掉 // 与块注释行）。
+     *
+     * 结构性守卫断言的是"代码里用了什么"，而注释常会解释"为什么不用某 API"
+     * （例如 `不用 lockAllConfigurations()：...`）。若直接对整个文件做
+     * contains，这类说明性注释会被误判为违规。所有针对配置/源码的守卫
+     * 都应走本函数，避免同类误判复发。
+     */
+    private fun codeOnly(file: File): String = file.readLines()
+        .filter {
+            val s = it.trimStart()
+            // 覆盖 Kotlin 与 YAML 两种注释语法（# 对 .kts 无害：行内无 # 常量断言）
+            !s.startsWith("//") && !s.startsWith("*") && !s.startsWith("#")
+        }
+        .joinToString("\n")
+
     @Test
     fun `UI 圆角必须走令牌或仅为一次性小细节`() {
         val offenders = uiSourceFiles().flatMap { f ->
@@ -205,7 +221,7 @@ class DisciplineTest {
 
     @Test
     fun `CI 配置只触发 android 路径且不使用弃用动作`() {
-        val yml = File(repoRoot, ".github/workflows/android.yml").readText()
+        val yml = codeOnly(File(repoRoot, ".github/workflows/android.yml"))
         assertTrue("android.yml 必须仅 android/** 触发", yml.contains("'android/**'"))
         assertFalse(
             "android.yml 不得使用弃用的 @v4 动作",
@@ -221,6 +237,118 @@ class DisciplineTest {
             "android.yml 不得从 android/ 工作目录重复拼接 android/scripts",
             yml.contains("run: node android/scripts/bundle-reader-lite.js"),
         )
+        // release 构建路径守卫：R8/ProGuard 规则错误此前只在发版当天暴露
+        // （正式签名缺失 → release 从未在 CI 跑过）。必须保留临时签名 + assembleRelease。
+        assertTrue(
+            "android.yml 必须验证 release 构建（R8/ProGuard），否则规则错误只在发版当天暴露",
+            yml.contains("./gradlew assembleRelease"),
+        )
+        assertTrue(
+            "release 验证必须用一次性临时签名，不得依赖/写入正式 keystore",
+            yml.contains("ci-throwaway"),
+        )
+        assertTrue(
+            "必须校验 mapping.txt 存在且非空（证明 R8 真的跑了，而非 UP-TO-DATE 蒙混）",
+            yml.contains("mapping.txt"),
+        )
+        assertTrue(
+            "临时签名材料必须清理（if: always() 保证失败时也清）",
+            yml.contains("rm -f keystore.properties ci-throwaway.jks"),
+        )
+    }
+
+    @Test
+    fun `依赖必须锁定以保证可复现构建`() {
+        // 与 Python 侧 requirements.lock 同目标：版本目录（libs.versions.toml）
+        // 只锁直接依赖，传递依赖仍会随时间漂移；gradle.lockfile 固化完整解析图。
+        // 守卫效力已实测：篡改锁文件版本会令构建失败
+        // （"Dependency version enforced by Dependency Locking"）。
+        val lockfile = File(repoRoot, "android/app/gradle.lockfile")
+        assertTrue(
+            "android/app/gradle.lockfile 必须存在（升级依赖时执行 " +
+                "./gradlew resolveAndLockAll --write-locks）",
+            lockfile.isFile,
+        )
+        val content = lockfile.readText()
+        assertTrue("锁文件不得为空", content.contains("="))
+        // 关键第三方依赖必须被锁定，否则"锁定存在但内容缺失"变成假绿
+        for (dep in listOf("org.jsoup:jsoup", "com.squareup.okhttp3")) {
+            assertTrue("锁文件必须包含 $dep", content.contains(dep))
+        }
+        val buildGradle = codeOnly(File(repoRoot, "android/app/build.gradle.kts"))
+        assertTrue(
+            "app/build.gradle.kts 必须激活依赖锁定",
+            buildGradle.contains("activateDependencyLocking()"),
+        )
+        // 噪音守卫：lockAllConfigurations() 会波及版本目录内部配置，
+        // 产出 settings-gradle.lockfile（内容仅 `empty=...`）之类的无用文件。
+        assertFalse(
+            "不得使用 lockAllConfigurations()（会产生 empty= 噪音锁文件），改为按名锁定",
+            buildGradle.contains("lockAllConfigurations()"),
+        )
+        // `--write-locks` 是全局标志，执行升级命令时会连带写出
+        // android/settings-gradle.lockfile（内容仅 `empty=incomingCatalogForLibs0`，
+        // 版本目录内部配置，无实际依赖）。无法在 settings 侧关闭，故按构建噪音处理：
+        // 要求它必须被 .gitignore 覆盖，绝不能进版本库误导后来者。
+        val gitignore = File(repoRoot, ".gitignore").readText()
+        assertTrue(
+            "settings-gradle.lockfile 必须在 .gitignore 中（`--write-locks` 的必然副产物，" +
+                "无实际依赖，不得入库）",
+            gitignore.lines().any { it.trim() == "android/settings-gradle.lockfile" },
+        )
+        assertTrue(
+            "android/app/gradle.lockfile 必须入库（可复现构建的唯一事实源）",
+            !gitignore.lines().any { it.trim() == "android/app/gradle.lockfile" },
+        )
+    }
+
+    @Test
+    fun `契约 CI 必须目录级触发而非文件白名单`() {
+        // 回归背景：contracts.yml 曾用 20+ 行逐文件 paths 白名单，新增一个跨端
+        // 文件而忘记往列表里加 → 守卫静默缺失。目录级触发代价是多跑一分钟，
+        // 换"永不漏守卫"。
+        val yml = codeOnly(File(repoRoot, ".github/workflows/contracts.yml"))
+        val pathsBlock = yml.substringAfter("on:").substringBefore("jobs:")
+        assertTrue(
+            "contracts.yml 必须目录级触发 'app/**'（白名单式逐文件 paths 会静默失效）",
+            pathsBlock.contains("'app/**'"),
+        )
+        assertTrue(
+            "contracts.yml 必须目录级触发 'android/app/src/main/java/**'",
+            pathsBlock.contains("'android/app/src/main/java/**'"),
+        )
+        assertFalse(
+            "contracts.yml 不得回到逐文件白名单（新增跨端文件会漏守卫）",
+            pathsBlock.contains("app/gululu_ast.py") || pathsBlock.contains("web/js/bridge.js"),
+        )
+    }
+
+    @Test
+    fun `JS 守卫测试必须被 CI 自动发现而非人工列举`() {
+        // 回归背景：windows.yml 曾人工列举 3 个 JS 测试，导致 reader-save
+        // （进度写入唯一出口）与 paged-blank 两个关键守卫长期漏跑。
+        val yml = codeOnly(File(repoRoot, ".github/workflows/windows.yml"))
+        assertTrue(
+            "windows.yml 必须自动发现 tests/js/*.test.js（人工列举会漏跑守卫）",
+            yml.contains("Get-ChildItem tests/js -Filter *.test.js"),
+        )
+        assertTrue(
+            "windows.yml 必须自动发现 contracts/tests/*.test.js",
+            yml.contains("Get-ChildItem contracts/tests -Filter *.test.js"),
+        )
+        assertFalse(
+            "windows.yml 不得人工列举单个 JS 测试路径",
+            yml.contains("node tests/js/reader-session.test.js") ||
+                yml.contains("node contracts/tests/textpos.test.js"),
+        )
+        // 现役守卫文件必须存在（防止"自动发现"但文件已被误删）
+        for (guard in listOf(
+            "tests/js/reader-save.test.js",
+            "tests/js/paged-blank.test.js",
+            "tests/js/reader-session.test.js",
+        )) {
+            assertTrue("守卫文件缺失：$guard", File(repoRoot, guard).isFile)
+        }
     }
 
     @Test
