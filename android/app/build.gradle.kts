@@ -8,7 +8,10 @@ plugins {
 
 android {
     namespace = "io.github.gighi947.ankeshelf"
-    compileSdk = 36
+    // compose-bom 2026.08.00 的传递依赖（material-ripple-android 1.12.0 等
+    // 共 11 项）要求 compileSdk >= 37；targetSdk 保持 36 不变（运行时行为
+    // 与 compileSdk 可以独立演进，见 AGP 的 AAR 元数据检查提示）。
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.gighi947.ankeshelf"
