@@ -82,6 +82,11 @@
   「改 JS 后必须解包校验」铁律）；APK 元数据 `versionCode=9 / versionName=1.4.2`，
   minSdk 26 / targetSdk 36，产物 SHA256
   `A861289221A39D8E062F7FE233C4325AD42BEE7A87C39572221C488A5245E4F0`。
+- **发布结果**：github.com:443 阻断未恢复，5 个本地提交（含 6b3b558 历史
+  同步提交）经 Git Data API 逐个重建推送（tree/commit SHA 与本地逐一
+  校验一致，快进 3bc0186→a30eb0c，无强推）；tag `android-v1.4.2` 与
+  GitHub Release（资产 AnkeShelf-v1.4.2-android.apk，12750512 字节）创建
+  完成；推送后 Windows/Android/Contracts 三条 CI 全绿。
 
 ### 2026-10-10 仓库治理：8 个 dependabot PR 合并 + requirements 锁文件补齐
 
