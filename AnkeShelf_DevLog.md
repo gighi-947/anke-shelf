@@ -66,6 +66,26 @@
 
 ## 4. 最近流水
 
+### 2026-10-10 仓库治理：8 个 dependabot PR 合并 + requirements 锁文件补齐
+
+- **8 个 PR 全部合并**（merge commit，仓库惯例；合并前逐个核对 CI 全绿）：
+  - Windows：#34 pyinstaller 6.22.3、#31 curl-cffi 0.16.3、#36 cryptography 50.0.2；
+  - Android：#28 AGP 9.4.0、#29 jsoup 1.23.2、#33 coil 3.6.2、
+    #35 compose-bom 2026.09.00、#32 kotlin 2.4.20。
+  - 顺序经验：独立文件先合（#34/#28），共享 `requirements.in` / `libs.versions.toml`
+    的后合；每次合并后 GitHub 需 20~30 秒重算 mergeable，期间状态为 UNKNOWN。
+  - #32 在 #29 合并后冲突，`@dependabot rebase` 评论触发重做（几分钟完成），
+    rebase 后 CI 全绿再合。
+- **锁文件补齐**（沿第四十八批教训，dependabot 只改 `.in` 不改 lock）：
+  按 CONTRIBUTING.md 命令重生成 `requirements.lock`（Python 3.14）与
+  `requirements-build.lock`（Python 3.12 基线）——直接依赖版本对齐，传递依赖
+  零变化、仅哈希重算。
+- **连通性**：github.com:443 间歇阻断（git pull 连接重置/超时），api.github.com
+  正常——合并走 `gh pr merge`，远端文件经 API `/contents` 拉取；本地以内容对齐
+  提交同步（同 6b3b558 做法，网络恢复后 `git fetch origin && git reset --hard
+  origin/main` 完全对齐历史）。
+- 本地验证：Android 单测全绿（新依赖组合 + 当日进度上限修复并存）。
+
 ### 2026-10-10 Android：修复热更新后原生书 chapter_count 未同步导致进度上限截断
 
 - **现象**：NGA 原生书热更新追加新章节后，`BookRecord.chapter_count` 仍保持旧值；
