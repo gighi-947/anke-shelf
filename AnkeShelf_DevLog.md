@@ -66,6 +66,23 @@
 
 ## 4. 最近流水
 
+### 2026-10-10 Android：修复热更新后原生书 chapter_count 未同步导致进度上限截断
+
+- **现象**：NGA 原生书热更新追加新章节后，`BookRecord.chapter_count` 仍保持旧值；
+  阅读器恢复位置与书架百分比会按旧上限截断，`AnkeShelfRoot.kt` 中
+  `chapter_index.coerceIn(0, rec.chapter_count - 1)` 把新增章节的进度拉回旧末章。
+- **根因**：`NgaDownloader.updateFolder` 调用 `NativeBookWriter.appendContainer` 后
+  仅保存下载状态，未刷新书架记录中的 `chapter_count`。
+- **修复**：
+  - `BookRepository` 新增 `refreshNativeRecord(bookId)`，重新从原生书目录读取
+    `meta.json` 并更新书架记录的 `chapter_count`（同时保留标题等其它字段）；
+  - `NgaDownloader.update` 在 `updateFolder` 返回新增楼层数 > 0 后调用
+    `refreshNativeRecord`，失败时记诊断事件但不中断下载流程。
+- **测试**：`BookRepositoryTest` 新增两个用例：
+  - `refresh native record updates chapter count after append`
+  - `progress percent uses refreshed chapter count instead of clamping`
+- **验证**：`android/gradlew.bat testDebugUnitTest` 全绿（含 `DisciplineTest`）。
+
 ### 2026-08-28 仓库治理：分支清理 + 6 个 dependabot PR 处理 + 锁文件欠账补齐（第四十八批）
 
 - **分支清理（4 个，删前逐一审计）**：

@@ -314,6 +314,27 @@ class BookRepository(
         io.execute { shelf.touch(bookId) }
     }
 
+    /** 重新从原生书目录读取元数据并更新书架记录（热更新后 chapter_count 变化）。 */
+    fun refreshNativeRecord(bookId: String): RepoResult<BookRecord> {
+        val rec = recordOf(bookId) ?: return RepoResult.Err(BookRepoError.NotFound)
+        val f = File(rec.path)
+        if (!f.exists()) return RepoResult.Err(BookRepoError.NotFound)
+        return try {
+            val nb = NativeBook(f).open()
+            val updated = rec.copy(
+                title = nb.title.ifBlank { rec.title },
+                chapter_count = nb.chapters.size,
+            )
+            shelf.upsert(updated)
+            shelf.save()
+            RepoResult.Ok(updated)
+        } catch (_: EpubError) {
+            RepoResult.Err(BookRepoError.Corrupt)
+        } catch (e: Exception) {
+            RepoResult.Err(BookRepoError.Io(e.toString()))
+        }
+    }
+
     /** 重命名书籍显示标题：书架记录 + 原生书 meta.json（EPUB 仅书架记录）。 */
     fun renameBook(rec: BookRecord, newTitle: String): BookRecord? {
         val title = newTitle.trim()

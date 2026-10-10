@@ -3,6 +3,8 @@ package io.github.gighi947.ankeshelf.service
 import io.github.gighi947.ankeshelf.data.AppPaths
 import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.ChapterReadResult
+import io.github.gighi947.ankeshelf.data.NativeBookWriter
+import io.github.gighi947.ankeshelf.data.NativeFloor
 import io.github.gighi947.ankeshelf.data.ProgressStore
 import io.github.gighi947.ankeshelf.data.Shelf
 import io.github.gighi947.ankeshelf.data.TextExtractor
@@ -150,6 +152,122 @@ class BookRepositoryTest {
             val rec = BookRecord(id = "x", path = File(tmp, "nope.epub").absolutePath, title = "x")
             val result = repo.openSession(rec)
             assertEquals(BookRepoError.NotFound, (result as RepoResult.Err).error)
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `refresh native record updates chapter count after append`() {
+        val tmp = kotlin.io.path.createTempDirectory("repo-native-").toFile()
+        try {
+            val paths = AppPaths(File(tmp, "AnkeShelf")).also { it.ensure() }
+            val repo = BookRepository(paths, Shelf(paths.shelfFile, paths.coversDir), ProgressStore(paths.progressFile))
+            val nativeDir = NativeBookWriter.nativeDirFor(tmp, "book")
+
+            val main = NativeFloor(pid = 0, lou = 0, raw_content = "<p>main</p>")
+            val floors = listOf(
+                NativeFloor(pid = 1, lou = 1, raw_content = "<p>1</p>"),
+                NativeFloor(pid = 2, lou = 2, raw_content = "<p>2</p>"),
+            )
+            NativeBookWriter.writeContainer(
+                ngaLibraryRoot = tmp,
+                folderName = "book",
+                tieziTitle = "t",
+                author = "a",
+                tid = 1,
+                authorId = 0,
+                createdTime = "2026-01-01T00:00:00+08:00",
+                updatedTime = "2026-01-01T00:00:00+08:00",
+                validFloors = listOf(main) + floors,
+                perChapter = 2,
+                imageMode = "online",
+                theme = "light",
+                bookId = "bookid123",
+            )
+
+            val registerResult = repo.registerNativeDir(nativeDir, tid = 1)
+            assertTrue(registerResult is RepoResult.Ok)
+            val rec = (registerResult as RepoResult.Ok).value
+            assertEquals(2, rec.chapter_count)
+
+            val append = listOf(
+                NativeFloor(pid = 3, lou = 3, raw_content = "<p>3</p>"),
+                NativeFloor(pid = 4, lou = 4, raw_content = "<p>4</p>"),
+            )
+            val added = NativeBookWriter.appendContainer(
+                ngaLibraryRoot = tmp,
+                folderName = "book",
+                newFloors = append,
+                perChapter = 2,
+                imageMode = "online",
+                theme = "light",
+            )
+            assertTrue("应有新楼层追加", added > 0)
+
+            // 热更新后书架记录的 chapter_count 必须同步刷新，否则进度百分比与恢复位置
+            // 会按旧上限截断（issue：热更新后原生书最大进度上限无变化）。
+            val refreshResult = repo.refreshNativeRecord(rec.id)
+            assertTrue(refreshResult is RepoResult.Ok)
+            val updated = (refreshResult as RepoResult.Ok).value
+            assertEquals(3, updated.chapter_count)
+            assertEquals(3, repo.recordOf(rec.id)?.chapter_count)
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `progress percent uses refreshed chapter count instead of clamping`() {
+        val tmp = kotlin.io.path.createTempDirectory("repo-native-").toFile()
+        try {
+            val paths = AppPaths(File(tmp, "AnkeShelf")).also { it.ensure() }
+            val repo = BookRepository(paths, Shelf(paths.shelfFile, paths.coversDir), ProgressStore(paths.progressFile))
+            val nativeDir = NativeBookWriter.nativeDirFor(tmp, "book")
+
+            val main = NativeFloor(pid = 0, lou = 0, raw_content = "<p>main</p>")
+            val floors = listOf(
+                NativeFloor(pid = 1, lou = 1, raw_content = "<p>1</p>"),
+                NativeFloor(pid = 2, lou = 2, raw_content = "<p>2</p>"),
+            )
+            NativeBookWriter.writeContainer(
+                ngaLibraryRoot = tmp,
+                folderName = "book",
+                tieziTitle = "t",
+                author = "a",
+                tid = 1,
+                authorId = 0,
+                createdTime = "2026-01-01T00:00:00+08:00",
+                updatedTime = "2026-01-01T00:00:00+08:00",
+                validFloors = listOf(main) + floors,
+                perChapter = 2,
+                imageMode = "online",
+                theme = "light",
+                bookId = "bookid123",
+            )
+
+            val registerResult = repo.registerNativeDir(nativeDir, tid = 1)
+            assertTrue(registerResult is RepoResult.Ok)
+            val rec = (registerResult as RepoResult.Ok).value
+
+            NativeBookWriter.appendContainer(
+                ngaLibraryRoot = tmp,
+                folderName = "book",
+                newFloors = listOf(
+                    NativeFloor(pid = 3, lou = 3, raw_content = "<p>3</p>"),
+                    NativeFloor(pid = 4, lou = 4, raw_content = "<p>4</p>"),
+                ),
+                perChapter = 2,
+                imageMode = "online",
+                theme = "light",
+            )
+            repo.refreshNativeRecord(rec.id)
+
+            // 进度落在新增的第 3 章（索引 2），刷新后应正确计算为 2/3 而非被旧上限截断。
+            repo.saveProgress(rec.id, chapterIndex = 2, textOffset = 10)
+            val ui = repo.listBooks().first()
+            assertEquals((2.0 / 3.0) * 100.0, ui.progressPct, 0.001)
+            assertEquals(3, ui.totalChapters)
         } finally {
             tmp.deleteRecursively()
         }

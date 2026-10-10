@@ -309,7 +309,21 @@ class NgaDownloader(
             throw NgaHttpException("仅支持更新 NGA 下载的原生书")
         }
         val folderName = nativeDir.parentFile?.name ?: ""
-        return updateFolder(folderName, params.tid, params.authorId, params)
+        val added = updateFolder(folderName, params.tid, params.authorId, params)
+        if (added > 0) {
+            // 追加成功后同步刷新书架记录的 chapter_count，否则阅读器恢复位置与
+            // 书架百分比会按旧上限截断（issue：热更新后原生书最大进度上限无变化）。
+            val refresh = repository.refreshNativeRecord(bookId)
+            if (refresh is RepoResult.Err) {
+                LogEvents.event(
+                    "nga",
+                    "refresh_record_failed",
+                    "book_id_hash" to LogEvents.bookIdHash(bookId),
+                    "error" to refresh.error.message,
+                )
+            }
+        }
+        return added
     }
 
     private fun updateFolder(
