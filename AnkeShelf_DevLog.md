@@ -81,9 +81,10 @@
   `requirements-build.lock`（Python 3.12 基线）——直接依赖版本对齐，传递依赖
   零变化、仅哈希重算。
 - **连通性**：github.com:443 间歇阻断（git pull 连接重置/超时），api.github.com
-  正常——合并走 `gh pr merge`，远端文件经 API `/contents` 拉取；本地以内容对齐
-  提交同步（同 6b3b558 做法，网络恢复后 `git fetch origin && git reset --hard
-  origin/main` 完全对齐历史）。
+  正常——合并走 `gh pr merge`，远端文件经 API `/contents` 拉取；本地先以内容对齐
+  提交同步（同 6b3b558 做法），网络恢复后 `git fetch origin && git merge
+  origin/main` 对齐历史（本地含领先提交，用 merge 不用 reset）；
+  requirements.lock 冲突取本地最新再生成版，DevLog 冲突取本地侧。
 - 本地验证：Android 单测全绿（新依赖组合 + 当日进度上限修复并存）。
 
 ### 2026-10-10 Android：修复热更新后原生书 chapter_count 未同步导致进度上限截断
