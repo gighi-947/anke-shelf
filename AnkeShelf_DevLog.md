@@ -66,6 +66,23 @@
 
 ## 4. 最近流水
 
+### 2026-10-10 Android：android-v1.4.2（v1.4.1 进度上限热修版）
+
+- **内容**：v1.4.1 的热修复——原生书热更新后 `chapter_count` 未刷新导致
+  进度上限截断（见同日 android 修复条目）；同时带入当日合并的 5 个依赖
+  PR（AGP 9.4.0 / Kotlin 2.4.20 / jsoup 1.23.2 / coil 3.6.2 /
+  compose-bom 2026.09.00）。
+- **版本号决策**：用户最初提议 `1.4.1-fix`，但 `UpdateChecker.parseVersion`
+  用 `takeWhile { isDigit }` 截后缀，`1.4.1-fix` 解析为 `[1,4,1]` 与存量
+  v1.4.1 相等——应用内更新检测不会提示。故升 `versionCode 9 / 1.4.2`，
+  修复性质写入发布说明。
+- **发布动作**：`versionName`/`versionCode` bump + README 版本表三处同步 +
+  本地 `assembleRelease`（keystore 正式签名，5m05s）+ `check-release.ps1`
+  凭据扫描 **PASS**（APK 内 reader-lite.js 与源 SHA256 一致，符合
+  「改 JS 后必须解包校验」铁律）；APK 元数据 `versionCode=9 / versionName=1.4.2`，
+  minSdk 26 / targetSdk 36，产物 SHA256
+  `A861289221A39D8E062F7FE233C4325AD42BEE7A87C39572221C488A5245E4F0`。
+
 ### 2026-10-10 仓库治理：8 个 dependabot PR 合并 + requirements 锁文件补齐
 
 - **8 个 PR 全部合并**（merge commit，仓库惯例；合并前逐个核对 CI 全绿）：

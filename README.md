@@ -23,7 +23,7 @@
 | 平台 | 当前版本 | 技术栈 | 发布标签 | 安装包 |
 | --- | --- | --- | --- | --- |
 | Windows 桌面端 | **v1.7.1** | Python + Web（前后端分离，pywebview 壳） | `vX.Y.Z` | `AnkeShelf-vX.Y.Z.zip` |
-| Android 手机端 | **v1.4.1** | Kotlin + Jetpack Compose（正文用安卓专用 WebView 渲染内核） | `android-vX.Y.Z` | `AnkeShelf-vX.Y.Z-android.apk` |
+| Android 手机端 | **v1.4.2** | Kotlin + Jetpack Compose（正文用安卓专用 WebView 渲染内核） | `android-vX.Y.Z` | `AnkeShelf-vX.Y.Z-android.apk` |
 
 > **版本线文档权威**：本表是版本线的唯一文档事实源；代码事实源为 Windows `app/__init__.py`、Android `android/app/build.gradle.kts`。其他文档（DevLog / MAINTENANCE_GUIDE / ROADMAP 等）中的版本线以本表为准。
 
@@ -196,7 +196,7 @@ build.bat
 ### Android
 
 从 [GitHub Releases](https://github.com/gighi-947/anke-shelf/releases) 下载
-`AnkeShelf-v1.4.1-android.apk`（Android 8.0+ / API 26+）安装。
+`AnkeShelf-v1.4.2-android.apk`（Android 8.0+ / API 26+）安装。
 
 源码构建：
 
@@ -271,7 +271,7 @@ gradlew.bat compileDebugAndroidTestKotlin :: 仪器测试编译
 ## 📦 版本与发布
 
 - **版本线分离**：Windows 用 `vX.Y.Z`（当前 v1.7.1）；Android 用
-  `android-vX.Y.Z`（当前 v1.4.1），唯一版本定义在
+  `android-vX.Y.Z`（当前 v1.4.2），唯一版本定义在
   `android/app/build.gradle.kts`。
 - **标签与资产**：`vX.Y.Z` + `AnkeShelf-vX.Y.Z.zip`；`android-vX.Y.Z` +
   `AnkeShelf-vX.Y.Z-android.apk`（资产名纯 ASCII）。
