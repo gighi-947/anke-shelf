@@ -103,6 +103,18 @@ class GululuImporter(
         } catch (e: GululuCancelledException) {
             partial.delete()
             GululuImportResult.Cancelled
+        } catch (e: OutOfMemoryError) {
+            // 内嵌模式图片字节全量驻留内存（GululuImages + EPUB 内存拼包），
+            // 图多的书会 OOM；兜底为显式失败而不是穿透协程闪退。
+            partial.delete()
+            LogEvents.event(
+                "gululu",
+                "import_oom",
+                "task_id" to taskId,
+                "source_id" to sourceId,
+                "image_mode" to imageMode.wire,
+            )
+            GululuImportResult.Err("内存不足：内嵌图片过多，请改用在线图模式下载")
         } catch (e: Exception) {
             partial.delete()
             LogEvents.event(
@@ -128,6 +140,9 @@ class GululuImporter(
         } catch (e: GululuCancelledException) {
             File(File(appPaths.gululuLibraryDir, sourceId.toString()), "post.epub.part").delete()
             GululuImportResult.Cancelled
+        } catch (e: OutOfMemoryError) {
+            File(File(appPaths.gululuLibraryDir, sourceId.toString()), "post.epub.part").delete()
+            GululuImportResult.Err("内存不足：内嵌图片过多，请改用在线图模式下载")
         } catch (e: Exception) {
             File(File(appPaths.gululuLibraryDir, sourceId.toString()), "post.epub.part").delete()
             GululuImportResult.Err(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)

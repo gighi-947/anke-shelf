@@ -189,4 +189,26 @@ class GululuEpubTest {
             book.close()
         }
     }
+
+    @Test
+    fun `resolveAsset 兼容全路径与章节相对路径`() {
+        // 阅读器经 WebView base URL 解析后传入的是 zip 根相对全路径
+        // （EPUB/images/...），resolveAsset 不得再拼一次 chapterBaseDir
+        // （骨碌碌内嵌图片 404 / 导入 EPUB 图片读不出的根因）。
+        val file = File(tmp.root, "assets.epub").apply { writeBytes(sampleEpubBytes()) }
+        val book = EpubBook(file).open()
+        try {
+            val expected = byteArrayOf(0x89.toByte(), 0x50)
+            assertTrue(
+                "zip 根相对全路径必须命中（WebView base 解析后的形态）",
+                book.resolveAsset(0, "EPUB/images/abc0123456789def.png")?.contentEquals(expected) == true,
+            )
+            assertTrue(
+                "章节相对路径语义保持（FloorExport 等调用方在用）",
+                book.resolveAsset(0, "../images/abc0123456789def.png")?.contentEquals(expected) == true,
+            )
+        } finally {
+            book.close()
+        }
+    }
 }

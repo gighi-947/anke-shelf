@@ -262,8 +262,10 @@ class EpubBook(val path: File) : Closeable {
 
     /** 按章节相对路径读资源（图片/字体等），目录穿越由 normHref + 条目映射兜底。 */
     fun resolveAsset(chapterIndex: Int, rel: String): ByteArray? {
-        val dir = chapterBaseDir(chapterIndex)
-        return readFile(normHref(rel, dir))
+        // rel 可能已是 zip 根相对全路径（阅读器 WebView 按章节 base URL 解析后的结果），
+        // 先按根相对直查，miss 再拼章节目录——两种形态都兼容
+        // （骨碌碌内嵌图片 / 导入 EPUB 子目录章节的图片 404 根因）。
+        return readFile(normHref(rel, "")) ?: readFile(normHref(rel, chapterBaseDir(chapterIndex)))
     }
 
     fun chapterTitle(index: Int): String {

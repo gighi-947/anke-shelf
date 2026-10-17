@@ -66,6 +66,23 @@
 
 ## 4. 最近流水
 
+### 2026-10-10 Android：EPUB 资源双重拼接修复 + 内嵌下载 OOM 兜底
+
+- **现象**：骨碌碌内嵌图片阅读器「图片无法加载」；导入第三方 EPUB 图片读不出；
+  另有下载内嵌闪退报告。
+- **根因**（两调查并行收敛到同一点）：`EpubBook.resolveAsset` 把已被 WebView
+  base URL 解析成 zip 根相对全路径的 rel 再拼一次 `chapterBaseDir`
+  （`OEBPS/Text/OEBPS/Text/…`）→ 404。NGA 原生书不受影响（走
+  `file:///android_images` 磁盘直链，不经 resolveAsset）。OOM 面：内嵌模式图片
+  字节全量驻留内存 + EPUB 在内存整包拼两遍（writeZip ByteArrayOutputStream），
+  图多的书 `OutOfMemoryError` 穿透协程闪退（`import` 只 catch Exception）。
+- **修复**：`resolveAsset` 先按根相对直查、miss 再拼章节目录（FloorExport 等
+  章节相对调用方语义不变）；`GululuImporter.import` / `rebuildFromSnapshot`
+  增加 `OutOfMemoryError` 兜底转显式失败（提示改用在线图模式）。
+- **测试**：`GululuEpubTest` 新增 resolveAsset 双形态用例（全路径 + 章节相对）。
+- **后续候选**（不在本批）：EPUB 流式写包消除内存整包副本（性能专项）。
+- **验证**：Android 全量单测绿。
+
 ### 2026-10-10 双端：NGA 表情图源切换（img4.nga.178.com 下线 → img4.nga.cn）
 
 - **现象**：NGA 表情全链路 404（阅读器/导出/内嵌下载）；用户补充"表情包实际
