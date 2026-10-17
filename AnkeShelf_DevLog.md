@@ -66,6 +66,18 @@
 
 ## 4. 最近流水
 
+### 2026-10-17 发布：Windows v1.8.0 / Android v1.5.0（首个测试版本）
+
+- **内容**：用户反馈修复批（折叠截断 / 表情图源 / EPUB 图片链路与 OOM /
+  音乐开关 / 骰点掩盖默认关闭 / 原生书本地重建 / 导出内嵌在线图）+
+  更新提示功能双端同步（阅读器更新按钮、进书通知、书架徽标、每书自动检查开关）。
+- **测试版本先例**：首次以 GitHub prerelease 标记发行；两端更新检查器本就跳过
+  prerelease（UpdateChecker.kt 与 update_api.py 均有过滤），稳定版用户不会被提示。
+  收集反馈无回归后，同内容或累积内容再发正式版。
+- **发包**：Windows `AnkeShelf-v1.8.0.zip`（PyInstaller 本地构建 + manifest +
+  sha256）；Android `AnkeShelf-v1.5.0-android.apk`（versionCode 10，
+  check-release.ps1 凭据扫描通过）。
+
 ### 2026-10-17 双端：更新提示 UX 改版（通知化 + 徽标 + 每书自动检查开关）
 
 - **改版要求**（用户对上一版的反馈）：进书提示从大弹窗改为通知样式小弹窗
