@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Speed
@@ -160,7 +161,7 @@ internal fun BoxScope.ReaderChapterProgressBar(
     }
 }
 
-/** 顶部浮动栏：返回 / 章节标题 / 书签 / 标注 / 目录。 */
+/** 顶部浮动栏：返回 / 章节标题 / 更新 / 书签 / 标注 / 目录。 */
 @Composable
 internal fun BoxScope.ReaderTopBar(
     visible: Boolean,
@@ -175,6 +176,8 @@ internal fun BoxScope.ReaderTopBar(
     onToggleToc: () -> Unit,
     gululu: Boolean = false,
     onOpenGululu: () -> Unit = {},
+    showUpdate: Boolean = false,
+    onUpdate: () -> Unit = {},
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -201,6 +204,11 @@ internal fun BoxScope.ReaderTopBar(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (showUpdate) {
+                IconButton(onClick = onUpdate) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "更新", tint = fg)
+                }
+            }
             IconButton(onClick = onToggleBookmark) {
                 Icon(
                     if (bookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,

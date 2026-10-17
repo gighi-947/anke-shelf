@@ -48,6 +48,11 @@ object GululuServiceStatus {
 
     @Volatile
     var taskId: String = ""
+
+    /** 最近一次任务是否改变了书籍内容（runUpdate 有新增楼层为 true；导入/失败/取消为 false）。
+     *  进书更新提示据此知道本地已跟上远端、不再提示。 */
+    @Volatile
+    var contentChanged: Boolean = false
 }
 
 /**
@@ -108,6 +113,7 @@ class GululuImportService : Service() {
         GululuServiceStatus.bookId = ""
         GululuServiceStatus.sourceId = sourceId
         GululuServiceStatus.taskId = taskId
+        GululuServiceStatus.contentChanged = false
         importer.setListener { stage, current, total, detail ->
             GululuServiceStatus.stage = stage
             GululuServiceStatus.current = current
@@ -163,6 +169,7 @@ class GululuImportService : Service() {
         GululuServiceStatus.error = ""
         GululuServiceStatus.sourceId = sourceId
         GululuServiceStatus.taskId = taskId
+        GululuServiceStatus.contentChanged = false
         updater.setListener { stage, current, total, detail ->
             GululuServiceStatus.stage = stage
             GululuServiceStatus.current = current
@@ -185,6 +192,7 @@ class GululuImportService : Service() {
                 is GululuUpdateResult.Updated -> {
                     GululuServiceStatus.stage = "done"
                     GululuServiceStatus.bookId = result.bookId
+                    GululuServiceStatus.contentChanged = true
                     GululuServiceStatus.detail = if (result.newCount > 0) {
                         "已更新 ${result.newCount} 楼"
                     } else {

@@ -37,6 +37,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,6 +88,7 @@ fun AnkeShelfRoot(container: AppContainer) {
     var jumpOffset by rememberSaveable { mutableStateOf<Int?>(null) }
     var guideReturn by rememberSaveable { mutableStateOf("settings") }
     var refresh by remember { mutableIntStateOf(0) }
+    var readerEpoch by remember { mutableIntStateOf(0) }
     var settingsTick by remember { mutableIntStateOf(0) }
     var lastServiceStage by remember { mutableStateOf("") }
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
@@ -177,31 +179,47 @@ fun AnkeShelfRoot(container: AppContainer) {
             label = "reader-route",
         ) { isReader ->
             if (isReader) {
-                if (session != null) {
-                    NativeReaderScreen(
-                        session = session,
-                        record = requireNotNull(record) { "reader session without record" },
-                        initialChapter = chapter,
-                        savedOffset = jumpOffset ?: (savedProgress?.text_offset ?: 0),
-                        initialPage = if (jumpOffset == null) savedProgress?.page_index ?: -1 else -1,
-                        initialTotal = if (jumpOffset == null) savedProgress?.page_total ?: -1 else -1,
-                        container = container,
-                        readerSettings = container.settings.getAll(),
-                        onSettingsPatch = { patch ->
-                            container.settings.update(patch)
-                            settingsTick++
-                        },
-                        onStatsTick = { secs, pages ->
-                            container.stats.recordReading(session.id, secs, pages)
-                        },
-                        onBack = {
-                            jumpOffset = null
-                            routeName = "shelf"
-                            refresh++
-                        },
-                    )
-                } else {
-                    LaunchedEffect(Unit) { routeName = "shelf" }
+                // readerEpoch 变化会整体重建阅读器分支（remember/produceState 全部
+                // 重置），供热更新/重建后的「重新载入」拿到新会话与新章节内容。
+                key(readerEpoch) {
+                    if (session != null) {
+                        NativeReaderScreen(
+                            session = session,
+                            record = requireNotNull(record) { "reader session without record" },
+                            initialChapter = chapter,
+                            savedOffset = jumpOffset ?: (savedProgress?.text_offset ?: 0),
+                            initialPage = if (jumpOffset == null) savedProgress?.page_index ?: -1 else -1,
+                            initialTotal = if (jumpOffset == null) savedProgress?.page_total ?: -1 else -1,
+                            container = container,
+                            readerSettings = container.settings.getAll(),
+                            onSettingsPatch = { patch ->
+                                container.settings.update(patch)
+                                settingsTick++
+                            },
+                            onStatsTick = { secs, pages ->
+                                container.stats.recordReading(session.id, secs, pages)
+                            },
+                            onBack = {
+                                jumpOffset = null
+                                routeName = "shelf"
+                                refresh++
+                            },
+                            onReopen = {
+                                // 热更新/重建后重载：进度已在阅读器内 flush，这里按最新书架状态重建会话与锚点。
+                                record?.let { rec ->
+                                    val p = container.repository.progressOf(rec.id)
+                                    chapter = p?.chapter_index
+                                        ?.coerceIn(0, (rec.chapter_count - 1).coerceAtLeast(0))
+                                        ?: 0
+                                }
+                                jumpOffset = null
+                                refresh++
+                                readerEpoch++
+                            },
+                        )
+                    } else {
+                        LaunchedEffect(Unit) { routeName = "shelf" }
+                    }
                 }
             } else {
                 Scaffold(

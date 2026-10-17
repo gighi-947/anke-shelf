@@ -82,8 +82,16 @@ import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.TextExtractor
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.BookSession
+import io.github.gighi947.ankeshelf.service.BookUpdateCheck
+import io.github.gighi947.ankeshelf.service.BookUpdateChecker
+import io.github.gighi947.ankeshelf.service.GululuServiceStatus
 import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.NGA_REFERER
+import io.github.gighi947.ankeshelf.service.NgaDownloader
+import io.github.gighi947.ankeshelf.service.NgaServiceStatus
+import io.github.gighi947.ankeshelf.ui.components.NgaUpdateDialog
+import io.github.gighi947.ankeshelf.ui.components.launchGululuBookUpdate
+import io.github.gighi947.ankeshelf.ui.components.launchNgaUpdate
 import io.github.gighi947.ankeshelf.ui.reader.ReaderEgress
 import io.github.gighi947.ankeshelf.service.ngaHeaders
 import okhttp3.Request
@@ -102,6 +110,7 @@ import io.github.gighi947.ankeshelf.ui.reader.ReaderSelection
 import io.github.gighi947.ankeshelf.ui.reader.TocTree
 import io.github.gighi947.ankeshelf.ui.reader.WebViewChapterView
 import io.github.gighi947.ankeshelf.ui.reader.WebViewReaderCallbacks
+import io.github.gighi947.ankeshelf.ui.theme.AnkeRadius
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.readerTheme
 import org.json.JSONObject
@@ -148,6 +157,7 @@ fun NativeReaderScreen(
     onSettingsPatch: (SettingsPatch) -> Unit,
     onStatsTick: (seconds: Int, pagesFlipped: Int) -> Unit = { _, _ -> },
     onBack: () -> Unit,
+    onReopen: () -> Unit,
 ) {
     var chapterIndex by remember(session.id) { mutableIntStateOf(initialChapter.coerceIn(0, session.chapters.lastIndex.coerceAtLeast(0))) }
     var showToc by remember { mutableStateOf(false) }
@@ -176,6 +186,12 @@ fun NativeReaderScreen(
     // 骨碌碌宿主层（批 8/9）：仅骨碌碌来源的书启用
     val gululuSourceId = session.gululuSourceId
     val isGululu = gululuSourceId > 0
+    // 更新链路判定走 record.path 解析（与 session.gululuSourceId 的 EPUB identifier
+    // 解析无关——后者只服务阅读器功能开关，见任务约束）。
+    val gululuUpdatableId = remember(record.id) {
+        BookUpdateChecker.gululuSourceIdFor(container.appPaths.gululuLibraryDir, record)
+    }
+    val canUpdate = record.nga_tid > 0 || gululuUpdatableId > 0
     var gululuFloor by remember(session.id) { mutableIntStateOf(0) }
     var gululuMaskOn by remember(session.id) {
         mutableStateOf(container.gululuUnlocks.isMaskEnabled(session.id))
@@ -282,6 +298,14 @@ fun NativeReaderScreen(
     var liveOffset by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     var shareBusy by remember { mutableStateOf(false) }
+    // 更新流程状态：顶栏按钮唤出参数框 / 服务观察轮询 / 进书提示（互不共写）。
+    var showNgaUpdate by remember { mutableStateOf(false) }
+    var updateProgress by remember { mutableStateOf<String?>(null) }
+    var updateReload by remember { mutableStateOf<String?>(null) }
+    var updateUpToDate by remember { mutableStateOf(false) }
+    var updateFailed by remember { mutableStateOf<String?>(null) }
+    // 进书提示载荷：(新楼数, 是否估算)。
+    var entryPrompt by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
 
     fun shareFloor(floorNum: Int) {
         if (shareBusy) return
@@ -589,6 +613,77 @@ fun NativeReaderScreen(
         }
     }
 
+    // 更新观察轮询：顶栏按钮/进书提示/NgaUpdateDialog 重建启动的前台服务，
+    // 按本书匹配（NGA bookId / 骨碌碌 sourceId 直读 @Volatile 字段）跟踪到终态。
+    // running 期间展示进度框；终态只处理一次（sawRunning 复位），避免重复弹框。
+    LaunchedEffect(session.id) {
+        if (!canUpdate) return@LaunchedEffect
+        val isNga = record.nga_tid > 0
+        var sawRunning = false
+        while (isActive) {
+            val matched = if (isNga) {
+                NgaServiceStatus.bookId == session.id
+            } else {
+                GululuServiceStatus.sourceId == gululuUpdatableId
+            }
+            if (matched) {
+                if (if (isNga) NgaServiceStatus.running else GululuServiceStatus.running) {
+                    val detail = if (isNga) NgaServiceStatus.detail else GululuServiceStatus.detail
+                    if (!sawRunning) {
+                        // 服务启动前已进阅读器（第一轮即 running）同样进进度框。
+                        sawRunning = true
+                        updateProgress = detail
+                    } else if (updateProgress != null) {
+                        // 用户未按「后台运行」才跟进文案；已关闭不强制重开。
+                        updateProgress = detail
+                    }
+                } else if (sawRunning) {
+                    sawRunning = false
+                    updateProgress = null
+                    when (if (isNga) NgaServiceStatus.stage else GululuServiceStatus.stage) {
+                        "done" -> {
+                            val changed = if (isNga) {
+                                NgaServiceStatus.contentChanged
+                            } else {
+                                GululuServiceStatus.contentChanged
+                            }
+                            val detail = if (isNga) NgaServiceStatus.detail else GululuServiceStatus.detail
+                            if (changed) updateReload = detail else updateUpToDate = true
+                        }
+                        "error" -> updateFailed =
+                            if (isNga) NgaServiceStatus.error else GululuServiceStatus.error
+                        // cancelled：静默关闭
+                    }
+                }
+            }
+            delay(500)
+        }
+    }
+
+    // 进书更新提示：进阅读器 1.5s 后静默检查一次；有新楼层、未屏蔽且服务
+    // 当前未在跑才询问（Unavailable/None 静默，不打断阅读）。
+    LaunchedEffect(session.id) {
+        if (!canUpdate) return@LaunchedEffect
+        if (container.updatePromptPrefs.isMuted(session.id)) return@LaunchedEffect
+        delay(1500)
+        val check = withContext(Dispatchers.IO) {
+            if (record.nga_tid > 0) {
+                BookUpdateChecker.checkNga(container, record)
+            } else {
+                BookUpdateChecker.checkGululu(container.appPaths.gululuLibraryDir, record)
+            }
+        }
+        val available = check as? BookUpdateCheck.Available ?: return@LaunchedEffect
+        if (container.updatePromptPrefs.isMuted(session.id)) return@LaunchedEffect
+        val busy = if (record.nga_tid > 0) {
+            NgaServiceStatus.running && NgaServiceStatus.bookId == session.id
+        } else {
+            GululuServiceStatus.running && GululuServiceStatus.sourceId == gululuUpdatableId
+        }
+        if (busy) return@LaunchedEffect
+        entryPrompt = available.newFloors to available.approximate
+    }
+
     // 控制条：非手动保持时 3 秒自动收起（对齐 WebView 时代最终行为）。
     LaunchedEffect(barsVisible, barsHeld, showToc) {
         if (barsVisible && !barsHeld && !showToc) {
@@ -834,6 +929,126 @@ fun NativeReaderScreen(
             )
         }
 
+        // 更新流程对话框：参数框 → 进行中 → 终态（重载/已是最新/失败）+ 进书提示。
+        if (showNgaUpdate) {
+            NgaUpdateDialog(
+                book = record,
+                container = container,
+                onDismiss = { showNgaUpdate = false },
+                onConfirm = { params ->
+                    showNgaUpdate = false
+                    launchNgaUpdate(context, record, params)
+                },
+            )
+        }
+        updateProgress?.let { detail ->
+            AlertDialog(
+                onDismissRequest = { updateProgress = null },
+                shape = AnkeRadius.large,
+                title = { Text("正在更新") },
+                text = { Text(detail) },
+                confirmButton = {
+                    TextButton(shape = AnkeRadius.small, onClick = { updateProgress = null }) {
+                        Text("后台运行")
+                    }
+                },
+            )
+        }
+        updateReload?.let { detail ->
+            AlertDialog(
+                onDismissRequest = { updateReload = null },
+                shape = AnkeRadius.large,
+                title = { Text("更新完成") },
+                text = { Text(detail + "；重新载入后生效") },
+                confirmButton = {
+                    TextButton(
+                        shape = AnkeRadius.small,
+                        onClick = {
+                            updateReload = null
+                            saveProgress()
+                            onReopen()
+                        },
+                    ) { Text("重新载入") }
+                },
+                dismissButton = {
+                    TextButton(shape = AnkeRadius.small, onClick = { updateReload = null }) {
+                        Text("稍后")
+                    }
+                },
+            )
+        }
+        if (updateUpToDate) {
+            AlertDialog(
+                onDismissRequest = { updateUpToDate = false },
+                shape = AnkeRadius.large,
+                title = { Text("已是最新") },
+                confirmButton = {
+                    TextButton(shape = AnkeRadius.small, onClick = { updateUpToDate = false }) {
+                        Text("好")
+                    }
+                },
+            )
+        }
+        updateFailed?.let { error ->
+            AlertDialog(
+                onDismissRequest = { updateFailed = null },
+                shape = AnkeRadius.large,
+                text = { Text("更新失败：$error") },
+                confirmButton = {
+                    TextButton(shape = AnkeRadius.small, onClick = { updateFailed = null }) {
+                        Text("好")
+                    }
+                },
+            )
+        }
+        entryPrompt?.let { (newFloors, approximate) ->
+            AlertDialog(
+                onDismissRequest = { entryPrompt = null },
+                shape = AnkeRadius.large,
+                title = { Text("发现新楼层") },
+                text = {
+                    Text(
+                        if (approximate) {
+                            "检测到约 ${newFloors} 楼新内容，是否现在更新？"
+                        } else {
+                            "检测到 ${newFloors} 楼新内容，是否现在更新？"
+                        },
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        shape = AnkeRadius.small,
+                        onClick = {
+                            entryPrompt = null
+                            if (record.nga_tid > 0) {
+                                NgaDownloader(container.appPaths, container.repository, container.ngaConfig)
+                                    .defaultsFor(record.id)
+                                    ?.let { launchNgaUpdate(context, record, it) }
+                            } else {
+                                launchGululuBookUpdate(context, container.appPaths.gululuLibraryDir, record)
+                            }
+                            // 启动后由更新观察轮询自动接管进度与终态。
+                        },
+                    ) { Text("立即更新") }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(
+                            shape = AnkeRadius.small,
+                            onClick = {
+                                container.updatePromptPrefs.mute(session.id)
+                                entryPrompt = null
+                            },
+                        ) { Text("不再提示本书") }
+                        TextButton(
+                            shape = AnkeRadius.small,
+                            onClick = { entryPrompt = null },
+                        ) { Text("暂不") }
+                    }
+                },
+            )
+        }
+
         // 悬浮操作栏隐藏后，底部细条展示本章进度（分页=页码比例，滚动=滚动比例）
         ReaderChapterProgressBar(
             visible = !barsVisible,
@@ -928,6 +1143,14 @@ fun NativeReaderScreen(
             onToggleToc = { showToc = !showToc },
             gululu = isGululu,
             onOpenGululu = { showOverview = true },
+            showUpdate = canUpdate,
+            onUpdate = {
+                if (record.nga_tid > 0) {
+                    showNgaUpdate = true
+                } else {
+                    launchGululuBookUpdate(context, container.appPaths.gululuLibraryDir, record)
+                }
+            },
         )
 
         ReaderBottomBar(

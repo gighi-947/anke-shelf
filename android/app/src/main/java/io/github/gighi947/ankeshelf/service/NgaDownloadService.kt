@@ -54,6 +54,11 @@ object NgaServiceStatus {
     @Volatile
     var taskId: String = ""
 
+    /** 最近一次任务是否改变了书籍内容（update 新增楼层 / rebuild 重排；download 为 false）。
+     *  进书更新提示据此知道本地已跟上远端、不再提示。 */
+    @Volatile
+    var contentChanged: Boolean = false
+
     fun snapshot(): NgaProgress =
         NgaProgress(stage = stage, current = current, total = total, detail = detail)
 }
@@ -122,6 +127,7 @@ class NgaDownloadService : Service() {
         NgaServiceStatus.action = action
         NgaServiceStatus.bookId = bookId
         NgaServiceStatus.taskId = taskId
+        NgaServiceStatus.contentChanged = false
         downloader.setListener { p ->
             NgaServiceStatus.stage = p.stage
             NgaServiceStatus.current = p.current
@@ -156,6 +162,7 @@ class NgaDownloadService : Service() {
                     params
                 }
                 val added = downloader.update(bookId, effective)
+                NgaServiceStatus.contentChanged = added > 0
                 NgaServiceStatus.detail = if (added > 0) "已更新 $added 楼" else "已是最新"
                 NgaServiceStatus.stage = "done"
                 NgaServiceStatus.bookId = bookId
@@ -163,6 +170,7 @@ class NgaDownloadService : Service() {
             } else if (action == "rebuild") {
                 // 本地重建：按新参数重排全部章节（不联网抓帖；切内嵌才下载图片）。
                 val n = downloader.rebuild(bookId, params)
+                NgaServiceStatus.contentChanged = true
                 NgaServiceStatus.detail = "已按新参数重建全书（$n 楼）"
                 NgaServiceStatus.stage = "done"
                 NgaServiceStatus.bookId = bookId

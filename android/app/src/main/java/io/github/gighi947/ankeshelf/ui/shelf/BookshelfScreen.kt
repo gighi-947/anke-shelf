@@ -1,7 +1,6 @@
 package io.github.gighi947.ankeshelf.ui.shelf
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -63,16 +62,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.BookTag
-import io.github.gighi947.ankeshelf.data.GululuBaseline
-import io.github.gighi947.ankeshelf.data.GululuUpdate
 import io.github.gighi947.ankeshelf.data.StoreLoadIssue
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.GululuExportEmbed
-import io.github.gighi947.ankeshelf.service.GululuImportService
 import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.BookUi
 import io.github.gighi947.ankeshelf.service.LogEvents
@@ -83,6 +78,7 @@ import io.github.gighi947.ankeshelf.ui.components.BookTagFilterRow
 import io.github.gighi947.ankeshelf.ui.components.BookTagRow
 import io.github.gighi947.ankeshelf.ui.components.BookManagementOverlay
 import io.github.gighi947.ankeshelf.ui.components.NgaUpdateDialog
+import io.github.gighi947.ankeshelf.ui.components.launchGululuBookUpdate
 import io.github.gighi947.ankeshelf.ui.components.launchNgaUpdate
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
@@ -94,24 +90,6 @@ import kotlin.math.roundToInt
 
 private fun shelfIsGululu(container: AppContainer, book: BookRecord): Boolean =
     book.nga_tid <= 0 && book.path.startsWith(container.appPaths.gululuLibraryDir.absolutePath)
-
-private fun shelfLaunchGululuUpdate(
-    context: Context,
-    container: AppContainer,
-    book: BookRecord,
-) {
-    val sourceId = File(book.path).parentFile?.name?.toIntOrNull() ?: return
-    val baselineFile = GululuUpdate.baselineFile(container.appPaths.gululuLibraryDir, sourceId)
-    val baseline = GululuUpdate.loadBaseline(baselineFile, sourceId)
-    val imageMode = (baseline as? GululuBaseline.Ok)?.imageMode ?: "online"
-    val intent = Intent(context, GululuImportService::class.java).apply {
-        action = GululuImportService.ACTION_START
-        putExtra("action", "update")
-        putExtra("sourceId", sourceId)
-        putExtra("imageMode", imageMode)
-    }
-    ContextCompat.startForegroundService(context, intent)
-}
 
 /** 书架页：空态 + 网格（M2：SAF 导入 EPUB、显示进度、进入阅读器）。 */
 @Composable
@@ -453,7 +431,7 @@ fun BookshelfScreen(
                     },
                 )
             } else if (shelfIsGululu(container, book)) {
-                shelfLaunchGululuUpdate(context, container, book)
+                launchGululuBookUpdate(context, container.appPaths.gululuLibraryDir, book)
                 updateTarget = null
             }
         }

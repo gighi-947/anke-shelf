@@ -18,6 +18,7 @@ import io.github.gighi947.ankeshelf.data.AnnotationStore
 import io.github.gighi947.ankeshelf.data.Shelf
 import io.github.gighi947.ankeshelf.data.SpineItem
 import io.github.gighi947.ankeshelf.data.TextExtractor
+import io.github.gighi947.ankeshelf.data.UpdatePromptPrefs
 import io.github.gighi947.ankeshelf.data.nowIso
 import io.github.gighi947.ankeshelf.data.sniffImageExt
 import io.github.gighi947.ankeshelf.data.queryDisplayName
@@ -49,6 +50,8 @@ class AppContainer(
         appPaths.gululuUnlocksFile,
         appPaths.gululuCluesFile,
     )
+    /** 进书更新提示屏蔽（端私有，不入双端契约）。 */
+    val updatePromptPrefs = UpdatePromptPrefs(File(appPaths.root, "update_prompt_muted.json"))
     /** 骨碌碌在线评论（5 分钟缓存 + 离线回退）。 */
     val gululuComments = GululuCommentService(appPaths)
     val repository = BookRepository(appPaths, shelf, progress)

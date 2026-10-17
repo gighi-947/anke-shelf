@@ -508,6 +508,46 @@ class NgaDownloader(
         )
     }
 
+    /**
+     * 轻量更新检查（只拉断点页，不写任何本地状态）：
+     * null=无法检查（书不存在/非原生书/无断点基线/未配置凭据/网络失败，调用方静默）；
+     * 0=无更新；>0=估算新增楼数（见 [estimateNewFloors]，页数估算非精确值）。
+     */
+    fun checkUpdate(bookId: String): Int? {
+        val record = repository.recordOf(bookId) ?: return null
+        val nativeDir = File(record.path)
+        if (!NativeBookWriter.isNativeDir(nativeDir)) return null
+        val folderName = nativeDir.parentFile?.name ?: ""
+        // 无断点基线不猜：没有 max_page/max_floor 就无从判断"断点页之后"的范围
+        if (!stateFile(folderName).isFile) return null
+        val cfg = config.load()
+        if (!cfg.configured) return null
+        val meta = try {
+            NativeBookWriter.loadMeta(nativeDir)
+        } catch (_: Exception) {
+            return null
+        }
+        val state = loadState(folderName, meta.tid, meta.author_id)
+        val client = NgaClient(
+            cookieUid = cfg.uid,
+            cookieCid = cfg.cid,
+            userAgent = cfg.ua,
+            baseUrl = cfg.baseUrl,
+        )
+        val page = try {
+            client.fetchPageFull(meta.tid, state.max_page.coerceAtLeast(1), state.author_id)
+        } catch (_: NgaHttpException) {
+            return null
+        }
+        if (page.code != 0) return null
+        return estimateNewFloors(
+            maxPage = state.max_page,
+            maxFloor = state.max_floor,
+            remoteTotalPage = page.totalPage,
+            breakpointPageLous = page.floors.map { it.lou },
+        )
+    }
+
     private fun validFloors(floors: List<NativeFloor>, maxFloors: Int): List<NativeFloor> {
         var valid = floors.filter { it.lou != -1 && (maxFloors <= 0 || it.lou <= maxFloors) }
         if (maxFloors > 0 && valid.size > maxFloors) {
@@ -555,6 +595,21 @@ class NgaDownloader(
 
         fun folderNameFor(tid: Long, authorId: Long): String =
             if (authorId > 0) "$tid($authorId)" else tid.toString()
+
+        /**
+         * 估算新增楼数：断点页上 lou > maxFloor 的楼层 + 后续整页 × 20（NGA 每页楼数）。
+         * lou=-1（占位/删除楼）不计；maxFloor < 0 时断点页全部非负 lou 都算新。
+         */
+        internal fun estimateNewFloors(
+            maxPage: Int,
+            maxFloor: Int,
+            remoteTotalPage: Int,
+            breakpointPageLous: List<Int>,
+        ): Int {
+            val onPage = breakpointPageLous.count { it >= 0 && it > maxFloor }
+            val extraPages = (remoteTotalPage - maxPage).coerceAtLeast(0)
+            return onPage + extraPages * 20
+        }
     }
 }
 

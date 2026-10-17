@@ -66,6 +66,41 @@
 
 ## 4. 最近流水
 
+### 2026-10-17 Android：阅读器更新按钮 + 进书更新提示（NGA+骨碌碌）
+
+- **需求**（用户反馈清单功能项，方案 C）：阅读界面内更新按钮 + 每次联网进书时
+  可选的楼层更新提示，两侧书源同做。
+- **实现**：
+  - 顶栏更新按钮：NGA 原生书弹 `NgaUpdateDialog`（增量/重建双入口）；骨碌碌书直接
+    启动热更新服务。可更新判定统一走 record.path 解析
+    （`BookUpdateChecker.gululuSourceIdFor`），与 `session.gululuSourceId`
+    （EPUB identifier，只管阅读器功能开关）语义分离；
+  - 进书提示：进阅读器 1.5s 后异步轻量检查——NGA 只拉断点页
+    （download.json 的 max_page/max_floor）用 `estimateNewFloors` 纯函数估算新楼，
+    骨碌碌只拉索引与增量基线做 append-only 前缀比对（精确值）；检出新内容才弹
+    「立即更新 / 暂不 / 不再提示本书」（屏蔽存端私有 update_prompt_muted.json，
+    容错读）；无凭据/无基线/离线/服务在跑一律静默；
+  - 更新观察：阅读器内 500ms 轮询按本书匹配服务状态（NGA bookId / 骨碌碌
+    sourceId），进行中弹进度框（「后台运行」关掉后不被轮询重开），终态一次分派；
+    内容变化（`NgaServiceStatus`/`GululuServiceStatus` 新增 `contentChanged` 位）
+    弹「重新载入」——先 flush 进度锚点，再经 `readerEpoch` key 整体重建阅读器
+    （remember/produceState 重置，新会话+新章节按最新进度恢复）；
+    已是最新/失败给提示，取消静默；
+  - 关键坑：阅读器 remember 均 keyed 在 bookId（热更新后 bookId 不变），不强制
+    重组会读到旧章节列表——readerEpoch 专为此设。
+- **测试**：新增 16 单测（estimateNewFloors 7 例 / UpdatePromptPrefs 3 例 /
+  BookUpdateChecker 骨碌碌 6 例）；Android testDebugUnitTest 绿。
+- **桌面端对照**：反馈源为移动端，本批仅 Android；Windows 阅读器更新入口另行评估。
+
+### 2026-10-17 win：纪律守卫白名单行号校正（server.py 探针回退）
+
+- **现象**：`test_error_discipline` 红——表情图源修复在 `app/server.py` 上方加了
+  函数，curl_cffi 探针两处 except 的行号从 219/228 移到 238/247，
+  `PROBE_FALLBACK_PATHS` 白名单失配。
+- **修复**：校正白名单行号，全量 Windows 单测回绿。
+- **教训**：行号白名单脆——同文件上方增删行即失效；再移位时优先让代码自证
+  （except 体内加 log/return）而非继续挪行号。
+
 ### 2026-10-10 Android：EPUB 导出补在线图内嵌（NGA 原生书 + 骨碌碌在线 EPUB）
 
 - **现象**（用户反馈）：EPUB 导出后看不到图片——在线模式导出写的是远程 URL，
