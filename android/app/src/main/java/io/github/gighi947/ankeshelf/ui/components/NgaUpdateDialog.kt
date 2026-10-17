@@ -36,7 +36,11 @@ import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 
 /**
  * 更新参数对话框（对齐桌面“更新帖子”面板）：预填最近一次下载/更新设置，
- * 可临时修改只看楼主、主题、图片模式、每章楼层数；仅对本次新增楼层生效。
+ * 可临时修改只看楼主、主题、图片模式、每章楼层数。
+ * - 「开始更新」：纯增量追加，参数仅对本次新增楼层生效；
+ * - 「重建全书」：用已下载楼层按当前参数重排全部章节（本地重建，不联网抓帖；
+ *   切内嵌图片才下载图片），可修复存量章节的渲染问题。重排会改变章节边界，
+ *   阅读位置与章内标注可能错位（弹确认框提示）。
  * 书架封面/列表与“已下载”页共用。
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -61,6 +65,19 @@ fun NgaUpdateDialog(
         mutableStateOf((defaults?.pageLimit ?: 0).takeIf { it > 0 }?.toString() ?: "")
     }
     var imageMode by remember(book.id) { mutableStateOf(defaults?.imageMode ?: "online") }
+    var showRebuildConfirm by remember { mutableStateOf(false) }
+
+    fun currentParams() = NgaDownloadParams(
+        tid = book.nga_tid.toLong(),
+        authorId = defaults?.authorId ?: 0L,
+        authorOnly = authorOnly,
+        imageMode = imageMode,
+        theme = if (themeDark) "dark" else "light",
+        perChapter = perChapterText.trim().toIntOrNull()?.coerceIn(1, 200) ?: 20,
+        pageLimit = pageLimitText.trim().toIntOrNull() ?: 0,
+    )
+
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -152,7 +169,7 @@ fun NgaUpdateDialog(
                         .padding(top = AnkeSpacing.sm),
                 )
                 Text(
-                    "更新设置仅对本次新增楼层生效，不影响已有楼层。",
+                    "「开始更新」仅对本次新增楼层生效；「重建全书」按当前参数重排全部已有章节。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = AnkeSpacing.sm),
@@ -162,25 +179,52 @@ fun NgaUpdateDialog(
         confirmButton = {
             TextButton(
                 shape = AnkeRadius.small,
-                onClick = {
-                    onConfirm(
-                        NgaDownloadParams(
-                            tid = book.nga_tid.toLong(),
-                            authorId = defaults?.authorId ?: 0L,
-                            authorOnly = authorOnly,
-                            imageMode = imageMode,
-                            theme = if (themeDark) "dark" else "light",
-                            perChapter = perChapterText.trim().toIntOrNull()?.coerceIn(1, 200) ?: 20,
-                            pageLimit = pageLimitText.trim().toIntOrNull() ?: 0,
-                        ),
-                    )
-                },
+                onClick = { onConfirm(currentParams()) },
             ) { Text("开始更新") }
         },
         dismissButton = {
-            TextButton(shape = AnkeRadius.small, onClick = onDismiss) { Text("取消") }
+            Row {
+                TextButton(
+                    shape = AnkeRadius.small,
+                    onClick = {
+                        val layoutChanged =
+                            currentParams().perChapter != (defaults?.perChapter ?: 20)
+                        if (layoutChanged) showRebuildConfirm = true
+                        else launchNgaRebuild(context, book, currentParams())
+                    },
+                ) { Text("重建全书") }
+                TextButton(shape = AnkeRadius.small, onClick = onDismiss) { Text("取消") }
+            }
         },
     )
+
+    if (showRebuildConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRebuildConfirm = false },
+            shape = AnkeRadius.large,
+            title = { Text("重建全书") },
+            text = {
+                Text(
+                    "每章楼层数已变化，重建后章节边界重排，阅读位置与章内标注可能错位" +
+                        "（楼层内容不变）。确定继续？",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    shape = AnkeRadius.small,
+                    onClick = {
+                        showRebuildConfirm = false
+                        launchNgaRebuild(context, book, currentParams())
+                    },
+                ) { Text("重建") }
+            },
+            dismissButton = {
+                TextButton(shape = AnkeRadius.small, onClick = { showRebuildConfirm = false }) {
+                    Text("取消")
+                }
+            },
+        )
+    }
 }
 
 /** 携带参数启动更新前台服务（书架与已下载页共用）。 */
@@ -188,6 +232,23 @@ fun launchNgaUpdate(context: Context, book: BookRecord, params: NgaDownloadParam
     val intent = Intent(context, NgaDownloadService::class.java).apply {
         action = NgaDownloadService.ACTION_START
         putExtra("action", "update")
+        putExtra("bookId", book.id)
+        putExtra("tid", params.tid)
+        putExtra("authorId", params.authorId)
+        putExtra("authorOnly", params.authorOnly)
+        putExtra("theme", params.theme)
+        putExtra("perChapter", params.perChapter)
+        putExtra("pageLimit", params.pageLimit)
+        putExtra("imageMode", params.imageMode)
+    }
+    ContextCompat.startForegroundService(context, intent)
+}
+
+/** 本地重建全书（按当前参数重排全部章节；不联网抓帖）。 */
+fun launchNgaRebuild(context: Context, book: BookRecord, params: NgaDownloadParams) {
+    val intent = Intent(context, NgaDownloadService::class.java).apply {
+        action = NgaDownloadService.ACTION_START
+        putExtra("action", "rebuild")
         putExtra("bookId", book.id)
         putExtra("tid", params.tid)
         putExtra("authorId", params.authorId)

@@ -459,6 +459,58 @@ object NativeBookWriter {
         return fresh.size
     }
 
+    /**
+     * 本地重建：用 floors.json 全量按新参数重写容器（不联网抓帖；内嵌图片需调用方
+     * 先备好 imagesDir）。经临时目录写完后整目录换名落位——重建中断不留半成品。
+     * book_id/created_time/楼层身份全部保留（进度键不变）。
+     */
+    fun rebuildContainer(
+        ngaLibraryRoot: File,
+        folderName: String,
+        perChapter: Int,
+        imageMode: String,
+        theme: String,
+        imagesDir: File? = null,
+    ): Int {
+        val nativeDir = nativeDirFor(ngaLibraryRoot, folderName)
+        val meta = loadMeta(nativeDir)
+        val floors = loadFloors(nativeDir)
+        val tmpFolder = "$folderName.rebuild-tmp"
+        val tmpNative = nativeDirFor(ngaLibraryRoot, tmpFolder)
+        File(ngaLibraryRoot, tmpFolder).deleteRecursively()
+        try {
+            writeContainer(
+                ngaLibraryRoot = ngaLibraryRoot,
+                folderName = tmpFolder,
+                tieziTitle = meta.title,
+                author = meta.author,
+                tid = meta.tid,
+                authorId = meta.author_id,
+                createdTime = meta.created_time,
+                updatedTime = nowIso(),
+                validFloors = floors,
+                perChapter = perChapter,
+                imageMode = imageMode,
+                theme = theme,
+                bookId = meta.book_id,
+                tocChapters = meta.toc.ifEmpty { null },
+                tocMode = meta.toc_mode,
+                imagesDir = imagesDir,
+            )
+            val backup = File(nativeDir.parentFile, "book.rebuild-old")
+            backup.deleteRecursively()
+            if (!nativeDir.renameTo(backup)) throw java.io.IOException("旧容器改名失败：$nativeDir")
+            if (!tmpNative.renameTo(nativeDir)) {
+                backup.renameTo(nativeDir) // 回滚旧容器
+                throw java.io.IOException("新容器落位失败：$tmpNative")
+            }
+            backup.deleteRecursively()
+            return floors.size
+        } finally {
+            File(ngaLibraryRoot, tmpFolder).deleteRecursively()
+        }
+    }
+
     fun loadMeta(nativeDir: File): NativeMeta {
         val file = File(nativeDir, NATIVE_META_NAME)
         return NATIVE_META_JSON.decodeFromString(file.readText(Charsets.UTF_8))

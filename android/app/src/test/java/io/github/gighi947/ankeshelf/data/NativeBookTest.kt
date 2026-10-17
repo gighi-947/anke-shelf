@@ -296,4 +296,108 @@ class NativeBookTest {
             tmp.deleteRecursively()
         }
     }
+
+    @Test
+    fun `rebuild regroups with new params and keeps book identity`() {
+        val tmp = kotlin.io.path.createTempDirectory("native-rebuild-").toFile()
+        try {
+            val floors = (0..5).map {
+                NativeFloor(
+                    pid = it.toLong(),
+                    lou = it,
+                    username = "u",
+                    user_id = 1,
+                    raw_content = "<p>楼层 $it</p>",
+                )
+            }
+            NativeBookWriter.writeContainer(
+                ngaLibraryRoot = tmp,
+                folderName = "book",
+                tieziTitle = "标题",
+                author = "作者",
+                tid = 42,
+                authorId = 7,
+                createdTime = "2026-01-01T00:00:00+08:00",
+                updatedTime = "2026-01-01T00:00:00+08:00",
+                validFloors = floors,
+                perChapter = 2,
+                imageMode = "online",
+                theme = "light",
+                bookId = "bookid42",
+            )
+            val dir = NativeBookWriter.nativeDirFor(tmp, "book")
+            val before = NativeBookWriter.loadMeta(dir)
+            assertEquals(4, before.chapters.size) // 主楼 + 5 楼按 2 楼/章
+
+            val rebuilt = NativeBookWriter.rebuildContainer(
+                ngaLibraryRoot = tmp,
+                folderName = "book",
+                perChapter = 5,
+                imageMode = "embedded",
+                theme = "dark",
+            )
+            assertEquals(6, rebuilt)
+
+            val after = NativeBookWriter.loadMeta(dir)
+            assertEquals("重排后章节数", 2, after.chapters.size) // 主楼 + 5 楼合一章
+            assertEquals("book_id 不可变（进度键）", "bookid42", after.book_id)
+            assertEquals("created_time 保留", "2026-01-01T00:00:00+08:00", after.created_time)
+            assertEquals(5, after.per_chapter)
+            assertEquals("embedded", after.image_mode)
+            assertEquals("dark", after.theme)
+            assertEquals("last_lou 不变", before.last_lou, after.last_lou)
+
+            // 旧分章的残留文件必须清掉（换名暂存区已删，不存在游离章节）
+            val stale = File(dir, "chapters/0003.xhtml")
+            assertTrue("旧分章残留文件应被清理", !stale.exists())
+            assertTrue("临时目录应清理", !File(tmp, "book.rebuild-tmp").exists())
+
+            // 内容无损：新章节包含全部楼层
+            val book = NativeBook(dir).open()
+            val allText = (0 until book.chapters.size)
+                .joinToString("") { (book.chapterText(it) as ChapterReadResult.Success).text }
+            for (i in 0..5) assertTrue("楼层 $i 应保留", allText.contains("楼层 $i"))
+            book.close()
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `rebuild re-renders floors with current converter`() {
+        // 存量书的折叠截断（内容烤入旧转换结果）只能靠重建修复：
+        // 重建用当前转换器重渲染 floors.json。
+        val tmp = kotlin.io.path.createTempDirectory("native-rebuild-fold-").toFile()
+        try {
+            val fold =
+                """<div class="foldBox no"><div class="collapse_btn"><a href="javascript:;" onclick="collapse(this);">+</a>规则 ...</div><span class="collapse_content" id="foldCnt"><div class='quote'><div align='center'><span style='font-size:150%'>[标题行]</span></div><br/>正文一<br/>正文二</div></span></div>"""
+            val floors = listOf(
+                NativeFloor(pid = 0, lou = 0, raw_content = "<p>主楼</p>"),
+                NativeFloor(pid = 1, lou = 1, raw_content = fold),
+            )
+            NativeBookWriter.writeContainer(
+                ngaLibraryRoot = tmp,
+                folderName = "book",
+                tieziTitle = "t",
+                author = "a",
+                tid = 1,
+                authorId = 0,
+                createdTime = "2026-01-01T00:00:00+08:00",
+                updatedTime = "2026-01-01T00:00:00+08:00",
+                validFloors = floors,
+                perChapter = 20,
+                imageMode = "online",
+                theme = "light",
+                bookId = "bookid1",
+            )
+            NativeBookWriter.rebuildContainer(tmp, "book", 20, "online", "light")
+            val dir = NativeBookWriter.nativeDirFor(tmp, "book")
+            val ch1 = File(dir, "chapters/0001.xhtml").readText(Charsets.UTF_8)
+            assertTrue("折叠内容必须完整进入 details", ch1.contains("<summary>规则</summary>"))
+            assertTrue("折叠开头结构完整", ch1.contains("<details><summary>规则</summary><div><div class='quote'>"))
+            assertTrue("折叠尾部完整（正文二不得漏出）", ch1.contains("正文二</div></div></details>"))
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
 }

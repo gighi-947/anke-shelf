@@ -160,6 +160,13 @@ class NgaDownloadService : Service() {
                 NgaServiceStatus.stage = "done"
                 NgaServiceStatus.bookId = bookId
                 finalText = NgaServiceStatus.detail
+            } else if (action == "rebuild") {
+                // 本地重建：按新参数重排全部章节（不联网抓帖；切内嵌才下载图片）。
+                val n = downloader.rebuild(bookId, params)
+                NgaServiceStatus.detail = "已按新参数重建全书（$n 楼）"
+                NgaServiceStatus.stage = "done"
+                NgaServiceStatus.bookId = bookId
+                finalText = NgaServiceStatus.detail
             } else {
                 val newId = downloader.download(params)
                 NgaServiceStatus.bookId = newId

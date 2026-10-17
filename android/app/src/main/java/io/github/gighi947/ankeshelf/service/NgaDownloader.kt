@@ -326,6 +326,47 @@ class NgaDownloader(
         return added
     }
 
+    /** 本地重建：用已下载的 floors.json 按新参数重排全部章节（不联网抓帖；
+     *  切内嵌图片模式才下载图片）。修复存量书的渲染/分章问题（如折叠截断）。
+     *  返回楼层数。 */
+    fun rebuild(bookId: String, params: NgaDownloadParams): Int {
+        cancelled = false
+        val record = repository.recordOf(bookId) ?: throw NgaHttpException("书架中找不到该书")
+        val nativeDir = File(record.path)
+        if (!NativeBookWriter.isNativeDir(nativeDir)) {
+            throw NgaHttpException("仅支持重建 NGA 原生书")
+        }
+        val meta = NativeBookWriter.loadMeta(nativeDir)
+        val floors = NativeBookWriter.loadFloors(nativeDir)
+        if (floors.isEmpty()) throw NgaHttpException("书籍楼层为空，无法重建")
+        if (params.imageMode == "embedded") {
+            progress("images", 0, 0, "正在下载图片…")
+            downloadImages(floors, meta.book_id)
+        }
+        checkCancel()
+        progress("format", 0, 0, "正在重建全书…")
+        val imagesDir = File(appPaths.root, "images/${meta.book_id}")
+        val n = NativeBookWriter.rebuildContainer(
+            ngaLibraryRoot = appPaths.ngaLibraryDir,
+            folderName = nativeDir.parentFile?.name ?: "",
+            perChapter = params.perChapter,
+            imageMode = params.imageMode,
+            theme = params.theme,
+            imagesDir = imagesDir,
+        )
+        val refresh = repository.refreshNativeRecord(bookId)
+        if (refresh is RepoResult.Err) {
+            LogEvents.event(
+                "nga",
+                "refresh_record_failed",
+                "book_id_hash" to LogEvents.bookIdHash(bookId),
+                "error" to refresh.error.message,
+            )
+        }
+        progress("done", n, n, "重建完成")
+        return n
+    }
+
     private fun updateFolder(
         folderName: String,
         tid: Long,
