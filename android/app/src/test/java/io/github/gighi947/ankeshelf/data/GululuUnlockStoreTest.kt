@@ -37,6 +37,25 @@ class GululuUnlockStoreTest {
     }
 
     @Test
+    fun `骰点掩盖默认规则与显式开关`() {
+        val s = store()
+        // 无揭示记录的书：默认关（2026-10 反馈：默认掩盖吞剧情，改为选择性开启）
+        assertFalse(s.isMaskEnabled("book-new"))
+        // 有揭示记录的书：视为已在用该功能，保持开
+        s.unlock("book-engaged", "700-g-0")
+        assertTrue(s.isMaskEnabled("book-engaged"))
+        // 显式开关优先于缺省规则
+        s.setMaskEnabled("book-new", true)
+        assertTrue(s.isMaskEnabled("book-new"))
+        s.setMaskEnabled("book-engaged", false)
+        assertFalse(s.isMaskEnabled("book-engaged"))
+        // 跨会话保持
+        val reopened = store()
+        assertTrue(reopened.isMaskEnabled("book-new"))
+        assertFalse(reopened.isMaskEnabled("book-engaged"))
+    }
+
+    @Test
     fun `批量揭示只计新增`() {
         val s = store()
         assertEquals(3, s.unlockAll("b", listOf("g1", "g2", "g3")))

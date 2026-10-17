@@ -1368,6 +1368,7 @@
     // 必须失败隔离：Gululu 初始化异常不能影响下方换章按钮绑定等基础链路。
     if (opts.gululu) {
       try {
+        gululu.maskOn = opts.gululuMask !== false;
         initGululu(opts.gululuUnlocked || '[]');
       } catch (e) {
         log('[gululu] init failed: ' + e);
@@ -1481,9 +1482,15 @@
   }
 
   function setGululuAutoMusic(value) {
+    var was = state.gululuAutoMusic;
     state.gululuAutoMusic = value !== false;
     if (state.gululuAutoMusic && !state.gululuActive) {
       setTimeout(reportGululuContext, 0);
+    }
+    if (state.gululuAutoMusic && !was) {
+      // 手动开启立即生效：对阅读线之前最近的 cue 补一次触发，
+      // 否则开启动作没有任何反馈，用户会认为按钮坏了。
+      setTimeout(replayMusicAtLine, 0);
     }
   }
 
@@ -1511,9 +1518,11 @@
     hitGululuInteractive: hitGululuInteractive,
     applyParagraphComments: applyParagraphComments,
     revealNextGululuGroups: revealNextGululuGroups,
+    revealAllGululuGroups: revealAllGululuGroups,
     gululuChapterInfo: gululuChapterInfo,
     gululuResetUnlocks: gululuResetUnlocks,
     setGululuAutoMusic: setGululuAutoMusic,
+    setGululuMask: setGululuMask,
     bridgeVersion: function () { return BRIDGE_VERSION; },
     bridgeReadyPayload: bridgeReadyPayload,
     emitReady: emitReady,
@@ -1533,6 +1542,8 @@
     lastVfx: '',
     lastBackground: '',
     lastFloor: 0,
+    // 骰点掩盖开关（宿主按书计算）：false = 全部可见（解锁记录保留，再开启时恢复）。
+    maskOn: true,
   };
 
   function gululuUnlockedIds(payload) {
@@ -1548,7 +1559,7 @@
     for (var i = 0; i < values.length; i++) {
       var el = values[i];
       var group = el.getAttribute('data-gululu-dice-group') || '';
-      if (gululu.unlocked[group]) {
+      if (gululu.maskOn === false || gululu.unlocked[group]) {
         el.classList.remove('masked');
         el.style.color = '';
         el.style.background = '';
@@ -1567,6 +1578,8 @@
       }
       // 直接绑定兜底：部分机型上 document 级委托会被阅读器点击处理挡住。
       el.onclick = function (ev) {
+        // 掩盖关闭时骰点已全可见，点击不再产生揭示记录（避免误触把书翻回掩盖态）。
+        if (gululu.maskOn === false) return false;
         if (ev) {
           if (ev.preventDefault) ev.preventDefault();
           if (ev.stopPropagation) ev.stopPropagation();
@@ -1581,7 +1594,7 @@
     for (i = 0; i < fogs.length; i++) {
       var fog = fogs[i];
       var lock = fog.getAttribute('data-gululu-fog-lock') || '';
-      if (gululu.unlocked[lock]) {
+      if (gululu.maskOn === false || gululu.unlocked[lock]) {
         fog.classList.remove('gululu-fog-hidden');
       } else {
         fog.classList.add('gululu-fog-hidden');
@@ -1636,6 +1649,46 @@
     for (i = 0; i < picked.length; i++) revealGululuGroup(picked[i], false);
     if (picked.length > 0) callBridge('gululuUnlockAll', JSON.stringify(picked));
     return picked.length;
+  }
+
+  /** 揭示本章全部骰点组（不截断；反馈「每章十个十个减少」的痛点）。 */
+  function revealAllGululuGroups() {
+    var all = collectGroupIds(document);
+    var picked = [];
+    for (var i = 0; i < all.length; i++) {
+      if (!gululu.unlocked[all[i]]) picked.push(all[i]);
+    }
+    for (i = 0; i < picked.length; i++) revealGululuGroup(picked[i], false);
+    if (picked.length > 0) callBridge('gululuUnlockAll', JSON.stringify(picked));
+    return picked.length;
+  }
+
+  /** 掩盖开关：false = 全部可见（解锁记录保留，再开启时恢复遮罩状态）。 */
+  function setGululuMask(on) {
+    gululu.maskOn = on !== false;
+    applyGululuMasks();
+    // 迷雾块显隐改变布局，分页模式必须重排
+    if (state.paged) onResize();
+  }
+
+  /** 手动开启自动音乐时补触发：阅读线之前最近一个 cue（绕过 autoFired 去重）。 */
+  function replayMusicAtLine() {
+    var cues = document.querySelectorAll('.gululu-music-cue');
+    if (!cues.length) return;
+    var line = Math.round(viewH() * 0.4);
+    var lastUrl = '';
+    var lastTitle = '';
+    for (var i = 0; i < cues.length; i++) {
+      var url = cues[i].getAttribute('data-gululu-music-url') || '';
+      if (!url) continue;
+      var rect = cues[i].getBoundingClientRect();
+      var passed = state.paged ? rect.left < viewW() : rect.top <= line;
+      if (!passed) continue;
+      lastUrl = url;
+      var t = cues[i].querySelector('.gululu-music-title');
+      lastTitle = t ? t.textContent : '';
+    }
+    if (lastUrl) callBridge('gululuMusic', lastUrl, lastTitle, true);
   }
 
   function collectGroupIds(root) {
@@ -1798,6 +1851,8 @@
 
       var dice = t.closest('.gululu-dice-value, .gululu-dice-suffix');
       if (dice) {
+        // 掩盖关闭时骰点全可见，点击不揭示（不产生解锁记录）。
+        if (gululu.maskOn === false) return;
         e.preventDefault();
         e.stopPropagation();
         var group = dice.getAttribute('data-gululu-dice-group') || '';

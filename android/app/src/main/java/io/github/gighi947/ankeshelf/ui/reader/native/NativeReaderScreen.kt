@@ -177,6 +177,9 @@ fun NativeReaderScreen(
     val gululuSourceId = session.gululuSourceId
     val isGululu = gululuSourceId > 0
     var gululuFloor by remember(session.id) { mutableIntStateOf(0) }
+    var gululuMaskOn by remember(session.id) {
+        mutableStateOf(container.gululuUnlocks.isMaskEnabled(session.id))
+    }
     var gululuVfx by remember { mutableStateOf("") }
     var gululuBackground by remember { mutableStateOf("") }
     var gululuComments by remember { mutableStateOf<List<GululuCommentUi>>(emptyList()) }
@@ -685,6 +688,7 @@ fun NativeReaderScreen(
                 autoScroll = autoScrollOn,
                 autoScrollSpeed = readerSettings.autoscroll_speed,
                 gululu = isGululu,
+                gululuMask = gululuMaskOn,
                 gululuAutoMusic = readerSettings.gululu_immersive.autoMusic,
                 gululuUnlockedJson = unlockedJson,
                 paragraphCommentsJson = paragraphCommentsJson,
@@ -1160,8 +1164,18 @@ fun NativeReaderScreen(
                 floors = chapterStats[4],
                 danmaku = danmakuOn,
                 playingTitle = musicTitle,
+                maskOn = gululuMaskOn,
+                onToggleMask = {
+                    val next = !gululuMaskOn
+                    container.gululuUnlocks.setMaskEnabled(session.id, next)
+                    gululuMaskOn = next
+                },
                 onRevealNext = {
                     gululuCommand = "AnkeReader.revealNextGululuGroups(10);"
+                    gululuCommandToken++
+                },
+                onRevealAll = {
+                    gululuCommand = "AnkeReader.revealAllGululuGroups();"
                     gululuCommandToken++
                 },
                 onResetUnlocks = {

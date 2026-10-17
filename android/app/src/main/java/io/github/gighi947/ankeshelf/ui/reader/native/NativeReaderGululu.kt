@@ -538,7 +538,10 @@ internal fun BoxScope.GululuOverviewSheet(
     floors: Int,
     danmaku: Boolean,
     playingTitle: String,
+    maskOn: Boolean,
+    onToggleMask: () -> Unit,
     onRevealNext: () -> Unit,
+    onRevealAll: () -> Unit,
     onResetUnlocks: () -> Unit,
     onToggleDanmaku: () -> Unit,
     onStopMusic: () -> Unit,
@@ -599,11 +602,22 @@ internal fun BoxScope.GululuOverviewSheet(
                     )
                 }
                 TextButton(
+                    onClick = onToggleMask,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(contentColor = fg),
+                ) { Text(if (maskOn) "骰点掩盖：开（点按骰子逐个揭示）" else "骰点掩盖：关（全部可见）") }
+                TextButton(
                     onClick = onRevealNext,
-                    enabled = lockedGroups > 0,
+                    enabled = maskOn && lockedGroups > 0,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.textButtonColors(contentColor = fg),
                 ) { Text("揭示接下来 10 组") }
+                TextButton(
+                    onClick = onRevealAll,
+                    enabled = maskOn && lockedGroups > 0,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.textButtonColors(contentColor = fg),
+                ) { Text("揭示本章全部") }
                 TextButton(
                     onClick = onOpenComments,
                     modifier = Modifier.fillMaxWidth(),

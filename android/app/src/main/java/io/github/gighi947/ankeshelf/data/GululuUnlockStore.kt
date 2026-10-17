@@ -11,6 +11,8 @@ data class GululuUnlocksFile(
     val version: Int = 1,
     /** bookId → 已揭示的骰点分组 ID（保序，便于裁剪最早的记录）。 */
     val unlocked: Map<String, List<String>> = emptyMap(),
+    /** bookId → 骰点掩盖显式开关（缺省按规则推断：有揭示记录=开，无记录=关）。 */
+    val mask_enabled: Map<String, Boolean> = emptyMap(),
 )
 
 @Serializable
@@ -33,6 +35,7 @@ class GululuUnlockStore(private val unlocksFile: File, private val cluesFile: Fi
     private val unlocksGuard = StoreWriteGuard()
     private val cluesGuard = StoreWriteGuard()
     private var unlocked: MutableMap<String, MutableList<String>> = mutableMapOf()
+    private var maskEnabled: MutableMap<String, Boolean> = mutableMapOf()
     private var clues: MutableMap<String, MutableMap<String, String>> = mutableMapOf()
 
     fun load(): List<StoreLoadIssue> {
@@ -42,6 +45,7 @@ class GululuUnlockStore(private val unlocksFile: File, private val cluesFile: Fi
             loadGuarded(cluesFile, cluesGuard) { GululuCluesFile() }
         lock.withLock {
             unlocked = loadedUnlocks.unlocked.mapValues { it.value.toMutableList() }.toMutableMap()
+            maskEnabled = loadedUnlocks.mask_enabled.toMutableMap()
             clues = loadedClues.clues.mapValues { it.value.toMutableMap() }.toMutableMap()
         }
         return listOfNotNull(unlocksIssue, cluesIssue)
@@ -110,6 +114,21 @@ class GululuUnlockStore(private val unlocksFile: File, private val cluesFile: Fi
         }
     }
 
+    // ---------- 骰点掩盖开关 ----------
+
+    /** 骰点掩盖是否启用：显式开关优先；缺省规则=有揭示记录的书视为已在用（开），
+     *  无记录的书默认关（2026-10 用户反馈：默认掩盖会吞剧情，改为菜单选择性开启）。 */
+    fun isMaskEnabled(bookId: String): Boolean = lock.withLock {
+        maskEnabled[bookId] ?: unlocked.containsKey(bookId)
+    }
+
+    fun setMaskEnabled(bookId: String, enabled: Boolean) {
+        val changed = lock.withLock {
+            if (maskEnabled[bookId] == enabled) false else { maskEnabled[bookId] = enabled; true }
+        }
+        if (changed) saveUnlocks()
+    }
+
     // ---------- 秘密线索 ----------
 
     fun clues(bookId: String): Map<String, String> = lock.withLock {
@@ -146,10 +165,15 @@ class GululuUnlockStore(private val unlocksFile: File, private val cluesFile: Fi
             logWarn("AnkeShelf", "gululu_unlocks.json 读取失败过，跳过写入以保护原文件")
             return
         }
-        val snapshot = lock.withLock { unlocked.mapValues { it.value.toList() } }
+        val snapshot = lock.withLock {
+            unlocked.mapValues { it.value.toList() } to maskEnabled.toMap()
+        }
         atomicWriteJson(
             unlocksFile,
-            json.encodeToString(GululuUnlocksFile.serializer(), GululuUnlocksFile(unlocked = snapshot)),
+            json.encodeToString(
+                GululuUnlocksFile.serializer(),
+                GululuUnlocksFile(unlocked = snapshot.first, mask_enabled = snapshot.second),
+            ),
         )
     }
 

@@ -311,6 +311,7 @@
     // 必须失败隔离：Gululu 初始化异常不能影响下方换章按钮绑定等基础链路。
     if (opts.gululu) {
       try {
+        gululu.maskOn = opts.gululuMask !== false;
         initGululu(opts.gululuUnlocked || '[]');
       } catch (e) {
         log('[gululu] init failed: ' + e);
@@ -424,9 +425,15 @@
   }
 
   function setGululuAutoMusic(value) {
+    var was = state.gululuAutoMusic;
     state.gululuAutoMusic = value !== false;
     if (state.gululuAutoMusic && !state.gululuActive) {
       setTimeout(reportGululuContext, 0);
+    }
+    if (state.gululuAutoMusic && !was) {
+      // 手动开启立即生效：对阅读线之前最近的 cue 补一次触发，
+      // 否则开启动作没有任何反馈，用户会认为按钮坏了。
+      setTimeout(replayMusicAtLine, 0);
     }
   }
 
@@ -454,9 +461,11 @@
     hitGululuInteractive: hitGululuInteractive,
     applyParagraphComments: applyParagraphComments,
     revealNextGululuGroups: revealNextGululuGroups,
+    revealAllGululuGroups: revealAllGululuGroups,
     gululuChapterInfo: gululuChapterInfo,
     gululuResetUnlocks: gululuResetUnlocks,
     setGululuAutoMusic: setGululuAutoMusic,
+    setGululuMask: setGululuMask,
     bridgeVersion: function () { return BRIDGE_VERSION; },
     bridgeReadyPayload: bridgeReadyPayload,
     emitReady: emitReady,

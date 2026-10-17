@@ -66,6 +66,25 @@
 
 ## 4. 最近流水
 
+### 2026-10-10 Android：自动音乐开关即时生效 + 骰点掩盖默认关闭 + 揭示本章全部
+
+- **音乐按钮**：`setGululuAutoMusic(true)` 此前对骨碌碌书不重查 cue
+  （`!gululuActive` 门槛），且 `autoFired` 去重把手动开启也挡住——按开关无反馈。
+  改为开关由关转开时立即对阅读线之前最近的 cue 补触发（`replayMusicAtLine`，
+  绕过去重与 auto 标记过滤）。
+- **骰点掩盖默认关**（反馈：掩盖吞剧情、每章只能十个十个揭示）：
+  - 新增按书开关（`gululu_unlocks.json:mask_enabled`，端私有存储）：显式开关优先；
+    缺省规则=有揭示记录的书保持开（视为已在用），无记录默认关；
+  - JS `gululu.maskOn`：关时骰点/迷雾全可见，点击骰子不再产生揭示记录
+    （避免误触把书翻回掩盖态）；
+  - 总览面板加「骰点掩盖：开/关」与「揭示本章全部」（`revealAllGululuGroups`，
+    不限 10 组）。
+- **测试**：`GululuUnlockStoreTest` 新增默认规则三态用例；JS 打包契约
+  （reader-lite-parts）与全部守卫通过；Android 全量单测绿。
+- **流程备注**：`reader-lite.js` 是 parts 打包产物，JS 改动必须改
+  `reader-lite.parts/*.js` 再跑 `android/scripts/bundle-reader-lite.js --write`；
+  桌面端掩盖逻辑在 `web/js/`，本批未动（反馈源为手机版）。
+
 ### 2026-10-10 Android：EPUB 资源双重拼接修复 + 内嵌下载 OOM 兜底
 
 - **现象**：骨碌碌内嵌图片阅读器「图片无法加载」；导入第三方 EPUB 图片读不出；
