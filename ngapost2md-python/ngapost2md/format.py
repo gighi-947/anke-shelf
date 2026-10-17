@@ -347,7 +347,7 @@ def _fix_most(cont: str, floor: Floor) -> str:
     for it in RE_SMILE.findall(cont):
         alt = it.split(":", 2)[2]
         smile_file = SMILE_MAP.get(it, "").replace('"', "")
-        cont = cont.replace(it, f"![{alt}(https://img4.nga.178.com/ngabbs/post/smile/{smile_file})")
+        cont = cont.replace(it, f"![{alt}(https://img4.nga.cn/ngabbs/post/smile/{smile_file})")
     # URL
     for m in RE_URL1.finditer(cont):
         cont = cont.replace(m.group(0), f"[url]({m.group(1)})")

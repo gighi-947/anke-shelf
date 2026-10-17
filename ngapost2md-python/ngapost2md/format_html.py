@@ -38,7 +38,7 @@ RE_DICE = re.compile(r"<div class='dice'><b>ROLL : (.+?)</b>=(.+?)=<b>(.+?)</b><
 RE_POSTBY_UID = re.compile(r"<b>Post by \[uid=(\d+?)\](.+?)\[\/uid\][^<]*?\((\d{4}.*?)\):</b>")
 RE_POSTBY_ANONY = re.compile(r"<b>Post by (.+?)<span .*?\((\d{4}.*?)\):</b>")
 
-SMILE_BASE = "https://img4.nga.178.com/ngabbs/post/smile/"
+SMILE_BASE = "https://img4.nga.cn/ngabbs/post/smile/"
 
 # NGA 颜色 class 的标准 CSS 颜色值（class 名即 CSS 标准色名）
 NGA_COLORS = {

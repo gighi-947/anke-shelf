@@ -66,6 +66,26 @@
 
 ## 4. 最近流水
 
+### 2026-10-10 双端：NGA 表情图源切换（img4.nga.178.com 下线 → img4.nga.cn）
+
+- **现象**：NGA 表情全链路 404（阅读器/导出/内嵌下载）；用户补充"表情包实际
+  采用 acfun 图源"。
+- **实证**：`img4.nga.178.com` 已 NXDOMAIN（AliDNS 交叉验证，非本机 DNS 问题）；
+  现役 NGA 帖子表情地址为 `img4.nga.cn/ngabbs/post/smile/…`（ac 娘系列图源仍在
+  NGA 官方 CDN，仅域名挪到 nga.cn），http/https 均 200。
+- **修复**：
+  - 生成侧：`SMILE_BASE` 双端换现役宿主（`format_html.py`、`NgaFormatHtml.kt`、
+    `format.py` markdown 内联地址）；
+  - 读时归一：存量书章节烤入死域 URL，在请求/服务边界归一——Android
+    `WebViewChapterView.shouldInterceptRequest` 入口、Windows
+    `_rewrite_nga_image_src` 表情分支（保持直连不代理）；
+  - 归一函数双端同语义：`ReaderEgress.normalizeLegacyNgaImageUrl` /
+    `server._normalize_smile_url`。
+- **顺带发现**（不修，记录）：`format.py` markdown 表情行 `f"![{alt}(...)"` 缺
+  `]`，markdown 导出表情语法畸形；该路径当前无包外调用方，待导出图片专项评估。
+- **验证**：`test_nga_smile` / `test_server` / `test_nga_collapse` 绿；
+  Android `NgaFormatHtmlTest` + `ReaderEgressTest` 绿。
+
 ### 2026-10-10 双端：NGA 折叠块截断修复（span 深度扫描）+ 折叠转换纳入契约
 
 - **现象**（用户实图复现）：含 `[size]×[/align]` 的折叠块只收进开头一行——

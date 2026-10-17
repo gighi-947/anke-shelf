@@ -34,4 +34,18 @@ object ReaderEgress {
 
     /** 是否明文 http 子资源（拒绝对象；https 与本地/data 方案不在此列）。 */
     fun isCleartext(url: String): Boolean = url.startsWith("http://", ignoreCase = true)
+
+    /** 现役 NGA 表情宿主（img4.nga.178.com 已于 2026 年下线 NXDOMAIN，实测 img4.nga.cn 存活）。 */
+    const val SMILE_LIVE_BASE = "https://img4.nga.cn/ngabbs/post/smile/"
+    private const val SMILE_PATH = "/ngabbs/post/smile/"
+
+    /** 历史表情宿主（含明文 http）归一到现役宿主；非表情路径原样返回。
+     *  归一后命中 NGA 白名单，走既有图床代理；存量书章节里烤入的死域 URL 由此复活。 */
+    fun normalizeLegacyNgaImageUrl(url: String): String {
+        val idx = url.indexOf(SMILE_PATH)
+        if (idx < 0) return url
+        val scheme = url.substringBefore("://", "")
+        if (scheme != "http" && scheme != "https") return url
+        return SMILE_LIVE_BASE + url.substring(idx + SMILE_PATH.length)
+    }
 }

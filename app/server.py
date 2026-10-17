@@ -178,6 +178,22 @@ _NGA_IMAGE_HOST_SUFFIXES = ("nga.178.com", "nga.cn", "ngabbs.com")
 _IMG_ATTR_RE = re.compile(r'(?i)\b(src|poster)=(["\'])(https?://[^"\']+)\2')
 
 
+_SMILE_PATH = "/ngabbs/post/smile/"
+# 现役表情宿主：img4.nga.178.com 已于 2026 年下线（NXDOMAIN），实测 img4.nga.cn 存活。
+_SMILE_LIVE_BASE = "https://img4.nga.cn" + _SMILE_PATH
+
+
+def _normalize_smile_url(url: str) -> str:
+    """历史表情宿主（含明文 http）归一到现役宿主；非表情路径原样返回。"""
+    idx = url.find(_SMILE_PATH)
+    if idx < 0:
+        return url
+    scheme = url.split("://", 1)[0]
+    if scheme not in ("http", "https"):
+        return url
+    return _SMILE_LIVE_BASE + url[idx + len(_SMILE_PATH):]
+
+
 def _is_nga_image_url(url: str) -> bool:
     """仅接受 http/https 且主机命中 NGA 图床白名单的 URL。"""
     try:
@@ -199,9 +215,12 @@ def _rewrite_nga_image_src(html: str, book_id: str) -> str:
         attr, quote, url = m.group(1), m.group(2), m.group(3)
         if not _is_nga_image_url(url):
             return m.group(0)
-        # 官方表情图走直连；若失败由前端降级为文字表情。
+        # 官方表情图走直连；历史死域归一到现役宿主（存量书章节内烤入旧地址）。
         if "/ngabbs/post/smile/" in url:
-            return m.group(0)
+            fixed = _normalize_smile_url(url)
+            if fixed == url:
+                return m.group(0)
+            return f"{attr}={quote}{fixed}{quote}"
         proxy = f"/img/{book_id}?u={urllib.parse.quote(url, safe='')}"
         return f"{attr}={quote}{proxy}{quote}"
     return _IMG_ATTR_RE.sub(repl, html)

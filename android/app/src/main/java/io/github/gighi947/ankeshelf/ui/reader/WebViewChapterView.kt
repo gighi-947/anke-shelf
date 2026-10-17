@@ -425,7 +425,8 @@ fun WebViewChapterView(
                         view: WebView,
                         request: WebResourceRequest,
                     ): WebResourceResponse? {
-                        val url = request.url.toString()
+                        // 存量书章节里烤入的历史表情宿主（死域）在此归一到现役宿主。
+                        val url = ReaderEgress.normalizeLegacyNgaImageUrl(request.url.toString())
                         val s = sessionRef.value
                         val c = containerRef.value
                         if (url.startsWith("file:///android_epub/")) {

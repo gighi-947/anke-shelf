@@ -169,6 +169,14 @@ class NgaFormatHtmlTest {
     }
 
     @Test
+    fun `smile uses live host`() {
+        // img4.nga.178.com 已下线（NXDOMAIN），表情图源归一到 img4.nga.cn。
+        val out = NgaFormatHtml.renderContentHtml("[s:ac:blink]")
+        assertTrue(out.contains("https://img4.nga.cn/ngabbs/post/smile/ac0.png"))
+        assertFalse(out.contains("nga.178.com"))
+    }
+
+    @Test
     fun `collapse conversion matches shared fixture`() {
         // 折叠块转换契约（双端共享夹具）：内容含 </span></div> 紧邻
         // （[size]×[/align] 的 NGA 渲染）不得截断；Windows 侧由

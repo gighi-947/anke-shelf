@@ -320,7 +320,7 @@ object NgaFormatHtml {
         s.replace("&", "&amp;").replace("\"", "&quot;")
             .replace("<", "&lt;").replace(">", "&gt;")
 
-    private const val SMILE_BASE = "https://img4.nga.178.com/ngabbs/post/smile/"
+    private const val SMILE_BASE = "https://img4.nga.cn/ngabbs/post/smile/"
 
     private val AUDIO_EXTENSIONS = setOf(".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".opus", ".wma")
 }

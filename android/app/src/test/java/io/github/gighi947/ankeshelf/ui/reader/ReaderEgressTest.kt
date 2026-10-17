@@ -1,5 +1,6 @@
 package io.github.gighi947.ankeshelf.ui.reader
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -57,5 +58,29 @@ class ReaderEgressTest {
         assertFalse(ReaderEgress.isCleartext("https://cdn.example/img.webp"))
         assertFalse(ReaderEgress.isCleartext("file:///android_images/x.jpg"))
         assertFalse(ReaderEgress.isCleartext("data:image/gif;base64,R0lGOD"))
+    }
+
+    // ---- 表情宿主归一：img4.nga.178.com 已下线，存量书死域 URL 复活 ----
+    @Test
+    fun `死域表情归一到现役宿主`() {
+        assertEquals(
+            "https://img4.nga.cn/ngabbs/post/smile/ac0.png",
+            ReaderEgress.normalizeLegacyNgaImageUrl("https://img4.nga.178.com/ngabbs/post/smile/ac0.png"),
+        )
+        assertEquals(
+            "https://img4.nga.cn/ngabbs/post/smile/a2_10.png",
+            ReaderEgress.normalizeLegacyNgaImageUrl("http://img4.nga.cn/ngabbs/post/smile/a2_10.png"),
+        )
+    }
+
+    @Test
+    fun `非表情路径与原生命名空间不受影响`() {
+        val attach = "https://img.nga.178.com/attachments/mon_1.jpg"
+        assertEquals(attach, ReaderEgress.normalizeLegacyNgaImageUrl(attach))
+        assertEquals(
+            "file:///android_images/b/ac0.png",
+            ReaderEgress.normalizeLegacyNgaImageUrl("file:///android_images/b/ac0.png"),
+        )
+        assertEquals("not a url", ReaderEgress.normalizeLegacyNgaImageUrl("not a url"))
     }
 }

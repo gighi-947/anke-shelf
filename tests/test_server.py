@@ -359,8 +359,8 @@ class ServerTestCase(unittest.TestCase):
         )
         out = _rewrite_nga_image_src(html, self.book.id)
         self.assertIn(f'/img/{self.book.id}?u=', out)
-        # 官方表情图保持直连，不代理
-        self.assertIn('src="https://img4.nga.178.com/ngabbs/post/smile/abc.png"', out)
+        # 官方表情图保持直连、不代理；历史死域归一到现役宿主
+        self.assertIn('src="https://img4.nga.cn/ngabbs/post/smile/abc.png"', out)
         self.assertNotIn('src="https://img.nga.cn', out)
         self.assertIn('src="https://example.com/x.png"', out)
 
