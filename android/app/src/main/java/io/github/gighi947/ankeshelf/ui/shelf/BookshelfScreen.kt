@@ -48,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +68,8 @@ import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.BookTag
 import io.github.gighi947.ankeshelf.data.StoreLoadIssue
 import io.github.gighi947.ankeshelf.service.AppContainer
+import io.github.gighi947.ankeshelf.service.BookUpdateCheck
+import io.github.gighi947.ankeshelf.service.BookUpdateChecker
 import io.github.gighi947.ankeshelf.service.GululuExportEmbed
 import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.BookUi
@@ -81,10 +84,12 @@ import io.github.gighi947.ankeshelf.ui.components.NgaUpdateDialog
 import io.github.gighi947.ankeshelf.ui.components.launchGululuBookUpdate
 import io.github.gighi947.ankeshelf.ui.components.launchNgaUpdate
 import io.github.gighi947.ankeshelf.ui.theme.PageHeaderTitle
+import io.github.gighi947.ankeshelf.ui.theme.AnkeRadius
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -107,6 +112,7 @@ fun BookshelfScreen(
     onResetCover: (BookRecord) -> Unit,
     onOpen: (BookRecord) -> Unit,
     onEditTags: (BookRecord, List<BookTag>) -> Unit,
+    updateBadges: Map<String, Int> = emptyMap(),
     shelfView: String,
     onShelfViewChange: (String) -> Unit,
     sort: String,
@@ -158,6 +164,48 @@ fun BookshelfScreen(
     val displayedBooks = remember(sortedBooks, selectedTag) {
         if (selectedTag == null) sortedBooks
         else sortedBooks.filter { ui -> ui.record.tags.any { it.name == selectedTag } }
+    }
+
+    // 徽标数据：快照 + 自动检查开关过滤（关闭时 setAutoCheck 已清 available，
+    // 这里按开关兜底再过滤一次，防异常残留显示）。
+    fun updateBadgeOf(record: BookRecord): Int =
+        if (container.updateChecks.isAutoCheckEnabled(record.id)) {
+            updateBadges[record.id] ?: 0
+        } else {
+            0
+        }
+
+    // 书架批量更新检查：对可更新书（NGA 或骨碌碌）逐本静默检查，结果写入
+    // updateChecks.available（书架徽标与阅读器顶栏红点共用）。会话内
+    // markChecked 节流，往返书架/轮询不重复打网络；检查器本身不外抛，
+    // runCatching 只兜底存储写盘的意外。
+    LaunchedEffect(books) {
+        withContext(Dispatchers.IO) {
+            for (ui in books) {
+                val rec = ui.record
+                if (rec.nga_tid <= 0 &&
+                    BookUpdateChecker.gululuSourceIdFor(container.appPaths.gululuLibraryDir, rec) <= 0
+                ) {
+                    continue
+                }
+                if (!container.updateChecks.isAutoCheckEnabled(rec.id)) continue
+                if (container.updateChecks.checkedThisSession(rec.id)) continue
+                container.updateChecks.markChecked(rec.id)
+                runCatching {
+                    val check = if (rec.nga_tid > 0) {
+                        BookUpdateChecker.checkNga(container, rec)
+                    } else {
+                        BookUpdateChecker.checkGululu(container.appPaths.gululuLibraryDir, rec)
+                    }
+                    when (check) {
+                        is BookUpdateCheck.Available ->
+                            container.updateChecks.setAvailable(rec.id, check.newFloors)
+                        BookUpdateCheck.None -> container.updateChecks.setAvailable(rec.id, 0)
+                        BookUpdateCheck.Unavailable -> Unit
+                    }
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -349,6 +397,7 @@ fun BookshelfScreen(
                                     coversDir = coversDir,
                                     hideBrackets = hideBrackets,
                                     showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
+                                    updateBadge = updateBadgeOf(ui.record),
                                     onClick = { onOpen(ui.record) },
                                     onLongPress = { manageBook = it },
                                     onUpdate = { updateTarget = it },
@@ -379,6 +428,7 @@ fun BookshelfScreen(
                                     container = container,
                                     hideBrackets = hideBrackets,
                                     showUpdate = ui.record.nga_tid > 0 || shelfIsGululu(container, ui.record),
+                                    updateBadge = updateBadgeOf(ui.record),
                                     onClick = { onOpen(ui.record) },
                                     onLongPress = { manageBook = it },
                                     onUpdate = { updateTarget = it },
@@ -509,6 +559,7 @@ private fun BookListRow(
     coversDir: File,
     hideBrackets: Boolean,
     showUpdate: Boolean = false,
+    updateBadge: Int = 0,
     onClick: () -> Unit,
     onLongPress: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
@@ -547,6 +598,16 @@ private fun BookListRow(
                 )
             } else {
                 Text(displayTitle.take(1).ifBlank { "书" }, style = MaterialTheme.typography.titleMedium)
+            }
+            // 待更新徽标（Legado 式封面角标）。
+            if (updateBadge > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(AnkeSpacing.xs),
+                ) {
+                    UpdateCountBadge(count = updateBadge)
+                }
             }
         }
         Column(
@@ -615,6 +676,7 @@ private fun BookCard(
     container: AppContainer,
     hideBrackets: Boolean,
     showUpdate: Boolean = false,
+    updateBadge: Int = 0,
     onClick: () -> Unit,
     onLongPress: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
@@ -663,6 +725,11 @@ private fun BookCard(
                     .padding(AnkeSpacing.xs),
                 horizontalArrangement = Arrangement.spacedBy(AnkeSpacing.xs),
             ) {
+                // 待更新徽标（Legado 式封面角标）：与更新/导出操作图标同处封面
+                // 右上区，放在行首避免互相遮挡。
+                if (updateBadge > 0) {
+                    UpdateCountBadge(count = updateBadge)
+                }
                 if (showUpdate) {
                     ActionIcon(Icons.Filled.Refresh, "更新") { onUpdate(ui.record) }
                 }
@@ -711,6 +778,21 @@ private fun BookCard(
             "${ui.progressPct.roundToInt()}%",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+/** 封面待更新徽标：红底白字数量（Legado 式角标，列表行与网格卡片共用）。 */
+@Composable
+private fun UpdateCountBadge(count: Int) {
+    Box(
+        modifier = Modifier.background(MaterialTheme.colorScheme.error, AnkeRadius.small),
+    ) {
+        Text(
+            "$count",
+            color = MaterialTheme.colorScheme.onError,
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = AnkeSpacing.xs),
         )
     }
 }

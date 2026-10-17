@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
@@ -75,6 +76,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.ImageBitmap
@@ -177,6 +179,7 @@ internal fun BoxScope.ReaderTopBar(
     gululu: Boolean = false,
     onOpenGululu: () -> Unit = {},
     showUpdate: Boolean = false,
+    updateAvailable: Boolean = false,
     onUpdate: () -> Unit = {},
 ) {
     AnimatedVisibility(
@@ -206,7 +209,19 @@ internal fun BoxScope.ReaderTopBar(
             )
             if (showUpdate) {
                 IconButton(onClick = onUpdate) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "更新", tint = fg)
+                    // 有待更新内容时图标右上角画红点（与书架徽标共用 updateChecks 数据）。
+                    Box {
+                        Icon(Icons.Filled.Refresh, contentDescription = "更新", tint = fg)
+                        if (updateAvailable) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(AnkeSpacing.sm)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.error),
+                            )
+                        }
+                    }
                 }
             }
             IconButton(onClick = onToggleBookmark) {

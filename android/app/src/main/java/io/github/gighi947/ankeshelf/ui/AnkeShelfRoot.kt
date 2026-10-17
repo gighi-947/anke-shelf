@@ -93,10 +93,14 @@ fun AnkeShelfRoot(container: AppContainer) {
     var lastServiceStage by remember { mutableStateOf("") }
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var lastShelfMtime by remember { mutableStateOf(0L) }
+    // 书架更新徽标：updateChecks.revision 变化（写盘）时递增，驱动快照重读。
+    var updateTick by remember { mutableIntStateOf(0) }
+    var lastUpdateRevision by remember { mutableIntStateOf(container.updateChecks.revision) }
     val context = LocalContext.current
     val activity = LocalActivity.current
 
     val books = remember(refresh) { container.repository.listBooks() }
+    val updateBadges = remember(refresh, updateTick) { container.updateChecks.availableSnapshot() }
     val record = remember(bookId, refresh) {
         bookId?.let { id -> books.find { it.record.id == id }?.record }
     }
@@ -140,6 +144,12 @@ fun AnkeShelfRoot(container: AppContainer) {
                 refresh++
             }
             lastShelfMtime = mtime
+            // 更新检查状态写盘（revision++）→ 书架徽标刷新。
+            val updateRevision = container.updateChecks.revision
+            if (updateRevision != lastUpdateRevision) {
+                lastUpdateRevision = updateRevision
+                updateTick++
+            }
             val stage = NgaServiceStatus.snapshot().stage
             if (lastServiceStage != stage &&
                 (stage == "done" || stage == "error" || stage == "cancelled")
@@ -265,6 +275,7 @@ fun AnkeShelfRoot(container: AppContainer) {
                                     books = books,
                                     coversDir = container.appPaths.coversDir,
                                     container = container,
+                                    updateBadges = updateBadges,
                                     shelfView = container.settings.getAll().shelf_view,
                                     onOpenDownload = { routeName = "download" },
                                     onOpenGuide = {

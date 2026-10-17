@@ -1,7 +1,6 @@
 package io.github.gighi947.ankeshelf.ui.download
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -63,6 +62,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -80,24 +80,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import io.github.gighi947.ankeshelf.data.NgaConfig
 import io.github.gighi947.ankeshelf.data.NgaConfigPatch
 import io.github.gighi947.ankeshelf.data.BookRecord
 import io.github.gighi947.ankeshelf.data.BookTag
-import io.github.gighi947.ankeshelf.data.GululuBaseline
-import io.github.gighi947.ankeshelf.data.GululuUpdate
+import io.github.gighi947.ankeshelf.service.BookUpdateChecker
 import io.github.gighi947.ankeshelf.service.RepoResult
 import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.NgaDownloadService
 import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.GululuExportEmbed
-import io.github.gighi947.ankeshelf.service.GululuImportService
 import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.service.safeExportName
@@ -107,6 +106,7 @@ import io.github.gighi947.ankeshelf.ui.components.BookTagEditorDialog
 import io.github.gighi947.ankeshelf.ui.components.BookTagFilterRow
 import io.github.gighi947.ankeshelf.ui.components.BookTagRow
 import io.github.gighi947.ankeshelf.ui.components.NgaUpdateDialog
+import io.github.gighi947.ankeshelf.ui.components.launchGululuBookUpdate
 import io.github.gighi947.ankeshelf.ui.components.launchNgaUpdate
 import io.github.gighi947.ankeshelf.ui.theme.AnkeSpacing
 import io.github.gighi947.ankeshelf.ui.theme.AnkeRadius
@@ -125,28 +125,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 private fun isGululuBook(container: AppContainer, book: BookRecord): Boolean =
-    book.nga_tid <= 0 && book.path.startsWith(container.appPaths.gululuLibraryDir.absolutePath)
-
-private fun gululuSourceIdOf(book: BookRecord): Int? =
-    File(book.path).parentFile?.name?.toIntOrNull()
-
-private fun launchGululuUpdate(
-    context: android.content.Context,
-    container: AppContainer,
-    book: BookRecord,
-) {
-    val sourceId = gululuSourceIdOf(book) ?: return
-    val baselineFile = GululuUpdate.baselineFile(container.appPaths.gululuLibraryDir, sourceId)
-    val baseline = GululuUpdate.loadBaseline(baselineFile, sourceId)
-    val imageMode = (baseline as? GululuBaseline.Ok)?.imageMode ?: "online"
-    val intent = Intent(context, GululuImportService::class.java).apply {
-        action = GululuImportService.ACTION_START
-        putExtra("action", "update")
-        putExtra("sourceId", sourceId)
-        putExtra("imageMode", imageMode)
-    }
-    ContextCompat.startForegroundService(context, intent)
-}
+    BookUpdateChecker.gululuSourceIdFor(container.appPaths.gululuLibraryDir, book) > 0
 
 /* ---------------- 已下载 ---------------- */
 
@@ -252,6 +231,11 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
                         book = book,
                         coversDir = container.appPaths.coversDir,
                         isNga = book.nga_tid > 0,
+                        autoCheck = container.updateChecks.isAutoCheckEnabled(book.id),
+                        onToggleAutoCheck = { enabled ->
+                            container.updateChecks.setAutoCheck(book.id, enabled)
+                            tick++
+                        },
                         onManage = { manageBook = it },
                         onUpdate = { updateTarget = it },
                         onExport = { rec, fmt ->
@@ -275,6 +259,11 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
                         book = book,
                         coversDir = container.appPaths.coversDir,
                         isNga = book.nga_tid > 0,
+                        autoCheck = container.updateChecks.isAutoCheckEnabled(book.id),
+                        onToggleAutoCheck = { enabled ->
+                            container.updateChecks.setAutoCheck(book.id, enabled)
+                            tick++
+                        },
                         onManage = { manageBook = it },
                         onUpdate = { updateTarget = it },
                         onExport = { rec, fmt ->
@@ -370,7 +359,7 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
                 },
             )
         } else if (isGululuBook(container, book)) {
-            launchGululuUpdate(context, container, book)
+            launchGululuBookUpdate(context, container.appPaths.gululuLibraryDir, book)
             updateTarget = null
             onChanged()
         }
@@ -383,6 +372,8 @@ internal fun LibraryBookRow(
     book: BookRecord,
     coversDir: File,
     isNga: Boolean,
+    autoCheck: Boolean,
+    onToggleAutoCheck: (Boolean) -> Unit,
     onManage: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
     onExport: (BookRecord, String) -> Unit,
@@ -440,6 +431,12 @@ internal fun LibraryBookRow(
             )
             BookTagRow(tags = book.tags)
         }
+        // 自动检查更新开关：关闭后本书不参与进书/书架检查、不显示徽标。
+        Switch(
+            checked = autoCheck,
+            onCheckedChange = onToggleAutoCheck,
+            modifier = Modifier.semantics { contentDescription = "自动检查更新" },
+        )
         ActionIcon(Icons.Filled.Refresh, "更新") { onUpdate(book) }
         Box {
             ActionIcon(Icons.Filled.IosShare, "导出") { exportMenu = true }
@@ -472,6 +469,8 @@ internal fun LibraryBookCard(
     book: BookRecord,
     coversDir: File,
     isNga: Boolean,
+    autoCheck: Boolean,
+    onToggleAutoCheck: (Boolean) -> Unit,
     onManage: (BookRecord) -> Unit,
     onUpdate: (BookRecord) -> Unit,
     onExport: (BookRecord, String) -> Unit,
@@ -553,6 +552,23 @@ internal fun LibraryBookCard(
             overflow = TextOverflow.Ellipsis,
         )
         BookTagRow(tags = book.tags)
+        // 自动检查更新开关：关闭后本书不参与进书/书架检查、不显示徽标。
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(top = AnkeSpacing.xxs),
+        ) {
+            Switch(
+                checked = autoCheck,
+                onCheckedChange = onToggleAutoCheck,
+                modifier = Modifier.semantics { contentDescription = "自动检查更新" },
+            )
+            Text(
+                "自动检查",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = AnkeSpacing.xs),
+            )
+        }
     }
 }
 

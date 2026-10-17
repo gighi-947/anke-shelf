@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -36,6 +37,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -87,7 +90,6 @@ import io.github.gighi947.ankeshelf.service.BookUpdateChecker
 import io.github.gighi947.ankeshelf.service.GululuServiceStatus
 import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.NGA_REFERER
-import io.github.gighi947.ankeshelf.service.NgaDownloader
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
 import io.github.gighi947.ankeshelf.ui.components.NgaUpdateDialog
 import io.github.gighi947.ankeshelf.ui.components.launchGululuBookUpdate
@@ -298,14 +300,20 @@ fun NativeReaderScreen(
     var liveOffset by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     var shareBusy by remember { mutableStateOf(false) }
-    // 更新流程状态：顶栏按钮唤出参数框 / 服务观察轮询 / 进书提示（互不共写）。
+    // 更新流程状态：顶栏按钮唤出参数框 / 服务观察轮询 / 进书通知（互不共写）。
     var showNgaUpdate by remember { mutableStateOf(false) }
     var updateProgress by remember { mutableStateOf<String?>(null) }
     var updateReload by remember { mutableStateOf<String?>(null) }
     var updateUpToDate by remember { mutableStateOf(false) }
     var updateFailed by remember { mutableStateOf<String?>(null) }
-    // 进书提示载荷：(新楼数, 是否估算)。
-    var entryPrompt by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
+    // 进书更新通知：被动小卡片（无按钮、自动消失），更新只由顶栏刷新图标发起。
+    // noticeText 留档最后一条文案，淡出期间不闪空。
+    var entryNotice by remember { mutableStateOf<String?>(null) }
+    var noticeText by remember { mutableStateOf("") }
+    // 待更新楼数（书架徽标与顶栏刷新图标红点共用 updateChecks 的数据）。
+    var updateAvailable by remember(session.id) {
+        mutableIntStateOf(container.updateChecks.availableFloors(session.id))
+    }
 
     fun shareFloor(floorNum: Int) {
         if (shareBusy) return
@@ -642,6 +650,9 @@ fun NativeReaderScreen(
                     updateProgress = null
                     when (if (isNga) NgaServiceStatus.stage else GululuServiceStatus.stage) {
                         "done" -> {
+                            // 更新完成即清徽标（无论内容是否变化）；error 保持不动。
+                            container.updateChecks.setAvailable(session.id, 0)
+                            updateAvailable = 0
                             val changed = if (isNga) {
                                 NgaServiceStatus.contentChanged
                             } else {
@@ -660,11 +671,13 @@ fun NativeReaderScreen(
         }
     }
 
-    // 进书更新提示：进阅读器 1.5s 后静默检查一次；有新楼层、未屏蔽且服务
-    // 当前未在跑才询问（Unavailable/None 静默，不打断阅读）。
+    // 进书更新检查：进阅读器 1.5s 后静默检查一次（本书自动检查关闭则跳过）。
+    // 结果写入 updateChecks（书架徽标 + 顶栏红点共用）：有新楼层弹自动消失的
+    // 通知卡，None 清掉过期徽标，Unavailable 静默。更新服务在跑时不打扰
+    // （终态由更新观察轮询接管清徽标）。
     LaunchedEffect(session.id) {
         if (!canUpdate) return@LaunchedEffect
-        if (container.updatePromptPrefs.isMuted(session.id)) return@LaunchedEffect
+        if (!container.updateChecks.isAutoCheckEnabled(session.id)) return@LaunchedEffect
         delay(1500)
         val check = withContext(Dispatchers.IO) {
             if (record.nga_tid > 0) {
@@ -673,15 +686,36 @@ fun NativeReaderScreen(
                 BookUpdateChecker.checkGululu(container.appPaths.gululuLibraryDir, record)
             }
         }
-        val available = check as? BookUpdateCheck.Available ?: return@LaunchedEffect
-        if (container.updatePromptPrefs.isMuted(session.id)) return@LaunchedEffect
         val busy = if (record.nga_tid > 0) {
             NgaServiceStatus.running && NgaServiceStatus.bookId == session.id
         } else {
             GululuServiceStatus.running && GululuServiceStatus.sourceId == gululuUpdatableId
         }
         if (busy) return@LaunchedEffect
-        entryPrompt = available.newFloors to available.approximate
+        when (check) {
+            is BookUpdateCheck.Available -> {
+                container.updateChecks.setAvailable(session.id, check.newFloors)
+                updateAvailable = check.newFloors
+                entryNotice = if (check.approximate) {
+                    "检测到约 ${check.newFloors} 楼新内容，可点顶栏刷新图标更新"
+                } else {
+                    "检测到 ${check.newFloors} 楼新内容，可点顶栏刷新图标更新"
+                }
+            }
+            BookUpdateCheck.None -> {
+                container.updateChecks.setAvailable(session.id, 0)
+                updateAvailable = 0
+            }
+            BookUpdateCheck.Unavailable -> Unit
+        }
+    }
+
+    // 通知 4 秒自动消失；文案先留档到 noticeText 再置空可见性。
+    LaunchedEffect(entryNotice) {
+        val notice = entryNotice ?: return@LaunchedEffect
+        noticeText = notice
+        delay(4000)
+        entryNotice = null
     }
 
     // 控制条：非手动保持时 3 秒自动收起（对齐 WebView 时代最终行为）。
@@ -929,7 +963,8 @@ fun NativeReaderScreen(
             )
         }
 
-        // 更新流程对话框：参数框 → 进行中 → 终态（重载/已是最新/失败）+ 进书提示。
+        // 更新流程对话框：参数框 → 进行中 → 终态（重载/已是最新/失败）。
+        // 进书检查只弹自动消失的通知卡（见 ReaderTopBar 下方），不再询问。
         if (showNgaUpdate) {
             NgaUpdateDialog(
                 book = record,
@@ -997,53 +1032,6 @@ fun NativeReaderScreen(
                 confirmButton = {
                     TextButton(shape = AnkeRadius.small, onClick = { updateFailed = null }) {
                         Text("好")
-                    }
-                },
-            )
-        }
-        entryPrompt?.let { (newFloors, approximate) ->
-            AlertDialog(
-                onDismissRequest = { entryPrompt = null },
-                shape = AnkeRadius.large,
-                title = { Text("发现新楼层") },
-                text = {
-                    Text(
-                        if (approximate) {
-                            "检测到约 ${newFloors} 楼新内容，是否现在更新？"
-                        } else {
-                            "检测到 ${newFloors} 楼新内容，是否现在更新？"
-                        },
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        shape = AnkeRadius.small,
-                        onClick = {
-                            entryPrompt = null
-                            if (record.nga_tid > 0) {
-                                NgaDownloader(container.appPaths, container.repository, container.ngaConfig)
-                                    .defaultsFor(record.id)
-                                    ?.let { launchNgaUpdate(context, record, it) }
-                            } else {
-                                launchGululuBookUpdate(context, container.appPaths.gululuLibraryDir, record)
-                            }
-                            // 启动后由更新观察轮询自动接管进度与终态。
-                        },
-                    ) { Text("立即更新") }
-                },
-                dismissButton = {
-                    Row {
-                        TextButton(
-                            shape = AnkeRadius.small,
-                            onClick = {
-                                container.updatePromptPrefs.mute(session.id)
-                                entryPrompt = null
-                            },
-                        ) { Text("不再提示本书") }
-                        TextButton(
-                            shape = AnkeRadius.small,
-                            onClick = { entryPrompt = null },
-                        ) { Text("暂不") }
                     }
                 },
             )
@@ -1144,6 +1132,7 @@ fun NativeReaderScreen(
             gululu = isGululu,
             onOpenGululu = { showOverview = true },
             showUpdate = canUpdate,
+            updateAvailable = updateAvailable > 0,
             onUpdate = {
                 if (record.nga_tid > 0) {
                     showNgaUpdate = true
@@ -1152,6 +1141,37 @@ fun NativeReaderScreen(
                 }
             },
         )
+
+        // 进书更新通知卡：顶栏下方 TopCenter、单行无按钮（更新只经顶栏刷新图标
+        // 发起）；4 秒自动消失，fade ≤300ms 守动效纪律。
+        AnimatedVisibility(
+            visible = entryNotice != null,
+            modifier = Modifier.align(Alignment.TopCenter),
+            enter = fadeIn(tween(200)),
+            exit = fadeOut(tween(200)),
+        ) {
+            Card(
+                shape = AnkeRadius.large,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.inverseSurface,
+                ),
+                modifier = Modifier
+                    .statusBarsPadding()
+                    // 避开顶栏：状态栏 + 栏高（约 52dp）+ 少量间距，用令牌组合表达。
+                    .padding(top = AnkeSpacing.xxl + AnkeSpacing.xxl + topBarExtraDp.dp),
+            ) {
+                Text(
+                    noticeText,
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    modifier = Modifier.padding(
+                        horizontal = AnkeSpacing.lg,
+                        vertical = AnkeSpacing.sm,
+                    ),
+                )
+            }
+        }
 
         ReaderBottomBar(
             visible = barsVisible,
