@@ -66,6 +66,24 @@
 
 ## 4. 最近流水
 
+### 2026-10-10 Android：EPUB 导出补在线图内嵌（NGA 原生书 + 骨碌碌在线 EPUB）
+
+- **现象**（用户反馈）：EPUB 导出后看不到图片——在线模式导出写的是远程 URL，
+  EPUB 阅读器不加载网络图；骨碌碌在线 EPUB 同样。
+- **修复**：
+  - `EpubExporter.build`：本地已下载图存在时，把章节里的远程 URL 一并改写为
+    包内 `images/<name>`（原 `file:///android_images` 改写保留；普通链接不受影响）；
+  - `NgaExport.epubBytesEmbedOnline`：导出前扫描章节 `<img src>` 收集在线图
+    （存量书死域表情地址经归一复活），经 `NgaImageDownloads` 下载到 imagesDir
+    再打包；无 NGA 凭据/单图失败降级保留远程链接，不阻断导出；
+  - `GululuExportEmbed.embedOnlineImages`：骨碌碌在线 EPUB 读包→下图→改写章节
+    引用（`../images/`）→OPF manifest 登记→重打包（mimetype 保持第一个
+    STORED 条目）。
+  - 书架导出与已下载页导出两条入口同接。
+- **测试**：`EpubExporterTest` 新增远程 URL 改写用例；`GululuEpubTest` 新增
+  导出内嵌下载/失败降级两例；全量单测绿。
+- **桌面端待办**：Windows 侧导出同样存在在线图缺口，另行评估补齐。
+
 ### 2026-10-10 Android：原生书本地重建（更新页参数可对全书生效）
 
 - **现象**（用户反馈）：更新对话框调整楼层/图片内嵌等参数后对已有章节无效果，

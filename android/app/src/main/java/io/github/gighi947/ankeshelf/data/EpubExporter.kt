@@ -39,12 +39,17 @@ object EpubExporter {
                 if (!file.isFile) continue
                 val data = if (imageNames.isNotEmpty()) {
                     // 原生书 embedded 模式章节引用 file:///android_images/<bookId>/<name>，
-                    // 导出 EPUB 时改写为相对 images/ 路径并随包携带。
+                    // 导出 EPUB 时改写为相对 images/ 路径并随包携带；在线模式章节引用
+                    // 远程 URL，已下载到本地的图同样改写（EPUB 阅读器不加载网络图）。
                     file.readText(Charsets.UTF_8)
                         .replace(
                             Regex("""file:///android_images/[^/"']+/([^"' ]+)"""),
                             "images/$1",
                         )
+                        .replace(Regex("""https?://[^"'\s<>]+""")) { m ->
+                            val name = NativeBookWriter.imageFileName(m.value)
+                            if (name in imageNames) "images/$name" else m.value
+                        }
                         .toByteArray(Charsets.UTF_8)
                 } else {
                     file.readBytes()

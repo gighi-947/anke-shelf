@@ -80,4 +80,49 @@ class EpubExporterTest {
         assertFalse(chapterText.contains("file:///android_images/"))
         assertTrue(entries.getValue("EPUB/content.opf").toString(Charsets.UTF_8).contains("images/abc.jpg"))
     }
+
+    @Test
+    fun `rewrites remote image src when file present locally`() {
+        // 在线模式章节引用远程 URL（EPUB 阅读器不加载网络图）；导出前已下载到
+        // imagesDir 的图改写为包内相对路径，未下载的 URL/普通链接保持原样。
+        val url = "https://img.nga.cn/attachments/mon_1.jpg"
+        val link = "https://bbs.nga.cn/read.php?tid=1"
+        val name = NativeBookWriter.imageFileName(url)
+        val dir = Files.createTempDirectory("epub-export-remote").toFile()
+        val chapters = File(dir, "chapters").apply { mkdirs() }
+        File(chapters, "0000.xhtml").writeText(
+            "<html><body><img src=\"$url\"/><a href=\"$link\">楼</a></body></html>",
+            Charsets.UTF_8,
+        )
+        val images = Files.createTempDirectory("epub-images-remote").toFile()
+        File(images, name).writeBytes(byteArrayOf(9, 9))
+        val meta = NativeMeta(
+            title = "t",
+            chapters = listOf(
+                NativeChapterMeta(
+                    file = "chapters/0000.xhtml",
+                    title = "t",
+                    floor_count = 1,
+                    first_lou = 0,
+                    last_lou = 0,
+                ),
+            ),
+        )
+        val bytes = EpubExporter.build(dir, meta, images)
+        val entries = mutableMapOf<String, ByteArray>()
+        ByteArrayInputStream(bytes).use { input ->
+            ZipInputStream(input).use { zip ->
+                var entry = zip.nextEntry
+                while (entry != null) {
+                    entries[entry.name] = zip.readBytes()
+                    zip.closeEntry()
+                    entry = zip.nextEntry
+                }
+            }
+        }
+        assertTrue(entries.containsKey("EPUB/images/$name"))
+        val chapterText = entries.getValue("EPUB/chapters/0000.xhtml").toString(Charsets.UTF_8)
+        assertTrue(chapterText.contains("src=\"images/$name\""))
+        assertTrue("未下载的普通链接不得改写", chapterText.contains("href=\"$link\""))
+    }
 }

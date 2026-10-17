@@ -96,6 +96,7 @@ import io.github.gighi947.ankeshelf.data.SettingsPatch
 import io.github.gighi947.ankeshelf.service.AppContainer
 import io.github.gighi947.ankeshelf.service.NgaDownloadService
 import io.github.gighi947.ankeshelf.service.NgaExport
+import io.github.gighi947.ankeshelf.service.GululuExportEmbed
 import io.github.gighi947.ankeshelf.service.GululuImportService
 import io.github.gighi947.ankeshelf.service.LogEvents
 import io.github.gighi947.ankeshelf.service.NgaServiceStatus
@@ -180,14 +181,14 @@ internal fun LibraryPanel(container: AppContainer, onChanged: () -> Unit) {
         ActivityResultContracts.CreateDocument("application/epub+zip"),
     ) { uri ->
         uri?.let {
-            exportTarget?.let { (book, _) -> writeLibraryExport(context, scope, book, "epub", it) }
+            exportTarget?.let { (book, _) -> writeLibraryExport(context, scope, container, book, "epub", it) }
         }
     }
     val mdLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/markdown"),
     ) { uri ->
         uri?.let {
-            exportTarget?.let { (book, _) -> writeLibraryExport(context, scope, book, "md", it) }
+            exportTarget?.let { (book, _) -> writeLibraryExport(context, scope, container, book, "md", it) }
         }
     }
 
@@ -559,6 +560,7 @@ internal fun LibraryBookCard(
 internal fun writeLibraryExport(
     context: android.content.Context,
     scope: CoroutineScope,
+    container: AppContainer,
     book: BookRecord,
     fmt: String,
     uri: Uri,
@@ -579,13 +581,25 @@ internal fun writeLibraryExport(
                 val bytes = if (fmt == "md") {
                     NgaExport.markdownText(dir, meta).toByteArray(Charsets.UTF_8)
                 } else {
-                    NgaExport.epubBytes(dir, meta, NgaExport.imagesDirFor(context, book.id))
+                    // 在线图先下载再内嵌打包（EPUB 阅读器不加载远程图）。
+                    NgaExport.epubBytesEmbedOnline(
+                        dir,
+                        meta,
+                        NgaExport.imagesDirFor(context, book.id),
+                        container.okHttp,
+                        container.ngaConfig,
+                    )
                 }
                 context.contentResolver.openOutputStream(uri)?.use { os -> os.write(bytes) }
             } else {
-                // 骨碌碌/普通 EPUB：直接复制原文件（书架已持有标准 EPUB）。
-                File(book.path).inputStream().use { input ->
-                    context.contentResolver.openOutputStream(uri)?.use { os -> input.copyTo(os) }
+                // 骨碌碌在线 EPUB 下载内嵌后导出；普通导入 EPUB 原样复制。
+                if (isGululuBook(container, book)) {
+                    val bytes = GululuExportEmbed.embedOnlineImages(File(book.path), container.okHttp)
+                    context.contentResolver.openOutputStream(uri)?.use { os -> os.write(bytes) }
+                } else {
+                    File(book.path).inputStream().use { input ->
+                        context.contentResolver.openOutputStream(uri)?.use { os -> input.copyTo(os) }
+                    }
                 }
             }
             LogEvents.event(

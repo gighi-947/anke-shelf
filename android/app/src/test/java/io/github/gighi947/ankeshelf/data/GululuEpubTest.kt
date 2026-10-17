@@ -191,6 +191,44 @@ class GululuEpubTest {
     }
 
     @Test
+    fun `导出内嵌把在线图下载进包并改写引用`() {
+        // 在线模式 EPUB 章节引用远程图，EPUB 阅读器不加载；导出内嵌后
+        // 引用改写为 ../images/，图片进包并登记 manifest。
+        val file = File(tmp.root, "online.epub").apply { writeBytes(sampleEpubBytes()) }
+        val fakePng = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47)
+        val out = io.github.gighi947.ankeshelf.service.GululuExportEmbed.embed(file) { url ->
+            if (url == "https://img.example/a.png") fakePng else null
+        }
+        val entries = mutableMapOf<String, ByteArray>()
+        java.io.ByteArrayInputStream(out).use { input ->
+            java.util.zip.ZipInputStream(input).use { zip ->
+                var e = zip.nextEntry
+                while (e != null) {
+                    entries[e.name] = zip.readBytes()
+                    zip.closeEntry()
+                    e = zip.nextEntry
+                }
+            }
+        }
+        val chapter = entries.getValue("EPUB/chapters/chapter_0001.xhtml").toString(Charsets.UTF_8)
+        val imageEntry = entries.keys.firstOrNull { it.startsWith("EPUB/images/") && it != "EPUB/images/abc0123456789def.png" }
+        assertNotNull("下载图应进包", imageEntry)
+        assertEquals(fakePng.toList(), entries.getValue(imageEntry!!).toList())
+        assertTrue(chapter.contains("src=\"../images/"))
+        assertTrue("远程引用不得残留", !chapter.contains("https://img.example/a.png"))
+        val opf = entries.getValue("EPUB/content.opf").toString(Charsets.UTF_8)
+        assertTrue("manifest 登记图片", opf.contains("images/"))
+    }
+
+    @Test
+    fun `导出内嵌下载失败时保留远程链接且不改包`() {
+        val file = File(tmp.root, "fail.epub").apply { writeBytes(sampleEpubBytes()) }
+        val original = file.readBytes()
+        val out = io.github.gighi947.ankeshelf.service.GululuExportEmbed.embed(file) { null }
+        assertTrue("全部下载失败时原样返回", out.contentEquals(original))
+    }
+
+    @Test
     fun `resolveAsset 兼容全路径与章节相对路径`() {
         // 阅读器经 WebView base URL 解析后传入的是 zip 根相对全路径
         // （EPUB/images/...），resolveAsset 不得再拼一次 chapterBaseDir

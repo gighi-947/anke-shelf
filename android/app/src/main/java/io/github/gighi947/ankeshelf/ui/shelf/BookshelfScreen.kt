@@ -71,6 +71,7 @@ import io.github.gighi947.ankeshelf.data.GululuBaseline
 import io.github.gighi947.ankeshelf.data.GululuUpdate
 import io.github.gighi947.ankeshelf.data.StoreLoadIssue
 import io.github.gighi947.ankeshelf.service.AppContainer
+import io.github.gighi947.ankeshelf.service.GululuExportEmbed
 import io.github.gighi947.ankeshelf.service.GululuImportService
 import io.github.gighi947.ankeshelf.service.NgaExport
 import io.github.gighi947.ankeshelf.service.BookUi
@@ -144,12 +145,12 @@ fun BookshelfScreen(
     val epubLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/epub+zip"),
     ) { uri ->
-        uri?.let { pendingExport?.let { (rec, fmt) -> exportBook(context, scope, rec, fmt, it) } }
+        uri?.let { pendingExport?.let { (rec, fmt) -> exportBook(context, scope, container, rec, fmt, it) } }
     }
     val mdLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/markdown"),
     ) { uri ->
-        uri?.let { pendingExport?.let { (rec, fmt) -> exportBook(context, scope, rec, fmt, it) } }
+        uri?.let { pendingExport?.let { (rec, fmt) -> exportBook(context, scope, container, rec, fmt, it) } }
     }
     val launchPicker = {
         launcher.launch(arrayOf("application/epub+zip", "application/octet-stream"))
@@ -739,6 +740,7 @@ private fun BookCard(
 private fun exportBook(
     context: Context,
     scope: CoroutineScope,
+    container: AppContainer,
     rec: BookRecord,
     fmt: String,
     uri: Uri,
@@ -761,16 +763,24 @@ private fun exportBook(
                     if (fmt == "md") {
                         out.write(NgaExport.markdownText(dir, meta).toByteArray(Charsets.UTF_8))
                     } else {
+                        // 在线图先下载再内嵌打包（EPUB 阅读器不加载远程图）。
                         out.write(
-                            NgaExport.epubBytes(
+                            NgaExport.epubBytesEmbedOnline(
                                 dir,
                                 meta,
                                 NgaExport.imagesDirFor(context, rec.id),
+                                container.okHttp,
+                                container.ngaConfig,
                             ),
                         )
                     }
                 } else if (fmt == "epub") {
-                    File(rec.path).inputStream().use { input -> input.copyTo(out) }
+                    if (shelfIsGululu(container, rec)) {
+                        // 骨碌碌在线 EPUB：下载在线图进包后再导出。
+                        out.write(GululuExportEmbed.embedOnlineImages(File(rec.path), container.okHttp))
+                    } else {
+                        File(rec.path).inputStream().use { input -> input.copyTo(out) }
+                    }
                 }
             }
             LogEvents.event(
