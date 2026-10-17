@@ -176,7 +176,55 @@ RE_IMG_CONTENT = re.compile(r'\[img\](.+?)\[/img\]')
 
 RE_ANONY = re.compile(r'#anony_.{32}')
 RE_DICE = re.compile(r"<div class='dice'><b>ROLL : (.+?)</b>=(.+?)=<b>(.+?)</b></div>")
-RE_COLLAPSE = re.compile(r'<div class="foldBox no"><div class="collapse_btn"><a href="javascript:;" onclick="collapse\(this\);">\+</a>(.+?) ...</div><span class="collapse_content" id="foldCnt">(.+?)</span></div>')
+RE_COLLAPSE_PREFIX = re.compile(
+    r'<div class="foldBox no"><div class="collapse_btn"><a href="javascript:;" '
+    r'onclick="collapse\(this\);">\+</a>(.+?) \.\.\.</div>'
+    r'<span class="collapse_content" id="foldCnt">'
+)
+_RE_SPAN_TAG = re.compile(r'</?span[\s>]')
+
+
+def _collapse_bounds(c: str, start: int):
+    """折叠内容真实边界 (content_end, fold_end)。
+
+    历史缺陷：非贪婪 (.+?)</span></div> 在内容含 </span></div> 紧邻
+    （NGA 对 [size]×[/align] 的渲染）时于首个内层闭合处截断，只收进开头一行。
+    正确语义：span 深度归零处的 </span></div> 才是折叠尾。
+    """
+    depth = 1
+    i = start
+    while True:
+        m = _RE_SPAN_TAG.search(c, i)
+        if m is None:
+            return None
+        if m.group(0).startswith("</"):
+            depth -= 1
+            if depth == 0:
+                after = m.end()
+                if not c.startswith("</div>", after):
+                    return None
+                return m.start(), after + len("</div>")
+        else:
+            depth += 1
+        i = m.end()
+
+
+def convert_collapses(c: str, render) -> str:
+    """foldBox → render(title, content)。从后往前逐个转换（嵌套天然先内后外）；
+    未闭合的折叠原样保留、不影响其余折叠转换。"""
+    for _ in range(100):
+        matches = list(RE_COLLAPSE_PREFIX.finditer(c))
+        if not matches:
+            return c
+        for m in reversed(matches):
+            bounds = _collapse_bounds(c, m.end())
+            if bounds is not None:
+                content_end, fold_end = bounds
+                c = c[:m.start()] + render(m.group(1), c[m.end():content_end]) + c[fold_end:]
+                break
+        else:
+            return c
+    return c
 RE_SMILE = re.compile(r'\[s\:.+?\:.+?\]')
 RE_URL1 = re.compile(r'\[url\](.+?)\[/url\]')
 RE_URL2 = re.compile(r'\[url=(.+?)\](.+?)\[/url\]')
@@ -290,10 +338,11 @@ def _fix_most(cont: str, floor: Floor) -> str:
     for m in RE_DICE.finditer(cont):
         cont = cont.replace(m.group(0), f" **【ROLL** : {m.group(1)}= **{m.group(3)}】** ")
     # 折叠
-    for m in RE_COLLAPSE.finditer(cont):
-        inner = m.group(2).replace("\n", "<br>")
-        cont = cont.replace(m.group(0),
-                            f"<details>\n  <summary>{m.group(1)}</summary>\n  <pre>{inner}</pre>\n</details>")
+    def _render_collapse_md(title: str, content: str) -> str:
+        inner = content.replace("\n", "<br>")
+        return f"<details>\n  <summary>{title}</summary>\n  <pre>{inner}</pre>\n</details>"
+
+    cont = convert_collapses(cont, _render_collapse_md)
     # 表情（在线模式）
     for it in RE_SMILE.findall(cont):
         alt = it.split(":", 2)[2]

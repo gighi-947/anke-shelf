@@ -66,6 +66,27 @@
 
 ## 4. 最近流水
 
+### 2026-10-10 双端：NGA 折叠块截断修复（span 深度扫描）+ 折叠转换纳入契约
+
+- **现象**（用户实图复现）：含 `[size]×[/align]` 的折叠块只收进开头一行——
+  SBR大赛规则帖折叠里只剩「[神龙环越争霸赛]」，其余正文全部漏出折叠容器。
+- **根因**：折叠转换的内容捕获用非贪婪 `(.+?)</span></div>`；NGA 把
+  `[size=150%]…[/size][/align]` 渲染为 `<span style="font-size:150%">…</span></div>`，
+  结尾恰是 `</span></div>` 紧邻，非贪婪匹配在首个内层闭合处提前截断。
+  双端三处同病（Android `NgaFormatHtml` / Windows `format_html.py` /
+  `format.py` markdown 路径）。本地用等价输入经旧正则复现，捕获内容逐字节
+  对上截图（77 字符止于「[神龙环越争霸赛]」）。
+- **修复**：内容边界改为 span 深度扫描（`<span` 开 +1 / `</span>` 关 -1，
+  深度归零处的 `</span></div>` 才是折叠真尾）；从后往前逐个转换（嵌套折叠
+  天然先内后外）；未闭合折叠原样保留且不影响同帖其余折叠。扫描器放
+  `format.py`（`format_html` 已依赖 `format`，反向 import 会循环）。
+- **契约**：新增 `contracts/fixtures/nga-format/collapse-cases.json`（5 例：
+  简单 / size-align 紧邻截断复现 / 嵌套 / 同帖双折叠 / 未闭合保留），
+  双端消费（`tests/test_nga_collapse.py`、`NgaFormatHtmlTest`）。
+- **存量书注意**：已下载书籍的章节文件已烤入截断结果，本修复只影响新下载/
+  热更新；存量书需重新下载（或等更新页"按新参数重建"能力）才恢复。
+- **验证**：Windows 352 项全绿；Android `testDebugUnitTest` 全绿（含新契约用例）。
+
 ### 2026-10-10 Android：android-v1.4.2（v1.4.1 进度上限热修版）
 
 - **内容**：v1.4.1 的热修复——原生书热更新后 `chapter_count` 未刷新导致

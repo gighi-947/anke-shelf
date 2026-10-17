@@ -1,0 +1,30 @@
+{
+  "comment": "折叠块 foldBox → details 转换契约。修复历史缺陷：内容捕获曾用非贪婪 (.+?)</span></div>，折叠内容含 </span></div> 紧邻（NGA 对 [size]×[/align] 的渲染）时在首个内层闭合处截断，只收进开头一行。两端必须用 span 深度扫描定位真实折叠尾，输出逐字节一致。",
+  "cases": [
+    {
+      "name": "simple",
+      "input": "<div class=\"foldBox no\"><div class=\"collapse_btn\"><a href=\"javascript:;\" onclick=\"collapse(this);\">+</a>折叠标题 ...</div><span class=\"collapse_content\" id=\"foldCnt\">第一行<br/>第二行</span></div>",
+      "expected": "<details><summary>折叠标题</summary><div>第一行<br/>第二行</div></details>"
+    },
+    {
+      "name": "size-align adjacent close（SBR 复现：折叠内含 </span></div> 紧邻不得截断）",
+      "input": "<div class=\"foldBox no\"><div class=\"collapse_btn\"><a href=\"javascript:;\" onclick=\"collapse(this);\">+</a>SBR大赛规则 ...</div><span class=\"collapse_content\" id=\"foldCnt\"><div class='quote'><div align='center'><span style='font-size:150%'>[神龙环越争霸赛]</span></div><br/>英文：Shenlong Breaking Race<br/>简称为SBR<br/>冠军奖励：10亿人民币</div></span></div>",
+      "expected": "<details><summary>SBR大赛规则</summary><div><div class='quote'><div align='center'><span style='font-size:150%'>[神龙环越争霸赛]</span></div><br/>英文：Shenlong Breaking Race<br/>简称为SBR<br/>冠军奖励：10亿人民币</div></div></details>"
+    },
+    {
+      "name": "nested collapse（外层内容含内层折叠，内层也要转换）",
+      "input": "<div class=\"foldBox no\"><div class=\"collapse_btn\"><a href=\"javascript:;\" onclick=\"collapse(this);\">+</a>外层 ...</div><span class=\"collapse_content\" id=\"foldCnt\">前<div class=\"foldBox no\"><div class=\"collapse_btn\"><a href=\"javascript:;\" onclick=\"collapse(this);\">+</a>内层 ...</div><span class=\"collapse_content\" id=\"foldCnt\">内层内容</span></div>后</span></div>",
+      "expected": "<details><summary>外层</summary><div>前<details><summary>内层</summary><div>内层内容</div></details>后</div></details>"
+    },
+    {
+      "name": "two folds in one post（第二个折叠的内容不得被第一个吞掉）",
+      "input": "<div class=\"foldBox no\"><div class=\"collapse_btn\"><a href=\"javascript:;\" onclick=\"collapse(this);\">+</a>折A ...</div><span class=\"collapse_content\" id=\"foldCnt\">内容A</span></div>间隔文字<div class=\"foldBox no\"><div class=\"collapse_btn\"><a href=\"javascript:;\" onclick=\"collapse(this);\">+</a>折B ...</div><span class=\"collapse_content\" id=\"foldCnt\">内容B</span></div>",
+      "expected": "<details><summary>折A</summary><div>内容A</div></details>间隔文字<details><summary>折B</summary><div>内容B</div></details>"
+    },
+    {
+      "name": "unclosed fold left as-is（未闭合折叠原样保留，不得吞掉后续正文）",
+      "input": "<div class=\"foldBox no\"><div class=\"collapse_btn\"><a href=\"javascript:;\" onclick=\"collapse(this);\">+</a>标题 ...</div><span class=\"collapse_content\" id=\"foldCnt\">没有闭合的折叠正文",
+      "expected": "<div class=\"foldBox no\"><div class=\"collapse_btn\"><a href=\"javascript:;\" onclick=\"collapse(this);\">+</a>标题 ...</div><span class=\"collapse_content\" id=\"foldCnt\">没有闭合的折叠正文"
+    }
+  ]
+}

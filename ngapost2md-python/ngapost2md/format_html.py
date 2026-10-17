@@ -10,7 +10,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from .models import Tiezi
 from .smile_map import SMILE_MAP
-from .format import anony, normalize_image_url
+from .format import anony, convert_collapses, normalize_image_url
 
 RE_SCRIPT = re.compile(r"<script.*?</script>", re.DOTALL | re.IGNORECASE)
 RE_STYLE = re.compile(r"<style.*?</style>", re.DOTALL | re.IGNORECASE)
@@ -35,11 +35,6 @@ RE_ANONY = re.compile(r"#anony_.{32}")
 
 RE_DEL_GRAY = re.compile(r"<del class=['\"]gray['\"]>")
 RE_DICE = re.compile(r"<div class='dice'><b>ROLL : (.+?)</b>=(.+?)=<b>(.+?)</b></div>")
-RE_COLLAPSE = re.compile(
-    r'<div class="foldBox no"><div class="collapse_btn"><a href="javascript:;" '
-    r'onclick="collapse\(this\);">\+</a>(.+?) ...</div>'
-    r'<span class="collapse_content" id="foldCnt">(.+?)</span></div>'
-)
 RE_POSTBY_UID = re.compile(r"<b>Post by \[uid=(\d+?)\](.+?)\[\/uid\][^<]*?\((\d{4}.*?)\):</b>")
 RE_POSTBY_ANONY = re.compile(r"<b>Post by (.+?)<span .*?\((\d{4}.*?)\):</b>")
 
@@ -126,10 +121,10 @@ def render_content_html(raw: str, tiezi: Tiezi, img_src) -> str:
     c = RE_SCRIPT.sub("", raw)
     c = RE_STYLE.sub("", c)
 
-    # 折叠
-    c = RE_COLLAPSE.sub(
-        lambda m: f"<details><summary>{m.group(1)}</summary><div>{m.group(2)}</div></details>",
+    # 折叠（span 深度扫描定位折叠尾，见 format.convert_collapses 注释）
+    c = convert_collapses(
         c,
+        lambda t, inner: f"<details><summary>{t}</summary><div>{inner}</div></details>",
     )
     # 骰子：默认收起详细骰点（过程），点击 summary 展开（对齐 NGA 折叠交互）
     c = RE_DICE.sub(

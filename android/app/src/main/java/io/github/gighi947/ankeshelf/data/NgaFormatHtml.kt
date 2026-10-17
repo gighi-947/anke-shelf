@@ -32,12 +32,13 @@ object NgaFormatHtml {
 
     private val RE_DICE =
         Regex("""<div class='dice'><b>ROLL : (.+?)</b>=(.+?)=<b>(.+?)</b></div>""")
-    private val RE_COLLAPSE = Regex(
+    private val RE_COLLAPSE_PREFIX = Regex(
         """<div class="foldBox no"><div class="collapse_btn"><a href="javascript:;" """ +
-            """onclick="collapse\(this\);">\+</a>(.+?) ...</div>""" +
-            """<span class="collapse_content" id="foldCnt">(.+?)</span></div>""",
+            """onclick="collapse\(this\);">\+</a>(.+?) \.\.\.</div>""" +
+            """<span class="collapse_content" id="foldCnt">""",
         RegexOption.DOT_MATCHES_ALL,
     )
+    private val RE_SPAN_TAG = Regex("""</?span[\s>]""")
     private val RE_POSTBY_UID =
         Regex("""<b>Post by \[uid=(\d+?)\](.+?)\[\/uid\][^<]*?\((\d{4}.*?)\):</b>""")
     private val RE_POSTBY_ANONY =
@@ -137,9 +138,7 @@ object NgaFormatHtml {
         var c = RE_SCRIPT.replace(raw, "")
         c = RE_STYLE.replace(c, "")
 
-        c = RE_COLLAPSE.replace(c) { m ->
-            "<details><summary>${m.groupValues[1]}</summary><div>${m.groupValues[2]}</div></details>"
-        }
+        c = convertCollapses(c)
         c = RE_DICE.replace(c) { m ->
             // 默认收起详细骰点（过程），点击 summary 展开（与桌面 format_html 逐字节一致）
             "<details class=\"nga-dice\" style=\"color:${theme.dice}; font-weight:bold; margin:6px 0;\">" +
@@ -257,6 +256,52 @@ object NgaFormatHtml {
     /** 最小 HTML 转义（音乐 cue 标题用；URL 已被正则排除引号/空白）。 */
     private fun minEscape(s: String): String =
         s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    /** 折叠内容真实边界 (contentEnd, foldEnd)。span 深度归零处的 </span></div> 才是
+     *  折叠尾——非贪婪正则在内容含 </span></div> 紧邻（[size]×[/align] 的 NGA 渲染）
+     *  时会于首个内层闭合处截断（与桌面 format.convert_collapses 同语义）。 */
+    private fun collapseContentBounds(c: String, start: Int): Pair<Int, Int>? {
+        var depth = 1
+        var i = start
+        while (true) {
+            val m = RE_SPAN_TAG.find(c, i) ?: return null
+            if (m.value.startsWith("</")) {
+                depth--
+                if (depth == 0) {
+                    val afterSpan = m.range.last + 1
+                    if (!c.startsWith("</div>", afterSpan)) return null
+                    return m.range.first to afterSpan + "</div>".length
+                }
+            } else {
+                depth++
+            }
+            i = m.range.last + 1
+        }
+    }
+
+    /** foldBox → details。从后往前逐个转换（嵌套天然先内后外）；
+     *  未闭合的折叠原样保留、不影响其余折叠。 */
+    private fun convertCollapses(input: String): String {
+        var s = input
+        repeat(100) {
+            val matches = RE_COLLAPSE_PREFIX.findAll(s).toList()
+            if (matches.isEmpty()) return s
+            var converted = false
+            for (m in matches.asReversed()) {
+                val bounds = collapseContentBounds(s, m.range.last + 1)
+                if (bounds != null) {
+                    val content = s.substring(m.range.last + 1, bounds.first)
+                    s = s.substring(0, m.range.first) +
+                        "<details><summary>${m.groupValues[1]}</summary><div>$content</div></details>" +
+                        s.substring(bounds.second)
+                    converted = true
+                    break
+                }
+            }
+            if (!converted) return s
+        }
+        return s
+    }
 
     private fun smileHtml(it: String, imgSrc: (String) -> String): String {
         val file = NGA_SMILE_MAP[it] ?: return it

@@ -1,5 +1,8 @@
 package io.github.gighi947.ankeshelf.data
 
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -163,5 +166,30 @@ class NgaFormatHtmlTest {
         val raw = "<div class='dice'><b>ROLL : d2</b>=d2(2)=<b>2</b></div>"
         val out = NgaFormatHtml.renderContentHtml(raw)
         assertFalse(out.contains("data-textpos-exclude"))
+    }
+
+    @Test
+    fun `collapse conversion matches shared fixture`() {
+        // 折叠块转换契约（双端共享夹具）：内容含 </span></div> 紧邻
+        // （[size]×[/align] 的 NGA 渲染）不得截断；Windows 侧由
+        // tests/test_nga_collapse.py 消费同一夹具。
+        val repoRoot = run {
+            var dir: java.io.File? = java.io.File("").absoluteFile
+            while (dir != null && !java.io.File(dir, "contracts").isDirectory) dir = dir.parentFile
+            dir ?: error("contracts/ 未找到")
+        }
+        val fixture = java.io.File(repoRoot, "contracts/fixtures/nga-format/collapse-cases.json")
+        assertTrue("夹具缺失：$fixture", fixture.isFile)
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val root = json.parseToJsonElement(fixture.readText(Charsets.UTF_8)).jsonObject
+        val cases = root["cases"]!!.jsonArray
+        assertTrue("夹具用例数应覆盖核心边界", cases.size >= 5)
+        for (element in cases) {
+            val c = element.jsonObject
+            val name = c["name"]!!.jsonPrimitive.content
+            val input = c["input"]!!.jsonPrimitive.content
+            val expected = c["expected"]!!.jsonPrimitive.content
+            assertEquals("折叠转换不符：$name", expected, NgaFormatHtml.renderContentHtml(input))
+        }
     }
 }
