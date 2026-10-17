@@ -34,6 +34,8 @@ from app.search import SearchService
 from app.settings import Settings
 from app.shelf import ProgressStore, Shelf
 from app.stats import StatsStore
+from app.update_check import UpdateCheckService
+from app.update_checks import UpdateCheckStore
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "gululu"
@@ -448,6 +450,9 @@ class GululuServiceTest(unittest.TestCase):
             export_service=ExportService(shelf),
             gululu_service=fake,
             floor_export_service=FloorExportService(shelf, BookManager()),
+            update_check_service=UpdateCheckService(
+                shelf, UpdateCheckStore(self.root / "update_checks.json")
+            ),
             frontend_ready=threading.Event(),
             window_toggle=lambda _entering: None,
             nga_login=NgaLoginController(),

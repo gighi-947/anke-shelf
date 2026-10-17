@@ -538,6 +538,8 @@
 
   async function loadUpdateDefaults(bookId) {
     if (!bookId) return;
+    // 换书（用户切换或面板预选）时同步每书自动检查开关勾选态
+    if (window.NgaPanels && NgaPanels.syncUpdateAutoCheck) NgaPanels.syncUpdateAutoCheck(bookId);
     try {
       const d = await Api.ngaUpdateDefaults( bookId);
       // 只看楼主开关锁定为书模式（下载时确定，更新不可切换，避免楼层坐标混用）

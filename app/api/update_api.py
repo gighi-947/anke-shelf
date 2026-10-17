@@ -1,4 +1,8 @@
-"""版本更新检查：静默拉取 GitHub Releases，网络失败不向用户显式报错。"""
+"""版本更新检查：静默拉取 GitHub Releases，网络失败不向用户显式报错。
+
+书籍更新检查（进书轻量检查 / 书架徽标 / 每书自动开关）也在本模块：
+handler 只透传给 ctx.update_check_service，业务语义见 app/update_check.py。
+"""
 from __future__ import annotations
 
 import json
@@ -57,3 +61,34 @@ def check_update(ctx: ApiContext) -> dict:
             "html_url": release.get("html_url") or "" if has_update else "",
         }
     return {"has_update": False, "latest_version": "", "html_url": ""}
+
+
+# ---------- 书籍更新检查（feat10：对齐 Android 进书检查 + 书架徽标） ----------
+
+def check_book_update(ctx: ApiContext, book_id: str) -> dict:
+    """单书轻量检查：{"state": "available"|"none"|"unavailable", "new_floors": int, "approximate": bool}。"""
+    return ctx.update_check_service.check_book(book_id)
+
+
+def get_update_badges(ctx: ApiContext) -> dict:
+    """书架徽标快照：{"badges": {bookId: n}, "auto_check": {bookId: bool}, "revision": int}。
+
+    auto_check 只含显式登记项（缺省 true 由前端兜底）。
+    """
+    store = ctx.update_check_service.store
+    return {
+        "badges": store.available_snapshot(),
+        "auto_check": store.auto_check_snapshot(),
+        "revision": store.revision,
+    }
+
+
+def set_auto_check(ctx: ApiContext, book_id: str, enabled: bool) -> dict:
+    """每书「自动检查更新」开关；关闭时清除该书徽标。"""
+    ctx.update_check_service.store.set_auto_check(book_id, bool(enabled))
+    return {"ok": True}
+
+
+def check_all_updates(ctx: ApiContext) -> dict:
+    """触发书架批量检查（后台线程，防重入）：{"started": bool}。"""
+    return ctx.update_check_service.check_all()

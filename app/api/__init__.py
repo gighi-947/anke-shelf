@@ -85,6 +85,11 @@ _HANDLERS = (
     ("gululu_decrypt_secret", gululu_api.gululu_decrypt_secret),
     ("gululu_import_status", gululu_api.gululu_import_status),
     ("gululu_cancel", gululu_api.gululu_cancel),
+    # 书籍更新检查（进书轻量检查 / 书架徽标 / 每书自动开关）
+    ("check_book_update", update_api.check_book_update),
+    ("get_update_badges", update_api.get_update_badges),
+    ("set_auto_check", update_api.set_auto_check),
+    ("check_all_updates", update_api.check_all_updates),
     # 楼层导出（图片渲染）
     ("floor_export_floors", floor_export_api.floor_export_floors),
     ("floor_export_start", floor_export_api.floor_export_start),
@@ -125,6 +130,7 @@ class Api(ApiRegistry):
         export_service,
         gululu_service,
         floor_export_service,
+        update_check_service,
         frontend_ready,
         window_toggle,
         nga_login,
@@ -143,6 +149,7 @@ class Api(ApiRegistry):
             export_service=export_service,
             gululu_service=gululu_service,
             floor_export_service=floor_export_service,
+            update_check_service=update_check_service,
             frontend_ready=frontend_ready,
             file_dialog=file_dialog,
             window_toggle=window_toggle,

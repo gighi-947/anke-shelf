@@ -16,7 +16,14 @@ from .gululu_epub import (
 )
 from .gululu_images import normalize_image_mode
 from .gululu_source import extract_book_id
-from .gululu_update import book_id_for_target, execute_update, replace_and_register, write_baseline
+from .gululu_update import (
+    BaselineOk,
+    book_id_for_target,
+    execute_update,
+    load_baseline,
+    replace_and_register,
+    write_baseline,
+)
 from .logutil import log_event
 from .paths import gululu_library_dir
 from .tasks import TaskCancelled, TaskManager, TaskProgress, TaskStatus
@@ -178,6 +185,11 @@ class GululuService:
     def start_update(self, source: str | int, image_mode: str = "online") -> dict:
         try:
             source_id = extract_book_id(source)
+            if not image_mode:
+                # 未指定模式的入口（如阅读器更新按钮）：沿用增量基线的图片模式，
+                # 避免把内嵌书误切成在线（模式变化会触发重建）。
+                baseline = load_baseline(gululu_library_dir() / str(source_id) / "snapshot.json", source_id)
+                image_mode = baseline.image_mode if isinstance(baseline, BaselineOk) else "online"
             normalized_image_mode = normalize_image_mode(image_mode)
         except ValueError as exc:
             raise ApiError(ErrorCode.BOOK_INVALID, str(exc))

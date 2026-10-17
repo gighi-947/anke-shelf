@@ -35,6 +35,10 @@
 
   window.Shelf = {
     _renderToken: 0,
+    // 更新角标缓存（get_update_badges 的 badges/auto_check/revision），
+    // 阅读器进书检查与下载面板开关也读这份缓存
+    badgeData: { badges: {}, auto: {}, revision: 0 },
+    _badgePoll: null,
 
     async render() {
       const token = ++this._renderToken;
@@ -43,6 +47,12 @@
         books = await Api.getShelf();
       } catch (e) {
         Toast.show('Failed to load shelf: ' + (e.message || e), true);
+      }
+      // 角标数据先于 DOM 构建拉取；失败按空渲染，不阻塞书架
+      try {
+        this._setBadgeData(await Api.getUpdateBadges());
+      } catch (e) {
+        this._setBadgeData(null);
       }
       const grid = document.getElementById('book-grid');
       grid.innerHTML = '';
@@ -91,6 +101,92 @@
         arr.sort((a, b) => (b.last_read_at || '').localeCompare(a.last_read_at || ''));
       }
       return arr;
+    },
+
+    _setBadgeData(data) {
+      this.badgeData = {
+        badges: (data && data.badges) || {},
+        auto: (data && data.auto_check) || {},
+        revision: (data && typeof data.revision === 'number') ? data.revision : 0,
+      };
+    },
+
+    /** 封面右上角更新数量角标：badges[id]>0 且该书未关闭自动检查才渲染。 */
+    _updateBadgeEl(book) {
+      const n = Number(this.badgeData.badges[book.id]) || 0;
+      if (n <= 0 || this.badgeData.auto[book.id] === false) return null;
+      const el = document.createElement('span');
+      el.className = 'update-badge';
+      el.textContent = n > 99 ? '99+' : String(n);
+      return el;
+    },
+
+    /** 轮询 revision 变化后的定向角标更新：render() 分块追加节点，
+     *  整树重渲染会打断进行中的分块流程，故只按 data-book-id 增删 .update-badge。 */
+    _refreshBadgeDom() {
+      document.querySelectorAll('#book-grid .book-card[data-book-id], #book-grid .book-row[data-book-id]')
+        .forEach((el) => {
+          const container = el.classList.contains('book-card')
+            ? el.querySelector('.bookitem-main')
+            : el.querySelector('.book-row-cover');
+          if (!container) return;
+          const existing = container.querySelector('.update-badge');
+          const badge = this._updateBadgeEl({ id: el.dataset.bookId });
+          if (badge) {
+            if (existing) existing.remove();
+            container.appendChild(badge);
+          } else if (existing) {
+            existing.remove();
+          }
+        });
+    },
+
+    /** 书架可见时：触发一次批量检查，然后每 3s 轮询角标 revision；
+     *  批量检查在后端异步执行、结果经 revision 反映，revision 连续 2 次
+     *  不变或累计 45s 即停；离开书架由 stopBadgePolling 清定时器。 */
+    startBadgePolling() {
+      this.stopBadgePolling();
+      Api.checkAllUpdates().catch(() => {});
+      const poll = {
+        timer: null,
+        lastRevision: this.badgeData.revision,
+        unchanged: 0,
+        startedAt: Date.now(),
+      };
+      poll.timer = setInterval(() => this._pollBadges(poll), 3000);
+      this._badgePoll = poll;
+    },
+
+    async _pollBadges(poll) {
+      if (this._badgePoll !== poll) return;
+      if (Date.now() - poll.startedAt >= 45000) {
+        this.stopBadgePolling();
+        return;
+      }
+      let data = null;
+      try {
+        data = await Api.getUpdateBadges();
+      } catch (e) {
+        return; // 单次失败不计入，继续下一轮
+      }
+      if (this._badgePoll !== poll) return; // 等待期间轮询已被停止/重启
+      const rev = (data && typeof data.revision === 'number') ? data.revision : 0;
+      if (rev === poll.lastRevision) {
+        poll.unchanged += 1;
+        if (poll.unchanged >= 2) this.stopBadgePolling();
+        return;
+      }
+      poll.unchanged = 0;
+      poll.lastRevision = rev;
+      this._setBadgeData(data);
+      this._refreshBadgeDom();
+    },
+
+    stopBadgePolling() {
+      const poll = this._badgePoll;
+      if (!poll) return;
+      clearInterval(poll.timer);
+      this._badgePoll = null;
     },
 
     /** Readest 风格“最近阅读”横条：最近读过的书（≤8 本）横向滚动。 */
@@ -168,6 +264,7 @@
     _card(book) {
       const card = document.createElement('div');
       card.className = 'book-card';
+      card.dataset.bookId = book.id;
       card.dataset.title = (book.title || '').toLowerCase();
       card.dataset.author = ((book.author || '') + ' tid ' + (book.nga_tid || '')).toLowerCase();
       card.dataset.tags = (book.tags || []).map((t) => (t.name || '').toLowerCase()).join(' ');
@@ -208,6 +305,8 @@
         main.appendChild(badge);
       }
       main.appendChild(cover);
+      const updBadge = this._updateBadgeEl(book);
+      if (updBadge) main.appendChild(updBadge);
 
       const actions = this._gridActions(book);
 
@@ -263,6 +362,7 @@
     _row(book) {
       const row = document.createElement('div');
       row.className = 'book-row';
+      row.dataset.bookId = book.id;
       row.dataset.title = (book.title || '').toLowerCase();
       row.dataset.author = ((book.author || '') + ' tid ' + (book.nga_tid || '')).toLowerCase();
       row.dataset.tags = (book.tags || []).map((t) => (t.name || '').toLowerCase()).join(' ');
@@ -283,6 +383,8 @@
       img.addEventListener('error', () => img.remove(), { once: true });
       if (book.cover_url) img.src = Theme.coverUrl(book.cover_url);
       cover.append(fb, img);
+      const updBadge = this._updateBadgeEl(book);
+      if (updBadge) cover.appendChild(updBadge);
 
       const meta = document.createElement('div');
       meta.className = 'book-row-meta';

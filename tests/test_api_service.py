@@ -20,6 +20,8 @@ from app.search import SearchService
 from app.settings import Settings
 from app.shelf import BookRecord, ProgressStore, Shelf
 from app.stats import StatsStore
+from app.update_check import UpdateCheckService
+from app.update_checks import UpdateCheckStore
 
 SAMPLE = Path(__file__).parent / "sample" / "sample_nav3.epub"
 CRYPTOJS_CIPHER = (
@@ -61,6 +63,9 @@ class ApiServiceTest(unittest.TestCase):
             export_service=ExportService(self.shelf),
             gululu_service=GululuService(lambda _path: ""),
             floor_export_service=FloorExportService(self.shelf, books),
+            update_check_service=UpdateCheckService(
+                self.shelf, UpdateCheckStore(self.root / "update_checks.json")
+            ),
             frontend_ready=threading.Event(),
             window_toggle=window_toggle,
             nga_login=NgaLoginController(),

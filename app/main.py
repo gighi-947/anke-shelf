@@ -143,6 +143,7 @@ from .settings import Settings
 from .shelf import ProgressStore, Shelf
 from .startup_errors import show_startup_error
 from .stats import StatsStore
+from .update_check import UpdateCheckService
 
 
 def main() -> int:
@@ -239,6 +240,8 @@ def main() -> int:
         books=books,
         on_book_updated=_on_book_updated,
     )
+    # 进书更新检查（端私有 update_checks.json，不入 settings 契约）
+    update_check_svc = UpdateCheckService(shelf)
     export_svc = ExportService(shelf)
     floor_export_svc = FloorExportService(shelf, books)
     frontend_ready = threading.Event()
@@ -262,6 +265,7 @@ def main() -> int:
         gululu_service=gululu_svc,
         export_service=export_svc,
         floor_export_service=floor_export_svc,
+        update_check_service=update_check_svc,
         frontend_ready=frontend_ready,
         window_toggle=_toggle_window_fullscreen,
         nga_login=nga_login,

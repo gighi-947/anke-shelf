@@ -44,6 +44,9 @@
         } catch (e) {
           Api.logFrontend( 'init:shelf_failed: ' + (e.message || e)).catch(() => {});
         }
+        if (state.view === 'shelf' && window.Shelf && Shelf.startBadgePolling) {
+          Shelf.startBadgePolling();
+        }
         this.checkUpdateSilently();
       } catch (e) {
         Api.logFrontend( 'init:fatal: ' + (e.message || e)).catch(() => {});
@@ -268,6 +271,7 @@
       if (window.GululuImmersive) GululuImmersive.close();
       if (window.GululuSecrets) GululuSecrets.close();
       if (window.GululuOverview) GululuOverview.close();
+      if (window.Shelf && Shelf.startBadgePolling) Shelf.startBadgePolling();
       document.title = '安科书架';
     },
 
@@ -284,6 +288,9 @@
         document.title = data.title || 'Reading';
         this.setGululuQuickVisible(Number(data.gululu_source_id) > 0);
         this.setBarsVisible(true);
+        if (window.Shelf && Shelf.stopBadgePolling) Shelf.stopBadgePolling();
+        // 进书被动更新检查：不阻塞章节加载，结果驱动顶栏红点与 Toast
+        this.checkReaderUpdate();
         if (window.Sidebar) Sidebar.renderBookCard(data);
         Toc.render(data.toc);
         Sidebar.switchTab('toc');
@@ -299,6 +306,65 @@
         await Reader.loadChapter(p.chapter_index, p.text_offset || 0);
       } catch (e) {
         Toast.show('Failed to open book: ' + (e.message || e), true);
+      }
+    },
+
+    /** 进书被动更新检查：仅 NGA/骨碌碌来源显示顶栏更新按钮；
+     *  该书 auto_check 开启时调 check_book_update——available → Toast + 红点
+     *  并同步书架角标缓存；none → 清红点；unavailable/失败均静默。 */
+    async checkReaderUpdate() {
+      const btn = document.getElementById('reader-update-btn');
+      if (!btn) return;
+      const book = state.book;
+      const bookId = state.bookId;
+      const isNga = !!(book && book.nga);
+      const isGululu = !!(book && Number(book && book.gululu_source_id) > 0);
+      btn.classList.toggle('hidden', !(isNga || isGululu));
+      btn.title = isNga ? '更新帖子' : '检查骨碌碌更新';
+      this.setReaderUpdateDot(false);
+      if (!isNga && !isGululu) return;
+      if (window.Shelf && Shelf.badgeData && Shelf.badgeData.auto[bookId] === false) return;
+      try {
+        const r = await Api.checkBookUpdate(bookId);
+        // 检查期间换书/离开阅读视图则丢弃结果
+        if (state.view !== 'reader' || state.bookId !== bookId) return;
+        if (!r) return;
+        if (r.state === 'available') {
+          const n = Number(r.new_floors) || 0;
+          Toast.show('检测到' + (r.approximate ? '约 ' : '') + n + ' 楼新内容，可点顶栏更新按钮更新');
+          this.setReaderUpdateDot(true);
+          if (window.Shelf && Shelf.badgeData) Shelf.badgeData.badges[bookId] = n;
+        } else if (r.state === 'none') {
+          this.setReaderUpdateDot(false);
+          if (window.Shelf && Shelf.badgeData) delete Shelf.badgeData.badges[bookId];
+        }
+      } catch (e) {
+        /* 检查失败静默 */
+      }
+    },
+
+    setReaderUpdateDot(on) {
+      const btn = document.getElementById('reader-update-btn');
+      if (btn) btn.classList.toggle('has-update', !!on);
+    },
+
+    /** 顶栏更新按钮：与书架每书更新按钮行为一致——
+     *  NGA 打开下载面板更新段并预选本书；骨碌碌直接走更新启动路径。 */
+    async readerUpdateAction() {
+      const book = state.book;
+      if (!book || state.view !== 'reader') return;
+      if (book.nga) {
+        if (window.NgaDownload) NgaDownload.open({ bookId: state.bookId, focusUpdate: true });
+        return;
+      }
+      if (Number(book.gululu_source_id) > 0) {
+        try {
+          // 空模式 = 后端按增量基线沿用原图片模式（在线/内嵌不被误切）
+          await Api.gululuStartUpdate(String(book.gululu_source_id), '');
+          if (window.NgaDownload) NgaDownload.open({ tab: 'dl-gululu' });
+        } catch (e) {
+          Toast.show('更新失败：' + (e.message || e), true);
+        }
       }
     },
 
@@ -355,6 +421,10 @@
       });
       document.getElementById('bars-pin-btn').addEventListener('click', () => this.toggleBarsPinned());
       document.getElementById('fullscreen-btn').addEventListener('click', () => this.toggleImmersive());
+      const readerUpdateBtn = document.getElementById('reader-update-btn');
+      if (readerUpdateBtn) {
+        readerUpdateBtn.addEventListener('click', () => this.readerUpdateAction());
+      }
       document.getElementById('bookmark-btn').addEventListener('click', () => {
         Reader.toggleBookmarkAtCurrent();
       });

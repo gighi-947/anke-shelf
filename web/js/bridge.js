@@ -27,6 +27,8 @@
     gululu_start_import: 60000,
     gululu_start_export: 60000,
     gululu_start_update: 60000,
+    // 单书更新检查需在线抓取楼层，放宽到与下载任务同级
+    check_book_update: 60000,
     gululu_get_comments: 60000,
     export_annotations: 30000,
   };

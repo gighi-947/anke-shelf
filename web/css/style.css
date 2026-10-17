@@ -626,6 +626,39 @@ html, body {
 .gululu-badge { background: var(--success); color: #ffffff; }
 .recent-cover .gululu-badge { top: 5px; left: 5px; }
 
+/* 更新数量角标：封面右上角红底白字（书架卡片与列表行共用，NGA/骨碌碌同款） */
+.update-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--error);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 9999px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+.book-row-cover .update-badge { top: 4px; right: 4px; font-size: 9px; padding: 2px 5px; }
+
+/* 阅读器顶栏更新按钮红点：检测到新楼层时显示（纯静态，不加动效） */
+#reader-update-btn { position: relative; }
+#reader-update-btn .update-dot { display: none; }
+#reader-update-btn.has-update .update-dot {
+  display: block;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--error);
+  box-shadow: 0 0 0 2px var(--base-100);
+  pointer-events: none;
+}
+
 .book-meta { padding-top: 8px; }
 .book-title {
   font-size: 12px;

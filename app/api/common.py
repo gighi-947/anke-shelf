@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from ..gululu_service import GululuService
     from ..nga_login import NgaLoginController
     from ..stats import StatsStore
+    from ..update_check import UpdateCheckService
 
 log = logging.getLogger("app.api")
 
@@ -44,6 +45,7 @@ class ApiContext:
     export_service: ExportService
     gululu_service: "GululuService"
     floor_export_service: "FloorExportService"
+    update_check_service: "UpdateCheckService"
     frontend_ready: threading.Event
     window_toggle: Callable[[bool], None]
     nga_login: "NgaLoginController"

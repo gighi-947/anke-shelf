@@ -125,6 +125,11 @@ def statistics_path() -> Path:
     return data_dir() / "statistics.json"
 
 
+def update_checks_path() -> Path:
+    """进书更新检查状态（端私有，不入双端契约：自动开关 + 待更新楼数）。"""
+    return data_dir() / "update_checks.json"
+
+
 def nga_config_path() -> Path:
     """NGA 凭据/UA 配置（应用内维护，独立于 ngapost2md 的 config.ini）。"""
     return data_dir() / "nga_config.ini"

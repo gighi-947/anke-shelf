@@ -102,7 +102,31 @@
     wrap.className = 'settings-controls';
 
     const bookSel = select('dl-update-book', []);
-    wrap.appendChild(field('帖子', bookSel));
+    // 每书「自动检查更新」：初始勾选态 = get_update_badges 的 auto_check[选中书]
+    // （缺省 true），切换即调 set_auto_check；换书时经 loadUpdateDefaults →
+    // syncUpdateAutoCheck 刷新勾选态。
+    const autoCheck = checkbox('dl-update-auto-check', true);
+    const autoInput = autoCheck.querySelector('input');
+    autoInput.addEventListener('change', async () => {
+      const bookId = val('dl-update-book');
+      if (!bookId) {
+        autoInput.checked = true;
+        return;
+      }
+      const enabled = autoInput.checked;
+      try {
+        await Api.setAutoCheck(bookId, enabled);
+        // 同步书架角标缓存，阅读器进书检查读同一份
+        if (window.Shelf && Shelf.badgeData) Shelf.badgeData.auto[bookId] = enabled;
+      } catch (e) {
+        autoInput.checked = !enabled;
+        Toast.show('自动检查设置失败：' + (e.message || e), true);
+      }
+    });
+    const selRow = document.createElement('div');
+    selRow.className = 'nga-form-row';
+    selRow.append(field('帖子', bookSel), field('自动检查更新', autoCheck));
+    wrap.appendChild(selRow);
     bookSel.addEventListener('change', () => loadUpdateDefaults(val('dl-update-book')));
 
     // 只看楼主开关：锁定为书模式（下载时确定，更新不可切换，避免楼层坐标混用）
@@ -303,5 +327,23 @@
   }
 
 
-  window.NgaPanels = { buildDownloadSection, buildUpdateSection, buildExportSection, buildConfigSection };
+  /** 刷新「自动检查更新」勾选态：优先用书架角标缓存（Shelf.render 已拉取），
+   *  无 Shelf 时现拉 get_update_badges；auto_check 缺失按 true。 */
+  async function syncUpdateAutoCheck(bookId) {
+    const el = document.getElementById('dl-update-auto-check');
+    if (!el || !bookId) return;
+    if (window.Shelf && Shelf.badgeData) {
+      el.checked = Shelf.badgeData.auto[bookId] !== false;
+      return;
+    }
+    try {
+      const r = await Api.getUpdateBadges();
+      const auto = (r && r.auto_check) || {};
+      el.checked = auto[bookId] !== false;
+    } catch (e) {
+      el.checked = true;
+    }
+  }
+
+  window.NgaPanels = { buildDownloadSection, buildUpdateSection, buildExportSection, buildConfigSection, syncUpdateAutoCheck };
 })();

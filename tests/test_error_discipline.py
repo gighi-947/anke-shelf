@@ -40,7 +40,7 @@ PROBE_FALLBACK_PATHS = {
     ("app/dpi.py", 24), ("app/dpi.py", 32), ("app/dpi.py", 35), ("app/dpi.py", 37),
     ("app/server.py", 238), ("app/server.py", 247),
     ("app/main.py", 69), ("app/main.py", 80), ("app/main.py", 82),
-    ("app/main.py", 304),
+    ("app/main.py", 308),
     ("app/startup_errors.py", 57),  # 最内层兜底：print 到 stderr 也失败则无可为
     ("app/nga_service.py", 308),
     # ngapost2md-python 是上游 ngapost2md 的 Python 重写版，保持与上游一致，
