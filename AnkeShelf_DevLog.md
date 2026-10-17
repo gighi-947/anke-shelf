@@ -66,6 +66,34 @@
 
 ## 4. 最近流水
 
+### 2026-10-17 双端：更新提示 UX 改版（通知化 + 徽标 + 每书自动检查开关）
+
+- **改版要求**（用户对上一版的反馈）：进书提示从大弹窗改为通知样式小弹窗
+  （无按钮、自动消失），阅读器内更新只经顶栏刷新图标发起；图标区分有无更新
+  （有更新加红点）；书架页加 Legado 式未读角标（封面右上红底白字数量）；
+  「自动检查更新」开关放「已下载」界面，关闭则停用对应书的更新检查；
+  Windows 端功能同步。
+- **Android**：`UpdatePromptPrefs` 换代为 `UpdateCheckStore`（auto_check 开关 +
+  available 楼数 + revision + 会话节流 + 旧屏蔽文件迁移为 auto_check=false）；
+  进书检查改弹顶栏下方通知卡（4s 自动消失，无按钮）；顶栏刷新图标有更新加红点；
+  书架封面角标 + 进场批量静默检查（每会话每本一次）；更新完成即清徽标；
+  「已下载」列表行/卡片加每书开关；DownloadLibraryPanels 残留的私有骨碌碌
+  更新 helper 收敛到 ui/components 共享版。
+- **Windows**：新增 `app/update_check.py`（NGA 拉断点页估算 / 骨碌碌索引精确比对 /
+  check_all 单后台线程防重入，只读不写书目录）+ `app/update_checks.py` 端私有
+  存储 + 4 个 API 端点（check_book_update / get_update_badges / set_auto_check /
+  check_all_updates）；web 书架封面角标（3s 轮询 revision 定向更新 DOM，45s 自停）、
+  阅读器顶栏更新按钮 + 红点 + 进书 Toast、NGA 下载面板更新段每书「自动检查更新」
+  开关；`gululu_service.start_update` 空模式按增量基线解析（阅读器按钮不传模式，
+  避免把内嵌书误切成在线）。
+- **复审实证修掉**：前端误用 `book.nga_tid`（open_book 载荷只有 `nga` 布尔，
+  NGA 书更新按钮永不显示）→ 改判 `book.nga`；骨碌碌阅读器更新写死 online 模式
+  → 上述基线解析。
+- **测试**：Windows 379（新增 24）/ Android 287（UpdateCheckStore 8 例换代）/
+  契约与 JS 全绿。
+- **已知边界**：Windows 骨碌碌面板无选书 UI，开关只在 NGA 更新段（骨碌碌书开关
+  维持默认开）；行号白名单又一次被 main.py 加行移位（教训同 24a7cca）。
+
 ### 2026-10-17 Android：阅读器更新按钮 + 进书更新提示（NGA+骨碌碌）
 
 - **需求**（用户反馈清单功能项，方案 C）：阅读界面内更新按钮 + 每次联网进书时
