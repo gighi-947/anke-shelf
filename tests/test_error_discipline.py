@@ -38,7 +38,7 @@ RESPONSIBLE_CALLS = {
 # 窗口尺寸记忆失败不影响启动）。这类不是业务失败，不视为吞错。
 PROBE_FALLBACK_PATHS = {
     ("app/dpi.py", 24), ("app/dpi.py", 32), ("app/dpi.py", 35), ("app/dpi.py", 37),
-    ("app/server.py", 219), ("app/server.py", 228),
+    ("app/server.py", 238), ("app/server.py", 247),
     ("app/main.py", 69), ("app/main.py", 80), ("app/main.py", 82),
     ("app/main.py", 304),
     ("app/startup_errors.py", 57),  # 最内层兜底：print 到 stderr 也失败则无可为
