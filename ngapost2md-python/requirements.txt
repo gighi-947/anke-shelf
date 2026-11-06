@@ -1,4 +1,4 @@
 httpx>=0.27
-ebooklib>=0.18
+ebooklib>=0.21
 curl_cffi>=0.16.3
 Pillow>=12.3.0
